@@ -1,0 +1,1163 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>診所追蹤系統</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:             #f0f4f8;
+      --card:           #ffffff;
+      --border:         #e4e9f0;
+      --text:           #111827;
+      --text-sub:       #6b7280;
+      --text-muted:     #b0b7c3;
+
+      --blue:           #2563eb;
+      --blue-soft:      #eff6ff;
+      --green:          #059669;
+      --green-soft:     #ecfdf5;
+      --slate-soft:     #f8fafc;
+
+      --red:            #dc2626;
+      --red-soft:       #fef2f2;
+      --red-border:     #fca5a5;
+      --amber:          #d97706;
+      --amber-soft:     #fffbeb;
+      --amber-border:   #fcd34d;
+
+      --radius:         10px;
+      --shadow:         0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.04);
+    }
+
+    body {
+      font-family: -apple-system, "Helvetica Neue", Arial, "PingFang TC", "Microsoft JhengHei", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      box-shadow: 0 1px 0 var(--border);
+    }
+
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .header h1 { font-size: 16px; font-weight: 700; letter-spacing: -0.2px; }
+
+    .btn-print {
+      height: 34px; padding: 0 14px;
+      border: 1px solid var(--border); border-radius: 8px;
+      background: var(--card); color: var(--text-sub);
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: background 0.1s, color 0.1s;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .btn-print:hover { background: var(--bg); color: var(--text); }
+
+    /* ── Print modal ── */
+    .print-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45); z-index: 200;
+      align-items: center; justify-content: center;
+    }
+    .print-overlay.open { display: flex; }
+    .print-modal {
+      background: var(--card); border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      width: min(720px, 95vw); max-height: 85vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .print-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+    }
+    .print-modal-header h3 { font-size: 15px; font-weight: 700; margin: 0; }
+    .print-modal-controls {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .print-filter-toggle {
+      display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+    }
+    .print-filter-toggle button {
+      padding: 5px 12px; border: none; background: transparent;
+      font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text-sub);
+      transition: background 0.1s, color 0.1s;
+    }
+    .print-filter-toggle button.active {
+      background: var(--blue); color: white; font-weight: 600;
+    }
+    .btn-do-print {
+      height: 32px; padding: 0 14px;
+      border: none; border-radius: 6px;
+      background: var(--blue); color: white;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+    }
+    .btn-do-print:hover { background: #1d4ed8; }
+    .btn-close-print {
+      width: 28px; height: 28px; border: none; background: transparent;
+      color: var(--text-muted); font-size: 18px; cursor: pointer; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .btn-close-print:hover { background: var(--bg); }
+    .print-modal-body { overflow-y: auto; padding: 16px 20px; }
+    .print-empty { color: var(--text-muted); font-size: 13px; padding: 24px 0; text-align: center; }
+    .print-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    .print-table th {
+      text-align: left; font-size: 11px; font-weight: 600;
+      color: var(--text-muted); text-transform: uppercase;
+      padding: 6px 10px; border-bottom: 1px solid var(--border);
+    }
+    .print-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .print-table tr:last-child td { border-bottom: none; }
+    .print-category-tag {
+      font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 4px;
+      white-space: nowrap;
+    }
+    .print-category-tag.chronic { background: #fef3c7; color: #92400e; }
+    .print-category-tag.mspt    { background: #ede9fe; color: #5b21b6; }
+
+    /* ── @media print — hide everything except the modal table ── */
+    @media print {
+      body > *:not(.print-overlay) { display: none !important; }
+      .print-overlay { display: block !important; position: static; background: none; }
+      .print-modal { box-shadow: none; width: 100%; max-height: none; border-radius: 0; }
+      .print-modal-controls, .btn-close-print { display: none !important; }
+      .print-modal-body { overflow: visible; padding: 0; }
+      .print-title-line { margin-bottom: 12px; }
+    }
+
+    /* ── Grid ── */
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      padding: 22px 28px;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+
+    .card-top { height: 3px; }
+    .card--chronic .card-top { background: var(--blue); }
+    .card--mspt    .card-top { background: var(--green); }
+
+    .card-header {
+      padding: 14px 20px 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-header h2 { font-size: 14px; font-weight: 700; flex: 1; }
+
+    .count-badge {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 20px;
+      color: white;
+    }
+
+    .card--chronic .count-badge { background: var(--blue); }
+    .card--mspt    .count-badge { background: var(--green); }
+    .count-badge.zero { background: var(--text-muted) !important; }
+
+    /* ── Table ── */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    thead th {
+      padding: 8px 16px;
+      text-align: left;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      background: #fafbfc;
+      border-bottom: 1px solid var(--border);
+    }
+
+    tbody td {
+      padding: 11px 16px;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: middle;
+    }
+
+    tbody tr:last-child td { border-bottom: none; }
+    tbody tr { transition: background 0.1s; }
+    tbody tr:not(.no-hover):hover { background: #f9fafb !important; }
+
+    tr.overdue { background: var(--red-soft); }
+    tr.today   { background: var(--amber-soft); }
+    tr.overdue td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+    tr.today   td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
+
+    .patient-name  { font-weight: 600; font-size: 13px; }
+    .chart-number  { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+    .mono          { font-variant-numeric: tabular-nums; color: var(--text-sub); }
+
+    /* Stage tag */
+    .stage-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: var(--green-soft);
+      color: var(--green);
+      border: 1px solid #a7f3d0;
+    }
+
+    .stage-tag.annual {
+      background: #fff7ed;
+      color: #c2410c;
+      border-color: #fed7aa;
+    }
+
+    /* Reason tag */
+    .reason-tag {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: #fef9c3;
+      color: #854d0e;
+      border: 1px solid #fde68a;
+    }
+
+    /* Status pill */
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+
+    .pill-overdue { background: var(--red-soft);   color: var(--red);   border: 1px solid var(--red-border); }
+    .pill-today   { background: var(--amber-soft);  color: var(--amber); border: 1px solid var(--amber-border); }
+
+    /* Action buttons */
+    .btn-action {
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text-sub);
+    }
+
+    .btn-action:hover  { background: #16a34a; border-color: #16a34a; color: white; }
+    .btn-action:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* Call button — shown when call_required=true */
+    .btn-call {
+      padding: 5px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      border: 1px solid var(--amber-border);
+      background: var(--amber-soft);
+      color: var(--amber);
+    }
+
+    .btn-call:hover  { background: var(--amber); border-color: var(--amber); color: white; }
+    .btn-call:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-undo {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+      border: 1px solid var(--border);
+      background: white;
+      color: var(--text-muted);
+    }
+
+    .btn-undo:hover { background: var(--red-soft); border-color: var(--red-border); color: var(--red); }
+
+    /* Sortable column headers */
+    thead th.sortable { cursor: pointer; user-select: none; }
+    thead th.sortable:hover { background: #f0f2f5; color: var(--text-sub); }
+    thead th.sort-asc::after  { content: ' ↑'; }
+    thead th.sort-desc::after { content: ' ↓'; }
+
+
+    /* Fade animation */
+    tr.removing { opacity: 0; transition: opacity 0.2s ease; }
+
+    /* Empty state */
+    .empty-state { padding: 28px 20px; text-align: center; }
+    .empty-icon  { font-size: 22px; margin-bottom: 6px; }
+    .empty-text  { font-size: 12px; color: var(--text-muted); }
+
+    /* Collapsed sections */
+    .collapse-toggle {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 20px;
+      border-top: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      background: #fafbfc;
+      transition: background 0.1s;
+    }
+
+    .collapse-toggle:hover { background: #f3f4f6; }
+
+    .collapse-line  { flex: 1; height: 1px; background: var(--border); }
+
+    .collapse-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+
+    .chevron { display: inline-block; transition: transform 0.2s; font-style: normal; font-size: 12px; }
+    .chevron.open { transform: rotate(90deg); }
+
+    .collapse-body { display: none; }
+    .collapse-body.open { display: block; }
+
+    tr.done td { color: var(--text-muted); background: #fafbfc; }
+    tr.done .patient-name { color: var(--text-sub); font-weight: 500; }
+    tr.done td:first-child { box-shadow: inset 3px 0 0 #e5e7eb; }
+
+    /* Called rows: slightly different shade */
+    tr.done-final td { color: var(--text-muted); background: #fff7ed; }
+    tr.done-final .patient-name { color: var(--text-sub); font-weight: 500; }
+    tr.done-final td:first-child { box-shadow: inset 3px 0 0 var(--amber-border); }
+
+    .loading-overlay { opacity: 0.45; pointer-events: none; }
+
+    #startup-screen {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: #f8fafc;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    #startup-screen.hidden { display: none; }
+    .startup-spinner {
+      width: 48px; height: 48px;
+      border: 4px solid #e2e8f0;
+      border-top-color: #1d4ed8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    #startup-screen p { color: #64748b; font-size: 1rem; margin: 0; }
+
+    #loading-bar {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 18px;
+      margin-bottom: 16px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 8px;
+      color: #1d4ed8;
+      font-size: 0.9rem;
+    }
+    #loading-bar.visible { display: flex; }
+    .loading-spinner {
+      width: 16px; height: 16px;
+      border: 2px solid #bfdbfe;
+      border-top-color: #1d4ed8;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Toast notifications ── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      align-items: flex-end;
+      pointer-events: none;
+    }
+
+    .toast {
+      pointer-events: all;
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 10px 14px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.12), 0 1px 4px rgba(0,0,0,0.06);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      min-width: 220px;
+      max-width: 380px;
+      animation: toast-in 0.2s ease;
+    }
+
+    .toast.error { border-left: 3px solid var(--red);   }
+    .toast.warn  { border-left: 3px solid var(--amber); }
+    .toast.ok    { border-left: 3px solid var(--green); }
+
+    .toast-icon { font-size: 14px; flex-shrink: 0; }
+    .toast.error .toast-icon { color: var(--red);   }
+    .toast.warn  .toast-icon { color: var(--amber); }
+    .toast.ok    .toast-icon { color: var(--green); }
+
+    .toast-msg   { flex: 1; color: var(--text); line-height: 1.4; }
+    .toast-close {
+      flex-shrink: 0; cursor: pointer; color: var(--text-muted);
+      background: none; border: none; font-size: 14px; padding: 0; line-height: 1;
+    }
+    .toast-close:hover { color: var(--text); }
+
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: none; }
+    }
+
+    /* ── Error banner ── */
+    #error-banner {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      padding: 11px 20px;
+      margin: 0 28px 4px;
+      background: var(--red-soft);
+      border: 1px solid var(--red-border);
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--red);
+    }
+    #error-banner.visible { display: flex; }
+    #error-banner .banner-msg { flex: 1; }
+
+    .btn-retry {
+      padding: 4px 12px; font-size: 12px; font-weight: 600;
+      border-radius: 6px; border: 1px solid var(--red-border);
+      background: white; color: var(--red); cursor: pointer;
+      transition: background 0.1s; white-space: nowrap;
+    }
+    .btn-retry:hover { background: var(--red-soft); }
+
+  </style>
+</head>
+<body>
+
+<div id="startup-screen">
+  <div class="startup-spinner"></div>
+  <p>資料載入中，請稍候…</p>
+</div>
+
+<div class="toast-container" id="toast-container" aria-live="assertive" aria-atomic="false"></div>
+
+<div id="error-banner" role="alert">
+  <span>⚠</span>
+  <span class="banner-msg" id="error-banner-msg"></span>
+  <button class="btn-retry" onclick="clearErrorBanner(); loadReport()">重試</button>
+</div>
+
+<div class="header">
+  <div class="header-left">
+    <h1>診所追蹤系統</h1>
+  </div>
+  <button class="btn-print" onclick="openPrintModal()">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 1h8a1 1 0 0 1 1 1v2H3V2a1 1 0 0 1 1-1zm-2 4h12a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 6H5v3h6v-3zm2-4a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/></svg>
+    列印聯絡清單
+  </button>
+</div>
+
+<!-- Print modal -->
+<div class="print-overlay" id="print-overlay" onclick="closePrintModal(event)">
+  <div class="print-modal">
+    <div class="print-modal-header">
+      <h3>聯絡清單</h3>
+      <div class="print-modal-controls">
+        <div class="print-filter-toggle">
+          <button id="filter-today" class="active" onclick="setPrintFilter('today')">今天</button>
+          <button id="filter-all"            onclick="setPrintFilter('all')">全部</button>
+        </div>
+        <button class="btn-do-print" onclick="window.print()">列印</button>
+        <button class="btn-close-print" onclick="closePrintModal()">✕</button>
+      </div>
+    </div>
+    <div class="print-modal-body" id="print-modal-body"></div>
+  </div>
+</div>
+
+<div id="loading-bar">
+  <div class="loading-spinner"></div>
+  <span>資料載入中，請稍候…</span>
+</div>
+
+<div class="grid" id="main-grid">
+
+  <!-- 慢簽 -->
+  <div class="card card--chronic">
+    <div class="card-top"></div>
+    <div class="card-header">
+      <h2>慢簽追蹤</h2>
+      <span class="count-badge zero" id="chronic-badge">0</span>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('chronic-pending-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron open">›</i> 待聯絡</span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body open" id="chronic-pending-body">
+      <table>
+        <thead><tr>
+          <th class="sortable" onclick="sortTable('chronic-body','name',this)">病患</th>
+          <th class="sortable" onclick="sortTable('chronic-body','birth',this)">出生日期</th>
+          <th class="sortable" onclick="sortTable('chronic-body','disease',this)">病名</th>
+          <th class="sortable" onclick="sortTable('chronic-body','pickup',this)">上次取藥</th>
+          <th class="sortable" onclick="sortTable('chronic-body','due',this)">到期日</th>
+          <th class="sortable" onclick="sortTable('chronic-body','status',this)">狀態</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="chronic-body"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('chronic-contacted-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已聯絡未取藥 <span id="chronic-contacted-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="chronic-contacted-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>病名</th><th>上次取藥</th><th>到期日</th><th>聯絡日期</th><th>已等待</th><th></th>
+        </tr></thead>
+        <tbody id="chronic-contacted-rows"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('chronic-called-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已二次通知 <span id="chronic-called-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="chronic-called-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>病名</th><th>上次取藥</th><th>到期日</th><th>二次通知日期</th><th>已等待</th><th></th>
+        </tr></thead>
+        <tbody id="chronic-called-rows"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- MSPT 需聯絡 -->
+  <div class="card card--mspt">
+    <div class="card-top"></div>
+    <div class="card-header">
+      <h2>代謝症候群追蹤</h2>
+      <span class="count-badge zero" id="mspt-badge">0</span>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('mspt-pending-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron open">›</i> 待聯絡</span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body open" id="mspt-pending-body">
+      <table>
+        <thead><tr>
+          <th class="sortable" onclick="sortTable('mspt-body','name',this)">病患</th>
+          <th class="sortable" onclick="sortTable('mspt-body','birth',this)">出生日期</th>
+          <th class="sortable" onclick="sortTable('mspt-body','stage',this)">下個階段</th>
+          <th class="sortable" onclick="sortTable('mspt-body','last_visit',this)">上次回診</th>
+          <th class="sortable" onclick="sortTable('mspt-body','status',this)">狀態</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="mspt-body"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('mspt-contacted-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已聯絡未回診 <span id="mspt-contacted-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="mspt-contacted-body">
+      <table><tbody id="mspt-contacted-rows"></tbody></table>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('mspt-called-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已二次通知 <span id="mspt-called-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="mspt-called-body">
+      <table><tbody id="mspt-called-rows"></tbody></table>
+    </div>
+  </div>
+
+
+</div>
+
+<script>
+  const todayIso = new Date().toISOString().split("T")[0];
+  let lastContactedData = { contacted: [], called: [] };
+  let printFilter = 'today';
+
+  const followupStore = new Map(); // key: chart|category|due_date
+
+  function followupKey(e) { return `${e.patient.chart_number}|${e.category}|${e.due_date}`; }
+
+  function fmt(iso) {
+    const [y, m, d] = iso.split("-");
+    return `${parseInt(y) - 1911}/${m}/${d}`;
+  }
+
+  function daysSince(isoDate) {
+    const ms = Date.now() - new Date(isoDate).getTime();
+    return Math.floor(ms / 86400000);
+  }
+
+  function statusPill(daysOverdue) {
+    return daysOverdue === 0
+      ? `<span class="pill pill-today">今日到期</span>`
+      : `<span class="pill pill-overdue">逾期 ${daysOverdue} 天</span>`;
+  }
+
+  function stageTag(stage) {
+    const isAnnual = stage === "年度追蹤";
+    return `<span class="stage-tag${isAnnual ? " annual" : ""}">${stage}</span>`;
+  }
+
+  function toggleSection(bodyId, toggle) {
+    const body = document.getElementById(bodyId);
+    const open = body.classList.toggle("open");
+    toggle.querySelector(".chevron").classList.toggle("open", open);
+  }
+
+  function updateBadge(badgeId, count) {
+    const el = document.getElementById(badgeId);
+    el.textContent = count;
+    el.classList.toggle("zero", count === 0);
+  }
+
+  function updateFollowupBadge(badgeId, tbody) {
+    const count = tbody.querySelectorAll("tr[data-key]").length;
+    updateBadge(badgeId, count);
+    if (count === 0) {
+      tbody.innerHTML = `<tr class="no-hover"><td colspan="99"><div class="empty-state"><div class="empty-icon">✓</div><div class="empty-text">今日無需追蹤</div></div></td></tr>`;
+    }
+  }
+
+  function updateCountLabel(countId, rowsBodyId) {
+    const count = document.getElementById(rowsBodyId).querySelectorAll("tr[data-key]").length;
+    document.getElementById(countId).textContent = count;
+  }
+
+  // ── Followup pending rows ──
+
+  function buildFollowupRow(e, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId, calledRowsId, calledCountId) {
+    const key = followupKey(e);
+    followupStore.set(key, e);
+    const tr = document.createElement("tr");
+    tr.className = e.days_overdue === 0 ? "today" : "overdue";
+    tr.dataset.key = key;
+
+    const lastVisitCell = e.last_visit_date
+      ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}<span class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</span>`
+      : `<span style="color:var(--text-muted)">—</span>`;
+
+    const stageCell = e.mspt_stage ? stageTag(e.mspt_stage) : `<span style="color:var(--text-muted)">—</span>`;
+
+    const actionBtn = e.call_required
+      ? `<button class="btn-call">再次通知</button>`
+      : `<button class="btn-action">已聯絡</button>`;
+
+    tr.innerHTML = `
+      <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td class="mono">${fmt(e.patient.birth_date)}</td>
+      <td>${stageCell}</td>
+      <td>${lastVisitCell}</td>
+      <td>${statusPill(e.days_overdue)}</td>
+      <td>${actionBtn}</td>
+    `;
+
+    // chronic card: rebuild as 7-column row with pickup date and expiry date
+    if (!e.mspt_stage) {
+      const pickupCell = e.last_visit_date
+        ? `<span class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</span>`
+        : `<span style="color:var(--text-muted)">—</span>`;
+      tr.innerHTML = `
+        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td class="mono">${fmt(e.patient.birth_date)}</td>
+        <td>${e.disease_name || "—"}</td>
+        <td>${pickupCell}</td>
+        <td><span class="mono" style="color:var(--text-sub)">${fmt(e.due_date)}</span></td>
+        <td>${statusPill(e.days_overdue)}</td>
+        <td>${actionBtn}</td>
+      `;
+    }
+
+    const btn = tr.querySelector("button");
+    btn.onclick = () => e.call_required
+      ? markCalled(btn, key, pendingBodyId, pendingBadgeId, calledRowsId, calledCountId)
+      : markContacted(btn, key, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId);
+    return tr;
+  }
+
+  async function markContacted(btn, key, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId) {
+    btn.disabled = true;
+    try {
+      await apiFetch("/api/contacted", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(followupStore.get(key)) });
+      fadeRemove(btn.closest("tr"), () => {
+        document.getElementById(pendingBodyId).dispatchEvent(new Event("rowremoved"));
+        appendContactedRow(followupStore.get(key), contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId);
+      });
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  async function markCalled(btn, key, pendingBodyId, pendingBadgeId, calledRowsId, calledCountId) {
+    btn.disabled = true;
+    try {
+      await apiFetch("/api/called", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(followupStore.get(key)) });
+      fadeRemove(btn.closest("tr"), () => {
+        document.getElementById(pendingBodyId).dispatchEvent(new Event("rowremoved"));
+        appendCalledRow(followupStore.get(key), calledRowsId, calledCountId);
+      });
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function buildChronicDoneRow(e, undoFn) {
+    const key = followupKey(e);
+    followupStore.set(key, e);
+    const notifiedAt = e.contacted_at || todayIso;
+    const pickupCell = e.last_visit_date
+      ? `<span class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</span>`
+      : `<span style="color:var(--text-muted)">—</span>`;
+    const tr = document.createElement("tr");
+    tr.className = "done";
+    tr.dataset.key = key;
+    tr.innerHTML = `
+      <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td>${e.disease_name || "—"}</td>
+      <td>${pickupCell}</td>
+      <td class="mono" style="color:var(--text-sub)">${fmt(e.due_date)}</td>
+      <td class="mono" style="color:var(--text-sub)">${fmt(notifiedAt)}</td>
+      <td><span style="color:var(--text-sub)">${daysSince(notifiedAt)} 天</span></td>
+      <td><button class="btn-undo">撤銷</button></td>
+    `;
+    tr.querySelector(".btn-undo").onclick = undoFn;
+    return tr;
+  }
+
+  function appendContactedRow(e, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId) {
+    const key = followupKey(e);
+    const tbody = document.getElementById(contactedRowsId);
+    let tr;
+    if (e.category === "慢簽") {
+      tr = buildChronicDoneRow(e, (ev) =>
+        undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId));
+    } else {
+      followupStore.set(key, e);
+      tr = document.createElement("tr");
+      tr.className = "done";
+      tr.dataset.key = key;
+      tr.innerHTML = `
+        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td class="mono">${fmt(e.patient.birth_date)}</td>
+        <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
+        <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
+        <td>${statusPill(e.days_overdue)}</td>
+        <td><button class="btn-undo">撤銷</button></td>
+      `;
+      tr.querySelector(".btn-undo").onclick = (ev) =>
+        undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId);
+    }
+    tbody.appendChild(tr);
+    updateCountLabel(contactedCountId, contactedRowsId);
+  }
+
+  function appendCalledRow(e, calledRowsId, calledCountId) {
+    const key = followupKey(e);
+    const tbody = document.getElementById(calledRowsId);
+    let tr;
+    if (e.category === "慢簽") {
+      tr = buildChronicDoneRow(e, (ev) => undoCalled(ev.currentTarget, key, calledRowsId, calledCountId));
+      tr.className = "done-final";
+    } else {
+      followupStore.set(key, e);
+      tr = document.createElement("tr");
+      tr.className = "done-final";
+      tr.dataset.key = key;
+      tr.innerHTML = `
+        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td class="mono">${fmt(e.patient.birth_date)}</td>
+        <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
+        <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
+        <td>${statusPill(e.days_overdue)}</td>
+        <td><button class="btn-undo">撤銷</button></td>
+      `;
+      tr.querySelector(".btn-undo").onclick = (ev) => undoCalled(ev.currentTarget, key, calledRowsId, calledCountId);
+    }
+    tbody.appendChild(tr);
+    updateCountLabel(calledCountId, calledRowsId);
+  }
+
+  async function undoContacted(btn, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId) {
+    btn.disabled = true;
+    const e = followupStore.get(key);
+    try {
+      await apiFetch("/api/contacted", { method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chart_number: e.patient.chart_number, category: e.category, due_date: e.due_date }) });
+      fadeRemove(btn.closest("tr"), () => {
+        updateCountLabel(contactedCountId, contactedRowsId);
+        restoreFollowupRow(e, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId, pendingBodyId.replace("body", "called-rows"), pendingBodyId.replace("body", "called-count"));
+      });
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  async function undoCalled(btn, key, calledRowsId, calledCountId) {
+    btn.disabled = true;
+    const e = followupStore.get(key);
+    try {
+      await apiFetch("/api/contacted", { method: "DELETE", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chart_number: e.patient.chart_number, category: e.category, due_date: e.due_date }) });
+      fadeRemove(btn.closest("tr"), () => updateCountLabel(calledCountId, calledRowsId));
+      // Entry re-surfaces on next 載入 — no local re-insert since we lost the pending context
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function restoreFollowupRow(e, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId, calledRowsId, calledCountId) {
+    const tbody = document.getElementById(pendingBodyId);
+    const empty = tbody.querySelector("td[colspan]");
+    if (empty) empty.closest("tr").remove();
+    tbody.appendChild(buildFollowupRow(e, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId, calledRowsId, calledCountId));
+    updateFollowupBadge(pendingBadgeId, tbody);
+  }
+
+  // ── Utility ──
+
+  function fadeRemove(row, callback) {
+    row.classList.add("removing");
+    setTimeout(() => { row.remove(); callback(); }, 200);
+  }
+
+  // ── Render ──
+
+  function renderFollowups(bodyId, badgeId, contactedRowsId, contactedCountId, calledRowsId, calledCountId, entries) {
+    const tbody = document.getElementById(bodyId);
+    tbody.innerHTML = "";
+    updateBadge(badgeId, entries.length);
+
+    if (entries.length === 0) {
+      tbody.innerHTML = `<tr class="no-hover"><td colspan="99"><div class="empty-state"><div class="empty-icon">✓</div><div class="empty-text">今日無需追蹤</div></div></td></tr>`;
+      return;
+    }
+
+    entries
+      .sort((a, b) => b.days_overdue - a.days_overdue)
+      .forEach(e => {
+        try {
+          tbody.appendChild(buildFollowupRow(e, bodyId, badgeId, contactedRowsId, contactedCountId, calledRowsId, calledCountId));
+        } catch (err) {
+          console.error("[renderFollowups] buildFollowupRow failed for entry:", e, err);
+        }
+      });
+
+    // Update badge when rows are removed
+    tbody.addEventListener("rowremoved", () => updateFollowupBadge(badgeId, tbody), { once: false });
+  }
+
+  function renderChronicContactedRows(entries) {
+    const tbody = document.getElementById("chronic-contacted-rows");
+    tbody.innerHTML = "";
+    entries.forEach(e => {
+      tbody.appendChild(buildChronicDoneRow(e, (ev) =>
+        undoContacted(ev.currentTarget, followupKey(e), "chronic-contacted-rows", "chronic-contacted-count", "chronic-body", "chronic-badge")));
+    });
+    updateCountLabel("chronic-contacted-count", "chronic-contacted-rows");
+  }
+
+  function renderChronicCalledRows(entries) {
+    const tbody = document.getElementById("chronic-called-rows");
+    tbody.innerHTML = "";
+    entries.forEach(e => {
+      const tr = buildChronicDoneRow(e, (ev) =>
+        undoCalled(ev.currentTarget, followupKey(e), "chronic-called-rows", "chronic-called-count"));
+      tr.className = "done-final";
+      tbody.appendChild(tr);
+    });
+    updateCountLabel("chronic-called-count", "chronic-called-rows");
+  }
+
+  function renderDoneRows(rowsBodyId, countId, entries, rowClass) {
+    const tbody = document.getElementById(rowsBodyId);
+    tbody.innerHTML = "";
+    const isContacted = rowsBodyId.includes("contacted");
+    const prefix          = rowsBodyId.replace(/-contacted-rows$|-called-rows$/, "");
+    const pendingBodyId   = prefix + "-body";
+    const pendingBadgeId  = prefix + "-badge";
+    const contactedRowsId = prefix + "-contacted-rows";
+    const contactedCountId = prefix + "-contacted-count";
+    const calledRowsId    = prefix + "-called-rows";
+    const calledCountId   = prefix + "-called-count";
+
+    entries.forEach(e => {
+      const key = followupKey(e);
+      followupStore.set(key, e);
+      const tr = document.createElement("tr");
+      tr.className = rowClass;
+      tr.dataset.key = key;
+      tr.innerHTML = `
+        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td class="mono">${fmt(e.patient.birth_date)}</td>
+        <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
+        <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
+        <td>${statusPill(e.days_overdue)}</td>
+        <td><button class="btn-undo">撤銷</button></td>
+      `;
+      if (isContacted) {
+        tr.querySelector(".btn-undo").onclick = (ev) =>
+          undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId);
+      } else {
+        tr.querySelector(".btn-undo").onclick = (ev) =>
+          undoCalled(ev.currentTarget, key, calledRowsId, calledCountId);
+      }
+      tbody.appendChild(tr);
+    });
+    updateCountLabel(countId, rowsBodyId);
+  }
+
+  // ── Error handling ──
+
+  function showToast(message, type = 'error') {
+    const icons = { error: '⚠', warn: '!', ok: '✓' };
+    const container = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast ${type}`;
+    t.setAttribute('role', 'alert');
+    t.innerHTML = `
+      <span class="toast-icon">${icons[type] ?? icons.error}</span>
+      <span class="toast-msg">${message}</span>
+      <button class="toast-close" aria-label="關閉">✕</button>
+    `;
+    t.querySelector('.toast-close').onclick = () => t.remove();
+    container.appendChild(t);
+    const timer = setTimeout(() => t.remove(), 4500);
+    // Cancel auto-dismiss while the user is hovering so they can read it
+    t.addEventListener('mouseenter', () => clearTimeout(timer));
+    t.addEventListener('mouseleave', () => setTimeout(() => t.remove(), 1500));
+  }
+
+  function showErrorBanner(message) {
+    document.getElementById('error-banner-msg').textContent = message;
+    document.getElementById('error-banner').classList.add('visible');
+  }
+
+  function clearErrorBanner() {
+    document.getElementById('error-banner').classList.remove('visible');
+  }
+
+  async function apiFetch(url, options = {}) {
+    const resp = await fetch(url, options);
+    if (!resp.ok) {
+      let msg = `操作失敗（HTTP ${resp.status}）`;
+      try { const b = await resp.json(); if (b.detail) msg = b.detail; } catch (_) {}
+      throw new Error(msg);
+    }
+    return resp;
+  }
+
+  async function loadReport() {
+    clearErrorBanner();
+    const url = `/api/report?report_date=${todayIso}`;
+
+    document.getElementById("main-grid").classList.add("loading-overlay");
+    document.getElementById("loading-bar").classList.add("visible");
+    let data;
+    try {
+      data = await (await apiFetch(url)).json();
+    } catch (err) {
+      document.getElementById("main-grid").classList.remove("loading-overlay");
+      document.getElementById("loading-bar").classList.remove("visible");
+      document.getElementById("startup-screen").classList.add("hidden");
+      showErrorBanner(err.message);
+      return;
+    }
+    document.getElementById("main-grid").classList.remove("loading-overlay");
+    document.getElementById("loading-bar").classList.remove("visible");
+    document.getElementById("startup-screen").classList.add("hidden");
+
+    lastContactedData = { contacted: data.contacted || [], called: data.called || [] };
+
+    renderFollowups("chronic-body", "chronic-badge", "chronic-contacted-rows", "chronic-contacted-count", "chronic-called-rows", "chronic-called-count",
+      data.chronic_prescriptions);
+
+    renderFollowups("mspt-body", "mspt-badge", "mspt-contacted-rows", "mspt-contacted-count", "mspt-called-rows", "mspt-called-count",
+      data.mspt_followups);
+
+    // Populate collapsed sections
+    renderChronicContactedRows(data.contacted.filter(e => e.category === "慢簽"));
+    renderChronicCalledRows(data.called.filter(e => e.category === "慢簽"));
+    renderDoneRows("mspt-contacted-rows",    "mspt-contacted-count",    data.contacted.filter(e => e.category === "代謝症候群"), "done");
+    renderDoneRows("mspt-called-rows",       "mspt-called-count",       data.called.filter(e => e.category === "代謝症候群"),    "done-final");
+  }
+
+  // ── Column sort ──
+
+  const sortState = new Map(); // bodyId → { col, dir }
+
+  const STAGE_ORDER = ["收案", "追1", "追2", "追3", "年度追蹤"];
+
+  function getSortVal(e, col) {
+    switch (col) {
+      case "name":       return e.patient.name;
+      case "birth":      return e.patient.birth_date;
+      case "disease":    return e.disease_name || "";
+      case "pickup":     return e.last_visit_date || "";
+      case "due":        return e.due_date || "";
+      case "stage":      return STAGE_ORDER.indexOf(e.mspt_stage);
+      case "last_visit": return e.last_visit_date || "";
+      case "status":     return e.days_overdue;
+      default:           return "";
+    }
+  }
+
+  function sortTable(bodyId, col, thEl) {
+    const prev = sortState.get(bodyId);
+    const dir = prev && prev.col === col ? -prev.dir : 1;
+    sortState.set(bodyId, { col, dir });
+
+    const tbody = document.getElementById(bodyId);
+    const rows = [...tbody.querySelectorAll("tr[data-key]")];
+    rows.sort((a, b) => {
+      const va = getSortVal(followupStore.get(a.dataset.key), col);
+      const vb = getSortVal(followupStore.get(b.dataset.key), col);
+      if (va < vb) return -dir;
+      if (va > vb) return  dir;
+      return 0;
+    });
+    rows.forEach(tr => tbody.appendChild(tr));
+
+    thEl.closest("thead").querySelectorAll("th.sortable")
+      .forEach(th => th.classList.remove("sort-asc", "sort-desc"));
+    thEl.classList.add(dir === 1 ? "sort-asc" : "sort-desc");
+  }
+
+  loadReport();
+
+  // ── Print modal ──
+
+  function openPrintModal() {
+    printFilter = 'today';
+    document.getElementById('filter-today').classList.add('active');
+    document.getElementById('filter-all').classList.remove('active');
+    renderPrintTable();
+    document.getElementById('print-overlay').classList.add('open');
+  }
+
+  function closePrintModal(e) {
+    if (e && e.target !== document.getElementById('print-overlay')) return;
+    document.getElementById('print-overlay').classList.remove('open');
+  }
+
+  function setPrintFilter(f) {
+    printFilter = f;
+    document.getElementById('filter-today').classList.toggle('active', f === 'today');
+    document.getElementById('filter-all').classList.toggle('active', f === 'all');
+    renderPrintTable();
+  }
+
+  function renderPrintTable() {
+    const all = [...lastContactedData.contacted, ...lastContactedData.called];
+    const rows = printFilter === 'today'
+      ? all.filter(e => (e.contacted_at || '').startsWith(todayIso))
+      : all;
+
+    const body = document.getElementById('print-modal-body');
+
+    const dateLabel = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    if (!rows.length) {
+      body.innerHTML = `<div class="print-title-line" style="font-size:12px;color:var(--text-muted);margin-bottom:8px">診所追蹤系統 · ${dateLabel}</div><div class="print-empty">${printFilter === 'today' ? '今天尚無聯絡紀錄' : '無聯絡紀錄'}</div>`;
+      return;
+    }
+
+    const rowsHtml = rows.map(e => {
+      const isChron = e.category === '慢簽';
+      const tag = `<span class="print-category-tag ${isChron ? 'chronic' : 'mspt'}">${e.category}</span>`;
+      const detail = isChron ? (e.disease_name || '—') : (e.mspt_stage || '—');
+      const contactDate = e.contacted_at ? fmt(e.contacted_at) : '—';
+      return `<tr>
+        <td><div style="font-weight:600">${e.patient.name}</div><div style="font-size:11px;color:var(--text-muted)">${e.patient.chart_number}</div></td>
+        <td>${tag}</td>
+        <td>${detail}</td>
+        <td class="mono">${contactDate}</td>
+        <td class="mono">${fmt(e.due_date)}</td>
+      </tr>`;
+    }).join('');
+
+    body.innerHTML = `
+      <div class="print-title-line" style="font-size:12px;color:var(--text-muted);margin-bottom:12px">診所追蹤系統 · ${dateLabel}</div>
+      <table class="print-table">
+        <thead><tr>
+          <th>病患</th><th>類別</th><th>病名 / 階段</th><th>聯絡日期</th><th>到期日</th>
+        </tr></thead>
+        <tbody>${rowsHtml}</tbody>
+      </table>`;
+  }
+</script>
+
+</body>
+</html>
