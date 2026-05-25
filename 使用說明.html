@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<title>診所追蹤系統 — 使用說明</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "Helvetica Neue", Arial, "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #f0f4f8;
+    color: #111827;
+    padding: 40px 20px;
+    line-height: 1.7;
+  }
+  .doc {
+    max-width: 780px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    padding: 48px 56px;
+  }
+  h1 {
+    font-size: 26px;
+    font-weight: 800;
+    color: #111827;
+    margin-bottom: 6px;
+  }
+  .subtitle {
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 40px;
+    padding-bottom: 24px;
+    border-bottom: 2px solid #e4e9f0;
+  }
+  h2 {
+    font-size: 18px;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin: 36px 0 12px;
+    padding-left: 12px;
+    border-left: 4px solid #2563eb;
+  }
+  h3 {
+    font-size: 15px;
+    font-weight: 700;
+    color: #374151;
+    margin: 20px 0 8px;
+  }
+  p { margin-bottom: 10px; font-size: 14.5px; }
+  ul, ol { padding-left: 22px; margin-bottom: 12px; }
+  li { font-size: 14.5px; margin-bottom: 6px; }
+
+  .step-box {
+    background: #f8fafc;
+    border: 1px solid #e4e9f0;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin: 14px 0;
+  }
+  .step-box ol { margin: 0; }
+
+  .tip {
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: #1e40af;
+    margin: 12px 0;
+  }
+  .warn {
+    background: #fef3c7;
+    border: 1px solid #fcd34d;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: #92400e;
+    margin: 12px 0;
+  }
+  .danger {
+    background: #fef2f2;
+    border: 1px solid #fca5a5;
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13.5px;
+    color: #991b1b;
+    margin: 12px 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+    margin: 12px 0;
+  }
+  th {
+    background: #f8fafc;
+    font-weight: 700;
+    text-align: left;
+    padding: 9px 12px;
+    border: 1px solid #e4e9f0;
+    color: #374151;
+  }
+  td {
+    padding: 9px 12px;
+    border: 1px solid #e4e9f0;
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: #fafbfc; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .badge-red    { background: #fef2f2; color: #dc2626; border: 1px solid #fca5a5; }
+  .badge-amber  { background: #fffbeb; color: #d97706; border: 1px solid #fcd34d; }
+  .badge-green  { background: #ecfdf5; color: #059669; border: 1px solid #6ee7b7; }
+  .badge-blue   { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
+  .badge-purple { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; }
+
+  .btn-demo {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .btn-blue   { background: #2563eb; color: white; }
+  .btn-orange { background: #f97316; color: white; }
+  .btn-gray   { background: #f1f5f9; color: #374151; border: 1px solid #e4e9f0; }
+
+  .section-divider {
+    border: none;
+    border-top: 1px solid #e4e9f0;
+    margin: 36px 0;
+  }
+
+  .toc {
+    background: #f8fafc;
+    border: 1px solid #e4e9f0;
+    border-radius: 10px;
+    padding: 20px 24px;
+    margin-bottom: 36px;
+  }
+  .toc h3 { margin-top: 0; margin-bottom: 10px; color: #374151; }
+  .toc ol { margin: 0; }
+  .toc li { margin-bottom: 4px; }
+  .toc a { color: #2563eb; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+
+  @media print {
+    body { background: white; padding: 0; }
+    .doc { box-shadow: none; border-radius: 0; padding: 32px 40px; }
+  }
+</style>
+</head>
+<body>
+<div class="doc">
+
+  <h1>診所追蹤系統</h1>
+  <div class="subtitle">護理人員使用說明｜如有問題請洽診所管理員</div>
+
+  <div class="toc">
+    <h3>目錄</h3>
+    <ol>
+      <li><a href="#open">如何開啟系統</a></li>
+      <li><a href="#overview">主畫面介紹</a></li>
+      <li><a href="#chronic">慢簽追蹤</a></li>
+      <li><a href="#mspt">代謝症候群追蹤</a></li>
+      <li><a href="#actions">操作說明</a></li>
+      <li><a href="#print">列印功能</a></li>
+      <li><a href="#faq">常見問題</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. 開啟系統 -->
+  <h2 id="open">1. 如何開啟系統</h2>
+  <div class="step-box">
+    <ol>
+      <li>在桌面找到「<strong>診所追蹤系統</strong>」捷徑，雙擊開啟。</li>
+      <li>稍等約 2–3 秒，瀏覽器會自動開啟，顯示今日的追蹤清單。</li>
+      <li>系統每天開機後只需要開啟一次，整天保持瀏覽器分頁開著即可。</li>
+    </ol>
+  </div>
+  <div class="warn">⚠ 開啟後請不要關閉瀏覽器分頁。若不小心關閉，只需在瀏覽器輸入 <strong>localhost:8000</strong> 即可重新進入。</div>
+
+  <hr class="section-divider" />
+
+  <!-- 2. 主畫面介紹 -->
+  <h2 id="overview">2. 主畫面介紹</h2>
+  <p>主畫面分為兩大區塊，左右並排顯示：</p>
+  <table>
+    <tr>
+      <th>區塊</th>
+      <th>說明</th>
+    </tr>
+    <tr>
+      <td><strong>慢簽追蹤</strong>（左側）</td>
+      <td>需要聯絡的慢性病連續處方簽病患，藥快到期或已過期但尚未回診取藥。</td>
+    </tr>
+    <tr>
+      <td><strong>代謝症候群追蹤</strong>（右側）</td>
+      <td>需要聯絡的代謝症候群管理計畫（MSPT）病患，下一個追蹤階段已到期。</td>
+    </tr>
+  </table>
+
+  <p>每個區塊內都有三個折疊清單：</p>
+  <table>
+    <tr>
+      <th>清單名稱</th>
+      <th>說明</th>
+    </tr>
+    <tr>
+      <td><strong>待聯絡</strong></td>
+      <td>尚未聯絡的病患，需要今天處理。</td>
+    </tr>
+    <tr>
+      <td><strong>已聯絡未取藥 / 已聯絡未回診</strong></td>
+      <td>已聯絡過、但病患還沒來。7 天內會持續追蹤。</td>
+    </tr>
+    <tr>
+      <td><strong>已二次通知</strong></td>
+      <td>已再次通知，等待病患回應。</td>
+    </tr>
+  </table>
+
+  <div class="tip">💡 點擊各清單的標題列，可以展開或收合該清單。</div>
+
+  <hr class="section-divider" />
+
+  <!-- 3. 慢簽追蹤 -->
+  <h2 id="chronic">3. 慢簽追蹤</h2>
+  <p>系統自動找出慢性病連續處方簽已到期、但病患尚未回診取藥的名單。</p>
+
+  <h3>欄位說明</h3>
+  <table>
+    <tr><th>欄位</th><th>說明</th></tr>
+    <tr><td><strong>病患</strong></td><td>病患姓名（上方）與身分證字號（下方）。</td></tr>
+    <tr><td><strong>出生日期</strong></td><td>病患生日，用來確認身分。</td></tr>
+    <tr><td><strong>病名</strong></td><td>慢性病名稱，例如高血壓、糖尿病。</td></tr>
+    <tr><td><strong>上次取藥</strong></td><td>病患最近一次領藥的日期。</td></tr>
+    <tr><td><strong>到期日</strong></td><td>依照上次取藥天數估算的藥品到期日。</td></tr>
+    <tr><td><strong>狀態</strong></td><td>顯示逾期天數（見下方說明）。</td></tr>
+  </table>
+
+  <h3>狀態顏色說明</h3>
+  <table>
+    <tr><th>顏色</th><th>意思</th></tr>
+    <tr><td><span class="badge badge-green">今天到期</span></td><td>今天剛好到期，請盡快聯絡。</td></tr>
+    <tr><td><span class="badge badge-amber">逾期 X 天</span></td><td>已過期幾天，需要聯絡。</td></tr>
+    <tr><td><span class="badge badge-red">逾期 X 天</span></td><td>逾期較久，優先處理。</td></tr>
+  </table>
+
+  <hr class="section-divider" />
+
+  <!-- 4. 代謝症候群追蹤 -->
+  <h2 id="mspt">4. 代謝症候群追蹤</h2>
+  <p>系統自動找出代謝症候群管理計畫中，下一個追蹤階段已到期的病患名單。</p>
+
+  <h3>欄位說明</h3>
+  <table>
+    <tr><th>欄位</th><th>說明</th></tr>
+    <tr><td><strong>病患</strong></td><td>病患姓名（上方）與身分證字號（下方）。</td></tr>
+    <tr><td><strong>出生日期</strong></td><td>病患生日，用來確認身分。</td></tr>
+    <tr><td><strong>下個階段</strong></td><td>病患下一步需要進行的追蹤階段（見下方）。</td></tr>
+    <tr><td><strong>上次回診</strong></td><td>上次完成的追蹤階段（小字）與日期。</td></tr>
+    <tr><td><strong>狀態</strong></td><td>顯示逾期天數。</td></tr>
+  </table>
+
+  <h3>追蹤階段說明</h3>
+  <table>
+    <tr><th>階段</th><th>說明</th></tr>
+    <tr><td><span class="badge badge-blue">收案</span></td><td>首次加入代謝症候群計畫，需初診並抽血。</td></tr>
+    <tr><td><span class="badge badge-blue">追1</span></td><td>第一次追蹤（收案後約 70 天），需抽血。</td></tr>
+    <tr><td><span class="badge badge-blue">追2</span></td><td>第二次追蹤（追1後約 70 天），需抽血。</td></tr>
+    <tr><td><span class="badge badge-blue">追3</span></td><td>第三次追蹤（追2後約 70 天），需抽血。</td></tr>
+    <tr><td><span class="badge badge-purple">年度追蹤</span></td><td>年度回診（追3後約一年），需抽血。</td></tr>
+  </table>
+
+  <div class="tip">💡 若「下個階段」顯示「收案」且備註為「需重新收案+抽血」，表示此病患之前的案件已關閉，需要重新建案，並安排抽血。</div>
+
+  <hr class="section-divider" />
+
+  <!-- 5. 操作說明 -->
+  <h2 id="actions">5. 操作說明</h2>
+
+  <h3>已聯絡病患</h3>
+  <p>聯絡病患後，點擊該病患右側的 <span class="btn-demo btn-blue">已聯絡</span> 按鈕。</p>
+  <ul>
+    <li>病患會從「待聯絡」移動到「已聯絡」清單。</li>
+    <li>系統會記錄今天的日期為聯絡日期。</li>
+    <li>7 天後若病患仍未來，會自動出現在「待聯絡」清單，按鈕會變成 <span class="btn-demo btn-orange">再次通知</span>。</li>
+  </ul>
+
+  <h3>再次通知</h3>
+  <p>若病患 7 天後還是沒來，點擊 <span class="btn-demo btn-orange">再次通知</span> 按鈕，記錄二次通知。</p>
+  <ul>
+    <li>病患會移入「已二次通知」清單，不再自動跳回。</li>
+  </ul>
+
+  <h3>撤銷操作</h3>
+  <p>若不小心按錯，可以點擊 <span class="btn-demo btn-gray">撤銷</span> 按鈕取消，病患會回到「待聯絡」清單。</p>
+
+  <h3>欄位排序</h3>
+  <p>點擊表格上方的欄位標題（如「狀態」、「病患」），可以依照該欄位排序清單。</p>
+
+  <hr class="section-divider" />
+
+  <!-- 6. 列印功能 -->
+  <h2 id="print">6. 列印功能</h2>
+  <p>需要列印今日已聯絡病患清單時，點擊右上角的 <strong>🖨 列印聯絡清單</strong> 按鈕。</p>
+  <div class="step-box">
+    <ol>
+      <li>點擊右上角「列印聯絡清單」按鈕，開啟預覽視窗。</li>
+      <li>預設顯示「今天」聯絡的病患。若要看全部紀錄，點擊「全部」切換。</li>
+      <li>確認內容後，點擊「列印」即可列印。</li>
+      <li>點擊視窗以外的灰色區域或右上角 ✕，關閉預覽視窗。</li>
+    </ol>
+  </div>
+
+  <hr class="section-divider" />
+
+  <!-- 7. 常見問題 -->
+  <h2 id="faq">7. 常見問題</h2>
+
+  <h3>Q：系統畫面是空白的或顯示錯誤？</h3>
+  <p>請關閉瀏覽器，重新雙擊桌面的「診所追蹤系統」捷徑開啟。若問題持續，請聯絡管理員。</p>
+
+  <h3>Q：某位病患應該在清單上，但看不到？</h3>
+  <p>有幾個可能：
+    <ul>
+      <li>該病患已被標記為「已聯絡」，請展開「已聯絡」清單查看。</li>
+      <li>該病患尚未逾期，系統只顯示已到期的病患。</li>
+      <li>資料尚未更新，請隔天再確認。</li>
+    </ul>
+  </p>
+
+  <h3>Q：不小心按了「已聯絡」但其實還沒聯絡？</h3>
+  <p>沒關係，點擊「已聯絡」清單中該病患右側的 <span class="btn-demo btn-gray">撤銷</span> 按鈕，病患會回到「待聯絡」清單。</p>
+
+  <h3>Q：每天要重新整理頁面嗎？</h3>
+  <p>每天早上重新整理瀏覽器頁面（按 F5），系統會載入當天最新的資料。</p>
+
+  <h3>Q：關掉電腦後，之前的聯絡紀錄還在嗎？</h3>
+  <p>是的，所有聯絡紀錄都有儲存，關機重開後資料不會消失。</p>
+
+  <div class="danger" style="margin-top:32px">
+    ⛔ 請勿自行修改系統資料夾內的任何檔案，或刪除桌面捷徑以外的系統相關檔案。如有問題請聯絡管理員。
+  </div>
+
+  <div style="margin-top:48px; padding-top:24px; border-top:1px solid #e4e9f0; font-size:12px; color:#9ca3af; text-align:center;">
+    診所追蹤系統使用說明｜如需協助請洽診所管理員
+  </div>
+
+</div>
+</body>
+</html>

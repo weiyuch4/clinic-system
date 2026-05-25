@@ -7,6 +7,9 @@ config_local.py
 # Claude Code local settings
 .claude/
 
+# Mock data — not needed in production
+mock/
+
 # Python
 __pycache__/
 *.pyc
