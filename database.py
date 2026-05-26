@@ -17,7 +17,15 @@ from models import (
 _dbf_cache: dict[str, list[dict]] = {}
 
 
+def _current_roc_month() -> str:
+    d = date.today()
+    return f"{d.year - 1911:03d}{d.month:02d}"
+
+
 def _parse_dbf_cached(path: str) -> list[dict]:
+    # Don't cache the current month's file — it's still being written as new visits arrive
+    if _current_roc_month() in os.path.basename(path).upper():
+        return _parse_dbf(path)
     if path not in _dbf_cache:
         _dbf_cache[path] = _parse_dbf(path)
     return _dbf_cache[path]
@@ -218,6 +226,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
         except Exception:
             pass
 
+    MAX_CHRONIC_OVERDUE_DAYS = 60  # Taiwan NHI 慢簽 series (~90 days) expires; stop following up after 60d past due
     results = []
     for nat_id, v in best.items():
         if not v['name'] or not v['birth']:
@@ -225,6 +234,9 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
         ps = ps_lookup.get(v['code_f'], 28)
         due_date = v['date'] + timedelta(days=ps)
         if due_date > as_of:
+            continue
+        days_overdue = (as_of - due_date).days
+        if days_overdue > MAX_CHRONIC_OVERDUE_DAYS:
             continue
         results.append(FollowupEntry(
             patient=Patient(
@@ -234,7 +246,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             ),
             disease_name=_icd_to_name(v['icd']) or '慢簽',
             due_date=due_date,
-            days_overdue=(as_of - due_date).days,
+            days_overdue=days_overdue,
             last_visit_date=v['date'],
             category='慢簽',
         ))

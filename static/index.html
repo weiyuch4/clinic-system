@@ -138,13 +138,30 @@
       .print-title-line { margin-bottom: 12px; }
     }
 
-    /* ── Grid ── */
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 18px;
-      padding: 22px 28px;
+    /* ── Tab navigation ── */
+    .tab-nav {
+      display: flex;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 28px;
     }
+    .tab-btn {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 20px;
+      font-size: 13px; font-weight: 600;
+      color: var(--text-muted);
+      background: transparent; border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -1px; cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: var(--text-sub); }
+    .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
+    .tab-btn.mspt-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+    /* ── Tab panels ── */
+    .tab-panel { display: none; padding: 22px 28px; }
+    .tab-panel.active { display: block; }
 
     /* ── Card ── */
     .card {
@@ -177,8 +194,8 @@
       color: white;
     }
 
-    .card--chronic .count-badge { background: var(--blue); }
-    .card--mspt    .count-badge { background: var(--green); }
+    #tab-btn-chronic .count-badge { background: var(--blue); }
+    #tab-btn-mspt    .count-badge { background: var(--green); }
     .count-badge.zero { background: var(--text-muted) !important; }
 
     /* ── Table ── */
@@ -507,10 +524,16 @@
   <div class="header-left">
     <h1>診所追蹤系統</h1>
   </div>
+  <div style="display:flex;align-items:center;gap:8px">
+  <button class="btn-print" id="btn-refresh" onclick="refreshReport()">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
+    重新整理
+  </button>
   <button class="btn-print" onclick="openPrintModal()">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 1h8a1 1 0 0 1 1 1v2H3V2a1 1 0 0 1 1-1zm-2 4h12a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 6H5v3h6v-3zm2-4a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/></svg>
     列印聯絡清單
   </button>
+  </div>
 </div>
 
 <!-- Print modal -->
@@ -536,14 +559,23 @@
   <span>資料載入中，請稍候…</span>
 </div>
 
-<div class="grid" id="main-grid">
+<div class="tab-nav">
+  <button class="tab-btn active" id="tab-btn-chronic" onclick="switchTab('chronic')">
+    慢簽追蹤 <span class="count-badge zero" id="chronic-badge">0</span>
+  </button>
+  <button class="tab-btn mspt-tab" id="tab-btn-mspt" onclick="switchTab('mspt')">
+    代謝症候群追蹤 <span class="count-badge zero" id="mspt-badge">0</span>
+  </button>
+</div>
+
+<div id="main-grid">
+<div class="tab-panel active" id="tab-panel-chronic">
 
   <!-- 慢簽 -->
   <div class="card card--chronic">
     <div class="card-top"></div>
     <div class="card-header">
       <h2>慢簽追蹤</h2>
-      <span class="count-badge zero" id="chronic-badge">0</span>
     </div>
     <div class="collapse-toggle" onclick="toggleSection('chronic-pending-body', this)">
       <div class="collapse-line"></div>
@@ -591,13 +623,14 @@
       </table>
     </div>
   </div>
+</div>
 
+<div class="tab-panel" id="tab-panel-mspt">
   <!-- MSPT 需聯絡 -->
   <div class="card card--mspt">
     <div class="card-top"></div>
     <div class="card-header">
       <h2>代謝症候群追蹤</h2>
-      <span class="count-badge zero" id="mspt-badge">0</span>
     </div>
     <div class="collapse-toggle" onclick="toggleSection('mspt-pending-body', this)">
       <div class="collapse-line"></div>
@@ -634,7 +667,7 @@
       <table><tbody id="mspt-called-rows"></tbody></table>
     </div>
   </div>
-
+</div>
 
 </div>
 
@@ -883,6 +916,7 @@
     const empty = tbody.querySelector("td[colspan]");
     if (empty) empty.closest("tr").remove();
     tbody.appendChild(buildFollowupRow(e, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId, calledRowsId, calledCountId));
+    reapplySort(pendingBodyId);
     updateFollowupBadge(pendingBadgeId, tbody);
   }
 
@@ -1096,6 +1130,41 @@
   }
 
   loadReport();
+
+  // ── Refresh ──
+
+  async function refreshReport() {
+    const btn = document.getElementById('btn-refresh');
+    btn.disabled = true;
+    await loadReport();
+    btn.disabled = false;
+  }
+
+  // ── Tab switching ──
+
+  function switchTab(tab) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-btn-' + tab).classList.add('active');
+    document.getElementById('tab-panel-' + tab).classList.add('active');
+  }
+
+  // ── Sort helpers ──
+
+  function reapplySort(bodyId) {
+    const state = sortState.get(bodyId);
+    if (!state) return;
+    const tbody = document.getElementById(bodyId);
+    const rows = [...tbody.querySelectorAll('tr[data-key]')];
+    rows.sort((a, b) => {
+      const va = getSortVal(followupStore.get(a.dataset.key), state.col);
+      const vb = getSortVal(followupStore.get(b.dataset.key), state.col);
+      if (va < vb) return -state.dir;
+      if (va > vb) return  state.dir;
+      return 0;
+    });
+    rows.forEach(tr => tbody.appendChild(tr));
+  }
 
   // ── Print modal ──
 
