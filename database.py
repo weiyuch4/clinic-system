@@ -352,9 +352,19 @@ def _query_mspt_followups(as_of: date) -> list[FollowupEntry]:
         if days_inactive > MAX_INACTIVE_DAYS:
             continue
 
-        # Case closed: > 1 year without any follow-up → needs 收案 restart + blood test
-        if days_inactive > REOPEN_AFTER_DAYS:
-            due_date = last_date + timedelta(days=REOPEN_AFTER_DAYS)
+        next_stage = _STAGE_NEXT.get(last_stage)
+        gap        = _STAGE_GAPS.get(last_stage)
+        if next_stage is None or gap is None:
+            continue
+
+        due_date     = last_date + timedelta(days=gap)
+        days_overdue = (as_of - due_date).days
+
+        if days_overdue < 0:
+            continue  # next stage not yet due
+
+        # Case closed: missed their next stage by more than 1 year → needs 收案 restart
+        if days_overdue > REOPEN_AFTER_DAYS:
             results.append(FollowupEntry(
                 patient=Patient(
                     chart_number=nat_id,
@@ -363,21 +373,13 @@ def _query_mspt_followups(as_of: date) -> list[FollowupEntry]:
                 ),
                 disease_name='代謝症候群',
                 due_date=due_date,
-                days_overdue=(as_of - due_date).days,
+                days_overdue=days_overdue,
                 category='代謝症候群',
                 mspt_stage='收案',
                 last_stage=last_stage,
                 contact_reason='需重新收案+抽血',
                 last_visit_date=last_date,
             ))
-            continue
-
-        next_stage = _STAGE_NEXT.get(last_stage)
-        gap        = _STAGE_GAPS.get(last_stage)
-        if next_stage is None or gap is None:
-            continue
-        due_date = last_date + timedelta(days=gap)
-        if due_date > as_of:
             continue
 
         results.append(FollowupEntry(
@@ -388,7 +390,7 @@ def _query_mspt_followups(as_of: date) -> list[FollowupEntry]:
             ),
             disease_name='代謝症候群',
             due_date=due_date,
-            days_overdue=(as_of - due_date).days,
+            days_overdue=days_overdue,
             category='代謝症候群',
             mspt_stage=next_stage,
             last_stage=last_stage,
