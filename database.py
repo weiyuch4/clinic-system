@@ -175,7 +175,11 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
     """Return patients whose last 慢簽 visit + prescription days is past as_of."""
     since = as_of - timedelta(days=365)
 
-    # nat_id → info about the patient's latest AE連續 visit
+    # nat_id → info about the patient's latest AE連續 visit.
+    # code_fs is a list because patients may pick up multiple months on the same day
+    # (e.g. travel exemption): each pickup is a separate IC record with the same DATE
+    # but a different CODE_F. We accumulate all same-day CODE_Fs so we can sum their
+    # PS values and arrive at the correct due date.
     best: dict[str, dict] = {}
 
     for ic_path in _ic_files_since(since):
@@ -192,6 +196,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             nat_id = r.get('ID', '').strip()
             if not nat_id:
                 continue
+            cf = r.get('CODE_F', '').strip()
             if nat_id not in best or v_date > best[nat_id]['date']:
                 icd = next(
                     (r.get(f, '') for f in ('ICD', 'ICD1', 'ICD2', 'ICD3', 'ICD4', 'ICD5')
@@ -200,19 +205,23 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                 )
                 best[nat_id] = {
                     'date': v_date,
-                    'code_f': r.get('CODE_F', '').strip(),
+                    'code_fs': [cf] if cf else [],
                     'name': r.get('NAME', '').strip(),
                     'birth': _roc_to_date(r.get('BIRTH', '')),
                     'icd': icd,
                     'ic_path': ic_path,
                 }
+            elif v_date == best[nat_id]['date'] and cf and cf not in best[nat_id]['code_fs']:
+                # Same day, additional pickup — accumulate CODE_F for PS summing
+                best[nat_id]['code_fs'].append(cf)
 
     # Group patients by their P file path so each P file is parsed only once.
     by_p_path: dict[str, set[str]] = {}
     for v in best.values():
         p_path = v['ic_path'][:-4] + 'P.DBF'
         if os.path.exists(p_path):
-            by_p_path.setdefault(p_path, set()).add(v['code_f'])
+            for cf in v['code_fs']:
+                by_p_path.setdefault(p_path, set()).add(cf)
 
     ps_lookup: dict[str, int] = {}  # code_f → days supply
     for p_path, code_fs in by_p_path.items():
@@ -226,16 +235,18 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
         except Exception:
             pass
 
-    MAX_CHRONIC_OVERDUE_DAYS = 60  # Taiwan NHI 慢簽 series (~90 days) expires; stop following up after 60d past due
+    CHRONIC_GRACE_DAYS = 5        # auto-SMS goes out on due date; only follow up manually after this many days
+    MAX_CHRONIC_OVERDUE_DAYS = 60  # 慢簽 series expires; stop following up after 60d past due
     results = []
     for nat_id, v in best.items():
         if not v['name'] or not v['birth']:
             continue
-        ps = ps_lookup.get(v['code_f'], 28)
-        due_date = v['date'] + timedelta(days=ps)
-        if due_date > as_of:
-            continue
+        # Sum PS across all same-day pickups; fall back to 28 days per missing entry
+        total_ps = sum(ps_lookup.get(cf, 28) for cf in v['code_fs']) if v['code_fs'] else 28
+        due_date = v['date'] + timedelta(days=total_ps)
         days_overdue = (as_of - due_date).days
+        if days_overdue < CHRONIC_GRACE_DAYS:
+            continue
         if days_overdue > MAX_CHRONIC_OVERDUE_DAYS:
             continue
         results.append(FollowupEntry(

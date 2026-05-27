@@ -10,7 +10,10 @@ from fastapi.staticfiles import StaticFiles
 
 import contacts
 import database
-from models import ContactRequest, DailyReport, FollowupEntry, MsptSubmittableEntry, SubmitRequest
+from models import (
+    ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
+    MsptCompleteRequest, MsptSubmittableEntry, SubmitRequest, UnexcludeRequest,
+)
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -42,12 +45,18 @@ def get_report(report_date: date | None = None) -> DailyReport:
         hidden_keys = contacts.get_hidden_keys()
         call_required_keys = contacts.get_call_required_keys()
         submitted_keys = contacts.get_submitted_keys()
+        excluded_keys = contacts.get_excluded_keys()          # (chart_number, category)
+        mspt_completed_keys = contacts.get_mspt_completed_keys()  # (chart_number, mspt_stage, due_date)
 
         def filter_followups(entries: list[FollowupEntry]) -> list[FollowupEntry]:
             result = []
             for e in entries:
                 key = (e.patient.chart_number, e.category, e.due_date.isoformat())
                 if key in hidden_keys:
+                    continue
+                if (e.patient.chart_number, e.category) in excluded_keys:
+                    continue
+                if (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_completed_keys:
                     continue
                 result.append(e.model_copy(update={"call_required": key in call_required_keys}))
             return result
@@ -68,6 +77,22 @@ def get_report(report_date: date | None = None) -> DailyReport:
             e.model_copy(update={"contacted_at": ca})
             for e, ca in contacted_with_dates
             if not has_returned(e, ca)
+            and (e.patient.chart_number, e.category) not in excluded_keys
+            and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_completed_keys
+        ]
+
+        manual_excluded = contacts.get_excluded_entries()
+        auto_excluded = contacts.get_auto_excluded_entries()
+        all_excluded = manual_excluded + [
+            e for e in auto_excluded
+            if (e.patient.chart_number, e.category) not in {(x.patient.chart_number, x.category) for x in manual_excluded}
+        ]
+
+        called_entries = contacts.get_called_entries()
+        called_filtered = [
+            e for e in called_entries
+            if (e.patient.chart_number, e.category) not in excluded_keys
+            and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_completed_keys
         ]
 
         return DailyReport(
@@ -80,8 +105,10 @@ def get_report(report_date: date | None = None) -> DailyReport:
             ],
             mspt_waiting=report.mspt_waiting,
             contacted=contacted,
-            called=contacts.get_called_entries(),
+            called=called_filtered,
             submitted=contacts.get_submitted_entries(),
+            excluded=all_excluded,
+            mspt_completed=contacts.get_mspt_completed_entries(),
         )
     except HTTPException:
         raise
@@ -133,6 +160,57 @@ def unmark_submitted(req: SubmitRequest) -> None:
     except Exception:
         logger.exception("unmark_submitted failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷申報失敗，請稍後再試")
+
+
+@app.post("/api/excluded")
+def mark_excluded(req: ExcludeRequest) -> None:
+    try:
+        contacts.mark_excluded(req.entry, req.reason, req.note)
+    except Exception:
+        logger.exception("mark_excluded failed for %s", req.entry.patient.chart_number)
+        raise HTTPException(status_code=500, detail="排除記錄儲存失敗，請稍後再試")
+
+
+@app.delete("/api/excluded")
+def unmark_excluded(req: UnexcludeRequest) -> None:
+    try:
+        contacts.unmark_excluded(req.chart_number, req.category)
+    except Exception:
+        logger.exception("unmark_excluded failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="撤銷排除失敗，請稍後再試")
+
+
+@app.post("/api/mspt-completed")
+def mark_mspt_completed(entry: FollowupEntry) -> None:
+    try:
+        contacts.mark_mspt_completed(entry)
+    except Exception:
+        logger.exception("mark_mspt_completed failed for %s", entry.patient.chart_number)
+        raise HTTPException(status_code=500, detail="掛MSPT完成記錄儲存失敗，請稍後再試")
+
+
+@app.delete("/api/mspt-completed")
+def unmark_mspt_completed(req: MsptCompleteRequest) -> None:
+    try:
+        contacts.unmark_mspt_completed(req.chart_number, req.mspt_stage, req.due_date.isoformat())
+    except Exception:
+        logger.exception("unmark_mspt_completed failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="撤銷掛MSPT完成失敗，請稍後再試")
+
+
+@app.get("/api/contacts/history")
+def get_contacts_history(target_date: str | None = None) -> dict:
+    target = target_date or date.today().isoformat()
+    try:
+        history = contacts.get_print_history(target)
+        return {
+            "contacted": [e.model_dump(mode="json") for e in history["contacted"]],
+            "called": [e.model_dump(mode="json") for e in history["called"]],
+            "mspt_completed": [e.model_dump(mode="json") for e in history["mspt_completed"]],
+        }
+    except Exception:
+        logger.exception("get_contacts_history failed for date=%s", target_date)
+        raise HTTPException(status_code=500, detail="聯絡紀錄載入失敗")
 
 
 @app.get("/api/debug/p-sample")

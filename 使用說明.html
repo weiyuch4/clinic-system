@@ -122,6 +122,7 @@
   .badge-green  { background: #ecfdf5; color: #059669; border: 1px solid #6ee7b7; }
   .badge-blue   { background: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; }
   .badge-purple { background: #ede9fe; color: #5b21b6; border: 1px solid #c4b5fd; }
+  .badge-gray   { background: #f3f4f6; color: #6b7280; border: 1px solid #d1d5db; }
 
   .btn-demo {
     display: inline-block;
@@ -132,8 +133,11 @@
     white-space: nowrap;
   }
   .btn-blue   { background: #2563eb; color: white; }
-  .btn-orange { background: #f97316; color: white; }
+  .btn-green  { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+  .btn-orange { background: #fffbeb; color: #d97706; border: 1px solid #fcd34d; }
+  .btn-red    { background: #dc2626; color: white; }
   .btn-gray   { background: #f1f5f9; color: #374151; border: 1px solid #e4e9f0; }
+  .btn-dots   { background: #f1f5f9; color: #6b7280; border: 1px solid #e4e9f0; letter-spacing: 2px; }
 
   .section-divider {
     border: none;
@@ -184,7 +188,7 @@
   <div class="step-box">
     <ol>
       <li>在桌面找到「<strong>診所追蹤系統</strong>」捷徑，雙擊開啟。</li>
-      <li>稍等約 2–3 秒，瀏覽器會自動開啟，顯示今日的追蹤清單。</li>
+      <li>稍等約 3–4 秒，瀏覽器會自動開啟，顯示今日的追蹤清單。</li>
       <li>系統每天開機後只需要開啟一次，整天保持瀏覽器分頁開著即可。</li>
     </ol>
   </div>
@@ -196,46 +200,27 @@
   <h2 id="overview">2. 主畫面介紹</h2>
   <p>頁面頂端有兩個頁籤，點擊可切換：</p>
   <table>
-    <tr>
-      <th>頁籤</th>
-      <th>說明</th>
-    </tr>
-    <tr>
-      <td><strong>慢簽追蹤</strong></td>
-      <td>需要聯絡的慢性病連續處方簽病患，藥已到期但尚未回診取藥。</td>
-    </tr>
-    <tr>
-      <td><strong>代謝症候群追蹤</strong></td>
-      <td>需要聯絡的代謝症候群管理計畫（MSPT）病患，下一個追蹤階段已到期。</td>
-    </tr>
+    <tr><th>頁籤</th><th>說明</th></tr>
+    <tr><td><strong>慢簽追蹤</strong></td><td>需要聯絡的慢性病連續處方簽病患，藥已到期但尚未回診取藥。</td></tr>
+    <tr><td><strong>代謝症候群追蹤</strong></td><td>需要聯絡的代謝症候群管理計畫（MSPT）病患，下一個追蹤階段已到期。</td></tr>
   </table>
 
-  <p>每個頁籤內都有三個折疊清單：</p>
+  <p>每個頁籤內有多個折疊清單，分為「追蹤中」與「歸檔紀錄」兩個區域：</p>
   <table>
-    <tr>
-      <th>清單名稱</th>
-      <th>說明</th>
-    </tr>
-    <tr>
-      <td><strong>待聯絡</strong></td>
-      <td>尚未聯絡的病患，需要今天處理。</td>
-    </tr>
-    <tr>
-      <td><strong>已聯絡未取藥 / 已聯絡未回診</strong></td>
-      <td>已聯絡過、但病患還沒來。7 天內會持續追蹤。</td>
-    </tr>
-    <tr>
-      <td><strong>已二次通知</strong></td>
-      <td>已再次通知，等待病患回應。</td>
-    </tr>
+    <tr><th>清單名稱</th><th>區域</th><th>說明</th></tr>
+    <tr><td><strong>待聯絡</strong></td><td>追蹤中</td><td>尚未聯絡的病患，需要今天處理。</td></tr>
+    <tr><td><strong>已聯絡未取藥 / 已聯絡未回診</strong></td><td>追蹤中</td><td>已聯絡過、但病患還沒來。7 天內會持續追蹤。</td></tr>
+    <tr><td><strong>已二次通知</strong></td><td>追蹤中</td><td>已再次通知，等待病患回應。</td></tr>
+    <tr><td><strong>已掛MSPT完成</strong>（代謝症候群專用）</td><td>歸檔紀錄</td><td>已完成整個 MSPT 流程（回診 + 掛號），不需再追蹤此階段。</td></tr>
+    <tr><td><strong>已排除</strong></td><td>歸檔紀錄</td><td>特殊情況不需追蹤的病患，例如不願參加、已轉診等。</td></tr>
   </table>
 
-  <div class="tip">💡 點擊各清單的標題列，可以展開或收合該清單。</div>
+  <div class="tip">💡 點擊各清單的標題列，可以展開或收合該清單。「歸檔紀錄」區域的清單預設為收合狀態。</div>
 
   <h3>右上角按鈕</h3>
   <table>
     <tr><th>按鈕</th><th>用途</th></tr>
-    <tr><td><strong>重新整理</strong></td><td>重新讀取最新的健保 IC 資料，不需重新開啟頁面。當天上午開機後若有新病患進來，可按此更新清單。</td></tr>
+    <tr><td><strong>重新整理</strong></td><td>重新讀取最新的健保 IC 資料，不需重新開啟頁面。當天若有新病患進來，可按此更新清單。</td></tr>
     <tr><td><strong>列印聯絡清單</strong></td><td>列印今日或全部已聯絡病患的清單（詳見第 6 節）。</td></tr>
   </table>
 
@@ -244,7 +229,10 @@
   <!-- 3. 慢簽追蹤 -->
   <h2 id="chronic">3. 慢簽追蹤</h2>
   <p>系統自動找出慢性病連續處方簽已到期、但病患尚未回診取藥的名單。</p>
-  <div class="tip">💡 逾期超過約 60 天的病患不會顯示在清單上——此時慢簽已失效，病患需要重新回診開立新處方，無需電話提醒。</div>
+
+  <div class="tip">💡 系統會在到期後 <strong>5 天</strong>才顯示病患——因為診所已在到期當天自動發送提醒訊息，給病患 5 天時間自行回來。超過 5 天仍未回診，才需要電話追蹤。</div>
+  <div class="tip">💡 若病患當次同時領取多個月份的慢簽（例如出國事由領 2 個月），系統會自動累計天數，正確計算到期日。</div>
+  <div class="warn">⚠ 逾期超過約 60 天的病患不會顯示——此時慢簽已失效，病患需重新回診開立新處方，無需電話提醒。</div>
 
   <h3>欄位說明</h3>
   <table>
@@ -253,16 +241,8 @@
     <tr><td><strong>出生日期</strong></td><td>病患生日，用來確認身分。</td></tr>
     <tr><td><strong>病名</strong></td><td>慢性病名稱，例如高血壓、糖尿病。</td></tr>
     <tr><td><strong>上次取藥</strong></td><td>病患最近一次領藥的日期。</td></tr>
-    <tr><td><strong>到期日</strong></td><td>依照上次取藥天數估算的藥品到期日。</td></tr>
-    <tr><td><strong>狀態</strong></td><td>顯示逾期天數（見下方說明）。</td></tr>
-  </table>
-
-  <h3>狀態顏色說明</h3>
-  <table>
-    <tr><th>顏色</th><th>意思</th></tr>
-    <tr><td><span class="badge badge-green">今天到期</span></td><td>今天剛好到期，請盡快聯絡。</td></tr>
-    <tr><td><span class="badge badge-amber">逾期 X 天</span></td><td>已過期幾天，需要聯絡。</td></tr>
-    <tr><td><span class="badge badge-red">逾期 X 天</span></td><td>逾期較久，優先處理。</td></tr>
+    <tr><td><strong>到期日</strong></td><td>依照領藥天數估算的藥品到期日。</td></tr>
+    <tr><td><strong>狀態</strong></td><td>顯示已逾期幾天。</td></tr>
   </table>
 
   <hr class="section-divider" />
@@ -284,45 +264,73 @@
   <h3>追蹤階段說明</h3>
   <table>
     <tr><th>階段</th><th>說明</th></tr>
-    <tr><td><span class="badge badge-blue">收案</span></td><td>首次加入代謝症候群計畫，需初診並抽血。</td></tr>
+    <tr><td><span class="badge badge-blue">收案</span></td><td>首次加入計畫，需初診並抽血。</td></tr>
     <tr><td><span class="badge badge-blue">追1</span></td><td>第一次追蹤（收案後約 70 天），需抽血。</td></tr>
     <tr><td><span class="badge badge-blue">追2</span></td><td>第二次追蹤（追1後約 70 天），需抽血。</td></tr>
     <tr><td><span class="badge badge-blue">追3</span></td><td>第三次追蹤（追2後約 70 天），需抽血。</td></tr>
     <tr><td><span class="badge badge-purple">年度追蹤</span></td><td>年度回診（追3後約一年），需抽血。</td></tr>
   </table>
 
-  <div class="tip">💡 若「下個階段」顯示「收案」且備註為「需重新收案+抽血」，表示此病患之前的案件已關閉，需要重新建案，並安排抽血。</div>
+  <div class="tip">💡 病患完成一個階段後，下一個階段到期時會自動重新出現在「待聯絡」清單——即使之前已標記「掛MSPT完成」也一樣。</div>
+  <div class="tip">💡 若「下個階段」顯示「收案」，表示此病患之前的案件已關閉（超過一年未回診），需要重新建案。</div>
 
   <hr class="section-divider" />
 
   <!-- 5. 操作說明 -->
   <h2 id="actions">5. 操作說明</h2>
 
-  <h3>已聯絡病患</h3>
-  <p>聯絡病患後，點擊該病患右側的 <span class="btn-demo btn-blue">已聯絡</span> 按鈕。</p>
+  <h3>5-1 已通知病患（等待回診）</h3>
+  <p>電話聯絡病患後，點擊該病患右側的 <span class="btn-demo btn-blue">已通知</span> 按鈕。</p>
   <ul>
-    <li>病患會從「待聯絡」移動到「已聯絡」清單。</li>
-    <li>系統會記錄今天的日期為聯絡日期。</li>
-    <li>7 天後若病患仍未來，會自動出現在「待聯絡」清單，按鈕會變成 <span class="btn-demo btn-orange">再次通知</span>。</li>
+    <li>病患會從「待聯絡」移動到「已聯絡未取藥／已聯絡未回診」清單。</li>
+    <li>系統記錄今天為聯絡日期。</li>
+    <li>7 天後若病患仍未來，會自動出現在「待聯絡」，按鈕變成 <span class="btn-demo btn-orange">再次通知</span>。</li>
   </ul>
 
-  <h3>再次通知</h3>
+  <h3>5-2 掛MSPT完成（代謝症候群專用）</h3>
+  <p>當病患已回診並完成整個 MSPT 流程（包含抽血、資料輸入、系統掛號），點擊 <span class="btn-demo btn-green">掛MSPT完成</span> 按鈕。</p>
+  <ul>
+    <li>此按鈕出現在「待聯絡」行（<span class="btn-demo btn-blue">已通知</span> 旁邊）以及「已聯絡未回診」和「已二次通知」清單中。</li>
+    <li>病患會移入「歸檔紀錄 → 已掛MSPT完成」清單。</li>
+    <li>當下一個追蹤階段到期時，病患會自動重新出現在「待聯絡」。</li>
+    <li>若操作有誤，可在「已掛MSPT完成」清單中點擊 <span class="btn-demo btn-gray">撤銷</span> 取消。</li>
+  </ul>
+  <div class="tip">💡 「已通知」與「掛MSPT完成」的差別：「已通知」是打電話告知病患要回來，但病患尚未來；「掛MSPT完成」是病患已回來並且完成了所有流程。</div>
+
+  <h3>5-3 再次通知</h3>
   <p>若病患 7 天後還是沒來，點擊 <span class="btn-demo btn-orange">再次通知</span> 按鈕，記錄二次通知。</p>
   <ul>
     <li>病患會移入「已二次通知」清單，不再自動跳回。</li>
+    <li>代謝症候群病患在「已二次通知」清單中也可點擊 <span class="btn-demo btn-green">掛MSPT完成</span>，若此時病患回診完成。</li>
   </ul>
 
-  <h3>撤銷操作</h3>
-  <p>若不小心按錯，可以點擊 <span class="btn-demo btn-gray">撤銷</span> 按鈕取消，病患會回到「待聯絡」清單。</p>
+  <h3>5-4 排除病患</h3>
+  <p>若病患有特殊情況，不需要繼續追蹤（例如：不願參加、已轉院、已被其他疾病收案等），可將其排除。</p>
+  <div class="step-box">
+    <ol>
+      <li>點擊病患右側的 <span class="btn-demo btn-dots">•••</span> 按鈕，展開下拉選單。</li>
+      <li>選擇「排除病患…」。</li>
+      <li>選擇排除原因（代謝症候群有四個選項；慢簽可自行填寫）。</li>
+      <li>視需要填寫備註，然後點擊「確認排除」。</li>
+    </ol>
+  </div>
+  <ul>
+    <li>排除後，病患會從追蹤清單消失，移入「歸檔紀錄 → 已排除」。</li>
+    <li>若要復原，展開「已排除」清單，點擊該病患的 <span class="btn-demo btn-gray">復原</span> 按鈕。</li>
+    <li>已二次通知超過 <strong>60 天</strong>仍未回診的病患，系統會自動移入「已排除」（標示「自動」），此類紀錄無法從介面復原。</li>
+  </ul>
 
-  <h3>欄位排序</h3>
-  <p>點擊表格上方的欄位標題（如「狀態」、「病患」），可以依照該欄位排序清單。</p>
+  <h3>5-5 撤銷操作</h3>
+  <p>若不小心按錯「已通知」或「再次通知」，可以在對應清單中點擊 <span class="btn-demo btn-gray">撤銷</span>，病患會立即回到「待聯絡」清單。</p>
+
+  <h3>5-6 欄位排序</h3>
+  <p>點擊「待聯絡」表格上方的欄位標題（如「狀態」、「病患」），可依該欄位排序清單。</p>
 
   <hr class="section-divider" />
 
   <!-- 6. 列印功能 -->
   <h2 id="print">6. 列印功能</h2>
-  <p>需要列印今日已聯絡病患清單時，點擊右上角的 <strong>🖨 列印聯絡清單</strong> 按鈕。</p>
+  <p>需要列印今日已聯絡病患清單時，點擊右上角的 <strong>列印聯絡清單</strong> 按鈕。</p>
   <div class="step-box">
     <ol>
       <li>點擊右上角「列印聯絡清單」按鈕，開啟預覽視窗。</li>
@@ -343,20 +351,28 @@
   <h3>Q：某位病患應該在清單上，但看不到？</h3>
   <p>有幾個可能：</p>
   <ul>
-    <li>該病患已被標記為「已聯絡」，請展開「已聯絡」清單查看。</li>
-    <li>該病患尚未逾期，系統只顯示已到期的病患。</li>
-    <li>慢簽病患若逾期超過約 60 天，系統會自動移除（慢簽已失效）。</li>
+    <li>該病患已被標記為「已通知」，請展開「已聯絡未取藥／已聯絡未回診」清單查看。</li>
+    <li>該病患已被標記為「掛MSPT完成」，請展開「歸檔紀錄 → 已掛MSPT完成」查看。</li>
+    <li>該病患已被排除，請展開「歸檔紀錄 → 已排除」查看，如需要可點擊「復原」。</li>
+    <li>慢簽病患：到期後還不滿 5 天，系統尚未顯示（因自動簡訊剛發出，給病患時間自行回來）。</li>
+    <li>慢簽病患：逾期超過約 60 天，系統自動移除（慢簽已失效）。</li>
     <li>當天有新的 IC 資料但頁面還未更新，請按右上角「重新整理」按鈕。</li>
   </ul>
 
-  <h3>Q：不小心按了「已聯絡」但其實還沒聯絡？</h3>
-  <p>沒關係，點擊「已聯絡」清單中該病患右側的 <span class="btn-demo btn-gray">撤銷</span> 按鈕，病患會立即回到「待聯絡」清單。</p>
+  <h3>Q：不小心按了「已通知」但其實還沒聯絡？</h3>
+  <p>沒關係，展開「已聯絡未取藥／已聯絡未回診」清單，找到該病患，點擊 <span class="btn-demo btn-gray">撤銷</span>，病患會立即回到「待聯絡」清單。</p>
+
+  <h3>Q：病患說他不想參加 MSPT 了，怎麼處理？</h3>
+  <p>點擊該病患右側的 <span class="btn-demo btn-dots">•••</span>，選擇「排除病患…」，選擇「病患不願參加」，確認後病患會移入「已排除」，之後不會再出現在追蹤清單。</p>
+
+  <h3>Q：病患已完成 MSPT 這個階段，下次還會出現嗎？</h3>
+  <p>會。點擊「掛MSPT完成」只會將該階段歸檔。當下一個追蹤階段到期時（例如完成追1後約 70 天，追2到期），病患會自動重新出現在「待聯絡」清單。</p>
 
   <h3>Q：每天要重新整理頁面嗎？</h3>
   <p>每天早上開機後，需重新雙擊桌面的「診所追蹤系統」捷徑來啟動系統，瀏覽器會自動開啟並載入當天最新資料。同一天內若有新病患資料，按右上角「<strong>重新整理</strong>」即可更新，不需關閉重開。</p>
 
   <h3>Q：關掉電腦後，之前的聯絡紀錄還在嗎？</h3>
-  <p>是的，所有聯絡紀錄都有儲存，關機重開後資料不會消失。</p>
+  <p>是的，所有聯絡紀錄、排除紀錄、掛MSPT完成紀錄都有儲存，關機重開後資料不會消失。</p>
 
   <div class="danger" style="margin-top:32px">
     ⛔ 請勿自行修改系統資料夾內的任何檔案，或刪除桌面捷徑以外的系統相關檔案。如有問題請聯絡管理員。

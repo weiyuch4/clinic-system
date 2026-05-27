@@ -23,6 +23,7 @@ class FollowupEntry(BaseModel):
     call_required: bool = False              # True when re-surfaced after 7 days
     last_visit_date: date | None = None      # MSPT: date of most recent stage visit
     contacted_at: date | None = None         # set only on already-contacted entries
+    contacted_time: str | None = None        # HH:MM when contact was recorded
 
 
 class MsptSubmittableEntry(BaseModel):
@@ -38,21 +39,53 @@ class MsptWaitingEntry(BaseModel):
     blood_draw_date: date
 
 
+class ExcludedEntry(BaseModel):
+    patient: Patient
+    category: Literal["慢簽", "代謝症候群"]
+    mspt_stage: MsptStage | None = None
+    due_date: date | None = None
+    last_visit_date: date | None = None
+    last_stage: MsptStage | None = None
+    reason: str
+    note: str = ""
+    excluded_at: date
+    auto: bool = False  # True = auto-generated from long-inactive called entry
+
+
 class DailyReport(BaseModel):
     report_date: date
     chronic_prescriptions: list[FollowupEntry]
     mspt_followups: list[FollowupEntry]
     mspt_submittable: list[MsptSubmittableEntry]
     mspt_waiting: list[MsptWaitingEntry]
-    # Populated from contacts.db, not 燿聖
+    # Populated from contacts.db, not IC data
     contacted: list[FollowupEntry] = []
     called: list[FollowupEntry] = []
     submitted: list[MsptSubmittableEntry] = []
+    excluded: list[ExcludedEntry] = []
+    mspt_completed: list[FollowupEntry] = []
 
 
 class ContactRequest(BaseModel):
     chart_number: str
     category: Literal["慢簽", "代謝症候群"]
+    due_date: date
+
+
+class ExcludeRequest(BaseModel):
+    entry: FollowupEntry
+    reason: str
+    note: str = ""
+
+
+class UnexcludeRequest(BaseModel):
+    chart_number: str
+    category: Literal["慢簽", "代謝症候群"]
+
+
+class MsptCompleteRequest(BaseModel):
+    chart_number: str
+    mspt_stage: MsptStage
     due_date: date
 
 

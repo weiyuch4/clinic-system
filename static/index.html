@@ -87,16 +87,24 @@
     .print-modal-controls {
       display: flex; align-items: center; gap: 8px;
     }
-    .print-filter-toggle {
-      display: flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden;
+    .print-modal-filter-bar {
+      display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+      padding: 10px 20px; border-bottom: 1px solid var(--border);
+      background: var(--bg); flex-shrink: 0;
     }
-    .print-filter-toggle button {
-      padding: 5px 12px; border: none; background: transparent;
+    .print-date-picker {
+      height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 12px; color: var(--text); background: var(--card); cursor: pointer;
+    }
+    .session-chip {
+      height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 5px;
       font-size: 12px; font-weight: 500; cursor: pointer; color: var(--text-sub);
-      transition: background 0.1s, color 0.1s;
+      background: transparent; transition: background 0.1s, color 0.1s, border-color 0.1s;
     }
-    .print-filter-toggle button.active {
-      background: var(--blue); color: white; font-weight: 600;
+    .session-chip.active { background: var(--blue); color: white; border-color: var(--blue); }
+    .print-staff-select {
+      height: 30px; padding: 0 8px; border: 1px solid var(--border); border-radius: 6px;
+      font-size: 12px; color: var(--text); background: var(--card); cursor: pointer;
     }
     .btn-do-print {
       height: 32px; padding: 0 14px;
@@ -133,7 +141,7 @@
       body > *:not(.print-overlay) { display: none !important; }
       .print-overlay { display: block !important; position: static; background: none; }
       .print-modal { box-shadow: none; width: 100%; max-height: none; border-radius: 0; }
-      .print-modal-controls, .btn-close-print { display: none !important; }
+      .print-modal-controls, .print-modal-filter-bar, .btn-close-print { display: none !important; }
       .print-modal-body { overflow: visible; padding: 0; }
       .print-title-line { margin-bottom: 12px; }
     }
@@ -385,6 +393,114 @@
 
     .loading-overlay { opacity: 0.45; pointer-events: none; }
 
+    /* ── More-actions dropdown ── */
+    .action-cell { display: flex; align-items: center; gap: 6px; }
+    .more-actions-wrapper { position: relative; }
+    .btn-more {
+      padding: 3px 8px; border-radius: 6px; border: 1px solid transparent;
+      background: transparent; color: var(--text-muted);
+      font-size: 16px; font-weight: 700; cursor: pointer; line-height: 1;
+      letter-spacing: 2px; transition: background 0.1s, border-color 0.1s;
+    }
+    .btn-more:hover { background: var(--bg); border-color: var(--border); color: var(--text); }
+    .dropdown-menu {
+      display: none; position: absolute; right: 0; top: calc(100% + 4px); z-index: 50;
+      background: white; border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.14); min-width: 152px; padding: 4px 0;
+    }
+    .dropdown-menu.open { display: block; }
+    .dropdown-item {
+      display: flex; align-items: center; gap: 8px; width: 100%; text-align: left;
+      padding: 9px 14px; border: none; background: none; font-size: 13px;
+      color: var(--text); cursor: pointer; font-family: inherit; white-space: nowrap;
+    }
+    .dropdown-item:hover { background: var(--bg); }
+    .dropdown-item.item-danger { color: var(--red); }
+    .dropdown-item.item-danger:hover { background: var(--red-soft); }
+
+    /* Small "完成" button inside done rows */
+    .btn-complete {
+      padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 6px;
+      cursor: pointer; white-space: nowrap; border: 1px solid #a7f3d0;
+      background: var(--green-soft); color: var(--green); transition: all 0.15s;
+    }
+    .btn-complete:hover { background: var(--green); color: white; border-color: var(--green); }
+    .btn-complete:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    /* MSPT fully-completed row */
+    tr.done-complete td { background: var(--green-soft); color: var(--text-sub); }
+    tr.done-complete .patient-name { color: var(--text); font-weight: 600; }
+    tr.done-complete td:first-child { box-shadow: inset 3px 0 0 var(--green); }
+
+    /* ── Archive divider ── */
+    .archive-divider {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 20px;
+      background: #f8fafc;
+      border-top: 1px solid var(--border);
+    }
+    .archive-divider-line { flex: 1; height: 1px; background: var(--border); }
+    .archive-divider-label {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.8px; color: var(--text-muted); white-space: nowrap;
+    }
+    .collapse-toggle.archive { background: #f4f6f9; }
+    .collapse-toggle.archive:hover { background: #eef0f5; }
+
+    /* Excluded row styles */
+    tr.excluded-row td { background: #f9fafb; color: var(--text-muted); }
+    tr.excluded-row .patient-name { color: var(--text-sub); font-weight: 500; }
+    tr.excluded-row td:first-child { box-shadow: inset 3px 0 0 #d1d5db; }
+    tr.excluded-auto-row td { background: #fffbeb; color: var(--text-muted); }
+    tr.excluded-auto-row .patient-name { color: var(--text-sub); font-weight: 500; }
+    tr.excluded-auto-row td:first-child { box-shadow: inset 3px 0 0 var(--amber-border); }
+
+    /* ── Exclusion modal ── */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0; z-index: 300;
+      background: rgba(0,0,0,0.48); align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-box {
+      background: white; border-radius: 14px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      width: min(440px, 93vw); padding: 26px;
+    }
+    .modal-box h3 { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .modal-subtitle { font-size: 13px; color: var(--text-sub); margin-bottom: 20px; }
+    .reason-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+    .reason-chip {
+      padding: 7px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+      background: white; font-size: 13px; cursor: pointer; color: var(--text-sub);
+      font-weight: 500; transition: all 0.15s; font-family: inherit;
+    }
+    .reason-chip:hover { border-color: #9ca3af; color: var(--text); }
+    .reason-chip.selected {
+      border-color: var(--red); background: var(--red-soft); color: var(--red); font-weight: 600;
+    }
+    .modal-note-label { font-size: 12px; font-weight: 600; color: var(--text-sub); margin-bottom: 6px; }
+    .modal-note {
+      width: 100%; height: 70px; border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; font-size: 13px; font-family: inherit; resize: none;
+      color: var(--text); margin-bottom: 20px; outline: none;
+    }
+    .modal-note:focus { border-color: var(--blue); box-shadow: 0 0 0 2px #bfdbfe; }
+    .modal-note::placeholder { color: var(--text-muted); }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 8px; }
+    .btn-modal-cancel {
+      padding: 8px 18px; border-radius: 8px; border: 1px solid var(--border);
+      background: white; color: var(--text-sub); font-size: 13px; cursor: pointer;
+      font-family: inherit; font-weight: 500;
+    }
+    .btn-modal-cancel:hover { background: var(--bg); }
+    .btn-modal-confirm {
+      padding: 8px 18px; border-radius: 8px; border: none;
+      background: var(--red); color: white; font-size: 13px;
+      font-weight: 600; cursor: pointer; font-family: inherit; transition: background 0.15s;
+    }
+    .btn-modal-confirm:hover { background: #b91c1c; }
+    .btn-modal-confirm:disabled { opacity: 0.4; cursor: not-allowed; }
+
     #startup-screen {
       position: fixed;
       inset: 0;
@@ -542,13 +658,19 @@
     <div class="print-modal-header">
       <h3>聯絡清單</h3>
       <div class="print-modal-controls">
-        <div class="print-filter-toggle">
-          <button id="filter-today" class="active" onclick="setPrintFilter('today')">今天</button>
-          <button id="filter-all"            onclick="setPrintFilter('all')">全部</button>
-        </div>
         <button class="btn-do-print" onclick="window.print()">列印</button>
         <button class="btn-close-print" onclick="closePrintModal()">✕</button>
       </div>
+    </div>
+    <div class="print-modal-filter-bar">
+      <input type="date" class="print-date-picker" id="print-date-picker" onchange="onPrintDateChange(this.value)" />
+      <button class="session-chip active" id="chip-早" onclick="togglePrintSession('早')">早診</button>
+      <button class="session-chip active" id="chip-午" onclick="togglePrintSession('午')">午診</button>
+      <button class="session-chip active" id="chip-晚" onclick="togglePrintSession('晚')">晚診</button>
+      <select class="print-staff-select" id="print-staff-select" onchange="renderPrintTable()">
+        <option value="">人員 (選填)</option>
+        <option>A</option><option>B</option><option>C</option><option>D</option>
+      </select>
     </div>
     <div class="print-modal-body" id="print-modal-body"></div>
   </div>
@@ -622,6 +744,24 @@
         <tbody id="chronic-called-rows"></tbody>
       </table>
     </div>
+    <div class="archive-divider">
+      <div class="archive-divider-line"></div>
+      <span class="archive-divider-label">歸檔紀錄</span>
+      <div class="archive-divider-line"></div>
+    </div>
+    <div class="collapse-toggle archive" onclick="toggleSection('chronic-excluded-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已排除 <span id="chronic-excluded-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="chronic-excluded-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>排除原因</th><th>排除日期</th><th></th>
+        </tr></thead>
+        <tbody id="chronic-excluded-rows"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
@@ -666,15 +806,74 @@
     <div class="collapse-body" id="mspt-called-body">
       <table><tbody id="mspt-called-rows"></tbody></table>
     </div>
+    <div class="archive-divider">
+      <div class="archive-divider-line"></div>
+      <span class="archive-divider-label">歸檔紀錄</span>
+      <div class="archive-divider-line"></div>
+    </div>
+    <div class="collapse-toggle archive" onclick="toggleSection('mspt-completed-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已掛MSPT完成 <span id="mspt-completed-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="mspt-completed-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>完成階段</th><th>上次回診</th><th>完成日期</th><th></th>
+        </tr></thead>
+        <tbody id="mspt-completed-rows"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle archive" onclick="toggleSection('mspt-excluded-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已排除 <span id="mspt-excluded-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="mspt-excluded-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>階段</th><th>排除原因</th><th>排除日期</th><th></th>
+        </tr></thead>
+        <tbody id="mspt-excluded-rows"></tbody>
+      </table>
+    </div>
   </div>
 </div>
 
 </div>
 
+<!-- Exclusion modal -->
+<div class="modal-overlay" id="exclude-modal" onclick="maybeCloseExcludeModal(event)">
+  <div class="modal-box">
+    <h3>排除病患</h3>
+    <p class="modal-subtitle" id="exclude-modal-desc">病患將不再出現在追蹤清單中</p>
+    <!-- MSPT: reason chips + optional note -->
+    <div id="exclude-mspt-section">
+      <div class="reason-chips">
+        <button class="reason-chip" onclick="selectExcludeReason(this,'病患不願參加')">病患不願參加</button>
+        <button class="reason-chip" onclick="selectExcludeReason(this,'已被收糖尿病案')">已被收糖尿病案</button>
+        <button class="reason-chip" onclick="selectExcludeReason(this,'轉至其他診所')">轉至其他診所</button>
+        <button class="reason-chip" onclick="selectExcludeReason(this,'其他')">其他</button>
+      </div>
+      <div class="modal-note-label">備註（選填）</div>
+      <textarea class="modal-note" id="exclude-note" placeholder="例如：已轉至大醫院追蹤，不需再通知"></textarea>
+    </div>
+    <!-- 慢簽: free-text reason -->
+    <div id="exclude-chronic-section">
+      <div class="modal-note-label">排除原因（必填）</div>
+      <textarea class="modal-note" id="exclude-chronic-reason" placeholder="例如：已轉院、不願繼續用藥、過世…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeExcludeModal()">取消</button>
+      <button class="btn-modal-confirm" id="btn-modal-confirm" disabled onclick="confirmExclude()">確認排除</button>
+    </div>
+  </div>
+</div>
+
 <script>
   const todayIso = new Date().toISOString().split("T")[0];
   let lastContactedData = { contacted: [], called: [] };
-  let printFilter = 'today';
+  let printHistoryData = { contacted: [], called: [], mspt_completed: [] };
 
   const followupStore = new Map(); // key: chart|category|due_date
 
@@ -742,8 +941,8 @@
     const stageCell = e.mspt_stage ? stageTag(e.mspt_stage) : `<span style="color:var(--text-muted)">—</span>`;
 
     const actionBtn = e.call_required
-      ? `<button class="btn-call">再次通知</button>`
-      : `<button class="btn-action">已聯絡</button>`;
+      ? `<button class="btn-call" title="再次通知，病患尚未完成">再次通知</button>`
+      : `<button class="btn-action" title="已通知病患，等待回診">已通知</button>`;
 
     tr.innerHTML = `
       <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
@@ -751,7 +950,18 @@
       <td>${stageCell}</td>
       <td>${lastVisitCell}</td>
       <td>${statusPill(e.days_overdue)}</td>
-      <td>${actionBtn}</td>
+      <td>
+        <div class="action-cell">
+          ${actionBtn}
+          <button class="btn-complete" title="已完成所有流程並掛號">掛MSPT完成</button>
+          <div class="more-actions-wrapper">
+            <button class="btn-more" title="更多操作">•••</button>
+            <div class="dropdown-menu">
+              <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
+            </div>
+          </div>
+        </div>
+      </td>
     `;
 
     // chronic card: rebuild as 7-column row with pickup date and expiry date
@@ -766,14 +976,44 @@
         <td>${pickupCell}</td>
         <td><span class="mono" style="color:var(--text-sub)">${fmt(e.due_date)}</span></td>
         <td>${statusPill(e.days_overdue)}</td>
-        <td>${actionBtn}</td>
+        <td>
+          <div class="action-cell">
+            ${actionBtn}
+            <div class="more-actions-wrapper">
+              <button class="btn-more" title="更多操作">•••</button>
+              <div class="dropdown-menu">
+                <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
+              </div>
+            </div>
+          </div>
+        </td>
       `;
     }
 
-    const btn = tr.querySelector("button");
+    const btn = tr.querySelector("button.btn-action, button.btn-call");
     btn.onclick = () => e.call_required
       ? markCalled(btn, key, pendingBodyId, pendingBadgeId, calledRowsId, calledCountId)
       : markContacted(btn, key, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId);
+
+    // MSPT: wire complete button
+    if (e.mspt_stage) {
+      tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
+    }
+    // Both chronic and MSPT: wire ••• dropdown
+    const moreBtn = tr.querySelector(".btn-more");
+    if (moreBtn) {
+      const dropdown = tr.querySelector(".dropdown-menu");
+      moreBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        document.querySelectorAll(".dropdown-menu.open").forEach(d => { if (d !== dropdown) d.classList.remove("open"); });
+        dropdown.classList.toggle("open");
+      });
+      tr.querySelector("[data-act='exclude']").onclick = () => {
+        dropdown.classList.remove("open");
+        openExcludeModal(e, pendingBodyId, pendingBadgeId);
+      };
+    }
+
     return tr;
   }
 
@@ -846,8 +1086,9 @@
         <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
         <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
         <td>${statusPill(e.days_overdue)}</td>
-        <td><button class="btn-undo">撤銷</button></td>
+        <td><div class="action-cell"><button class="btn-complete">掛MSPT完成</button><button class="btn-undo">撤銷</button></div></td>
       `;
+      tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
       tr.querySelector(".btn-undo").onclick = (ev) =>
         undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId);
     }
@@ -873,8 +1114,9 @@
         <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
         <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
         <td>${statusPill(e.days_overdue)}</td>
-        <td><button class="btn-undo">撤銷</button></td>
+        <td><div class="action-cell"><button class="btn-complete">掛MSPT完成</button><button class="btn-undo">撤銷</button></div></td>
       `;
+      tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
       tr.querySelector(".btn-undo").onclick = (ev) => undoCalled(ev.currentTarget, key, calledRowsId, calledCountId);
     }
     tbody.appendChild(tr);
@@ -987,20 +1229,25 @@
     const calledRowsId    = prefix + "-called-rows";
     const calledCountId   = prefix + "-called-count";
 
+    const isMspt = prefix === "mspt";
     entries.forEach(e => {
       const key = followupKey(e);
       followupStore.set(key, e);
       const tr = document.createElement("tr");
       tr.className = rowClass;
       tr.dataset.key = key;
+      const actionsCell = isMspt
+        ? `<div class="action-cell"><button class="btn-complete">掛MSPT完成</button><button class="btn-undo">撤銷</button></div>`
+        : `<button class="btn-undo">撤銷</button>`;
       tr.innerHTML = `
         <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
         <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
         <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
         <td>${statusPill(e.days_overdue)}</td>
-        <td><button class="btn-undo">撤銷</button></td>
+        <td>${actionsCell}</td>
       `;
+      if (isMspt) tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
       if (isContacted) {
         tr.querySelector(".btn-undo").onclick = (ev) =>
           undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId);
@@ -1086,6 +1333,287 @@
     renderChronicCalledRows(data.called.filter(e => e.category === "慢簽"));
     renderDoneRows("mspt-contacted-rows",    "mspt-contacted-count",    data.contacted.filter(e => e.category === "代謝症候群"), "done");
     renderDoneRows("mspt-called-rows",       "mspt-called-count",       data.called.filter(e => e.category === "代謝症候群"),    "done-final");
+    renderMsptCompletedRows(data.mspt_completed || []);
+    renderExcludedRows(data.excluded || []);
+  }
+
+  // ── Stores for new sections ──
+
+  const msptCompletedStore = new Map(); // key → FollowupEntry
+  const excludedEntryStore = new Map(); // chart|category → FollowupEntry (for undo)
+
+  // ── Close dropdowns on outside click ──
+
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".dropdown-menu.open").forEach(d => d.classList.remove("open"));
+  });
+
+  // ── 掛MSPT完成 ──
+
+  async function doMarkMsptCompleted(triggerBtn) {
+    const tr = triggerBtn.closest("tr");
+    const key = tr.dataset.key;
+    const entry = followupStore.get(key);
+    if (!entry) return;
+    triggerBtn.disabled = true;
+    try {
+      await apiFetch("/api/mspt-completed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(entry),
+      });
+      const tbody = tr.parentElement;
+      const tbodyId = tbody.id;
+      fadeRemove(tr, () => {
+        if (tbodyId === "mspt-body") {
+          tbody.dispatchEvent(new Event("rowremoved"));
+          updateFollowupBadge("mspt-badge", tbody);
+        } else {
+          const countId = tbodyId.replace("-rows", "-count");
+          updateCountLabel(countId, tbodyId);
+        }
+        appendMsptCompletedRow(entry, todayIso);
+      });
+      showToast(`${entry.patient.name} 掛MSPT完成 ✓`, "ok");
+    } catch (err) {
+      triggerBtn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function appendMsptCompletedRow(entry, completedAt) {
+    const key = followupKey(entry);
+    msptCompletedStore.set(key, entry);
+    followupStore.set(key, entry);
+    const tbody = document.getElementById("mspt-completed-rows");
+    const tr = document.createElement("tr");
+    tr.className = "done-complete";
+    tr.dataset.key = key;
+    tr.innerHTML = `
+      <td><div class="patient-name">${entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div></td>
+      <td class="mono">${fmt(entry.patient.birth_date)}</td>
+      <td>${entry.mspt_stage ? stageTag(entry.mspt_stage) : "—"}</td>
+      <td>${entry.last_visit_date ? fmt(entry.last_visit_date) : "—"}</td>
+      <td class="mono">${fmt(completedAt)}</td>
+      <td><button class="btn-undo">撤銷</button></td>
+    `;
+    tr.querySelector(".btn-undo").onclick = (ev) => undoMsptCompleted(ev.currentTarget, key);
+    tbody.appendChild(tr);
+    updateBadge("mspt-completed-count", tbody.querySelectorAll("tr[data-key]").length);
+  }
+
+  async function undoMsptCompleted(btn, key) {
+    btn.disabled = true;
+    const entry = followupStore.get(key) || msptCompletedStore.get(key);
+    if (!entry) { btn.disabled = false; return; }
+    try {
+      await apiFetch("/api/mspt-completed", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chart_number: entry.patient.chart_number, mspt_stage: entry.mspt_stage, due_date: entry.due_date }),
+      });
+      const tr = btn.closest("tr");
+      fadeRemove(tr, () => {
+        const tbody = document.getElementById("mspt-completed-rows");
+        updateBadge("mspt-completed-count", tbody.querySelectorAll("tr[data-key]").length);
+        restoreFollowupRow(entry, "mspt-body", "mspt-badge", "mspt-contacted-rows", "mspt-contacted-count", "mspt-called-rows", "mspt-called-count");
+      });
+      showToast("已撤銷掛MSPT完成", "ok");
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function renderMsptCompletedRows(entries) {
+    document.getElementById("mspt-completed-rows").innerHTML = "";
+    entries.forEach(e => appendMsptCompletedRow(e, e.contacted_at || todayIso));
+  }
+
+  // ── 排除病患 ──
+
+  let _excludeEntry = null;
+  let _excludePendingBodyId = null;
+  let _excludePendingBadgeId = null;
+
+  function openExcludeModal(entry, pendingBodyId, pendingBadgeId) {
+    _excludeEntry = entry;
+    _excludePendingBodyId = pendingBodyId;
+    _excludePendingBadgeId = pendingBadgeId;
+    const isMspt = entry.category === "代謝症候群";
+    document.getElementById("exclude-modal-desc").textContent =
+      `${entry.patient.name} 將不再出現在追蹤清單中`;
+    document.getElementById("exclude-mspt-section").style.display = isMspt ? "" : "none";
+    document.getElementById("exclude-chronic-section").style.display = isMspt ? "none" : "";
+    document.querySelectorAll(".reason-chip").forEach(c => c.classList.remove("selected"));
+    document.getElementById("exclude-note").value = "";
+    document.getElementById("exclude-chronic-reason").value = "";
+    document.getElementById("btn-modal-confirm").disabled = true;
+    document.getElementById("exclude-modal").classList.add("open");
+  }
+
+  document.getElementById("exclude-chronic-reason").addEventListener("input", function () {
+    if (_excludeEntry && _excludeEntry.category !== "代謝症候群") {
+      document.getElementById("btn-modal-confirm").disabled = !this.value.trim();
+    }
+  });
+
+  function closeExcludeModal() {
+    document.getElementById("exclude-modal").classList.remove("open");
+  }
+
+  function maybeCloseExcludeModal(ev) {
+    if (ev.target === document.getElementById("exclude-modal")) closeExcludeModal();
+  }
+
+  function selectExcludeReason(chip, reason) {
+    document.querySelectorAll(".reason-chip").forEach(c => c.classList.remove("selected"));
+    chip.classList.add("selected");
+    chip.dataset.reason = reason;
+    document.getElementById("btn-modal-confirm").disabled = false;
+  }
+
+  async function confirmExclude() {
+    if (!_excludeEntry) return;
+    const isMspt = _excludeEntry.category === "代謝症候群";
+    const reason = isMspt
+      ? document.querySelector(".reason-chip.selected")?.dataset.reason
+      : document.getElementById("exclude-chronic-reason").value.trim();
+    if (!reason) return;
+    const note = isMspt ? document.getElementById("exclude-note").value.trim() : "";
+    const btn = document.getElementById("btn-modal-confirm");
+    btn.disabled = true;
+    const entry = _excludeEntry;
+    const pendingBodyId = _excludePendingBodyId;
+    const pendingBadgeId = _excludePendingBadgeId;
+    try {
+      await apiFetch("/api/excluded", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entry, reason, note }),
+      });
+      const excKey = `${entry.patient.chart_number}|${entry.category}`;
+      excludedEntryStore.set(excKey, entry);
+      closeExcludeModal();
+      // Remove pending row
+      const key = followupKey(entry);
+      const tbody = document.getElementById(pendingBodyId);
+      const matchRow = tbody ? [...tbody.querySelectorAll("tr[data-key]")].find(r => r.dataset.key === key) : null;
+      const afterFade = () => {
+        if (tbody) {
+          tbody.dispatchEvent(new Event("rowremoved"));
+          updateFollowupBadge(pendingBadgeId, tbody);
+        }
+        appendExcludedRow(entry, reason, note, todayIso, false);
+      };
+      if (matchRow) {
+        fadeRemove(matchRow, afterFade);
+      } else {
+        afterFade();
+      }
+      showToast(`${entry.patient.name} 已排除`, "ok");
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function appendExcludedRow(entry, reason, note, excludedAt, isAuto) {
+    const excKey = `${entry.patient.chart_number}|${entry.category}`;
+    const isMspt = entry.category === "代謝症候群";
+    const tbodyId = isMspt ? "mspt-excluded-rows" : "chronic-excluded-rows";
+    const countId = isMspt ? "mspt-excluded-count" : "chronic-excluded-count";
+    const tbody = document.getElementById(tbodyId);
+    const tr = document.createElement("tr");
+    tr.className = isAuto ? "excluded-auto-row" : "excluded-row";
+    tr.dataset.excKey = excKey;
+    const autoTag = isAuto
+      ? `<span style="font-size:11px;color:var(--amber);background:#fffbeb;border:1px solid var(--amber-border);border-radius:4px;padding:1px 6px;margin-left:4px">自動</span>`
+      : "";
+    const noteHtml = note
+      ? `<div style="font-size:11px;color:var(--text-muted);margin-top:2px">${note}</div>`
+      : "";
+    const undoCell = isAuto
+      ? `<span style="font-size:11px;color:var(--text-muted)">—</span>`
+      : `<button class="btn-undo">復原</button>`;
+    if (isMspt) {
+      const stageCell = entry.mspt_stage ? stageTag(entry.mspt_stage) : "—";
+      tr.innerHTML = `
+        <td><div class="patient-name">${entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div></td>
+        <td class="mono">${fmt(entry.patient.birth_date)}</td>
+        <td>${stageCell}</td>
+        <td>${reason}${autoTag}${noteHtml}</td>
+        <td class="mono">${fmt(excludedAt)}</td>
+        <td>${undoCell}</td>
+      `;
+    } else {
+      tr.innerHTML = `
+        <td><div class="patient-name">${entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div></td>
+        <td class="mono">${fmt(entry.patient.birth_date)}</td>
+        <td>${reason}${noteHtml}</td>
+        <td class="mono">${fmt(excludedAt)}</td>
+        <td>${undoCell}</td>
+      `;
+    }
+    if (!isAuto) {
+      tr.querySelector(".btn-undo").onclick = (ev) => undoExcluded(ev.currentTarget, excKey);
+    }
+    tbody.appendChild(tr);
+    updateBadge(countId, tbody.querySelectorAll("tr[data-exc-key]").length);
+  }
+
+  async function undoExcluded(btn, excKey) {
+    btn.disabled = true;
+    const [chartNumber, category] = excKey.split("|");
+    const isMspt = category === "代謝症候群";
+    try {
+      await apiFetch("/api/excluded", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chart_number: chartNumber, category }),
+      });
+      const tr = btn.closest("tr");
+      const entry = excludedEntryStore.get(excKey);
+      fadeRemove(tr, () => {
+        const tbodyId = isMspt ? "mspt-excluded-rows" : "chronic-excluded-rows";
+        const countId = isMspt ? "mspt-excluded-count" : "chronic-excluded-count";
+        updateBadge(countId, document.getElementById(tbodyId).querySelectorAll("tr[data-exc-key]").length);
+        if (entry) {
+          if (isMspt) {
+            restoreFollowupRow(entry, "mspt-body", "mspt-badge", "mspt-contacted-rows", "mspt-contacted-count", "mspt-called-rows", "mspt-called-count");
+          } else {
+            restoreFollowupRow(entry, "chronic-body", "chronic-badge", "chronic-contacted-rows", "chronic-contacted-count", "chronic-called-rows", "chronic-called-count");
+          }
+        }
+      });
+      showToast("已復原排除", "ok");
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function renderExcludedRows(entries) {
+    document.getElementById("mspt-excluded-rows").innerHTML = "";
+    document.getElementById("chronic-excluded-rows").innerHTML = "";
+    updateBadge("mspt-excluded-count", 0);
+    updateBadge("chronic-excluded-count", 0);
+    entries.forEach(exc => {
+      const fakeEntry = {
+        patient: exc.patient,
+        category: exc.category,
+        mspt_stage: exc.mspt_stage || null,
+        due_date: exc.due_date || todayIso,
+        last_visit_date: exc.last_visit_date || null,
+        last_stage: exc.last_stage || null,
+        days_overdue: 0,
+        disease_name: exc.category,
+      };
+      if (!exc.auto) {
+        excludedEntryStore.set(`${exc.patient.chart_number}|${exc.category}`, fakeEntry);
+      }
+      appendExcludedRow(fakeEntry, exc.reason, exc.note || "", exc.excluded_at, exc.auto);
+    });
   }
 
   // ── Column sort ──
@@ -1168,11 +1696,22 @@
 
   // ── Print modal ──
 
-  function openPrintModal() {
-    printFilter = 'today';
-    document.getElementById('filter-today').classList.add('active');
-    document.getElementById('filter-all').classList.remove('active');
-    renderPrintTable();
+  function getContactSession(timeStr) {
+    if (!timeStr) return null;
+    const [h, m] = timeStr.split(':').map(Number);
+    const mins = h * 60 + m;
+    if (mins >= 8*60+30 && mins < 13*60+30) return '早';
+    if (mins >= 15*60   && mins < 18*60+30) return '午';
+    if (mins >= 18*60+30 && mins < 21*60+30) return '晚';
+    return null;
+  }
+
+  async function openPrintModal() {
+    const picker = document.getElementById('print-date-picker');
+    picker.value = todayIso;
+    ['早', '午', '晚'].forEach(s => document.getElementById('chip-' + s).classList.add('active'));
+    document.getElementById('print-staff-select').value = '';
+    await loadPrintHistory(todayIso);
     document.getElementById('print-overlay').classList.add('open');
   }
 
@@ -1181,25 +1720,58 @@
     document.getElementById('print-overlay').classList.remove('open');
   }
 
-  function setPrintFilter(f) {
-    printFilter = f;
-    document.getElementById('filter-today').classList.toggle('active', f === 'today');
-    document.getElementById('filter-all').classList.toggle('active', f === 'all');
+  function togglePrintSession(sess) {
+    document.getElementById('chip-' + sess).classList.toggle('active');
     renderPrintTable();
   }
 
+  async function loadPrintHistory(dateIso) {
+    try {
+      const res = await fetch(`/api/contacts/history?target_date=${dateIso}`);
+      printHistoryData = await res.json();
+    } catch {
+      printHistoryData = { contacted: [], called: [], mspt_completed: [] };
+    }
+    renderPrintTable();
+  }
+
+  async function onPrintDateChange(dateIso) {
+    if (!dateIso) return;
+    await loadPrintHistory(dateIso);
+  }
+
   function renderPrintTable() {
-    const all = [...lastContactedData.contacted, ...lastContactedData.called];
-    const rows = printFilter === 'today'
-      ? all.filter(e => (e.contacted_at || '').startsWith(todayIso))
-      : all;
+    const activeSessions = ['早', '午', '晚'].filter(s =>
+      document.getElementById('chip-' + s).classList.contains('active')
+    );
+    const staff = document.getElementById('print-staff-select').value;
+    const dateIso = document.getElementById('print-date-picker').value || todayIso;
+
+    const allEntries = [
+      ...printHistoryData.contacted.map(e => ({ ...e, _status: '已通知' })),
+      ...printHistoryData.called.map(e => ({ ...e, _status: '已催電' })),
+      ...(printHistoryData.mspt_completed || []).map(e => ({ ...e, _status: '掛MSPT完成' })),
+    ].sort((a, b) => (a.contacted_time || '').localeCompare(b.contacted_time || ''));
+
+    const rows = activeSessions.length === 0
+      ? allEntries
+      : allEntries.filter(e => {
+          const sess = getContactSession(e.contacted_time);
+          return sess === null || activeSessions.includes(sess);
+        });
 
     const body = document.getElementById('print-modal-body');
+    const [y, mo, d] = dateIso.split('-');
+    const dateLabel = `${parseInt(y)}年${parseInt(mo)}月${parseInt(d)}日`;
+    const staffLabel = staff ? `　負責人員：${staff}` : '';
+    const sessionLabels = (activeSessions.length === 0 || activeSessions.length === 3)
+      ? '全天'
+      : activeSessions.map(s => s + '診').join('、');
 
-    const dateLabel = new Date().toLocaleDateString('zh-TW', { year: 'numeric', month: 'long', day: 'numeric' });
+    const headerHtml = `<div class="print-title-line" style="font-size:12px;color:var(--text-muted);margin-bottom:12px">診所追蹤系統 · ${dateLabel}　${sessionLabels}${staffLabel}</div>`;
 
     if (!rows.length) {
-      body.innerHTML = `<div class="print-title-line" style="font-size:12px;color:var(--text-muted);margin-bottom:8px">診所追蹤系統 · ${dateLabel}</div><div class="print-empty">${printFilter === 'today' ? '今天尚無聯絡紀錄' : '無聯絡紀錄'}</div>`;
+      body.innerHTML = headerHtml + `<div class="print-empty">無聯絡紀錄</div>`;
       return;
     }
 
@@ -1207,21 +1779,27 @@
       const isChron = e.category === '慢簽';
       const tag = `<span class="print-category-tag ${isChron ? 'chronic' : 'mspt'}">${e.category}</span>`;
       const detail = isChron ? (e.disease_name || '—') : (e.mspt_stage || '—');
-      const contactDate = e.contacted_at ? fmt(e.contacted_at) : '—';
+      const timeStr = e.contacted_time || '—';
+      const statusBadge = e._status === '已催電'
+        ? `<span style="font-size:11px;color:#dc2626;font-weight:600">已催電</span>`
+        : e._status === '掛MSPT完成'
+        ? `<span style="font-size:11px;color:#7c3aed;font-weight:600">掛MSPT完成</span>`
+        : `<span style="font-size:11px;color:#16a34a;font-weight:600">已通知</span>`;
       return `<tr>
         <td><div style="font-weight:600">${e.patient.name}</div><div style="font-size:11px;color:var(--text-muted)">${e.patient.chart_number}</div></td>
         <td>${tag}</td>
         <td>${detail}</td>
-        <td class="mono">${contactDate}</td>
+        <td class="mono">${timeStr}</td>
         <td class="mono">${fmt(e.due_date)}</td>
+        <td>${statusBadge}</td>
       </tr>`;
     }).join('');
 
     body.innerHTML = `
-      <div class="print-title-line" style="font-size:12px;color:var(--text-muted);margin-bottom:12px">診所追蹤系統 · ${dateLabel}</div>
+      ${headerHtml}
       <table class="print-table">
         <thead><tr>
-          <th>病患</th><th>類別</th><th>病名 / 階段</th><th>聯絡日期</th><th>到期日</th>
+          <th>病患</th><th>類別</th><th>病名 / 階段</th><th>聯絡時間</th><th>到期日</th><th>狀態</th>
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>`;

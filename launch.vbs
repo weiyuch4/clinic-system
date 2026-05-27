@@ -6,11 +6,12 @@ Set oFS    = CreateObject("Scripting.FileSystemObject")
 Dim appDir
 appDir = oFS.GetParentFolderName(WScript.ScriptFullName)
 
-' Start the server silently (window style 0 = hidden)
-oShell.Run "python """ & appDir & "\main.py""", 0, False
+' Route through cmd /c so the full user PATH is used (handles per-user Python installs,
+' Microsoft Store Python, Anaconda, etc. — all of which only appear in cmd PATH not WScript PATH)
+oShell.Run "cmd /c python """ & appDir & "\main.py""", 0, False
 
-' Wait for the server to be ready
-WScript.Sleep 2500
+' Wait for the server to be ready (allow extra time on slower machines)
+WScript.Sleep 4000
 
 ' Open the browser
 oShell.Run "http://localhost:8000"
