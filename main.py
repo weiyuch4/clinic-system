@@ -1,7 +1,6 @@
 import logging
 import os
 import threading
-import webbrowser
 from datetime import date
 
 import uvicorn
@@ -236,6 +235,85 @@ def debug_p_sample(n: int = 3) -> dict:
     }
 
 
+@app.get("/api/debug/mspt")
+def debug_mspt(nat_id: str | None = None) -> dict:
+    """Diagnostic: show MSPT stage detection across the full 2-year scan window.
+    Pass ?nat_id=A123456789 to see a specific patient's stage history."""
+    from datetime import timedelta
+    from database import _ic_files_since, _parse_dbf_cached, _roc_to_date
+
+    as_of = date.today()
+    MAX_INACTIVE_DAYS = 2 * 365
+    since = as_of - timedelta(days=MAX_INACTIVE_DAYS)
+    ic_files = _ic_files_since(since)
+
+    _MSPT_CODE_MAP = {
+        'P7501C': '收案', 'P7502C': '追1', 'P75022C': '追2',
+        'P75023C': '追3', 'P7503C': '年度追蹤',
+    }
+
+    all_mspt_drug_nos: set[str] = set()
+    patient_stages: dict[str, list] = {}
+
+    for ic_path in ic_files:
+        month_cf_to_id: dict[str, str] = {}
+        month_cf_dates: dict[str, object] = {}
+        try:
+            for r in _parse_dbf_cached(ic_path):
+                v_date = _roc_to_date(r.get('DATE', ''))
+                if not v_date or v_date > as_of:
+                    continue
+                cf  = r.get('CODE_F', '').strip()
+                nid = r.get('ID', '').strip()
+                if cf and nid:
+                    month_cf_to_id[cf] = nid
+                    month_cf_dates[cf] = v_date
+        except Exception:
+            pass
+
+        p_path = ic_path[:-4] + 'P.DBF'
+        if not os.path.exists(p_path):
+            continue
+        try:
+            for r in _parse_dbf_cached(p_path):
+                dn  = r.get('DRUG_NO', '').strip()
+                cf  = r.get('CODE_F', '').strip()
+                nid = month_cf_to_id.get(cf)
+                stage = _MSPT_CODE_MAP.get(dn)
+                if stage:
+                    all_mspt_drug_nos.add(dn)
+                if not nid or not stage:
+                    continue
+                v_date = month_cf_dates.get(cf)
+                if v_date:
+                    patient_stages.setdefault(nid, []).append(
+                        {'stage': stage, 'date': v_date.isoformat(), 'file': os.path.basename(ic_path)}
+                    )
+        except Exception:
+            pass
+
+    # Summarise last stage across all detected patients
+    last_stage_counts: dict[str, int] = {}
+    for hist in patient_stages.values():
+        if hist:
+            ls = sorted(hist, key=lambda x: x['date'])[-1]['stage']
+            last_stage_counts[ls] = last_stage_counts.get(ls, 0) + 1
+
+    specific = None
+    if nat_id:
+        hist = patient_stages.get(nat_id)
+        specific = sorted(hist, key=lambda x: x['date']) if hist else []
+
+    return {
+        'as_of': as_of.isoformat(),
+        'scan_since': since.isoformat(),
+        'ic_files_scanned': [os.path.basename(f) for f in ic_files],
+        'mspt_drug_nos_found': sorted(all_mspt_drug_nos),
+        'mspt_patients_detected': len(patient_stages),
+        'last_stage_counts': last_stage_counts,
+        'specific_patient_history': specific,
+    }
+
+
 if __name__ == "__main__":
-    threading.Timer(1.0, lambda: webbrowser.open("http://localhost:8000")).start()
     uvicorn.run(app, host="0.0.0.0", port=8000)
