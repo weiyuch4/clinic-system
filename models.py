@@ -52,6 +52,15 @@ class ExcludedEntry(BaseModel):
     auto: bool = False  # True = auto-generated from long-inactive called entry
 
 
+class ManualPickupEntry(BaseModel):
+    chart_number: str
+    name: str
+    birth_date: date
+    pickup_date: date
+    ps_days: int
+    next_due: date
+
+
 class DailyReport(BaseModel):
     report_date: date
     chronic_prescriptions: list[FollowupEntry]
@@ -65,6 +74,17 @@ class DailyReport(BaseModel):
     submitted: list[MsptSubmittableEntry] = []
     excluded: list[ExcludedEntry] = []
     mspt_completed: list[FollowupEntry] = []
+    chronic_manual_pickups: list[ManualPickupEntry] = []
+
+
+class ManualPickupRequest(BaseModel):
+    entry: FollowupEntry
+    pickup_date: date
+    ps_days: int
+
+
+class ChartNumberRequest(BaseModel):
+    chart_number: str
 
 
 class ContactRequest(BaseModel):

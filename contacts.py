@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from typing import Generator
 
-from models import ExcludedEntry, FollowupEntry, MsptStage, MsptSubmittableEntry, Patient
+from models import ExcludedEntry, FollowupEntry, ManualPickupEntry, MsptStage, MsptSubmittableEntry, Patient
 
 DB_PATH = "contacts.db"
 RECONTACT_DAYS = 7
@@ -58,6 +58,17 @@ _CREATE_EXCLUDED = """
     )
 """
 
+_CREATE_MANUAL_PICKUPS = """
+    CREATE TABLE IF NOT EXISTS manual_pickups (
+        chart_number TEXT PRIMARY KEY,
+        name         TEXT NOT NULL,
+        birth_date   TEXT NOT NULL,
+        pickup_date  TEXT NOT NULL,
+        ps_days      INTEGER NOT NULL,
+        recorded_at  TEXT NOT NULL
+    )
+"""
+
 _CREATE_MSPT_COMPLETED = """
     CREATE TABLE IF NOT EXISTS mspt_completed (
         chart_number    TEXT NOT NULL,
@@ -89,6 +100,7 @@ def init() -> None:
         conn.execute(_CREATE_SUBMITTED)
         conn.execute(_CREATE_EXCLUDED)
         conn.execute(_CREATE_MSPT_COMPLETED)
+        conn.execute(_CREATE_MANUAL_PICKUPS)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT"):
             try:
@@ -471,6 +483,55 @@ def get_print_history(target_date_iso: str) -> dict:
         for r in mc_rows
     ]
     return {"contacted": contacted, "called": called, "mspt_completed": mspt_completed}
+
+
+def mark_manual_pickup(entry: FollowupEntry, pickup_date: date, ps_days: int) -> None:
+    with _conn() as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO manual_pickups
+               (chart_number, name, birth_date, pickup_date, ps_days, recorded_at)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                entry.patient.chart_number,
+                entry.patient.name,
+                entry.patient.birth_date.isoformat(),
+                pickup_date.isoformat(),
+                ps_days,
+                date.today().isoformat(),
+            ),
+        )
+
+
+def unmark_manual_pickup(chart_number: str) -> None:
+    with _conn() as conn:
+        conn.execute("DELETE FROM manual_pickups WHERE chart_number = ?", (chart_number,))
+
+
+def get_manual_pickup_map() -> dict[str, tuple[str, int]]:
+    """Returns {chart_number: (pickup_date_iso, ps_days)} for suppression filtering."""
+    with _conn() as conn:
+        rows = conn.execute("SELECT chart_number, pickup_date, ps_days FROM manual_pickups").fetchall()
+    return {r[0]: (r[1], r[2]) for r in rows}
+
+
+def get_manual_pickup_entries() -> list[ManualPickupEntry]:
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT chart_number, name, birth_date, pickup_date, ps_days FROM manual_pickups ORDER BY recorded_at DESC"
+        ).fetchall()
+    result = []
+    for r in rows:
+        pickup = date.fromisoformat(r[3])
+        ps = r[4]
+        result.append(ManualPickupEntry(
+            chart_number=r[0],
+            name=r[1],
+            birth_date=date.fromisoformat(r[2]),
+            pickup_date=pickup,
+            ps_days=ps,
+            next_due=pickup + timedelta(days=ps),
+        ))
+    return result
 
 
 def get_submitted_entries() -> list[MsptSubmittableEntry]:

@@ -1,7 +1,7 @@
 import logging
 import os
 import threading
-from datetime import date
+from datetime import date, timedelta
 
 import uvicorn
 from fastapi import FastAPI, HTTPException
@@ -12,8 +12,8 @@ import backup
 import contacts
 import database
 from models import (
-    ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
-    MsptCompleteRequest, MsptSubmittableEntry, SubmitRequest, UnexcludeRequest,
+    ChartNumberRequest, ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
+    ManualPickupRequest, MsptCompleteRequest, MsptSubmittableEntry, SubmitRequest, UnexcludeRequest,
 )
 
 logging.basicConfig(
@@ -83,6 +83,24 @@ def get_report(report_date: date | None = None) -> DailyReport:
             and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_completed_keys
         ]
 
+        # Filter chronic patients suppressed by a manual pickup record
+        _CHRONIC_GRACE = 5
+        as_of = report_date or date.today()
+        manual_pickup_map = contacts.get_manual_pickup_map()
+
+        def chronic_suppressed(entry: FollowupEntry) -> bool:
+            mp = manual_pickup_map.get(entry.patient.chart_number)
+            if not mp:
+                return False
+            pickup_date, ps_days = date.fromisoformat(mp[0]), mp[1]
+            # If IC already has a newer visit, the manual record is superseded
+            if entry.last_visit_date and pickup_date <= entry.last_visit_date:
+                return False
+            next_due = pickup_date + timedelta(days=ps_days)
+            return (as_of - next_due).days < _CHRONIC_GRACE
+
+        chronic_prescriptions = [e for e in report.chronic_prescriptions if not chronic_suppressed(e)]
+
         manual_excluded = contacts.get_excluded_entries()
         auto_excluded = contacts.get_auto_excluded_entries()
         all_excluded = manual_excluded + [
@@ -99,7 +117,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
 
         return DailyReport(
             report_date=report.report_date,
-            chronic_prescriptions=filter_followups(report.chronic_prescriptions),
+            chronic_prescriptions=filter_followups(chronic_prescriptions),
             mspt_followups=filter_followups(report.mspt_followups),
             mspt_inactive=filter_followups(report.mspt_inactive),
             mspt_submittable=[
@@ -112,6 +130,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
             submitted=contacts.get_submitted_entries(),
             excluded=all_excluded,
             mspt_completed=contacts.get_mspt_completed_entries(),
+            chronic_manual_pickups=contacts.get_manual_pickup_entries(),
         )
     except HTTPException:
         raise
@@ -200,6 +219,24 @@ def unmark_mspt_completed(req: MsptCompleteRequest) -> None:
         logger.exception("unmark_mspt_completed failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷掛MSPT完成失敗，請稍後再試")
 
+
+
+@app.post("/api/manual-pickup")
+def mark_manual_pickup(req: ManualPickupRequest) -> None:
+    try:
+        contacts.mark_manual_pickup(req.entry, req.pickup_date, req.ps_days)
+    except Exception:
+        logger.exception("mark_manual_pickup failed for %s", req.entry.patient.chart_number)
+        raise HTTPException(status_code=500, detail="手動取藥記錄儲存失敗，請稍後再試")
+
+
+@app.delete("/api/manual-pickup")
+def unmark_manual_pickup(req: ChartNumberRequest) -> None:
+    try:
+        contacts.unmark_manual_pickup(req.chart_number)
+    except Exception:
+        logger.exception("unmark_manual_pickup failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
 
 
 @app.get("/api/notice")

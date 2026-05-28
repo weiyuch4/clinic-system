@@ -839,6 +839,20 @@
       <span class="archive-divider-label">歸檔紀錄</span>
       <div class="archive-divider-line"></div>
     </div>
+    <div class="collapse-toggle archive" onclick="toggleSection('chronic-manual-pickup-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已手動標記取藥 <span id="chronic-manual-pickup-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="chronic-manual-pickup-body">
+      <div style="font-size:12px;color:#1e40af;padding:8px 16px 4px;background:#eff6ff">取藥日期由護理人員手動輸入。待下次到期後，病患將自動重回待聯絡清單。</div>
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>取藥日期</th><th>下次應回診</th><th></th>
+        </tr></thead>
+        <tbody id="chronic-manual-pickup-rows"></tbody>
+      </table>
+    </div>
     <div class="collapse-toggle archive" onclick="toggleSection('chronic-excluded-body', this)">
       <div class="collapse-line"></div>
       <span class="collapse-label"><i class="chevron">›</i> 已排除 <span id="chronic-excluded-count">0</span></span>
@@ -944,6 +958,24 @@
   </div>
 </div>
 
+</div>
+
+<!-- Manual pickup modal -->
+<div class="modal-overlay" id="manual-pickup-modal" onclick="maybeCloseManualPickupModal(event)">
+  <div class="modal-box" style="max-width:380px">
+    <h3>手動標記已取藥</h3>
+    <p id="manual-pickup-desc" style="font-size:14px;color:var(--text-sub);margin:8px 0 20px"></p>
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">取藥日期（請查閱病例）</label>
+    <input type="date" id="manual-pickup-date-input"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:10px" />
+    <div id="manual-pickup-preview" style="font-size:13px;color:var(--text-muted);min-height:18px;margin-bottom:20px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeManualPickupModal()"
+        style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;font-size:14px">取消</button>
+      <button id="manual-pickup-confirm-btn" onclick="submitManualPickup()"
+        style="padding:8px 18px;border-radius:8px;border:none;background:var(--blue);color:white;cursor:pointer;font-size:14px;font-weight:600">確認標記</button>
+    </div>
+  </div>
 </div>
 
 <!-- Exclusion modal -->
@@ -1125,6 +1157,7 @@
             <div class="more-actions-wrapper">
               <button class="btn-more" title="更多操作">•••</button>
               <div class="dropdown-menu">
+                <button class="dropdown-item" data-act="manual-pickup">手動標記已取藥</button>
                 <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
               </div>
             </div>
@@ -1155,6 +1188,13 @@
         dropdown.classList.remove("open");
         openExcludeModal(e, pendingBodyId, pendingBadgeId);
       };
+      const manualPickupItem = tr.querySelector("[data-act='manual-pickup']");
+      if (manualPickupItem) {
+        manualPickupItem.onclick = () => {
+          dropdown.classList.remove("open");
+          openManualPickupModal(e, pendingBodyId, pendingBadgeId);
+        };
+      }
     }
 
     return tr;
@@ -1474,6 +1514,7 @@
     // Populate collapsed sections
     renderChronicContactedRows(data.contacted.filter(e => e.category === "慢簽"));
     renderChronicCalledRows(data.called.filter(e => e.category === "慢簽"));
+    renderManualPickupRows(data.chronic_manual_pickups || []);
     renderDoneRows("mspt-contacted-rows",    "mspt-contacted-count",    data.contacted.filter(e => e.category === "代謝症候群"), "done");
     renderDoneRows("mspt-called-rows",       "mspt-called-count",       data.called.filter(e => e.category === "代謝症候群"),    "done-final");
     renderMsptInactiveRows(data.mspt_inactive || []);
@@ -1778,6 +1819,113 @@
       btn.disabled = false;
       showToast(err.message);
     }
+  }
+
+  // ── 手動標記已取藥 ──
+
+  let _manualPickupEntry = null;
+  let _manualPickupPendingBodyId = null;
+  let _manualPickupPendingBadgeId = null;
+
+  function openManualPickupModal(e, pendingBodyId, pendingBadgeId) {
+    _manualPickupEntry = e;
+    _manualPickupPendingBodyId = pendingBodyId;
+    _manualPickupPendingBadgeId = pendingBadgeId;
+    const ps = (e.last_visit_date && e.due_date)
+      ? Math.round((new Date(e.due_date) - new Date(e.last_visit_date)) / 86400000)
+      : 28;
+    _manualPickupEntry._ps = ps;
+    document.getElementById("manual-pickup-desc").textContent =
+      `${e.patient.name}（${e.patient.chart_number}）`;
+    const dateInput = document.getElementById("manual-pickup-date-input");
+    dateInput.value = "";
+    document.getElementById("manual-pickup-preview").textContent = "";
+    dateInput.oninput = () => {
+      if (dateInput.value) {
+        const d = new Date(dateInput.value + "T00:00:00");
+        d.setDate(d.getDate() + ps);
+        document.getElementById("manual-pickup-preview").textContent =
+          `下次應回診：${fmt(d.toISOString().slice(0, 10))}（處方 ${ps} 天）`;
+      } else {
+        document.getElementById("manual-pickup-preview").textContent = "";
+      }
+    };
+    document.getElementById("manual-pickup-modal").style.display = "flex";
+  }
+
+  function closeManualPickupModal() {
+    document.getElementById("manual-pickup-modal").style.display = "none";
+    _manualPickupEntry = null;
+  }
+
+  function maybeCloseManualPickupModal(event) {
+    if (event.target === document.getElementById("manual-pickup-modal")) closeManualPickupModal();
+  }
+
+  async function submitManualPickup() {
+    const e = _manualPickupEntry;
+    const pickupDate = document.getElementById("manual-pickup-date-input").value;
+    if (!pickupDate) return;
+    const ps = e._ps || 28;
+    const btn = document.getElementById("manual-pickup-confirm-btn");
+    btn.disabled = true;
+    try {
+      await apiFetch("/api/manual-pickup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entry: e, pickup_date: pickupDate, ps_days: ps }),
+      });
+      // Remove row from pending table without a full reload
+      const pendingBody = document.getElementById(_manualPickupPendingBodyId);
+      const row = pendingBody.querySelector(`tr[data-key="${followupKey(e)}"]`);
+      if (row) row.remove();
+      updateFollowupBadge(_manualPickupPendingBadgeId, pendingBody);
+      // Compute next due and append to archive section
+      const nextDue = new Date(pickupDate + "T00:00:00");
+      nextDue.setDate(nextDue.getDate() + ps);
+      _appendManualPickupRow({
+        chart_number: e.patient.chart_number,
+        name: e.patient.name,
+        birth_date: e.patient.birth_date,
+        pickup_date: pickupDate,
+        ps_days: ps,
+        next_due: nextDue.toISOString().slice(0, 10),
+      });
+      closeManualPickupModal();
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function _appendManualPickupRow(e) {
+    const tbody = document.getElementById("chronic-manual-pickup-rows");
+    const count = document.getElementById("chronic-manual-pickup-count");
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><div class="patient-name">${e.name}</div><div class="chart-number">${e.chart_number}</div></td>
+      <td class="mono">${fmt(e.birth_date)}</td>
+      <td class="mono">${fmt(e.pickup_date)}</td>
+      <td class="mono">${fmt(e.next_due)}</td>
+      <td><button class="btn-undo">撤銷</button></td>
+    `;
+    tr.querySelector(".btn-undo").addEventListener("click", async () => {
+      await apiFetch("/api/manual-pickup", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chart_number: e.chart_number }),
+      });
+      await loadReport();  // full reload needed to restore patient to pending list
+    });
+    tbody.appendChild(tr);
+    count.textContent = parseInt(count.textContent || "0") + 1;
+  }
+
+  function renderManualPickupRows(entries) {
+    const tbody = document.getElementById("chronic-manual-pickup-rows");
+    const count = document.getElementById("chronic-manual-pickup-count");
+    tbody.innerHTML = "";
+    count.textContent = entries.length;
+    entries.forEach(e => _appendManualPickupRow(e));
   }
 
   function renderExcludedRows(entries) {
