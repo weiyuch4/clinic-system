@@ -48,10 +48,12 @@ def warmup_cache() -> None:
 def get_daily_report(as_of: date) -> DailyReport:
     if USE_MOCK_DATA:
         return _mock_report(as_of)
+    mspt_followups, mspt_inactive = _query_mspt_followups(as_of)
     return DailyReport(
         report_date=as_of,
         chronic_prescriptions=_query_chronic_prescriptions(as_of),
-        mspt_followups=_query_mspt_followups(as_of),
+        mspt_followups=mspt_followups,
+        mspt_inactive=mspt_inactive,
         mspt_submittable=[],
         mspt_waiting=[],
     )
@@ -275,8 +277,12 @@ _MSPT_CODE_MAP: dict[str, str] = {
 }
 
 
-def _query_mspt_followups(as_of: date) -> list[FollowupEntry]:
-    """Return MSPT patients whose next stage visit is overdue as of as_of.
+def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
+    """Return (active_followups, inactive_patients).
+
+    active_followups: MSPT patients whose next stage is overdue and who still visit the clinic.
+    inactive_patients: patients needing 收案 restart but with no clinic visit in the past year
+                       (any H_TYPE in IC data) — shown in the 長期未回診 section.
 
     Stage detection uses NHI procedure codes in the P-file DRUG_NO field.
     History is grouped by national ID (ID field) because CODE_F is assigned
@@ -284,7 +290,8 @@ def _query_mspt_followups(as_of: date) -> list[FollowupEntry]:
     The P file has no DATE field, so each patient's latest IC visit date for
     that month is used as the stage date."""
     MAX_INACTIVE_DAYS  = 2 * 365  # older than 2 years — ignore entirely
-    REOPEN_AFTER_DAYS  = 365      # > 1 year inactive → case closed, needs 收案 restart
+    REOPEN_AFTER_DAYS  = 365      # > 1 year inactive from MSPT → case closed, needs 收案 restart
+    LONG_INACTIVE_DAYS = 180      # > 6 months since last any clinic visit → 長期未回診
     _STAGE_NEXT = {'收案': '追1', '追1': '追2', '追2': '追3', '追3': '年度追蹤', '年度追蹤': '追1'}
     _STAGE_GAPS = {'收案': METABOLIC_FOLLOWUP_DAYS, '追1': METABOLIC_FOLLOWUP_DAYS,
                    '追2': METABOLIC_FOLLOWUP_DAYS, '追3': 365, '年度追蹤': METABOLIC_FOLLOWUP_DAYS}
@@ -347,7 +354,8 @@ def _query_mspt_followups(as_of: date) -> list[FollowupEntry]:
         except Exception:
             pass
 
-    results = []
+    results: list[FollowupEntry] = []
+    inactive: list[FollowupEntry] = []
     for nat_id, history in stage_history.items():
         info = patient_info.get(nat_id)
         if not info:
@@ -374,9 +382,12 @@ def _query_mspt_followups(as_of: date) -> list[FollowupEntry]:
         if days_overdue < 0:
             continue  # next stage not yet due
 
-        # Case closed: missed their next stage by more than 1 year → needs 收案 restart
+        # Case closed: missed their next stage by more than 1 year → needs 收案 restart.
+        # Use the most recent ANY clinic visit (info['latest_date']) to decide whether
+        # to put this patient in the active follow-up list or the 長期未回診 section.
         if days_overdue > REOPEN_AFTER_DAYS:
-            results.append(FollowupEntry(
+            latest_any_visit = info['latest_date']
+            entry = FollowupEntry(
                 patient=Patient(
                     chart_number=nat_id,
                     name=info['name'],
@@ -389,8 +400,12 @@ def _query_mspt_followups(as_of: date) -> list[FollowupEntry]:
                 mspt_stage='收案',
                 last_stage=last_stage,
                 contact_reason='需重新收案+抽血',
-                last_visit_date=last_date,
-            ))
+                last_visit_date=last_date,  # last MSPT stage date; latest_any_visit used only for routing below
+            )
+            if (as_of - latest_any_visit).days > LONG_INACTIVE_DAYS:
+                inactive.append(entry)
+            else:
+                results.append(entry)
             continue
 
         results.append(FollowupEntry(
@@ -407,7 +422,11 @@ def _query_mspt_followups(as_of: date) -> list[FollowupEntry]:
             last_stage=last_stage,
             last_visit_date=last_date,
         ))
-    return sorted(results, key=lambda e: e.days_overdue, reverse=True)
+    # inactive sorted oldest-visit-first so the most likely lost patients are at the top
+    return (
+        sorted(results, key=lambda e: e.days_overdue, reverse=True),
+        sorted(inactive, key=lambda e: e.last_visit_date or date.min),
+    )
 
 
 def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, date]:

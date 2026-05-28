@@ -8,6 +8,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+import backup
 import contacts
 import database
 from models import (
@@ -25,6 +26,7 @@ app = FastAPI(title="診所追蹤系統")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 contacts.init()
+backup.run()
 threading.Thread(target=database.warmup_cache, daemon=True).start()
 
 
@@ -99,6 +101,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
             report_date=report.report_date,
             chronic_prescriptions=filter_followups(report.chronic_prescriptions),
             mspt_followups=filter_followups(report.mspt_followups),
+            mspt_inactive=filter_followups(report.mspt_inactive),
             mspt_submittable=[
                 e for e in report.mspt_submittable
                 if (e.patient.chart_number, e.mspt_stage) not in submitted_keys
@@ -196,6 +199,16 @@ def unmark_mspt_completed(req: MsptCompleteRequest) -> None:
     except Exception:
         logger.exception("unmark_mspt_completed failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷掛MSPT完成失敗，請稍後再試")
+
+
+
+@app.get("/api/notice")
+def get_notice() -> dict:
+    try:
+        text = open("notice.txt", encoding="utf-8").read().strip()
+    except OSError:
+        text = ""
+    return {"text": text}
 
 
 @app.get("/api/contacts/history")

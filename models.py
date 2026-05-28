@@ -56,6 +56,7 @@ class DailyReport(BaseModel):
     report_date: date
     chronic_prescriptions: list[FollowupEntry]
     mspt_followups: list[FollowupEntry]
+    mspt_inactive: list[FollowupEntry] = []   # need 收案 restart but no clinic visit in >1 year
     mspt_submittable: list[MsptSubmittableEntry]
     mspt_waiting: list[MsptWaitingEntry]
     # Populated from contacts.db, not IC data
