@@ -9,7 +9,7 @@ Dim launchScript
 launchScript = appDir & "\launch.vbs"
 
 If Not oFS.FileExists(launchScript) Then
-    MsgBox "找不到 launch.vbs，請確認此檔案與 launch.vbs 放在同一資料夾中。", 16, "錯誤"
+    MsgBox "Cannot find launch.vbs. Make sure this file is in the same folder as launch.vbs.", 16, "Error"
     WScript.Quit
 End If
 
@@ -18,15 +18,14 @@ Dim startupFolder
 startupFolder = oShell.SpecialFolders("Startup")
 
 Dim shortcut
-Set shortcut = oShell.CreateShortcut(startupFolder & "\診所追蹤系統.lnk")
+Set shortcut = oShell.CreateShortcut(startupFolder & "\clinic-system.lnk")
 shortcut.TargetPath      = "wscript.exe"
 shortcut.Arguments       = """" & launchScript & """"
 shortcut.WorkingDirectory = appDir
 shortcut.WindowStyle     = 7  ' Start minimised (no console window)
-shortcut.Description     = "診所追蹤系統 — 背景伺服器"
+shortcut.Description     = "Clinic System Server"
 shortcut.Save
 
-MsgBox "設定完成！" & vbCrLf & vbCrLf & _
-       "下次重開機後，伺服器會自動在背景執行。" & vbCrLf & _
-       "護理人員只需開啟瀏覽器，輸入 localhost:8000 即可使用。", _
-       64, "診所追蹤系統"
+MsgBox "Done! The server will start automatically in the background on next reboot." & vbCrLf & vbCrLf & _
+       "Nurses can open the browser and go to localhost:8000 whenever they need it.", _
+       64, "Clinic System"

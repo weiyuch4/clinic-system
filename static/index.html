@@ -966,8 +966,9 @@
     <h3>手動標記已取藥</h3>
     <p id="manual-pickup-desc" style="font-size:14px;color:var(--text-sub);margin:8px 0 20px"></p>
     <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">取藥日期（請查閱病例）</label>
-    <input type="date" id="manual-pickup-date-input"
-      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:10px" />
+    <input type="text" id="manual-pickup-date-input" placeholder="例：2026-05-15"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:6px" />
+    <div id="manual-pickup-date-error" style="font-size:12px;color:#e53e3e;min-height:16px;margin-bottom:4px"></div>
     <div id="manual-pickup-preview" style="font-size:13px;color:var(--text-muted);min-height:18px;margin-bottom:20px"></div>
     <div style="display:flex;gap:10px;justify-content:flex-end">
       <button onclick="closeManualPickupModal()"
@@ -1840,14 +1841,21 @@
     const dateInput = document.getElementById("manual-pickup-date-input");
     dateInput.value = "";
     document.getElementById("manual-pickup-preview").textContent = "";
+    document.getElementById("manual-pickup-date-error").textContent = "";
     dateInput.oninput = () => {
-      if (dateInput.value) {
-        const d = new Date(dateInput.value + "T00:00:00");
+      const errEl = document.getElementById("manual-pickup-date-error");
+      const v = dateInput.value.trim();
+      const valid = /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(new Date(v + "T00:00:00"));
+      if (valid) {
+        errEl.textContent = "";
+        const d = new Date(v + "T00:00:00");
         d.setDate(d.getDate() + ps);
         document.getElementById("manual-pickup-preview").textContent =
           `下次應回診：${fmt(d.toISOString().slice(0, 10))}（處方 ${ps} 天）`;
       } else {
         document.getElementById("manual-pickup-preview").textContent = "";
+        if (v.length >= 10) errEl.textContent = "格式須為 YYYY-MM-DD，例：2026-05-15";
+        else errEl.textContent = "";
       }
     };
     document.getElementById("manual-pickup-modal").style.display = "flex";
@@ -1864,8 +1872,14 @@
 
   async function submitManualPickup() {
     const e = _manualPickupEntry;
-    const pickupDate = document.getElementById("manual-pickup-date-input").value;
-    if (!pickupDate) return;
+    const pickupDate = document.getElementById("manual-pickup-date-input").value.trim();
+    const errEl = document.getElementById("manual-pickup-date-error");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(pickupDate) || isNaN(new Date(pickupDate + "T00:00:00"))) {
+      errEl.textContent = "請輸入正確日期格式，例：2026-05-15";
+      document.getElementById("manual-pickup-date-input").focus();
+      return;
+    }
+    errEl.textContent = "";
     const ps = e._ps || 28;
     const btn = document.getElementById("manual-pickup-confirm-btn");
     btn.disabled = true;
