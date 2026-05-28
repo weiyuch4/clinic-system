@@ -1117,7 +1117,7 @@
 
     const actionBtn = e.call_required
       ? `<button class="btn-call" title="再次通知，病患尚未完成">再次通知</button>`
-      : `<button class="btn-action" title="已通知病患，等待回診">已通知</button>`;
+      : `<button class="btn-action" title="已通知病患，等待回診">${e.mspt_stage ? "已通知抽血" : "已通知"}</button>`;
 
     tr.innerHTML = `
       <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
