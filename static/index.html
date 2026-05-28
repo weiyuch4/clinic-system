@@ -716,6 +716,11 @@
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
     重新整理
   </button>
+  <select id="nurse-selector"
+    style="padding:6px 10px;border-radius:8px;border:1px solid var(--border);font-size:13px;font-family:inherit;background:var(--bg-card);cursor:pointer;color:var(--text)"
+    onchange="onNurseChange(this.value)">
+    <option value="">— 選擇護理師 —</option>
+  </select>
   <button class="btn-print" onclick="openPrintModal()">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M4 1h8a1 1 0 0 1 1 1v2H3V2a1 1 0 0 1 1-1zm-2 4h12a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1h-1v2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-2H2a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zm9 6H5v3h6v-3zm2-4a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z"/></svg>
     列印聯絡清單
@@ -758,8 +763,7 @@
       <button class="session-chip active" id="chip-午" onclick="togglePrintSession('午')">午診</button>
       <button class="session-chip active" id="chip-晚" onclick="togglePrintSession('晚')">晚診</button>
       <select class="print-staff-select" id="print-staff-select" onchange="renderPrintTable()">
-        <option value="">人員 (選填)</option>
-        <option>A</option><option>B</option><option>C</option><option>D</option>
+        <option value="">全部人員</option>
       </select>
     </div>
     <div class="print-modal-body" id="print-modal-body"></div>
@@ -966,7 +970,7 @@
     <h3>手動標記已取藥</h3>
     <p id="manual-pickup-desc" style="font-size:14px;color:var(--text-sub);margin:8px 0 20px"></p>
     <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">取藥日期（請查閱病例）</label>
-    <input type="text" id="manual-pickup-date-input" placeholder="例：2026-05-15"
+    <input type="text" id="manual-pickup-date-input" placeholder="例：20260515 或 2026-05-15"
       style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:6px" />
     <div id="manual-pickup-date-error" style="font-size:12px;color:#e53e3e;min-height:16px;margin-bottom:4px"></div>
     <div id="manual-pickup-preview" style="font-size:13px;color:var(--text-muted);min-height:18px;margin-bottom:20px"></div>
@@ -1049,7 +1053,7 @@
   loadNotice();
 
   let lastContactedData = { contacted: [], called: [] };
-  let printHistoryData = { contacted: [], called: [], mspt_completed: [] };
+  let printHistoryData = { contacted: [], called: [], mspt_completed: [], excluded: [], manual_pickups: [] };
 
   const followupStore = new Map(); // key: chart|category|due_date
 
@@ -1204,7 +1208,7 @@
   async function markContacted(btn, key, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId) {
     btn.disabled = true;
     try {
-      await apiFetch("/api/contacted", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(followupStore.get(key)) });
+      await apiFetch("/api/contacted", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entry: followupStore.get(key), nurse: activeNurse() }) });
       fadeRemove(btn.closest("tr"), () => {
         document.getElementById(pendingBodyId).dispatchEvent(new Event("rowremoved"));
         appendContactedRow(followupStore.get(key), contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId);
@@ -1218,7 +1222,7 @@
   async function markCalled(btn, key, pendingBodyId, pendingBadgeId, calledRowsId, calledCountId) {
     btn.disabled = true;
     try {
-      await apiFetch("/api/called", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(followupStore.get(key)) });
+      await apiFetch("/api/called", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entry: followupStore.get(key), nurse: activeNurse() }) });
       fadeRemove(btn.closest("tr"), () => {
         document.getElementById(pendingBodyId).dispatchEvent(new Event("rowremoved"));
         appendCalledRow(followupStore.get(key), calledRowsId, calledCountId);
@@ -1546,7 +1550,7 @@
       await apiFetch("/api/mspt-completed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(entry),
+        body: JSON.stringify({ entry, nurse: activeNurse() }),
       });
       const tbody = tr.parentElement;
       const tbodyId = tbody.id;
@@ -1719,7 +1723,7 @@
       await apiFetch("/api/excluded", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entry, reason, note }),
+        body: JSON.stringify({ entry, reason, note, nurse: activeNurse() }),
       });
       const excKey = `${entry.patient.chart_number}|${entry.category}`;
       excludedEntryStore.set(excKey, entry);
@@ -1828,6 +1832,20 @@
   let _manualPickupPendingBodyId = null;
   let _manualPickupPendingBadgeId = null;
 
+  // Accepts 20260520, 2026/05/20, 2026-05-20 → "2026-05-20" or null
+  function parseDateInput(v) {
+    let y, m, d;
+    if (/^\d{8}$/.test(v)) {
+      y = v.slice(0, 4); m = v.slice(4, 6); d = v.slice(6, 8);
+    } else {
+      const parts = v.split(/[-\/]/);
+      if (parts.length !== 3) return null;
+      [y, m, d] = parts;
+    }
+    const iso = `${y}-${m}-${d}`;
+    return /^\d{4}-\d{2}-\d{2}$/.test(iso) && !isNaN(new Date(iso + "T00:00:00")) ? iso : null;
+  }
+
   function openManualPickupModal(e, pendingBodyId, pendingBadgeId) {
     _manualPickupEntry = e;
     _manualPickupPendingBodyId = pendingBodyId;
@@ -1844,17 +1862,17 @@
     document.getElementById("manual-pickup-date-error").textContent = "";
     dateInput.oninput = () => {
       const errEl = document.getElementById("manual-pickup-date-error");
-      const v = dateInput.value.trim();
-      const valid = /^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(new Date(v + "T00:00:00"));
-      if (valid) {
+      const iso = parseDateInput(dateInput.value.trim());
+      if (iso) {
         errEl.textContent = "";
-        const d = new Date(v + "T00:00:00");
+        const d = new Date(iso + "T00:00:00");
         d.setDate(d.getDate() + ps);
         document.getElementById("manual-pickup-preview").textContent =
           `下次應回診：${fmt(d.toISOString().slice(0, 10))}（處方 ${ps} 天）`;
       } else {
         document.getElementById("manual-pickup-preview").textContent = "";
-        if (v.length >= 10) errEl.textContent = "格式須為 YYYY-MM-DD，例：2026-05-15";
+        const v = dateInput.value.trim();
+        if (v.length >= 8) errEl.textContent = "格式：20260520 或 2026-05-20";
         else errEl.textContent = "";
       }
     };
@@ -1872,10 +1890,10 @@
 
   async function submitManualPickup() {
     const e = _manualPickupEntry;
-    const pickupDate = document.getElementById("manual-pickup-date-input").value.trim();
     const errEl = document.getElementById("manual-pickup-date-error");
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(pickupDate) || isNaN(new Date(pickupDate + "T00:00:00"))) {
-      errEl.textContent = "請輸入正確日期格式，例：2026-05-15";
+    const pickupDate = parseDateInput(document.getElementById("manual-pickup-date-input").value.trim());
+    if (!pickupDate) {
+      errEl.textContent = "請輸入日期，例：20260520 或 2026-05-20";
       document.getElementById("manual-pickup-date-input").focus();
       return;
     }
@@ -1884,10 +1902,11 @@
     const btn = document.getElementById("manual-pickup-confirm-btn");
     btn.disabled = true;
     try {
+      const { _ps, ...entryForApi } = e;
       await apiFetch("/api/manual-pickup", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entry: e, pickup_date: pickupDate, ps_days: ps }),
+        body: JSON.stringify({ entry: entryForApi, pickup_date: pickupDate, ps_days: ps, nurse: activeNurse() }),
       });
       // Remove row from pending table without a full reload
       const pendingBody = document.getElementById(_manualPickupPendingBodyId);
@@ -1906,6 +1925,8 @@
         next_due: nextDue.toISOString().slice(0, 10),
       });
       closeManualPickupModal();
+    } catch (err) {
+      errEl.textContent = "儲存失敗：" + err.message;
     } finally {
       btn.disabled = false;
     }
@@ -2006,6 +2027,40 @@
     thEl.classList.add(dir === 1 ? "sort-asc" : "sort-desc");
   }
 
+  // ── Nurse selector ──
+  function activeNurse() { return localStorage.getItem('clinic_nurse') || ""; }
+
+  function onNurseChange(val) {
+    localStorage.setItem('clinic_nurse', val);
+    const sel = document.getElementById('nurse-selector');
+    sel.style.borderColor = val ? 'var(--border)' : '#f59e0b';
+    sel.style.background  = val ? 'var(--bg-card)' : '#fffbeb';
+  }
+
+  async function initNurseSelector() {
+    try {
+      const names = await (await fetch('/api/nurses')).json();
+      const sel = document.getElementById('nurse-selector');
+      names.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = n;
+        sel.appendChild(opt);
+      });
+      const saved = activeNurse();
+      if (saved && names.includes(saved)) sel.value = saved;
+      onNurseChange(sel.value);
+      // populate print staff select with same list
+      const printSel = document.getElementById('print-staff-select');
+      printSel.innerHTML = '<option value="">全部人員</option>';
+      names.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = n;
+        printSel.appendChild(opt);
+      });
+    } catch (_) {}
+  }
+
+  initNurseSelector();
   loadReport();
 
   // ── Refresh ──
@@ -2058,7 +2113,7 @@
   async function openPrintModal() {
     const picker = document.getElementById('print-date-picker');
     picker.value = todayIso;
-    ['早', '午', '晚'].forEach(s => document.getElementById('chip-' + s).classList.add('active'));
+    ['早', '午', '晚'].forEach(s => document.getElementById('chip-' + s).classList.remove('active'));
     document.getElementById('print-staff-select').value = '';
     await loadPrintHistory(todayIso);
     document.getElementById('print-overlay').classList.add('open');
@@ -2079,7 +2134,7 @@
       const res = await fetch(`/api/contacts/history?target_date=${dateIso}`);
       printHistoryData = await res.json();
     } catch {
-      printHistoryData = { contacted: [], called: [], mspt_completed: [] };
+      printHistoryData = { contacted: [], called: [], mspt_completed: [], excluded: [], manual_pickups: [] };
     }
     renderPrintTable();
   }
@@ -2096,18 +2151,25 @@
     const staff = document.getElementById('print-staff-select').value;
     const dateIso = document.getElementById('print-date-picker').value || todayIso;
 
-    const allEntries = [
+    const timedEntries = [
       ...printHistoryData.contacted.map(e => ({ ...e, _status: '已通知' })),
       ...printHistoryData.called.map(e => ({ ...e, _status: '已通知' })),
       ...(printHistoryData.mspt_completed || []).map(e => ({ ...e, _status: '掛MSPT完成' })),
     ].sort((a, b) => (a.contacted_time || '').localeCompare(b.contacted_time || ''));
+    const excludedEntries = (printHistoryData.excluded || []).map(e => ({ ...e, _status: '已排除' }));
+    const pickupEntries = (printHistoryData.manual_pickups || []).map(e => ({ ...e, _status: '已手動取藥' }));
+    const allEntries = [...timedEntries, ...excludedEntries, ...pickupEntries];
 
-    const rows = activeSessions.length === 0
+    const sessionFiltered = activeSessions.length === 0
       ? allEntries
       : allEntries.filter(e => {
+          if (e._status === '已排除' || e._status === '已手動取藥') return true;
           const sess = getContactSession(e.contacted_time);
           return sess === null || activeSessions.includes(sess);
         });
+    const rows = !staff
+      ? sessionFiltered
+      : sessionFiltered.filter(e => (e.nurse || '') === staff);
 
     const body = document.getElementById('print-modal-body');
     const [y, mo, d] = dateIso.split('-');
@@ -2125,19 +2187,37 @@
     }
 
     const rowsHtml = rows.map(e => {
-      const isChron = e.category === '慢簽';
-      const tag = `<span class="print-category-tag ${isChron ? 'chronic' : 'mspt'}">${e.category}</span>`;
-      const detail = isChron ? (e.disease_name || '—') : (e.mspt_stage || '—');
+      const isPickup   = e._status === '已手動取藥';
+      const isExcluded = e._status === '已排除';
+      const patientName   = isPickup ? e.name          : e.patient.name;
+      const patientChart  = isPickup ? e.chart_number  : e.patient.chart_number;
+      const isChron = isPickup ? true : e.category === '慢簽';
+      const tag = `<span class="print-category-tag ${isChron ? 'chronic' : 'mspt'}">${isPickup ? '慢簽' : e.category}</span>`;
+      let detail;
+      if (isPickup) {
+        detail = `已取藥 ${fmt(e.pickup_date)}（處方 ${e.ps_days} 天）`;
+      } else if (isExcluded) {
+        detail = e.mspt_stage
+          ? `${e.mspt_stage}・${e.reason}${e.note ? '（' + e.note + '）' : ''}`
+          : `${e.reason}${e.note ? '（' + e.note + '）' : ''}`;
+      } else {
+        detail = isChron ? (e.disease_name || '—') : (e.mspt_stage || '—');
+      }
       const timeStr = e.contacted_time || '—';
-      const statusBadge = e._status === '掛MSPT完成'
-        ? `<span style="font-size:11px;color:#7c3aed;font-weight:600">掛MSPT完成</span>`
-        : `<span style="font-size:11px;color:#16a34a;font-weight:600">已通知</span>`;
-      return `<tr>
-        <td><div style="font-weight:600">${e.patient.name}</div><div style="font-size:11px;color:var(--text-muted)">${e.patient.chart_number}</div></td>
+      const dueDateStr = isPickup ? fmt(e.next_due) : (e.due_date ? fmt(e.due_date) : '—');
+      const statusBadge = isPickup
+        ? `<span style="font-size:11px;color:#0369a1;font-weight:600">已手動取藥</span>`
+        : isExcluded
+          ? `<span style="font-size:11px;color:#6b7280;font-weight:600">已排除</span>`
+          : e._status === '掛MSPT完成'
+            ? `<span style="font-size:11px;color:#7c3aed;font-weight:600">掛MSPT完成</span>`
+            : `<span style="font-size:11px;color:#16a34a;font-weight:600">已通知</span>`;
+      return `<tr${(isExcluded || isPickup) ? ' style="opacity:0.75"' : ''}>
+        <td><div style="font-weight:600">${patientName}</div><div style="font-size:11px;color:var(--text-muted)">${patientChart}</div></td>
         <td>${tag}</td>
         <td>${detail}</td>
         <td class="mono">${timeStr}</td>
-        <td class="mono">${fmt(e.due_date)}</td>
+        <td class="mono">${dueDateStr}</td>
         <td>${statusBadge}</td>
       </tr>`;
     }).join('');

@@ -13,8 +13,13 @@ import contacts
 import database
 from models import (
     ChartNumberRequest, ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
-    ManualPickupRequest, MsptCompleteRequest, MsptSubmittableEntry, SubmitRequest, UnexcludeRequest,
+    ManualPickupRequest, MsptCompleteRequest, MsptSubmittableEntry, NurseEntryRequest,
+    SubmitRequest, UnexcludeRequest,
 )
+
+# ── Edit this list to match your clinic's nurse names ──────────────────────────
+NURSE_NAMES: list[str] = ["媛淩", "巧潔", "辰優", "惠茗"]
+# ───────────────────────────────────────────────────────────────────────────────
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -38,6 +43,11 @@ def index() -> Response:
         raise HTTPException(status_code=503, detail="無法載入介面檔案")
     return Response(content=content, media_type="text/html",
                     headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/nurses")
+def get_nurses() -> list[str]:
+    return NURSE_NAMES
 
 
 @app.get("/api/report")
@@ -140,20 +150,20 @@ def get_report(report_date: date | None = None) -> DailyReport:
 
 
 @app.post("/api/contacted")
-def mark_contacted(entry: FollowupEntry) -> None:
+def mark_contacted(req: NurseEntryRequest) -> None:
     try:
-        contacts.mark_contacted(entry)
+        contacts.mark_contacted(req.entry, req.nurse)
     except Exception:
-        logger.exception("mark_contacted failed for %s", entry.patient.chart_number)
+        logger.exception("mark_contacted failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="聯絡記錄儲存失敗，請稍後再試")
 
 
 @app.post("/api/called")
-def mark_called(entry: FollowupEntry) -> None:
+def mark_called(req: NurseEntryRequest) -> None:
     try:
-        contacts.mark_called(entry)
+        contacts.mark_called(req.entry, req.nurse)
     except Exception:
-        logger.exception("mark_called failed for %s", entry.patient.chart_number)
+        logger.exception("mark_called failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="二次通知記錄儲存失敗，請稍後再試")
 
 
@@ -187,7 +197,7 @@ def unmark_submitted(req: SubmitRequest) -> None:
 @app.post("/api/excluded")
 def mark_excluded(req: ExcludeRequest) -> None:
     try:
-        contacts.mark_excluded(req.entry, req.reason, req.note)
+        contacts.mark_excluded(req.entry, req.reason, req.note, req.nurse)
     except Exception:
         logger.exception("mark_excluded failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="排除記錄儲存失敗，請稍後再試")
@@ -203,11 +213,11 @@ def unmark_excluded(req: UnexcludeRequest) -> None:
 
 
 @app.post("/api/mspt-completed")
-def mark_mspt_completed(entry: FollowupEntry) -> None:
+def mark_mspt_completed(req: NurseEntryRequest) -> None:
     try:
-        contacts.mark_mspt_completed(entry)
+        contacts.mark_mspt_completed(req.entry, req.nurse)
     except Exception:
-        logger.exception("mark_mspt_completed failed for %s", entry.patient.chart_number)
+        logger.exception("mark_mspt_completed failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="掛MSPT完成記錄儲存失敗，請稍後再試")
 
 
@@ -224,7 +234,7 @@ def unmark_mspt_completed(req: MsptCompleteRequest) -> None:
 @app.post("/api/manual-pickup")
 def mark_manual_pickup(req: ManualPickupRequest) -> None:
     try:
-        contacts.mark_manual_pickup(req.entry, req.pickup_date, req.ps_days)
+        contacts.mark_manual_pickup(req.entry, req.pickup_date, req.ps_days, req.nurse)
     except Exception:
         logger.exception("mark_manual_pickup failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="手動取藥記錄儲存失敗，請稍後再試")
@@ -257,6 +267,8 @@ def get_contacts_history(target_date: str | None = None) -> dict:
             "contacted": [e.model_dump(mode="json") for e in history["contacted"]],
             "called": [e.model_dump(mode="json") for e in history["called"]],
             "mspt_completed": [e.model_dump(mode="json") for e in history["mspt_completed"]],
+            "excluded": [e.model_dump(mode="json") for e in history["excluded"]],
+            "manual_pickups": [e.model_dump(mode="json") for e in history["manual_pickups"]],
         }
     except Exception:
         logger.exception("get_contacts_history failed for date=%s", target_date)

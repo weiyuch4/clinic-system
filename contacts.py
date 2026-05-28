@@ -102,18 +102,24 @@ def init() -> None:
         conn.execute(_CREATE_MSPT_COMPLETED)
         conn.execute(_CREATE_MANUAL_PICKUPS)
         # Migrations for existing databases
-        for col in ("last_visit_date TEXT", "contacted_time TEXT"):
+        for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
             try:
                 conn.execute(f"ALTER TABLE contacts ADD COLUMN {col}")
             except sqlite3.OperationalError:
                 pass
-        try:
-            conn.execute("ALTER TABLE mspt_completed ADD COLUMN completed_time TEXT")
-        except sqlite3.OperationalError:
-            pass
+        for col in ("completed_time TEXT", "nurse TEXT DEFAULT ''"):
+            try:
+                conn.execute(f"ALTER TABLE mspt_completed ADD COLUMN {col}")
+            except sqlite3.OperationalError:
+                pass
+        for tbl in ("excluded", "manual_pickups"):
+            try:
+                conn.execute(f"ALTER TABLE {tbl} ADD COLUMN nurse TEXT DEFAULT ''")
+            except sqlite3.OperationalError:
+                pass
 
 
-def _followup_to_row(entry: FollowupEntry, attempt: int) -> tuple:
+def _followup_to_row(entry: FollowupEntry, attempt: int, nurse: str = "") -> tuple:
     return (
         entry.patient.chart_number,
         entry.category,
@@ -128,36 +134,37 @@ def _followup_to_row(entry: FollowupEntry, attempt: int) -> tuple:
         attempt,
         date.today().isoformat(),
         datetime.now().strftime('%H:%M'),
+        nurse,
     )
 
 
-def mark_contacted(entry: FollowupEntry) -> None:
+def mark_contacted(entry: FollowupEntry, nurse: str = "") -> None:
     with _conn() as conn:
         conn.execute(
             """INSERT INTO contacts
                (chart_number, category, due_date, name, birth_date, disease_name,
                 days_overdue, mspt_stage, contact_reason, last_visit_date, attempt, contacted_at,
-                contacted_time)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                contacted_time, nurse)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(chart_number, category, due_date) DO UPDATE SET
                    attempt=1, contacted_at=excluded.contacted_at,
-                   contacted_time=excluded.contacted_time""",
-            _followup_to_row(entry, 1),
+                   contacted_time=excluded.contacted_time, nurse=excluded.nurse""",
+            _followup_to_row(entry, 1, nurse),
         )
 
 
-def mark_called(entry: FollowupEntry) -> None:
+def mark_called(entry: FollowupEntry, nurse: str = "") -> None:
     with _conn() as conn:
         conn.execute(
             """INSERT INTO contacts
                (chart_number, category, due_date, name, birth_date, disease_name,
                 days_overdue, mspt_stage, contact_reason, last_visit_date, attempt, contacted_at,
-                contacted_time)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                contacted_time, nurse)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                ON CONFLICT(chart_number, category, due_date) DO UPDATE SET
                    attempt=2, contacted_at=excluded.contacted_at,
-                   contacted_time=excluded.contacted_time""",
-            _followup_to_row(entry, 2),
+                   contacted_time=excluded.contacted_time, nurse=excluded.nurse""",
+            _followup_to_row(entry, 2, nurse),
         )
 
 
@@ -324,20 +331,20 @@ def get_auto_excluded_entries() -> list[ExcludedEntry]:
 
 # ── Manual exclusion ──────────────────────────────────────────────────────────
 
-def mark_excluded(entry: FollowupEntry, reason: str, note: str = '') -> None:
+def mark_excluded(entry: FollowupEntry, reason: str, note: str = '', nurse: str = '') -> None:
     with _conn() as conn:
         conn.execute(
             """INSERT OR REPLACE INTO excluded
                (chart_number, category, name, birth_date, mspt_stage, due_date,
-                last_visit_date, last_stage, reason, note, excluded_at)
-               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                last_visit_date, last_stage, reason, note, excluded_at, nurse)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 entry.patient.chart_number, entry.category,
                 entry.patient.name, entry.patient.birth_date.isoformat(),
                 entry.mspt_stage,
                 entry.due_date.isoformat() if entry.due_date else None,
                 entry.last_visit_date.isoformat() if entry.last_visit_date else None,
-                entry.last_stage, reason, note, date.today().isoformat(),
+                entry.last_stage, reason, note, date.today().isoformat(), nurse,
             ),
         )
 
@@ -382,20 +389,20 @@ def get_excluded_entries() -> list[ExcludedEntry]:
 
 # ── MSPT completed (掛MSPT完成) ──────────────────────────────────────────────
 
-def mark_mspt_completed(entry: FollowupEntry) -> None:
+def mark_mspt_completed(entry: FollowupEntry, nurse: str = '') -> None:
     with _conn() as conn:
         conn.execute(
             """INSERT OR REPLACE INTO mspt_completed
                (chart_number, mspt_stage, due_date, name, birth_date,
-                last_visit_date, last_stage, days_overdue, completed_at, completed_time)
-               VALUES (?,?,?,?,?,?,?,?,?,?)""",
+                last_visit_date, last_stage, days_overdue, completed_at, completed_time, nurse)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
             (
                 entry.patient.chart_number, entry.mspt_stage,
                 entry.due_date.isoformat(),
                 entry.patient.name, entry.patient.birth_date.isoformat(),
                 entry.last_visit_date.isoformat() if entry.last_visit_date else None,
                 entry.last_stage, entry.days_overdue, date.today().isoformat(),
-                datetime.now().strftime('%H:%M'),
+                datetime.now().strftime('%H:%M'), nurse,
             ),
         )
 
@@ -446,14 +453,14 @@ def get_print_history(target_date_iso: str) -> dict:
         contact_rows = conn.execute(
             """SELECT chart_number, name, birth_date, disease_name, category, due_date,
                       days_overdue, mspt_stage, contact_reason, last_visit_date,
-                      contacted_at, contacted_time, attempt
+                      contacted_at, contacted_time, attempt, nurse
                FROM contacts WHERE contacted_at = ?
                ORDER BY contacted_time NULLS LAST""",
             (target_date_iso,),
         ).fetchall()
         mc_rows = conn.execute(
             """SELECT chart_number, mspt_stage, due_date, name, birth_date,
-                      last_visit_date, last_stage, days_overdue, completed_at, completed_time
+                      last_visit_date, last_stage, days_overdue, completed_at, completed_time, nurse
                FROM mspt_completed WHERE completed_at = ?
                ORDER BY completed_time NULLS LAST""",
             (target_date_iso,),
@@ -464,6 +471,7 @@ def get_print_history(target_date_iso: str) -> dict:
             update={
                 "contacted_at": date.fromisoformat(r[10]) if r[10] else None,
                 "contacted_time": r[11],
+                "nurse": r[13] or "",
             }
         )
         (contacted if r[12] == 1 else called).append(entry)
@@ -479,18 +487,59 @@ def get_print_history(target_date_iso: str) -> dict:
             category='代謝症候群',
             contacted_at=date.fromisoformat(r[8]) if r[8] else None,
             contacted_time=r[9],
+            nurse=r[10] or "",
         )
         for r in mc_rows
     ]
-    return {"contacted": contacted, "called": called, "mspt_completed": mspt_completed}
+    with _conn() as conn:
+        excl_rows = conn.execute(
+            """SELECT chart_number, name, birth_date, category, mspt_stage,
+                      due_date, last_visit_date, last_stage, reason, note, nurse
+               FROM excluded WHERE excluded_at = ?""",
+            (target_date_iso,),
+        ).fetchall()
+    excluded = [
+        ExcludedEntry(
+            patient=Patient(chart_number=r[0], name=r[1], birth_date=date.fromisoformat(r[2])),
+            category=r[3],
+            mspt_stage=r[4],
+            due_date=date.fromisoformat(r[5]) if r[5] else None,
+            last_visit_date=date.fromisoformat(r[6]) if r[6] else None,
+            last_stage=r[7],
+            reason=r[8],
+            note=r[9] or '',
+            excluded_at=date.fromisoformat(target_date_iso),
+            nurse=r[10] or "",
+        )
+        for r in excl_rows
+    ]
+    with _conn() as conn:
+        pickup_rows = conn.execute(
+            """SELECT chart_number, name, birth_date, pickup_date, ps_days, nurse
+               FROM manual_pickups WHERE recorded_at = ?""",
+            (target_date_iso,),
+        ).fetchall()
+    manual_pickups = [
+        ManualPickupEntry(
+            chart_number=r[0], name=r[1], birth_date=date.fromisoformat(r[2]),
+            pickup_date=date.fromisoformat(r[3]), ps_days=r[4],
+            next_due=date.fromisoformat(r[3]) + timedelta(days=r[4]),
+            nurse=r[5] or "",
+        )
+        for r in pickup_rows
+    ]
+    return {
+        "contacted": contacted, "called": called, "mspt_completed": mspt_completed,
+        "excluded": excluded, "manual_pickups": manual_pickups,
+    }
 
 
-def mark_manual_pickup(entry: FollowupEntry, pickup_date: date, ps_days: int) -> None:
+def mark_manual_pickup(entry: FollowupEntry, pickup_date: date, ps_days: int, nurse: str = '') -> None:
     with _conn() as conn:
         conn.execute(
             """INSERT OR REPLACE INTO manual_pickups
-               (chart_number, name, birth_date, pickup_date, ps_days, recorded_at)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               (chart_number, name, birth_date, pickup_date, ps_days, recorded_at, nurse)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 entry.patient.chart_number,
                 entry.patient.name,
@@ -498,6 +547,7 @@ def mark_manual_pickup(entry: FollowupEntry, pickup_date: date, ps_days: int) ->
                 pickup_date.isoformat(),
                 ps_days,
                 date.today().isoformat(),
+                nurse,
             ),
         )
 

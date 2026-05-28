@@ -24,6 +24,7 @@ class FollowupEntry(BaseModel):
     last_visit_date: date | None = None      # MSPT: date of most recent stage visit
     contacted_at: date | None = None         # set only on already-contacted entries
     contacted_time: str | None = None        # HH:MM when contact was recorded
+    nurse: str = ""                          # who recorded this action (print history only)
 
 
 class MsptSubmittableEntry(BaseModel):
@@ -50,6 +51,7 @@ class ExcludedEntry(BaseModel):
     note: str = ""
     excluded_at: date
     auto: bool = False  # True = auto-generated from long-inactive called entry
+    nurse: str = ""
 
 
 class ManualPickupEntry(BaseModel):
@@ -59,6 +61,7 @@ class ManualPickupEntry(BaseModel):
     pickup_date: date
     ps_days: int
     next_due: date
+    nurse: str = ""
 
 
 class DailyReport(BaseModel):
@@ -77,10 +80,16 @@ class DailyReport(BaseModel):
     chronic_manual_pickups: list[ManualPickupEntry] = []
 
 
+class NurseEntryRequest(BaseModel):
+    entry: FollowupEntry
+    nurse: str = ""
+
+
 class ManualPickupRequest(BaseModel):
     entry: FollowupEntry
     pickup_date: date
     ps_days: int
+    nurse: str = ""
 
 
 class ChartNumberRequest(BaseModel):
@@ -97,6 +106,7 @@ class ExcludeRequest(BaseModel):
     entry: FollowupEntry
     reason: str
     note: str = ""
+    nurse: str = ""
 
 
 class UnexcludeRequest(BaseModel):
