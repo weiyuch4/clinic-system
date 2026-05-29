@@ -1,11 +1,14 @@
+import hashlib
 import logging
 import os
+import secrets
 import threading
 from datetime import date, timedelta
 
 import uvicorn
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from fastapi.responses import FileResponse, Response
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 
 import backup
@@ -20,6 +23,26 @@ from models import (
 # ── Edit this list to match your clinic's nurse names ──────────────────────────
 NURSE_NAMES: list[str] = ["媛淩", "巧潔", "辰優", "惠茗"]
 # ───────────────────────────────────────────────────────────────────────────────
+
+# ── Admin stats page credentials ───────────────────────────────────────────────
+# To change the password, run in terminal:
+#   python -c "import hashlib; print(hashlib.sha256(b'your-new-password').hexdigest())"
+# Then replace ADMIN_PASS_HASH with the output.
+ADMIN_USER      = "admin"
+ADMIN_PASS_HASH = "fbfdc9472dbe28e802c388914610c16634c383183836bcdf36b7aca819c80768"
+# ───────────────────────────────────────────────────────────────────────────────
+
+_security = HTTPBasic()
+
+def _require_admin(credentials: HTTPBasicCredentials = Depends(_security)) -> None:
+    input_hash = hashlib.sha256(credentials.password.encode()).hexdigest()
+    ok = (
+        secrets.compare_digest(credentials.username.encode(), ADMIN_USER.encode()) and
+        secrets.compare_digest(input_hash, ADMIN_PASS_HASH)
+    )
+    if not ok:
+        raise HTTPException(status_code=401, detail="認證失敗",
+                            headers={"WWW-Authenticate": "Basic"})
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -48,6 +71,82 @@ def index() -> Response:
 @app.get("/api/nurses")
 def get_nurses() -> list[str]:
     return NURSE_NAMES
+
+
+@app.get("/admin/stats")
+def admin_stats(month: str | None = None, _: None = Depends(_require_admin)) -> Response:
+    if not month:
+        month = date.today().strftime("%Y-%m")
+    try:
+        stats = contacts.get_activity_stats(month)
+    except Exception:
+        logger.exception("admin_stats failed for month=%s", month)
+        raise HTTPException(status_code=500, detail="查詢失敗")
+
+    nurses = sorted(stats.keys(), key=lambda n: (n == "（未選擇）", n))
+    cols = [("contacted", "已通知"), ("called", "再次通知"), ("mspt", "掛MSPT完成"),
+            ("excluded", "排除"), ("pickup", "手動取藥")]
+
+    def td(val: int) -> str:
+        colour = "#111" if val else "#ccc"
+        return f'<td style="text-align:center;color:{colour}">{val}</td>'
+
+    rows_html = ""
+    totals = {k: 0 for k, _ in cols}
+    for nurse in nurses:
+        s = stats[nurse]
+        total = sum(s[k] for k, _ in cols)
+        for k, _ in cols:
+            totals[k] += s[k]
+        rows_html += (
+            f'<tr><td style="font-weight:600">{nurse}</td>'
+            + "".join(td(s[k]) for k, _ in cols)
+            + f'<td style="text-align:center;font-weight:700">{total}</td></tr>'
+        )
+
+    grand = sum(totals.values())
+    totals_html = (
+        '<tr style="background:#f0f4f8;font-weight:700"><td>合計</td>'
+        + "".join(f'<td style="text-align:center">{totals[k]}</td>' for k, _ in cols)
+        + f'<td style="text-align:center">{grand}</td></tr>'
+    )
+
+    thead = "".join(f'<th style="padding:10px 14px;text-align:center">{label}</th>' for _, label in cols)
+    prev_y, prev_m = (int(month[:4]), int(month[5:])-1) if int(month[5:]) > 1 else (int(month[:4])-1, 12)
+    next_y, next_m = (int(month[:4]), int(month[5:])+1) if int(month[5:]) < 12 else (int(month[:4])+1, 1)
+    prev_str = f"{prev_y}-{prev_m:02d}"
+    next_str = f"{next_y}-{next_m:02d}"
+
+    html = f"""<!DOCTYPE html>
+<html lang="zh-TW"><head><meta charset="UTF-8">
+<title>護理師活動統計</title>
+<style>
+  body{{font-family:-apple-system,"Microsoft JhengHei",sans-serif;background:#f0f4f8;padding:40px 20px;color:#111}}
+  .card{{max-width:700px;margin:0 auto;background:white;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.08);padding:40px 48px}}
+  h1{{font-size:22px;font-weight:800;margin-bottom:4px}}
+  .sub{{font-size:13px;color:#6b7280;margin-bottom:28px}}
+  .nav{{display:flex;align-items:center;gap:16px;margin-bottom:20px}}
+  .nav a{{color:#2563eb;text-decoration:none;font-size:14px}}
+  .nav a:hover{{text-decoration:underline}}
+  .month-label{{font-size:18px;font-weight:700;color:#1e3a5f}}
+  table{{width:100%;border-collapse:collapse;font-size:14px}}
+  th{{background:#f8fafc;padding:10px 14px;border:1px solid #e4e9f0;color:#374151;font-weight:700;text-align:left}}
+  td{{padding:10px 14px;border:1px solid #e4e9f0}}
+  tr:nth-child(even) td{{background:#fafbfc}}
+  .empty{{color:#9ca3af;font-size:14px;padding:24px 0;text-align:center}}
+</style></head>
+<body><div class="card">
+  <h1>護理師活動統計</h1>
+  <div class="sub">僅限管理員查閱 — 此頁面不對外顯示</div>
+  <div class="nav">
+    <a href="/admin/stats?month={prev_str}">← {prev_str}</a>
+    <span class="month-label">{month}</span>
+    <a href="/admin/stats?month={next_str}">{next_str} →</a>
+  </div>
+  {"<table><thead><tr><th>護理師</th>" + thead + "<th style='text-align:center'>合計</th></tr></thead><tbody>" + rows_html + totals_html + "</tbody></table>" if nurses else '<div class="empty">本月尚無紀錄</div>'}
+</div></body></html>"""
+
+    return Response(content=html, media_type="text/html")
 
 
 @app.get("/api/report")

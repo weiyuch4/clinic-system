@@ -584,6 +584,47 @@ def get_manual_pickup_entries() -> list[ManualPickupEntry]:
     return result
 
 
+def get_activity_stats(month: str) -> dict[str, dict[str, int]]:
+    """month: 'YYYY-MM'. Returns {nurse: {contacted, called, mspt, excluded, pickup}}."""
+    prefix = month + "-%"
+    with _conn() as conn:
+        c_rows  = conn.execute(
+            "SELECT nurse, attempt, COUNT(*) FROM contacts WHERE contacted_at LIKE ? GROUP BY nurse, attempt",
+            (prefix,)).fetchall()
+        m_rows  = conn.execute(
+            "SELECT nurse, COUNT(*) FROM mspt_completed WHERE completed_at LIKE ? GROUP BY nurse",
+            (prefix,)).fetchall()
+        ex_rows = conn.execute(
+            "SELECT nurse, COUNT(*) FROM excluded WHERE excluded_at LIKE ? GROUP BY nurse",
+            (prefix,)).fetchall()
+        pk_rows = conn.execute(
+            "SELECT nurse, COUNT(*) FROM manual_pickups WHERE recorded_at LIKE ? GROUP BY nurse",
+            (prefix,)).fetchall()
+
+    stats: dict[str, dict[str, int]] = {}
+
+    def _row(nurse: str) -> dict[str, int]:
+        key = nurse or "（未選擇）"
+        if key not in stats:
+            stats[key] = {"contacted": 0, "called": 0, "mspt": 0, "excluded": 0, "pickup": 0}
+        return stats[key]
+
+    for nurse, attempt, count in c_rows:
+        row = _row(nurse)
+        if attempt == 1:
+            row["contacted"] += count
+        else:
+            row["called"] += count
+    for nurse, count in m_rows:
+        _row(nurse)["mspt"] += count
+    for nurse, count in ex_rows:
+        _row(nurse)["excluded"] += count
+    for nurse, count in pk_rows:
+        _row(nurse)["pickup"] += count
+
+    return stats
+
+
 def get_submitted_entries() -> list[MsptSubmittableEntry]:
     with _conn() as conn:
         rows = conn.execute(

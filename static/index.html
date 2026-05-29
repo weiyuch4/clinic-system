@@ -994,15 +994,29 @@
         <button class="reason-chip" onclick="selectExcludeReason(this,'病患不願參加')">病患不願參加</button>
         <button class="reason-chip" onclick="selectExcludeReason(this,'已被收糖尿病案')">已被收糖尿病案</button>
         <button class="reason-chip" onclick="selectExcludeReason(this,'轉至其他診所')">轉至其他診所</button>
+        <button class="reason-chip" onclick="selectExcludeReason(this,'已結案')">已結案</button>
         <button class="reason-chip" onclick="selectExcludeReason(this,'其他')">其他</button>
       </div>
-      <div class="modal-note-label">備註（選填）</div>
+      <div id="exclude-closure-date-row" style="display:none;margin:12px 0 4px">
+        <div class="modal-note-label">結案日期（必填）</div>
+        <input type="text" id="exclude-closure-date" placeholder="例：20260529 或 2026-05-29"
+          style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-top:4px" />
+        <div id="exclude-closure-date-error" style="font-size:12px;color:#e53e3e;min-height:16px;margin-top:2px"></div>
+      </div>
+      <div class="modal-note-label" id="exclude-mspt-note-label">備註（選填）</div>
       <textarea class="modal-note" id="exclude-note" placeholder="例如：已轉至大醫院追蹤，不需再通知"></textarea>
     </div>
-    <!-- 慢簽: free-text reason -->
+    <!-- 慢簽: reason chips + optional note -->
     <div id="exclude-chronic-section">
-      <div class="modal-note-label">排除原因（必填）</div>
-      <textarea class="modal-note" id="exclude-chronic-reason" placeholder="例如：已轉院、不願繼續用藥、過世…"></textarea>
+      <div class="reason-chips">
+        <button class="reason-chip" onclick="selectChronicReason(this,'轉至其他診所')">轉至其他診所</button>
+        <button class="reason-chip" onclick="selectChronicReason(this,'不願繼續用藥')">不願繼續用藥</button>
+        <button class="reason-chip" onclick="selectChronicReason(this,'其他')">其他</button>
+      </div>
+      <div id="exclude-chronic-note-row" style="margin-top:10px">
+        <div class="modal-note-label" id="exclude-chronic-note-label">備註（選填）</div>
+        <textarea class="modal-note" id="exclude-chronic-reason" placeholder="選填備註"></textarea>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="btn-modal-cancel" onclick="closeExcludeModal()">取消</button>
@@ -1206,6 +1220,7 @@
   }
 
   async function markContacted(btn, key, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId) {
+    if (!activeNurse()) { warnNoNurse(); return; }
     btn.disabled = true;
     try {
       await apiFetch("/api/contacted", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entry: followupStore.get(key), nurse: activeNurse() }) });
@@ -1220,6 +1235,7 @@
   }
 
   async function markCalled(btn, key, pendingBodyId, pendingBadgeId, calledRowsId, calledCountId) {
+    if (!activeNurse()) { warnNoNurse(); return; }
     btn.disabled = true;
     try {
       await apiFetch("/api/called", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ entry: followupStore.get(key), nurse: activeNurse() }) });
@@ -1541,6 +1557,7 @@
   // ── 掛MSPT完成 ──
 
   async function doMarkMsptCompleted(triggerBtn) {
+    if (!activeNurse()) { warnNoNurse(); return; }
     const tr = triggerBtn.closest("tr");
     const key = tr.dataset.key;
     const entry = followupStore.get(key);
@@ -1681,13 +1698,23 @@
     document.querySelectorAll(".reason-chip").forEach(c => c.classList.remove("selected"));
     document.getElementById("exclude-note").value = "";
     document.getElementById("exclude-chronic-reason").value = "";
+    document.getElementById("exclude-chronic-note-label").textContent = "備註（選填）";
+    document.getElementById("exclude-chronic-reason").placeholder = "選填備註";
+    document.getElementById("exclude-mspt-note-label").textContent = "備註（選填）";
+    document.getElementById("exclude-note").placeholder = "選填備註";
+    document.getElementById("exclude-closure-date").value = "";
+    document.getElementById("exclude-closure-date-error").textContent = "";
+    document.getElementById("exclude-closure-date-row").style.display = "none";
     document.getElementById("btn-modal-confirm").disabled = true;
     document.getElementById("exclude-modal").classList.add("open");
   }
 
   document.getElementById("exclude-chronic-reason").addEventListener("input", function () {
     if (_excludeEntry && _excludeEntry.category !== "代謝症候群") {
-      document.getElementById("btn-modal-confirm").disabled = !this.value.trim();
+      const selected = document.querySelector("#exclude-chronic-section .reason-chip.selected");
+      if (selected?.dataset.reason === "其他") {
+        document.getElementById("btn-modal-confirm").disabled = !this.value.trim();
+      }
     }
   });
 
@@ -1700,20 +1727,70 @@
   }
 
   function selectExcludeReason(chip, reason) {
-    document.querySelectorAll(".reason-chip").forEach(c => c.classList.remove("selected"));
+    document.querySelectorAll("#exclude-mspt-section .reason-chip").forEach(c => c.classList.remove("selected"));
     chip.classList.add("selected");
     chip.dataset.reason = reason;
-    document.getElementById("btn-modal-confirm").disabled = false;
+    const isClosureCase = reason === "已結案";
+    const isOther = reason === "其他";
+    document.getElementById("exclude-closure-date-row").style.display = isClosureCase ? "" : "none";
+    document.getElementById("exclude-closure-date-error").textContent = "";
+    document.getElementById("exclude-mspt-note-label").textContent = isOther ? "原因說明（必填）" : "備註（選填）";
+    document.getElementById("exclude-note").placeholder = isOther ? "請說明排除原因" : "選填備註";
+    document.getElementById("btn-modal-confirm").disabled = isClosureCase
+      ? true
+      : (isOther ? !document.getElementById("exclude-note").value.trim() : false);
+  }
+
+  document.getElementById("exclude-closure-date").addEventListener("input", function () {
+    const iso = parseDateInput(this.value.trim());
+    const errEl = document.getElementById("exclude-closure-date-error");
+    if (iso) {
+      errEl.textContent = "";
+      document.getElementById("btn-modal-confirm").disabled = false;
+    } else {
+      document.getElementById("btn-modal-confirm").disabled = true;
+      if (this.value.trim().length >= 8) errEl.textContent = "格式：20260529 或 2026-05-29";
+      else errEl.textContent = "";
+    }
+  });
+
+  document.getElementById("exclude-note").addEventListener("input", function () {
+    const selected = document.querySelector("#exclude-mspt-section .reason-chip.selected");
+    if (selected && selected.dataset.reason === "其他") {
+      document.getElementById("btn-modal-confirm").disabled = !this.value.trim();
+    }
+  });
+
+  function selectChronicReason(chip, reason) {
+    document.querySelectorAll("#exclude-chronic-section .reason-chip").forEach(c => c.classList.remove("selected"));
+    chip.classList.add("selected");
+    chip.dataset.reason = reason;
+    const isOther = reason === "其他";
+    document.getElementById("exclude-chronic-note-label").textContent = isOther ? "原因說明（必填）" : "備註（選填）";
+    document.getElementById("exclude-chronic-reason").placeholder = isOther ? "請說明排除原因" : "選填備註";
+    document.getElementById("btn-modal-confirm").disabled = isOther
+      ? !document.getElementById("exclude-chronic-reason").value.trim()
+      : false;
   }
 
   async function confirmExclude() {
     if (!_excludeEntry) return;
+    if (!activeNurse()) { warnNoNurse(); closeExcludeModal(); return; }
     const isMspt = _excludeEntry.category === "代謝症候群";
     const reason = isMspt
-      ? document.querySelector(".reason-chip.selected")?.dataset.reason
-      : document.getElementById("exclude-chronic-reason").value.trim();
+      ? document.querySelector("#exclude-mspt-section .reason-chip.selected")?.dataset.reason
+      : document.querySelector("#exclude-chronic-section .reason-chip.selected")?.dataset.reason;
     if (!reason) return;
-    const note = isMspt ? document.getElementById("exclude-note").value.trim() : "";
+    let note = isMspt
+      ? document.getElementById("exclude-note").value.trim()
+      : document.getElementById("exclude-chronic-reason").value.trim();
+    if (reason === "其他" && !note) return;
+    if (reason === "已結案") {
+      const closureIso = parseDateInput(document.getElementById("exclude-closure-date").value.trim());
+      if (!closureIso) return; // shouldn't reach here since button is gated, but safety check
+      const dateLabel = `結案日期：${fmt(closureIso)}`;
+      note = note ? `${dateLabel}　${note}` : dateLabel;
+    }
     const btn = document.getElementById("btn-modal-confirm");
     btn.disabled = true;
     const entry = _excludeEntry;
@@ -1889,6 +1966,7 @@
   }
 
   async function submitManualPickup() {
+    if (!activeNurse()) { warnNoNurse(); closeManualPickupModal(); return; }
     const e = _manualPickupEntry;
     const errEl = document.getElementById("manual-pickup-date-error");
     const pickupDate = parseDateInput(document.getElementById("manual-pickup-date-input").value.trim());
@@ -2032,9 +2110,31 @@
 
   function onNurseChange(val) {
     localStorage.setItem('clinic_nurse', val);
+    _applyNurseStyle(val, false);
+  }
+
+  function _applyNurseStyle(val, error) {
     const sel = document.getElementById('nurse-selector');
-    sel.style.borderColor = val ? 'var(--border)' : '#f59e0b';
-    sel.style.background  = val ? 'var(--bg-card)' : '#fffbeb';
+    if (error) {
+      sel.style.borderColor = '#dc2626';
+      sel.style.background  = '#fef2f2';
+      sel.style.color       = '#dc2626';
+    } else if (val) {
+      sel.style.borderColor = 'var(--border)';
+      sel.style.background  = 'var(--bg-card)';
+      sel.style.color       = 'var(--text)';
+    } else {
+      sel.style.borderColor = '#f59e0b';
+      sel.style.background  = '#fffbeb';
+      sel.style.color       = 'var(--text)';
+    }
+  }
+
+  function warnNoNurse() {
+    _applyNurseStyle('', true);
+    showToast('請先選擇護理師');
+    document.getElementById('nurse-selector').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => _applyNurseStyle(activeNurse(), false), 2500);
   }
 
   async function initNurseSelector() {
@@ -2048,7 +2148,7 @@
       });
       const saved = activeNurse();
       if (saved && names.includes(saved)) sel.value = saved;
-      onNurseChange(sel.value);
+      _applyNurseStyle(sel.value, false);
       // populate print staff select with same list
       const printSel = document.getElementById('print-staff-select');
       printSel.innerHTML = '<option value="">全部人員</option>';
