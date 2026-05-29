@@ -16,8 +16,9 @@ import contacts
 import database
 from models import (
     ChartNumberRequest, ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
-    ManualPickupRequest, MsptCompleteRequest, MsptSubmittableEntry, NurseEntryRequest,
-    SubmitRequest, UnexcludeRequest,
+    ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest, MsptManualRemoveRequest,
+    MsptManualRequest, MsptSubmittableEntry,
+    NurseEntryRequest, OnHoldRemoveRequest, OnHoldRequest, SubmitRequest, UnexcludeRequest,
 )
 
 # ── Edit this list to match your clinic's nurse names ──────────────────────────
@@ -159,6 +160,45 @@ def get_report(report_date: date | None = None) -> DailyReport:
         excluded_keys = contacts.get_excluded_keys()          # (chart_number, category)
         mspt_completed_keys = contacts.get_mspt_completed_keys()  # (chart_number, mspt_stage, due_date)
         mspt_checkedin_keys = contacts.get_mspt_checkedin_keys()  # (chart_number, mspt_stage, due_date)
+        on_hold_keys = contacts.get_on_hold_keys()            # (chart_number, category, due_date)
+        manual_overrides = contacts.get_mspt_manual_overrides()
+        as_of = report_date or date.today()
+
+        _STAGE_NEXT_M = {'收案': '追1', '追1': '追2', '追2': '追3', '追3': '年度追蹤', '年度追蹤': '追1'}
+        _MSPT_FOLLOWUP_DAYS = 70
+        _MSPT_REOPEN_DAYS = 365
+
+        def apply_mspt_overrides(entries: list[FollowupEntry]) -> list[FollowupEntry]:
+            if not manual_overrides:
+                return entries
+            result = []
+            for e in entries:
+                ov = manual_overrides.get(e.patient.chart_number)
+                if not ov:
+                    result.append(e)
+                    continue
+                m_stage, m_date = ov['stage'], ov['date']
+                # Skip override if IC data is already newer
+                if e.last_visit_date and m_date <= e.last_visit_date:
+                    result.append(e)
+                    continue
+                next_s = _STAGE_NEXT_M.get(m_stage)
+                if not next_s:
+                    result.append(e)
+                    continue
+                new_due = m_date + timedelta(days=_MSPT_FOLLOWUP_DAYS)
+                new_ov = (as_of - new_due).days
+                if new_ov < 0:
+                    continue  # not yet due — drop from pending
+                result.append(e.model_copy(update={
+                    'mspt_stage': '收案' if new_ov > _MSPT_REOPEN_DAYS else next_s,
+                    'last_stage': m_stage,
+                    'last_visit_date': m_date,
+                    'due_date': new_due,
+                    'days_overdue': new_ov,
+                    'contact_reason': '需重新收案+抽血' if new_ov > _MSPT_REOPEN_DAYS else None,
+                }))
+            return result
 
         def filter_followups(entries: list[FollowupEntry]) -> list[FollowupEntry]:
             result = []
@@ -171,6 +211,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
                 if (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_completed_keys:
                     continue
                 if (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_checkedin_keys:
+                    continue
+                if key in on_hold_keys:
                     continue
                 result.append(e.model_copy(update={"call_required": key in call_required_keys}))
             return result
@@ -198,7 +240,6 @@ def get_report(report_date: date | None = None) -> DailyReport:
 
         # Filter chronic patients suppressed by a manual pickup record
         _CHRONIC_GRACE = 5
-        as_of = report_date or date.today()
         manual_pickup_map = contacts.get_manual_pickup_map()
 
         def chronic_suppressed(entry: FollowupEntry) -> bool:
@@ -232,8 +273,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
         return DailyReport(
             report_date=report.report_date,
             chronic_prescriptions=filter_followups(chronic_prescriptions),
-            mspt_followups=filter_followups(report.mspt_followups),
-            mspt_inactive=filter_followups(report.mspt_inactive),
+            mspt_followups=filter_followups(apply_mspt_overrides(report.mspt_followups)),
+            mspt_inactive=filter_followups(apply_mspt_overrides(report.mspt_inactive)),
             mspt_submittable=[
                 e for e in report.mspt_submittable
                 if (e.patient.chart_number, e.mspt_stage) not in submitted_keys
@@ -246,6 +287,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
             mspt_completed=contacts.get_mspt_completed_entries(),
             mspt_checkedin=contacts.get_mspt_checkedin_entries(),
             chronic_manual_pickups=contacts.get_manual_pickup_entries(),
+            on_hold=contacts.get_on_hold_entries(),
+            mspt_manual=contacts.get_mspt_manual_entries(),
         )
     except HTTPException:
         raise
@@ -498,15 +541,74 @@ def debug_p_sample(n: int = 3) -> dict:
     }
 
 
+@app.post("/api/on-hold")
+def mark_on_hold(req: OnHoldRequest) -> dict:
+    try:
+        hold_id = contacts.mark_on_hold(req.entry, req.note, req.nurse)
+        return {"hold_id": hold_id}
+    except Exception:
+        logger.exception("mark_on_hold failed for %s", req.entry.patient.chart_number)
+        raise HTTPException(status_code=500, detail="暫緩記錄儲存失敗，請稍後再試")
+
+
+@app.post("/api/on-hold/manual")
+def mark_on_hold_manual(req: ManualOnHoldRequest) -> dict:
+    try:
+        hold_id = contacts.mark_on_hold_manual(req.name, req.note, req.nurse, req.category)
+        return {"hold_id": hold_id}
+    except Exception:
+        logger.exception("mark_on_hold_manual failed for %s", req.name)
+        raise HTTPException(status_code=500, detail="暫緩記錄儲存失敗，請稍後再試")
+
+
+@app.delete("/api/on-hold")
+def remove_on_hold(req: OnHoldRemoveRequest) -> None:
+    try:
+        contacts.remove_on_hold(req.hold_id)
+    except Exception:
+        logger.exception("remove_on_hold failed for id=%s", req.hold_id)
+        raise HTTPException(status_code=500, detail="撤銷暫緩失敗，請稍後再試")
+
+
+@app.post("/api/mspt-manual")
+def mark_mspt_manual(req: MsptManualRequest) -> None:
+    try:
+        contacts.mark_mspt_manual(
+            req.entry.patient.chart_number,
+            req.entry.patient.name,
+            req.entry.patient.birth_date,
+            req.mspt_stage,
+            req.completed_date,
+            req.nurse,
+        )
+    except Exception:
+        logger.exception("mark_mspt_manual failed for %s", req.entry.patient.chart_number)
+        raise HTTPException(status_code=500, detail="手動標記儲存失敗，請稍後再試")
+
+
+@app.delete("/api/mspt-manual")
+def unmark_mspt_manual(req: MsptManualRemoveRequest) -> None:
+    try:
+        contacts.unmark_mspt_manual(req.chart_number)
+    except Exception:
+        logger.exception("unmark_mspt_manual failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="撤銷手動標記失敗，請稍後再試")
+
+
 @app.get("/api/debug/mspt")
 def debug_mspt(nat_id: str | None = None) -> dict:
     """Diagnostic: show MSPT stage detection across the full 2-year scan window.
-    Pass ?nat_id=A123456789 to see a specific patient's stage history."""
-    from datetime import timedelta
+    Pass ?nat_id=A123456789 to see a specific patient's full diagnosis."""
+    import sqlite3 as _sqlite3
     from database import _ic_files_since, _parse_dbf_cached, _roc_to_date
 
     as_of = date.today()
     MAX_INACTIVE_DAYS = 2 * 365
+    REOPEN_AFTER_DAYS = 365
+    METABOLIC_FOLLOWUP_DAYS = 70
+    _STAGE_NEXT = {'收案': '追1', '追1': '追2', '追2': '追3', '追3': '年度追蹤', '年度追蹤': '追1'}
+    _STAGE_GAPS = {'收案': METABOLIC_FOLLOWUP_DAYS, '追1': METABOLIC_FOLLOWUP_DAYS,
+                   '追2': METABOLIC_FOLLOWUP_DAYS, '追3': METABOLIC_FOLLOWUP_DAYS, '年度追蹤': METABOLIC_FOLLOWUP_DAYS}
     since = as_of - timedelta(days=MAX_INACTIVE_DAYS)
     ic_files = _ic_files_since(since)
 
@@ -517,6 +619,10 @@ def debug_mspt(nat_id: str | None = None) -> dict:
 
     all_mspt_drug_nos: set[str] = set()
     patient_stages: dict[str, list] = {}
+    patient_info: dict[str, dict] = {}
+
+    # Also collect raw P-file DRUG_NO values seen for this patient (diagnosis)
+    patient_raw_drug_nos: dict[str, list] = {}
 
     for ic_path in ic_files:
         month_cf_to_id: dict[str, str] = {}
@@ -531,6 +637,13 @@ def debug_mspt(nat_id: str | None = None) -> dict:
                 if cf and nid:
                     month_cf_to_id[cf] = nid
                     month_cf_dates[cf] = v_date
+                    name  = r.get('NAME', '').strip()
+                    birth = _roc_to_date(r.get('BIRTH', ''))
+                    if name and birth:
+                        prev = patient_info.get(nid)
+                        if prev is None or v_date > prev['latest_date']:
+                            patient_info[nid] = {'name': name, 'birth': birth.isoformat(),
+                                                 'latest_date': v_date}
         except Exception:
             pass
 
@@ -545,6 +658,10 @@ def debug_mspt(nat_id: str | None = None) -> dict:
                 stage = _MSPT_CODE_MAP.get(dn)
                 if stage:
                     all_mspt_drug_nos.add(dn)
+                if nid and nat_id and nid == nat_id and dn:
+                    patient_raw_drug_nos.setdefault(nid, []).append(
+                        {'drug_no': dn, 'cf': cf, 'file': os.path.basename(p_path)}
+                    )
                 if not nid or not stage:
                     continue
                 v_date = month_cf_dates.get(cf)
@@ -563,9 +680,60 @@ def debug_mspt(nat_id: str | None = None) -> dict:
             last_stage_counts[ls] = last_stage_counts.get(ls, 0) + 1
 
     specific = None
+    db_status = None
+    computed = None
+
     if nat_id:
         hist = patient_stages.get(nat_id)
         specific = sorted(hist, key=lambda x: x['date']) if hist else []
+
+        # Compute what the system would show for this patient
+        if specific:
+            last_stage = specific[-1]['stage']
+            last_date  = date.fromisoformat(specific[-1]['date'])
+            days_inactive = (as_of - last_date).days
+            next_stage = _STAGE_NEXT.get(last_stage)
+            gap        = _STAGE_GAPS.get(last_stage)
+            due_date   = last_date + timedelta(days=gap) if gap else None
+            days_overdue = (as_of - due_date).days if due_date else None
+            computed = {
+                'last_stage': last_stage,
+                'last_date': last_date.isoformat(),
+                'days_inactive': days_inactive,
+                'next_stage': next_stage,
+                'gap_days': gap,
+                'due_date': due_date.isoformat() if due_date else None,
+                'days_overdue': days_overdue,
+                'exceeds_MAX_INACTIVE': days_inactive > MAX_INACTIVE_DAYS,
+                'exceeds_REOPEN_AFTER': days_overdue is not None and days_overdue > REOPEN_AFTER_DAYS,
+                'verdict': (
+                    'NOT_DUE_YET' if days_overdue is not None and days_overdue < 0
+                    else 'NEEDS_REOPEN' if days_overdue is not None and days_overdue > REOPEN_AFTER_DAYS
+                    else 'SHOULD_APPEAR' if days_overdue is not None and days_overdue >= 0
+                    else 'UNKNOWN'
+                ),
+            }
+
+        # Check contacts.db for this patient
+        try:
+            conn = _sqlite3.connect(contacts.DB_PATH)
+            db_status = {
+                'contacts': conn.execute(
+                    "SELECT chart_number,category,due_date,mspt_stage,attempt,contacted_at FROM contacts WHERE chart_number=?",
+                    (nat_id,)).fetchall(),
+                'excluded': conn.execute(
+                    "SELECT chart_number,category,reason,excluded_at FROM excluded WHERE chart_number=?",
+                    (nat_id,)).fetchall(),
+                'mspt_completed': conn.execute(
+                    "SELECT chart_number,mspt_stage,due_date,completed_at FROM mspt_completed WHERE chart_number=?",
+                    (nat_id,)).fetchall(),
+                'mspt_checkedin': conn.execute(
+                    "SELECT chart_number,mspt_stage,due_date,checkedin_at FROM mspt_checkedin WHERE chart_number=?",
+                    (nat_id,)).fetchall(),
+            }
+            conn.close()
+        except Exception as e:
+            db_status = {'error': str(e)}
 
     return {
         'as_of': as_of.isoformat(),
@@ -575,6 +743,10 @@ def debug_mspt(nat_id: str | None = None) -> dict:
         'mspt_patients_detected': len(patient_stages),
         'last_stage_counts': last_stage_counts,
         'specific_patient_history': specific,
+        'specific_patient_info': patient_info.get(nat_id) if nat_id else None,
+        'specific_raw_drug_nos_in_p_files': patient_raw_drug_nos.get(nat_id, []) if nat_id else None,
+        'computed_outcome': computed,
+        'db_status': db_status,
     }
 
 

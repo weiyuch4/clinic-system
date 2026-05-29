@@ -3,7 +3,7 @@ from contextlib import contextmanager
 from datetime import date, datetime, timedelta
 from typing import Generator
 
-from models import ExcludedEntry, FollowupEntry, ManualPickupEntry, MsptStage, MsptSubmittableEntry, Patient
+from models import ExcludedEntry, FollowupEntry, ManualPickupEntry, MsptManualEntry, MsptStage, MsptSubmittableEntry, OnHoldEntry, Patient
 
 DB_PATH = "contacts.db"
 RECONTACT_DAYS = 7
@@ -85,6 +85,38 @@ _CREATE_MSPT_COMPLETED = """
     )
 """
 
+_CREATE_ON_HOLD = """
+    CREATE TABLE IF NOT EXISTS on_hold (
+        id              INTEGER PRIMARY KEY AUTOINCREMENT,
+        chart_number    TEXT,
+        category        TEXT,
+        due_date        TEXT,
+        name            TEXT NOT NULL,
+        birth_date      TEXT,
+        disease_name    TEXT,
+        days_overdue    INTEGER,
+        mspt_stage      TEXT,
+        last_stage      TEXT,
+        last_visit_date TEXT,
+        note            TEXT NOT NULL,
+        held_at         TEXT NOT NULL,
+        nurse           TEXT DEFAULT '',
+        is_manual       INTEGER DEFAULT 0
+    )
+"""
+
+_CREATE_MSPT_MANUAL = """
+    CREATE TABLE IF NOT EXISTS mspt_manual (
+        chart_number    TEXT PRIMARY KEY,
+        name            TEXT NOT NULL,
+        birth_date      TEXT NOT NULL,
+        mspt_stage      TEXT NOT NULL,
+        completed_date  TEXT NOT NULL,
+        nurse           TEXT DEFAULT '',
+        marked_at       TEXT NOT NULL
+    )
+"""
+
 _CREATE_MSPT_CHECKEDIN = """
     CREATE TABLE IF NOT EXISTS mspt_checkedin (
         chart_number    TEXT NOT NULL,
@@ -119,6 +151,8 @@ def init() -> None:
         conn.execute(_CREATE_EXCLUDED)
         conn.execute(_CREATE_MSPT_COMPLETED)
         conn.execute(_CREATE_MSPT_CHECKEDIN)
+        conn.execute(_CREATE_MSPT_MANUAL)
+        conn.execute(_CREATE_ON_HOLD)
         conn.execute(_CREATE_MANUAL_PICKUPS)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
@@ -665,6 +699,48 @@ def get_manual_pickup_entries() -> list[ManualPickupEntry]:
     return result
 
 
+def mark_mspt_manual(chart_number: str, name: str, birth_date: date, mspt_stage: str,
+                     completed_date: date, nurse: str = '') -> None:
+    with _conn() as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO mspt_manual
+               (chart_number, name, birth_date, mspt_stage, completed_date, nurse, marked_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            (chart_number, name, birth_date.isoformat(), mspt_stage,
+             completed_date.isoformat(), nurse, date.today().isoformat()),
+        )
+
+
+def unmark_mspt_manual(chart_number: str) -> None:
+    with _conn() as conn:
+        conn.execute("DELETE FROM mspt_manual WHERE chart_number = ?", (chart_number,))
+
+
+def get_mspt_manual_overrides() -> dict[str, dict]:
+    """Returns {chart_number: {'stage': str, 'date': date}} for post-processing in get_report."""
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT chart_number, mspt_stage, completed_date FROM mspt_manual"
+        ).fetchall()
+    return {r[0]: {'stage': r[1], 'date': date.fromisoformat(r[2])} for r in rows}
+
+
+def get_mspt_manual_entries() -> list[MsptManualEntry]:
+    with _conn() as conn:
+        rows = conn.execute(
+            """SELECT chart_number, name, birth_date, mspt_stage, completed_date, nurse, marked_at
+               FROM mspt_manual ORDER BY marked_at DESC"""
+        ).fetchall()
+    return [
+        MsptManualEntry(
+            chart_number=r[0], name=r[1], birth_date=date.fromisoformat(r[2]),
+            mspt_stage=r[3], completed_date=date.fromisoformat(r[4]),
+            nurse=r[5] or '', marked_at=date.fromisoformat(r[6]),
+        )
+        for r in rows
+    ]
+
+
 def get_activity_stats(month: str) -> dict[str, dict[str, int]]:
     """month: 'YYYY-MM'. Returns {nurse: {contacted, called, mspt, excluded, pickup}}."""
     prefix = month + "-%"
@@ -704,6 +780,89 @@ def get_activity_stats(month: str) -> dict[str, dict[str, int]]:
         _row(nurse)["pickup"] += count
 
     return stats
+
+
+def mark_on_hold(entry: FollowupEntry, note: str, nurse: str = '') -> int:
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO on_hold
+               (chart_number, category, due_date, name, birth_date, disease_name,
+                days_overdue, mspt_stage, last_stage, last_visit_date, note, held_at, nurse, is_manual)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)""",
+            (
+                entry.patient.chart_number,
+                entry.category,
+                entry.due_date.isoformat(),
+                entry.patient.name,
+                entry.patient.birth_date.isoformat(),
+                entry.disease_name,
+                entry.days_overdue,
+                entry.mspt_stage,
+                entry.last_stage,
+                entry.last_visit_date.isoformat() if entry.last_visit_date else None,
+                note,
+                date.today().isoformat(),
+                nurse,
+            ),
+        )
+        return cur.lastrowid
+
+
+def mark_on_hold_manual(name: str, note: str, nurse: str = '', category: str | None = None) -> int:
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO on_hold (name, category, note, held_at, nurse, is_manual)
+               VALUES (?, ?, ?, ?, ?, 1)""",
+            (name, category, note, date.today().isoformat(), nurse),
+        )
+        return cur.lastrowid
+
+
+def remove_on_hold(hold_id: int) -> None:
+    with _conn() as conn:
+        conn.execute("DELETE FROM on_hold WHERE id = ?", (hold_id,))
+
+
+def get_on_hold_keys() -> set[tuple[str, str, str]]:
+    """(chart_number, category, due_date) for non-manual entries — used to filter the main list."""
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT chart_number, category, due_date FROM on_hold WHERE is_manual = 0 AND chart_number IS NOT NULL"
+        ).fetchall()
+    return {(r[0], r[1], r[2]) for r in rows}
+
+
+def get_on_hold_entries() -> list[OnHoldEntry]:
+    with _conn() as conn:
+        rows = conn.execute(
+            """SELECT id, chart_number, category, due_date, name, birth_date, disease_name,
+                      days_overdue, mspt_stage, last_stage, last_visit_date, note, held_at, nurse, is_manual
+               FROM on_hold ORDER BY held_at DESC"""
+        ).fetchall()
+    result = []
+    for r in rows:
+        is_manual = bool(r[14])
+        result.append(OnHoldEntry(
+            hold_id=r[0],
+            patient=Patient(
+                chart_number=r[1] or '',
+                name=r[4],
+                birth_date=date.fromisoformat(r[5]) if r[5] else date.today(),
+            ) if not is_manual else None,
+            category=r[2],
+            due_date=date.fromisoformat(r[3]) if r[3] else None,
+            days_overdue=r[7],
+            mspt_stage=r[8],
+            last_stage=r[9],
+            last_visit_date=date.fromisoformat(r[10]) if r[10] else None,
+            disease_name=r[6],
+            note=r[11],
+            held_at=date.fromisoformat(r[12]),
+            nurse=r[13] or '',
+            is_manual=is_manual,
+            manual_name=r[4] if is_manual else '',
+        ))
+    return result
 
 
 def get_submitted_entries() -> list[MsptSubmittableEntry]:

@@ -197,7 +197,47 @@
       background: var(--card);
       border-bottom: 1px solid var(--border);
       padding: 0 28px;
+      position: sticky;
+      top: 58px;
+      z-index: 9;
     }
+
+    /* ── Header search widget ── */
+    #header-search { display: flex; align-items: center; gap: 4px; }
+    #header-search-input-wrap {
+      display: flex; align-items: center; gap: 6px;
+      overflow: hidden;
+      max-width: 0; opacity: 0;
+      transition: max-width 0.22s ease, opacity 0.18s ease;
+    }
+    #header-search.open #header-search-input-wrap { max-width: 300px; opacity: 1; }
+    #header-search-field { position: relative; display: flex; align-items: center; }
+    #header-search-icon {
+      position: absolute; left: 9px;
+      color: var(--text-muted); pointer-events: none;
+      display: flex; align-items: center;
+    }
+    #patient-search {
+      width: 210px; height: 34px;
+      padding: 0 26px 0 29px;
+      border: 1px solid var(--border); border-radius: 8px;
+      font-size: 13px; font-family: inherit;
+      color: var(--text); background: var(--bg);
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+    }
+    #patient-search:focus { border-color: var(--blue); box-shadow: 0 0 0 2px #bfdbfe; background: white; }
+    #patient-search::placeholder { color: var(--text-muted); }
+    #search-clear {
+      position: absolute; right: 7px; display: none;
+      background: none; border: none; color: var(--text-muted);
+      cursor: pointer; padding: 3px 4px; border-radius: 4px; line-height: 1; font-size: 13px;
+    }
+    #search-clear:hover { color: var(--text); background: var(--bg); }
+    #search-count { font-size: 12px; color: var(--text-sub); white-space: nowrap; display: none; }
+    #search-count.no-match { color: var(--text-muted); }
+    #btn-search-toggle { width: 34px; padding: 0; justify-content: center; }
+    #btn-search-toggle.active { border-color: var(--blue); color: var(--blue); background: var(--blue-soft); }
     .tab-btn {
       display: flex; align-items: center; gap: 8px;
       padding: 12px 20px;
@@ -493,6 +533,24 @@
     .collapse-toggle.checkedin-section:hover { background: #fef3c7; }
     .collapse-toggle.checkedin-section .collapse-label { color: #92400e; font-weight: 700; }
 
+    /* On-hold section */
+    .collapse-toggle.onhold-section { background: #fef9ec; }
+    .collapse-toggle.onhold-section:hover { background: #fef3c7; }
+    .collapse-toggle.onhold-section .collapse-label { color: #b45309; font-weight: 700; }
+    .btn-add-manual-onhold {
+      margin: 0 8px 0 auto; padding: 3px 10px; font-size: 11px; font-weight: 600;
+      border-radius: 6px; border: 1px solid #d97706; background: #fff; color: #b45309;
+      cursor: pointer; white-space: nowrap; flex-shrink: 0;
+    }
+    .btn-add-manual-onhold:hover { background: #fffbeb; }
+    tr.on-hold-row td:first-child { box-shadow: inset 3px 0 0 #f59e0b; }
+    .on-hold-note {
+      display: inline-block; font-size: 11px; color: #92400e; background: #fffbeb;
+      border: 1px solid #fde68a; padding: 2px 8px; border-radius: 4px;
+      max-width: 220px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      vertical-align: middle;
+    }
+
     /* ── Archive divider ── */
     .archive-divider {
       display: flex; align-items: center; gap: 10px;
@@ -723,6 +781,27 @@
     <h1>診所追蹤系統</h1>
   </div>
   <div style="display:flex;align-items:center;gap:8px">
+  <div id="header-search">
+    <div id="header-search-input-wrap">
+      <div id="header-search-field">
+        <span id="header-search-icon">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/>
+          </svg>
+        </span>
+        <input type="text" id="patient-search" placeholder="搜尋姓名、病歷號或出生日期"
+          oninput="onPatientSearch(this.value)"
+          onkeydown="if(event.key==='Escape'){this.value?clearPatientSearch():closeHeaderSearch();}" />
+        <button id="search-clear" title="清除搜尋" onclick="clearPatientSearch()">✕</button>
+      </div>
+      <span id="search-count"></span>
+    </div>
+    <button class="btn-print" id="btn-search-toggle" title="搜尋病患" onclick="toggleHeaderSearch()">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor">
+        <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/>
+      </svg>
+    </button>
+  </div>
   <button class="btn-print" id="btn-notice" onclick="toggleNotice()" title="公告訊息" style="display:none;position:relative">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.158-1.342-4.087-3.005-4.901z"/></svg>
     公告
@@ -854,6 +933,21 @@
         <tbody id="chronic-called-rows"></tbody>
       </table>
     </div>
+    <div class="collapse-toggle onhold-section" onclick="toggleSection('chronic-onhold-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 暫緩 <span id="chronic-onhold-count">0</span></span>
+      <button class="btn-add-manual-onhold" onclick="event.stopPropagation();openManualOnHoldModal('慢簽')">+ 手動新增</button>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="chronic-onhold-body">
+      <div style="font-size:12px;color:#92400e;padding:8px 16px 4px;background:#fffbeb">待確認或處理的病患。可直接在此完成操作，或點擊「撤銷暫緩」使其回到待聯絡清單。</div>
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>病名</th><th>備註</th><th></th>
+        </tr></thead>
+        <tbody id="chronic-onhold-rows"></tbody>
+      </table>
+    </div>
     <div class="archive-divider">
       <div class="archive-divider-line"></div>
       <span class="archive-divider-label">歸檔紀錄</span>
@@ -958,6 +1052,21 @@
         <tbody id="mspt-checkedin-rows"></tbody>
       </table>
     </div>
+    <div class="collapse-toggle onhold-section" onclick="toggleSection('mspt-onhold-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 暫緩 <span id="mspt-onhold-count">0</span></span>
+      <button class="btn-add-manual-onhold" onclick="event.stopPropagation();openManualOnHoldModal('代謝症候群')">+ 手動新增</button>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="mspt-onhold-body">
+      <div style="font-size:12px;color:#92400e;padding:8px 16px 4px;background:#fffbeb">待確認或處理的病患。可直接在此完成操作，或點擊「撤銷暫緩」使其回到待聯絡清單。</div>
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>下個階段</th><th>備註</th><th></th>
+        </tr></thead>
+        <tbody id="mspt-onhold-rows"></tbody>
+      </table>
+    </div>
     <div class="archive-divider">
       <div class="archive-divider-line"></div>
       <span class="archive-divider-label">歸檔紀錄</span>
@@ -974,6 +1083,20 @@
           <th>病患</th><th>出生日期</th><th>完成階段</th><th>上次回診</th><th>完成日期</th><th></th>
         </tr></thead>
         <tbody id="mspt-completed-rows"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle archive" onclick="toggleSection('mspt-manual-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 手動標記 <span id="mspt-manual-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="mspt-manual-body">
+      <div style="font-size:12px;color:var(--text-sub);padding:8px 16px 4px">手動標記補登的MSPT完成紀錄，用於資料遺失期間的階段校正。</div>
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>完成階段</th><th>完成日期</th><th>標記日期</th><th>護理師</th><th></th>
+        </tr></thead>
+        <tbody id="mspt-manual-rows"></tbody>
       </table>
     </div>
     <div class="collapse-toggle archive" onclick="toggleSection('mspt-excluded-body', this)">
@@ -1009,6 +1132,68 @@
         style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;font-size:14px">取消</button>
       <button id="manual-pickup-confirm-btn" onclick="submitManualPickup()"
         style="padding:8px 18px;border-radius:8px;border:none;background:var(--blue);color:white;cursor:pointer;font-size:14px;font-weight:600">確認標記</button>
+    </div>
+  </div>
+</div>
+
+<!-- On-hold modal -->
+<div class="modal-overlay" id="onhold-modal" onclick="maybeCloseOnHoldModal(event)">
+  <div class="modal-box" style="max-width:400px">
+    <h3>暫緩</h3>
+    <p class="modal-subtitle" id="onhold-modal-desc"></p>
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">備註 <span style="color:#e53e3e">*</span></label>
+    <textarea id="onhold-note-input" rows="3" placeholder="例：需確認病歷、無法聯繫、需請示醫師…"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"
+      oninput="document.getElementById('onhold-confirm-btn').disabled=!this.value.trim()"></textarea>
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn-modal-cancel" onclick="closeOnHoldModal()">取消</button>
+      <button class="btn-modal-confirm" id="onhold-confirm-btn" disabled onclick="confirmOnHold()" style="background:#b45309">確認暫緩</button>
+    </div>
+  </div>
+</div>
+
+<!-- Manual on-hold modal -->
+<div class="modal-overlay" id="manual-onhold-modal" onclick="maybeCloseManualOnHoldModal(event)">
+  <div class="modal-box" style="max-width:400px">
+    <h3>手動新增暫緩</h3>
+    <p class="modal-subtitle" id="manual-onhold-modal-desc"></p>
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">姓名 <span style="color:#e53e3e">*</span></label>
+    <input type="text" id="manual-onhold-name" placeholder="病患姓名"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:16px;box-sizing:border-box"
+      oninput="validateManualOnHold()" />
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">備註 <span style="color:#e53e3e">*</span></label>
+    <textarea id="manual-onhold-note" rows="3" placeholder="例：需確認病歷、找不到在系統中…"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;resize:vertical;box-sizing:border-box"
+      oninput="validateManualOnHold()"></textarea>
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="btn-modal-cancel" onclick="closeManualOnHoldModal()">取消</button>
+      <button class="btn-modal-confirm" id="manual-onhold-confirm-btn" disabled onclick="confirmManualOnHold()" style="background:#b45309">確認新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- MSPT Manual mark modal -->
+<div class="modal-overlay" id="mspt-manual-modal" onclick="maybeCloseMsptManualModal(event)">
+  <div class="modal-box" style="max-width:400px">
+    <h3>手動標記MSPT</h3>
+    <p class="modal-subtitle" id="mspt-manual-modal-desc"></p>
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">完成的階段</label>
+    <select id="mspt-manual-stage-select"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:16px;background:var(--card)">
+      <option value="收案">收案</option>
+      <option value="追1">追1</option>
+      <option value="追2">追2</option>
+      <option value="追3">追3</option>
+      <option value="年度追蹤">年度追蹤</option>
+    </select>
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">完成日期（請查閱病歷）</label>
+    <input type="text" id="mspt-manual-date-input" placeholder="例：20260515 或 2026-05-15"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:6px" />
+    <div id="mspt-manual-date-error" style="font-size:12px;color:#e53e3e;min-height:16px;margin-bottom:4px"></div>
+    <div id="mspt-manual-date-preview" style="font-size:13px;color:var(--text-muted);min-height:18px;margin-bottom:20px"></div>
+    <div class="modal-footer">
+      <button class="btn-modal-cancel" onclick="closeMsptManualModal()">取消</button>
+      <button class="btn-modal-confirm" id="mspt-manual-confirm-btn" disabled onclick="confirmMsptManual()">確認標記</button>
     </div>
   </div>
 </div>
@@ -1157,6 +1342,7 @@
     const tr = document.createElement("tr");
     tr.className = e.days_overdue === 0 ? "today" : "overdue";
     tr.dataset.key = key;
+    tr.dataset.search = patientSearchStr(e.patient);
 
     const lastVisitCell = e.last_visit_date
       ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}<span class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</span>`
@@ -1182,6 +1368,8 @@
             <button class="btn-more" title="更多操作">•••</button>
             <div class="dropdown-menu">
               <button class="dropdown-item" data-act="checkedin">現場掛號（待建檔）</button>
+              <button class="dropdown-item" data-act="mspt-manual">手動標記…</button>
+              <button class="dropdown-item" data-act="onhold">暫緩…</button>
               <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
             </div>
           </div>
@@ -1208,6 +1396,7 @@
               <button class="btn-more" title="更多操作">•••</button>
               <div class="dropdown-menu">
                 <button class="dropdown-item" data-act="manual-pickup">手動標記已取藥</button>
+                <button class="dropdown-item" data-act="onhold">暫緩…</button>
                 <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
               </div>
             </div>
@@ -1243,6 +1432,20 @@
         checkedinItem.onclick = () => {
           dropdown.classList.remove("open");
           markCheckedin(checkedinItem, followupKey(e));
+        };
+      }
+      const msptManualItem = tr.querySelector("[data-act='mspt-manual']");
+      if (msptManualItem) {
+        msptManualItem.onclick = () => {
+          dropdown.classList.remove("open");
+          openMsptManualModal(e, pendingBodyId, pendingBadgeId);
+        };
+      }
+      const onholdItem = tr.querySelector("[data-act='onhold']");
+      if (onholdItem) {
+        onholdItem.onclick = () => {
+          dropdown.classList.remove("open");
+          openOnHoldModal(e, pendingBodyId, pendingBadgeId);
         };
       }
       const manualPickupItem = tr.querySelector("[data-act='manual-pickup']");
@@ -1297,6 +1500,7 @@
     const tr = document.createElement("tr");
     tr.className = "done";
     tr.dataset.key = key;
+    tr.dataset.search = patientSearchStr(e.patient);
     tr.innerHTML = `
       <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
       <td>${e.disease_name || "—"}</td>
@@ -1322,6 +1526,7 @@
       tr = document.createElement("tr");
       tr.className = "done";
       tr.dataset.key = key;
+      tr.dataset.search = patientSearchStr(e.patient);
       tr.innerHTML = `
         <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
@@ -1350,6 +1555,7 @@
       tr = document.createElement("tr");
       tr.className = "done-final";
       tr.dataset.key = key;
+      tr.dataset.search = patientSearchStr(e.patient);
       tr.innerHTML = `
         <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
@@ -1478,6 +1684,7 @@
       const tr = document.createElement("tr");
       tr.className = rowClass;
       tr.dataset.key = key;
+      tr.dataset.search = patientSearchStr(e.patient);
       const actionsCell = isMspt
         ? `<div class="action-cell"><button class="btn-checkedin">現場掛號</button><button class="btn-complete">完成MSPT</button><button class="btn-undo">撤銷</button></div>`
         : `<button class="btn-undo">撤銷</button>`;
@@ -1581,7 +1788,9 @@
     renderDoneRows("mspt-called-rows",       "mspt-called-count",       data.called.filter(e => e.category === "代謝症候群"),    "done-final");
     renderMsptInactiveRows(data.mspt_inactive || []);
     renderMsptCheckedinRows(data.mspt_checkedin || []);
+    renderOnHoldRows(data.on_hold || []);
     renderMsptCompletedRows(data.mspt_completed || []);
+    renderMsptManualRows(data.mspt_manual || []);
     renderExcludedRows(data.excluded || []);
   }
 
@@ -1608,6 +1817,8 @@
     const tbody = tr.parentElement;
     const tbodyId = tbody.id;
     const fromCheckedin = tbodyId === "mspt-checkedin-rows";
+    const fromOnHold = tbodyId === "mspt-onhold-rows";
+    const holdId = tr.dataset.holdId ? parseInt(tr.dataset.holdId) : null;
     try {
       await apiFetch("/api/mspt-completed", {
         method: "POST",
@@ -1620,6 +1831,12 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ chart_number: entry.patient.chart_number, mspt_stage: entry.mspt_stage, due_date: entry.due_date }),
         });
+      }
+      if (holdId) {
+        try {
+          await apiFetch("/api/on-hold", { method: "DELETE", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hold_id: holdId }) });
+        } catch (_) {}
       }
       fadeRemove(tr, () => {
         if (tbodyId === "mspt-body") {
@@ -1647,6 +1864,7 @@
     const tr = document.createElement("tr");
     tr.className = "done-complete";
     tr.dataset.key = key;
+    tr.dataset.search = patientSearchStr(entry.patient);
     tr.innerHTML = `
       <td><div class="patient-name">${entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div></td>
       <td class="mono">${fmt(entry.patient.birth_date)}</td>
@@ -1727,6 +1945,7 @@
     const tr = document.createElement("tr");
     tr.className = "checkedin-row";
     tr.dataset.key = key;
+    tr.dataset.search = patientSearchStr(entry.patient);
     const nowTime = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
     const nurseLabel = nurse ? ` ／ ${nurse}` : "";
     tr.innerHTML = `
@@ -1780,6 +1999,7 @@
       const tr = document.createElement("tr");
       tr.className = "checkedin-row";
       tr.dataset.key = key;
+      tr.dataset.search = patientSearchStr(e.patient);
       const timeLabel = e.contacted_time || "—";
       const nurseLabel = e.nurse ? ` ／ ${e.nurse}` : "";
       tr.innerHTML = `
@@ -1817,6 +2037,7 @@
       const daysSinceStr = daysSince !== null ? `${daysSince} 天` : "—";
       const tr = document.createElement("tr");
       tr.dataset.key = followupKey(e);
+      tr.dataset.search = patientSearchStr(e.patient);
       tr.innerHTML = `
         <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
@@ -1828,6 +2049,8 @@
             <button class="btn-more" title="更多操作">•••</button>
             <div class="dropdown-menu">
               <button class="dropdown-item" data-act="checkedin">現場掛號（待建檔）</button>
+              <button class="dropdown-item" data-act="mspt-manual">手動標記…</button>
+              <button class="dropdown-item" data-act="onhold">暫緩…</button>
               <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
             </div>
           </div>
@@ -1843,6 +2066,14 @@
         dropdown.classList.remove("open");
         markCheckedin(tr.querySelector("[data-act='checkedin']"), followupKey(e));
       });
+      tr.querySelector("[data-act='mspt-manual']").addEventListener("click", () => {
+        dropdown.classList.remove("open");
+        openMsptManualModal(e, "mspt-inactive-body", "mspt-inactive-count");
+      });
+      tr.querySelector("[data-act='onhold']").addEventListener("click", () => {
+        dropdown.classList.remove("open");
+        openOnHoldModal(e, "mspt-inactive-body", "mspt-inactive-count");
+      });
       tr.querySelector("[data-act='exclude']").addEventListener("click", () => {
         dropdown.classList.remove("open");
         openExcludeModal(e, "mspt-inactive-rows", "mspt-inactive-count");
@@ -1856,16 +2087,410 @@
     entries.forEach(e => appendMsptCompletedRow(e, e.contacted_at || todayIso));
   }
 
+  // ── 手動標記MSPT ──
+
+  let _msptManualEntry = null;
+  let _msptManualPendingBodyId = null;
+  let _msptManualPendingBadgeId = null;
+
+  function openMsptManualModal(entry, pendingBodyId, pendingBadgeId) {
+    _msptManualEntry = entry;
+    _msptManualPendingBodyId = pendingBodyId;
+    _msptManualPendingBadgeId = pendingBadgeId;
+    document.getElementById("mspt-manual-modal-desc").textContent =
+      `${entry.patient.name} — 補登資料遺失期間的MSPT完成紀錄`;
+    const sel = document.getElementById("mspt-manual-stage-select");
+    sel.value = entry.mspt_stage || "收案";
+    document.getElementById("mspt-manual-date-input").value = "";
+    document.getElementById("mspt-manual-date-error").textContent = "";
+    document.getElementById("mspt-manual-date-preview").textContent = "";
+    document.getElementById("mspt-manual-confirm-btn").disabled = true;
+    document.getElementById("mspt-manual-modal").classList.add("open");
+    setTimeout(() => document.getElementById("mspt-manual-date-input").focus(), 50);
+  }
+
+  function closeMsptManualModal() {
+    document.getElementById("mspt-manual-modal").classList.remove("open");
+    _msptManualEntry = null;
+    _msptManualPendingBodyId = null;
+    _msptManualPendingBadgeId = null;
+  }
+
+  function maybeCloseMsptManualModal(ev) {
+    if (ev.target === document.getElementById("mspt-manual-modal")) closeMsptManualModal();
+  }
+
+  document.getElementById("mspt-manual-date-input").addEventListener("input", function() {
+    const iso = parseDateInput(this.value.trim());
+    const errEl = document.getElementById("mspt-manual-date-error");
+    const preEl = document.getElementById("mspt-manual-date-preview");
+    const btn = document.getElementById("mspt-manual-confirm-btn");
+    if (iso) {
+      errEl.textContent = "";
+      preEl.textContent = `→ ${fmt(iso)}`;
+      btn.disabled = false;
+    } else {
+      preEl.textContent = "";
+      errEl.textContent = this.value.trim().length >= 6 ? "格式：20260515 或 2026-05-15" : "";
+      btn.disabled = true;
+    }
+  });
+
+  async function confirmMsptManual() {
+    if (!_msptManualEntry) return;
+    const completedDate = parseDateInput(
+      document.getElementById("mspt-manual-date-input").value.trim()
+    );
+    if (!completedDate) {
+      document.getElementById("mspt-manual-date-error").textContent = "請輸入日期，例：20260515 或 2026-05-15";
+      return;
+    }
+    const stage = document.getElementById("mspt-manual-stage-select").value;
+    const entry = _msptManualEntry;
+    const pendingBodyId = _msptManualPendingBodyId;
+    const pendingBadgeId = _msptManualPendingBadgeId;
+    const btn = document.getElementById("mspt-manual-confirm-btn");
+    btn.disabled = true;
+    try {
+      await apiFetch("/api/mspt-manual", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entry, mspt_stage: stage, completed_date: completedDate, nurse: activeNurse() }),
+      });
+      const key = followupKey(entry);
+      const tr = document.querySelector(`tr[data-key="${CSS.escape(key)}"]`);
+      if (tr) {
+        fadeRemove(tr, () => {
+          if (pendingBodyId) {
+            document.getElementById(pendingBodyId)?.dispatchEvent(new Event("rowremoved"));
+          }
+        });
+      }
+      appendMsptManualRow({
+        chart_number: entry.patient.chart_number,
+        name: entry.patient.name,
+        birth_date: entry.patient.birth_date,
+        mspt_stage: stage,
+        completed_date: completedDate,
+        marked_at: todayIso,
+      });
+      closeMsptManualModal();
+      showToast(`${entry.patient.name} 手動標記完成 ✓`, "ok");
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function appendMsptManualRow(m) {
+    const tbody = document.getElementById("mspt-manual-rows");
+    const tr = document.createElement("tr");
+    tr.className = "done-complete";
+    tr.dataset.search = patientSearchStr({ name: m.name, chart_number: m.chart_number, birth_date: m.birth_date });
+    tr.innerHTML = `
+      <td><div class="patient-name">${m.name}</div><div class="chart-number">${m.chart_number}</div></td>
+      <td class="mono">${fmt(m.birth_date)}</td>
+      <td>${stageTag(m.mspt_stage)}</td>
+      <td class="mono" style="color:var(--text-sub)">${fmt(m.completed_date)}</td>
+      <td class="mono" style="color:var(--text-muted)">${fmt(m.marked_at)}</td>
+      <td style="color:var(--text-sub);font-size:13px">${m.nurse || '<span style="color:var(--text-muted)">—</span>'}</td>
+      <td><button class="btn-undo">撤銷</button></td>
+    `;
+    tr.querySelector(".btn-undo").onclick = async (ev) => {
+      const b = ev.currentTarget;
+      b.disabled = true;
+      try {
+        await apiFetch("/api/mspt-manual", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chart_number: m.chart_number }),
+        });
+        fadeRemove(tr, () => {
+          document.getElementById("mspt-manual-count").textContent =
+            document.getElementById("mspt-manual-rows").querySelectorAll("tr").length;
+        });
+        showToast("已撤銷手動標記", "ok");
+      } catch (err) {
+        b.disabled = false;
+        showToast(err.message);
+      }
+    };
+    tbody.insertBefore(tr, tbody.firstChild);
+    document.getElementById("mspt-manual-count").textContent =
+      tbody.querySelectorAll("tr").length;
+  }
+
+  function renderMsptManualRows(entries) {
+    const tbody = document.getElementById("mspt-manual-rows");
+    tbody.innerHTML = "";
+    entries.forEach(m => appendMsptManualRow(m));
+    document.getElementById("mspt-manual-count").textContent = entries.length;
+  }
+
+  // ── 暫緩 (On Hold) ──
+
+  let _onHoldEntry = null;
+  let _onHoldPendingBodyId = null;
+  let _onHoldPendingBadgeId = null;
+  let _manualOnHoldCategory = null;
+
+  function openOnHoldModal(entry, pendingBodyId, pendingBadgeId) {
+    _onHoldEntry = entry;
+    _onHoldPendingBodyId = pendingBodyId;
+    _onHoldPendingBadgeId = pendingBadgeId;
+    document.getElementById("onhold-modal-desc").textContent = `${entry.patient.name} 將移至暫緩清單`;
+    document.getElementById("onhold-note-input").value = "";
+    document.getElementById("onhold-confirm-btn").disabled = true;
+    document.getElementById("onhold-modal").classList.add("open");
+    setTimeout(() => document.getElementById("onhold-note-input").focus(), 50);
+  }
+
+  function closeOnHoldModal() { document.getElementById("onhold-modal").classList.remove("open"); }
+  function maybeCloseOnHoldModal(ev) { if (ev.target === document.getElementById("onhold-modal")) closeOnHoldModal(); }
+
+  async function confirmOnHold() {
+    if (!activeNurse()) { warnNoNurse(); return; }
+    const note = document.getElementById("onhold-note-input").value.trim();
+    if (!note) return;
+    const btn = document.getElementById("onhold-confirm-btn");
+    btn.disabled = true;
+    const entry = _onHoldEntry;
+    const pendingBodyId = _onHoldPendingBodyId;
+    const pendingBadgeId = _onHoldPendingBadgeId;
+    try {
+      const res = await apiFetch("/api/on-hold", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entry, note, nurse: activeNurse() }),
+      });
+      const holdId = res.hold_id;
+      closeOnHoldModal();
+      const key = followupKey(entry);
+      const tbody = document.getElementById(pendingBodyId);
+      const matchRow = tbody ? [...tbody.querySelectorAll("tr[data-key]")].find(r => r.dataset.key === key) : null;
+      const afterFade = () => {
+        if (tbody) { tbody.dispatchEvent(new Event("rowremoved")); updateFollowupBadge(pendingBadgeId, tbody); }
+        appendOnHoldRow(holdId, entry, note);
+      };
+      if (matchRow) fadeRemove(matchRow, afterFade); else afterFade();
+      showToast(`${entry.patient.name} 已暫緩`, "ok");
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function openManualOnHoldModal(category) {
+    _manualOnHoldCategory = category;
+    const label = category === "慢簽" ? "慢簽追蹤" : "代謝症候群追蹤";
+    document.getElementById("manual-onhold-modal-desc").textContent = `新增至「${label}」暫緩清單`;
+    document.getElementById("manual-onhold-name").value = "";
+    document.getElementById("manual-onhold-note").value = "";
+    document.getElementById("manual-onhold-confirm-btn").disabled = true;
+    document.getElementById("manual-onhold-modal").classList.add("open");
+    setTimeout(() => document.getElementById("manual-onhold-name").focus(), 50);
+  }
+
+  function closeManualOnHoldModal() { document.getElementById("manual-onhold-modal").classList.remove("open"); }
+  function maybeCloseManualOnHoldModal(ev) { if (ev.target === document.getElementById("manual-onhold-modal")) closeManualOnHoldModal(); }
+  function validateManualOnHold() {
+    const ok = document.getElementById("manual-onhold-name").value.trim() && document.getElementById("manual-onhold-note").value.trim();
+    document.getElementById("manual-onhold-confirm-btn").disabled = !ok;
+  }
+
+  async function confirmManualOnHold() {
+    const name = document.getElementById("manual-onhold-name").value.trim();
+    const note = document.getElementById("manual-onhold-note").value.trim();
+    if (!name || !note) return;
+    const btn = document.getElementById("manual-onhold-confirm-btn");
+    btn.disabled = true;
+    try {
+      const res = await apiFetch("/api/on-hold/manual", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, note, nurse: activeNurse(), category: _manualOnHoldCategory }),
+      });
+      closeManualOnHoldModal();
+      appendManualOnHoldRow(res.hold_id, name, note, _manualOnHoldCategory);
+      showToast(`${name} 已加入暫緩 ✓`, "ok");
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function _expandOnHoldSection(tbodyId) {
+    const bodyEl = document.getElementById(tbodyId.replace("-rows", "-body"));
+    if (bodyEl && !bodyEl.classList.contains("open")) {
+      bodyEl.classList.add("open");
+      bodyEl.previousElementSibling?.querySelector(".chevron")?.classList.add("open");
+    }
+  }
+
+  function appendOnHoldRow(holdId, entry, note) {
+    const tbodyId = entry.category === "慢簽" ? "chronic-onhold-rows" : "mspt-onhold-rows";
+    _expandOnHoldSection(tbodyId);
+    const tbody = document.getElementById(tbodyId);
+    tbody.prepend(_buildOnHoldTr(holdId, entry, note, false, null, entry.category));
+    updateCountLabel(tbodyId.replace("-rows", "-count"), tbodyId);
+  }
+
+  function appendManualOnHoldRow(holdId, name, note, category) {
+    const tbodyId = category === "慢簽" ? "chronic-onhold-rows" : "mspt-onhold-rows";
+    _expandOnHoldSection(tbodyId);
+    const tbody = document.getElementById(tbodyId);
+    tbody.prepend(_buildOnHoldTr(holdId, null, note, true, name, category));
+    updateCountLabel(tbodyId.replace("-rows", "-count"), tbodyId);
+  }
+
+  function _buildOnHoldTr(holdId, entry, note, isManual, manualName, category) {
+    const tr = document.createElement("tr");
+    tr.className = "on-hold-row";
+    if (holdId) tr.dataset.holdId = holdId;
+    if (entry) {
+      tr.dataset.key = followupKey(entry);
+      followupStore.set(followupKey(entry), entry);
+    }
+    tr.dataset.search = isManual ? (manualName || "").toLowerCase() : (entry ? patientSearchStr(entry.patient) : "");
+
+    const nameCell = isManual
+      ? `<div class="patient-name">${manualName}</div><div class="chart-number" style="color:#b45309">手動新增</div>`
+      : `<div class="patient-name">${entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div>`;
+    const birthCell = isManual ? `<span style="color:var(--text-muted)">—</span>` : `<span class="mono">${fmt(entry.patient.birth_date)}</span>`;
+    const typeCell = isManual
+      ? `<span style="font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:2px 6px">手動</span>`
+      : (category === "代謝症候群"
+        ? (entry.mspt_stage ? stageTag(entry.mspt_stage) : `<span style="color:var(--text-muted)">—</span>`)
+        : `<span style="color:var(--text-sub)">${entry.disease_name || "慢簽"}</span>`);
+
+    let actionsCellHtml;
+    if (isManual) {
+      actionsCellHtml = `<button class="btn-undo">完成處理</button>`;
+    } else if (category === "代謝症候群") {
+      actionsCellHtml = `<div class="action-cell">
+        <button class="btn-action">已通知</button>
+        <button class="btn-complete">完成MSPT</button>
+        <button class="btn-onhold-exclude" style="padding:4px 8px;font-size:11px;border:1px solid #fca5a5;background:#fff;color:#b91c1c;border-radius:6px;cursor:pointer">排除</button>
+        <button class="btn-undo">撤銷暫緩</button>
+      </div>`;
+    } else {
+      actionsCellHtml = `<div class="action-cell">
+        <button class="btn-action">已通知</button>
+        <button class="btn-onhold-exclude" style="padding:4px 8px;font-size:11px;border:1px solid #fca5a5;background:#fff;color:#b91c1c;border-radius:6px;cursor:pointer">排除</button>
+        <button class="btn-undo">撤銷暫緩</button>
+      </div>`;
+    }
+
+    tr.innerHTML = `
+      <td>${nameCell}</td>
+      <td>${birthCell}</td>
+      <td>${typeCell}</td>
+      <td><span class="on-hold-note" title="${note}">${note}</span></td>
+      <td>${actionsCellHtml}</td>
+    `;
+
+    const tbodyId = category === "慢簽" ? "chronic-onhold-rows" : "mspt-onhold-rows";
+    const countId = tbodyId.replace("-rows", "-count");
+
+    const undoBtn = tr.querySelector(".btn-undo");
+    undoBtn.onclick = async (ev) => {
+      ev.currentTarget.disabled = true;
+      try {
+        await apiFetch("/api/on-hold", { method: "DELETE", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ hold_id: holdId }) });
+        if (isManual) {
+          tr.querySelectorAll("button").forEach(b => b.remove());
+          tr.cells[tr.cells.length - 1].innerHTML = '<span style="font-size:11px;color:var(--text-muted)">已完成</span>';
+          tr.style.opacity = "0.4";
+          tr.style.pointerEvents = "none";
+          showToast("已完成處理 ✓", "ok");
+        } else {
+          fadeRemove(tr, () => {
+            updateCountLabel(countId, tbodyId);
+            if (entry) {
+              const prefix = category === "慢簽" ? "chronic" : "mspt";
+              restoreFollowupRow(entry, prefix + "-body", prefix + "-badge",
+                prefix + "-contacted-rows", prefix + "-contacted-count",
+                prefix + "-called-rows", prefix + "-called-count");
+            }
+          });
+          showToast("已撤銷暫緩", "ok");
+        }
+      } catch (err) { ev.currentTarget.disabled = false; showToast(err.message); }
+    };
+
+    if (!isManual && entry) {
+      tr.querySelector(".btn-action").onclick = async (ev) => {
+        if (!activeNurse()) { warnNoNurse(); return; }
+        ev.currentTarget.disabled = true;
+        try {
+          await apiFetch("/api/contacted", { method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ entry, nurse: activeNurse() }) });
+          await apiFetch("/api/on-hold", { method: "DELETE", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hold_id: holdId }) });
+          fadeRemove(tr, () => {
+            updateCountLabel(countId, tbodyId);
+            const prefix = category === "慢簽" ? "chronic" : "mspt";
+            appendContactedRow(entry, prefix + "-contacted-rows", prefix + "-contacted-count",
+              prefix + "-body", prefix + "-badge");
+          });
+          showToast(`${entry.patient.name} 已通知`, "ok");
+        } catch (err) { ev.currentTarget.disabled = false; showToast(err.message); }
+      };
+
+      if (category === "代謝症候群") {
+        tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
+      }
+
+      tr.querySelector(".btn-onhold-exclude").onclick = () => {
+        openExcludeModal(entry, null, null, holdId);
+      };
+    }
+
+    return tr;
+  }
+
+  function renderOnHoldRows(entries) {
+    const chronicTbody = document.getElementById("chronic-onhold-rows");
+    const msptTbody = document.getElementById("mspt-onhold-rows");
+    chronicTbody.innerHTML = "";
+    msptTbody.innerHTML = "";
+    entries.forEach(e => {
+      const isChronicSection = e.category === "慢簽";
+      const tbody = isChronicSection ? chronicTbody : msptTbody;
+      const entry = e.is_manual ? null : e.patient ? {
+        patient: e.patient, category: e.category, due_date: e.due_date,
+        days_overdue: e.days_overdue, disease_name: e.disease_name,
+        mspt_stage: e.mspt_stage, last_stage: e.last_stage,
+        last_visit_date: e.last_visit_date, contact_reason: null, call_required: false,
+      } : null;
+      if (entry) followupStore.set(followupKey(entry), entry);
+      tbody.appendChild(_buildOnHoldTr(e.hold_id, entry, e.note, e.is_manual, e.manual_name, e.category || "代謝症候群"));
+    });
+    updateCountLabel("chronic-onhold-count", "chronic-onhold-rows");
+    updateCountLabel("mspt-onhold-count", "mspt-onhold-rows");
+    ["chronic-onhold", "mspt-onhold"].forEach(prefix => {
+      const tbody = document.getElementById(prefix + "-rows");
+      if (tbody.querySelectorAll("tr").length > 0) {
+        const body = document.getElementById(prefix + "-body");
+        if (body && !body.classList.contains("open")) {
+          body.classList.add("open");
+          body.previousElementSibling?.querySelector(".chevron")?.classList.add("open");
+        }
+      }
+    });
+  }
+
   // ── 排除病患 ──
 
   let _excludeEntry = null;
   let _excludePendingBodyId = null;
   let _excludePendingBadgeId = null;
+  let _excludeOnHoldId = null;
 
-  function openExcludeModal(entry, pendingBodyId, pendingBadgeId) {
+  function openExcludeModal(entry, pendingBodyId, pendingBadgeId, holdId = null) {
     _excludeEntry = entry;
     _excludePendingBodyId = pendingBodyId;
     _excludePendingBadgeId = pendingBadgeId;
+    _excludeOnHoldId = holdId;
     const isMspt = entry.category === "代謝症候群";
     document.getElementById("exclude-modal-desc").textContent =
       `${entry.patient.name} 將不再出現在追蹤清單中`;
@@ -1981,6 +2606,20 @@
       const excKey = `${entry.patient.chart_number}|${entry.category}`;
       excludedEntryStore.set(excKey, entry);
       closeExcludeModal();
+      // Remove from on-hold if applicable
+      if (_excludeOnHoldId !== null) {
+        const holdId = _excludeOnHoldId;
+        _excludeOnHoldId = null;
+        try {
+          await apiFetch("/api/on-hold", { method: "DELETE", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ hold_id: holdId }) });
+        } catch (_) {}
+        const onHoldTr = document.querySelector(`[data-hold-id="${holdId}"]`);
+        if (onHoldTr) {
+          const ohTbody = onHoldTr.parentElement;
+          fadeRemove(onHoldTr, () => updateCountLabel(ohTbody.id.replace("-rows", "-count"), ohTbody.id));
+        }
+      }
       // Remove pending row
       const key = followupKey(entry);
       const tbody = document.getElementById(pendingBodyId);
@@ -2013,6 +2652,7 @@
     const tr = document.createElement("tr");
     tr.className = isAuto ? "excluded-auto-row" : "excluded-row";
     tr.dataset.excKey = excKey;
+    tr.dataset.search = patientSearchStr(entry.patient);
     const autoTag = isAuto
       ? `<span style="font-size:11px;color:var(--amber);background:#fffbeb;border:1px solid var(--amber-border);border-radius:4px;padding:1px 6px;margin-left:4px">自動</span>`
       : "";
@@ -2190,6 +2830,7 @@
     const tbody = document.getElementById("chronic-manual-pickup-rows");
     const count = document.getElementById("chronic-manual-pickup-count");
     const tr = document.createElement("tr");
+    tr.dataset.search = patientSearchStr({ chart_number: e.chart_number, name: e.name, birth_date: e.birth_date });
     tr.innerHTML = `
       <td><div class="patient-name">${e.name}</div><div class="chart-number">${e.chart_number}</div></td>
       <td class="mono">${fmt(e.birth_date)}</td>
@@ -2506,6 +3147,117 @@
         </tr></thead>
         <tbody>${rowsHtml}</tbody>
       </table>`;
+  }
+
+  // ── Patient search ──
+
+  // Tokens: name|chart_number[|roc_date|iso_date]
+  // Name uses substring match; chart/dates use prefix match — prevents "5030" matching "550301".
+  function patientSearchStr(patient) {
+    const iso = patient.birth_date || "";
+    const tokens = [patient.name.toLowerCase(), patient.chart_number.toLowerCase()];
+    if (iso) {
+      const [y, m, d] = iso.split("-");
+      tokens.push(`${parseInt(y) - 1911}${m}${d}`, `${y}${m}${d}`);
+    }
+    return tokens.join("|");
+  }
+
+  let _searchSavedState = null;
+
+  function onPatientSearch(rawQuery) {
+    const q = rawQuery.trim().toLowerCase();
+    document.getElementById("search-clear").style.display = rawQuery.trim() ? "" : "none";
+
+    if (!rawQuery.trim()) {
+      clearPatientSearch();
+      return;
+    }
+
+    if (!_searchSavedState) {
+      _searchSavedState = {};
+      document.querySelectorAll(".collapse-body").forEach(body => {
+        _searchSavedState[body.id] = body.classList.contains("open");
+      });
+    }
+
+    const sectionsWithMatches = new Set();
+    let matchCount = 0;
+    const qn = q.replace(/[-\/\s]/g, "");
+
+    document.querySelectorAll("tr[data-search]").forEach(tr => {
+      const tokens = (tr.dataset.search || "").split("|");
+      const name = tokens[0] || "";
+      const rest = tokens.slice(1);
+      const match = name.includes(qn) || rest.some(t => t.startsWith(qn));
+      tr.style.display = match ? "" : "none";
+      if (match) {
+        matchCount++;
+        const body = tr.closest(".collapse-body");
+        if (body) sectionsWithMatches.add(body.id);
+      }
+    });
+
+    document.querySelectorAll(".collapse-body").forEach(body => {
+      const hasMatch = sectionsWithMatches.has(body.id);
+      const isOpen = body.classList.contains("open");
+      const chevron = body.previousElementSibling?.querySelector(".chevron");
+      if (hasMatch && !isOpen) {
+        body.classList.add("open");
+        chevron?.classList.add("open");
+      } else if (!hasMatch && isOpen) {
+        body.classList.remove("open");
+        chevron?.classList.remove("open");
+      }
+    });
+
+    const countEl = document.getElementById("search-count");
+    countEl.textContent = matchCount > 0 ? `找到 ${matchCount} 筆` : "無符合結果";
+    countEl.className = matchCount > 0 ? "" : "no-match";
+    countEl.style.display = "";
+  }
+
+  function clearPatientSearch() {
+    document.getElementById("patient-search").value = "";
+    document.getElementById("search-clear").style.display = "none";
+    document.getElementById("search-count").style.display = "none";
+
+    document.querySelectorAll("tr[data-search]").forEach(tr => {
+      tr.style.display = "";
+    });
+
+    if (_searchSavedState) {
+      document.querySelectorAll(".collapse-body").forEach(body => {
+        const wasOpen = _searchSavedState[body.id];
+        const isOpen = body.classList.contains("open");
+        const chevron = body.previousElementSibling?.querySelector(".chevron");
+        if (wasOpen && !isOpen) {
+          body.classList.add("open");
+          chevron?.classList.add("open");
+        } else if (wasOpen === false && isOpen) {
+          body.classList.remove("open");
+          chevron?.classList.remove("open");
+        }
+      });
+      _searchSavedState = null;
+    }
+  }
+
+  function toggleHeaderSearch() {
+    const wrapper = document.getElementById("header-search");
+    if (wrapper.classList.contains("open")) {
+      closeHeaderSearch();
+    } else {
+      wrapper.classList.add("open");
+      document.getElementById("btn-search-toggle").classList.add("active");
+      setTimeout(() => document.getElementById("patient-search").focus(), 220);
+    }
+  }
+
+  function closeHeaderSearch() {
+    clearPatientSearch();
+    document.getElementById("header-search").classList.remove("open");
+    document.getElementById("btn-search-toggle").classList.remove("active");
   }
 
   // ── Back to top ──

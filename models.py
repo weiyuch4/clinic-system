@@ -64,6 +64,33 @@ class ManualPickupEntry(BaseModel):
     nurse: str = ""
 
 
+class OnHoldEntry(BaseModel):
+    hold_id: int
+    patient: Patient | None = None             # None for manual entries
+    category: Literal["慢簽", "代謝症候群"] | None = None
+    due_date: date | None = None
+    days_overdue: int | None = None
+    mspt_stage: MsptStage | None = None
+    last_stage: MsptStage | None = None
+    last_visit_date: date | None = None
+    disease_name: str | None = None
+    note: str
+    held_at: date
+    nurse: str = ""
+    is_manual: bool = False
+    manual_name: str = ""                      # display name for manual entries
+
+
+class MsptManualEntry(BaseModel):
+    chart_number: str
+    name: str
+    birth_date: date
+    mspt_stage: MsptStage
+    completed_date: date
+    nurse: str = ""
+    marked_at: date
+
+
 class DailyReport(BaseModel):
     report_date: date
     chronic_prescriptions: list[FollowupEntry]
@@ -79,6 +106,8 @@ class DailyReport(BaseModel):
     mspt_completed: list[FollowupEntry] = []
     mspt_checkedin: list[FollowupEntry] = []
     chronic_manual_pickups: list[ManualPickupEntry] = []
+    on_hold: list[OnHoldEntry] = []
+    mspt_manual: list[MsptManualEntry] = []
 
 
 class NurseEntryRequest(BaseModel):
@@ -124,3 +153,31 @@ class MsptCompleteRequest(BaseModel):
 class SubmitRequest(BaseModel):
     chart_number: str
     mspt_stage: MsptStage
+
+
+class OnHoldRequest(BaseModel):
+    entry: FollowupEntry
+    note: str
+    nurse: str = ""
+
+
+class ManualOnHoldRequest(BaseModel):
+    name: str
+    note: str
+    nurse: str = ""
+    category: Literal["慢簽", "代謝症候群"] | None = None
+
+
+class OnHoldRemoveRequest(BaseModel):
+    hold_id: int
+
+
+class MsptManualRequest(BaseModel):
+    entry: FollowupEntry
+    mspt_stage: MsptStage
+    completed_date: date
+    nurse: str = ""
+
+
+class MsptManualRemoveRequest(BaseModel):
+    chart_number: str

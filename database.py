@@ -294,7 +294,7 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
     LONG_INACTIVE_DAYS = 180      # > 6 months since last any clinic visit → 長期未回診
     _STAGE_NEXT = {'收案': '追1', '追1': '追2', '追2': '追3', '追3': '年度追蹤', '年度追蹤': '追1'}
     _STAGE_GAPS = {'收案': METABOLIC_FOLLOWUP_DAYS, '追1': METABOLIC_FOLLOWUP_DAYS,
-                   '追2': METABOLIC_FOLLOWUP_DAYS, '追3': 365, '年度追蹤': METABOLIC_FOLLOWUP_DAYS}
+                   '追2': METABOLIC_FOLLOWUP_DAYS, '追3': METABOLIC_FOLLOWUP_DAYS, '年度追蹤': METABOLIC_FOLLOWUP_DAYS}
     since = as_of - timedelta(days=MAX_INACTIVE_DAYS)
 
     # Keyed by national ID (身分證字號) for stable cross-visit identity
