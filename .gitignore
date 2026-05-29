@@ -1,5 +1,6 @@
 # Database — must never be committed; lives only on the clinic PC
 contacts.db
+backups/
 
 # Local config override (real IC data path goes here, not in config.py)
 config_local.py
