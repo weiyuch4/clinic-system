@@ -84,7 +84,7 @@ def admin_stats(month: str | None = None, _: None = Depends(_require_admin)) -> 
         raise HTTPException(status_code=500, detail="查詢失敗")
 
     nurses = sorted(stats.keys(), key=lambda n: (n == "（未選擇）", n))
-    cols = [("contacted", "已通知"), ("called", "再次通知"), ("mspt", "掛MSPT完成"),
+    cols = [("contacted", "已通知"), ("called", "再次通知"), ("mspt", "完成MSPT"),
             ("excluded", "排除"), ("pickup", "手動取藥")]
 
     def td(val: int) -> str:
@@ -158,6 +158,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
         submitted_keys = contacts.get_submitted_keys()
         excluded_keys = contacts.get_excluded_keys()          # (chart_number, category)
         mspt_completed_keys = contacts.get_mspt_completed_keys()  # (chart_number, mspt_stage, due_date)
+        mspt_checkedin_keys = contacts.get_mspt_checkedin_keys()  # (chart_number, mspt_stage, due_date)
 
         def filter_followups(entries: list[FollowupEntry]) -> list[FollowupEntry]:
             result = []
@@ -168,6 +169,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
                 if (e.patient.chart_number, e.category) in excluded_keys:
                     continue
                 if (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_completed_keys:
+                    continue
+                if (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_checkedin_keys:
                     continue
                 result.append(e.model_copy(update={"call_required": key in call_required_keys}))
             return result
@@ -190,6 +193,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
             if not has_returned(e, ca)
             and (e.patient.chart_number, e.category) not in excluded_keys
             and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_completed_keys
+            and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_checkedin_keys
         ]
 
         # Filter chronic patients suppressed by a manual pickup record
@@ -222,6 +226,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
             e for e in called_entries
             if (e.patient.chart_number, e.category) not in excluded_keys
             and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_completed_keys
+            and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_checkedin_keys
         ]
 
         return DailyReport(
@@ -239,6 +244,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
             submitted=contacts.get_submitted_entries(),
             excluded=all_excluded,
             mspt_completed=contacts.get_mspt_completed_entries(),
+            mspt_checkedin=contacts.get_mspt_checkedin_entries(),
             chronic_manual_pickups=contacts.get_manual_pickup_entries(),
         )
     except HTTPException:
@@ -317,7 +323,7 @@ def mark_mspt_completed(req: NurseEntryRequest) -> None:
         contacts.mark_mspt_completed(req.entry, req.nurse)
     except Exception:
         logger.exception("mark_mspt_completed failed for %s", req.entry.patient.chart_number)
-        raise HTTPException(status_code=500, detail="掛MSPT完成記錄儲存失敗，請稍後再試")
+        raise HTTPException(status_code=500, detail="完成MSPT記錄儲存失敗，請稍後再試")
 
 
 @app.delete("/api/mspt-completed")
@@ -326,8 +332,26 @@ def unmark_mspt_completed(req: MsptCompleteRequest) -> None:
         contacts.unmark_mspt_completed(req.chart_number, req.mspt_stage, req.due_date.isoformat())
     except Exception:
         logger.exception("unmark_mspt_completed failed for %s", req.chart_number)
-        raise HTTPException(status_code=500, detail="撤銷掛MSPT完成失敗，請稍後再試")
+        raise HTTPException(status_code=500, detail="撤銷完成MSPT失敗，請稍後再試")
 
+
+
+@app.post("/api/mspt-checkedin")
+def mark_mspt_checkedin(req: NurseEntryRequest) -> None:
+    try:
+        contacts.mark_mspt_checkedin(req.entry, req.nurse)
+    except Exception:
+        logger.exception("mark_mspt_checkedin failed for %s", req.entry.patient.chart_number)
+        raise HTTPException(status_code=500, detail="待建檔記錄儲存失敗，請稍後再試")
+
+
+@app.delete("/api/mspt-checkedin")
+def unmark_mspt_checkedin(req: MsptCompleteRequest) -> None:
+    try:
+        contacts.unmark_mspt_checkedin(req.chart_number, req.mspt_stage, req.due_date.isoformat())
+    except Exception:
+        logger.exception("unmark_mspt_checkedin failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="撤銷待建檔失敗，請稍後再試")
 
 
 @app.post("/api/manual-pickup")

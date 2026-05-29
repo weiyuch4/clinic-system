@@ -77,6 +77,7 @@ class DailyReport(BaseModel):
     submitted: list[MsptSubmittableEntry] = []
     excluded: list[ExcludedEntry] = []
     mspt_completed: list[FollowupEntry] = []
+    mspt_checkedin: list[FollowupEntry] = []
     chronic_manual_pickups: list[ManualPickupEntry] = []
 
 

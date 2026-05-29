@@ -85,6 +85,24 @@ _CREATE_MSPT_COMPLETED = """
     )
 """
 
+_CREATE_MSPT_CHECKEDIN = """
+    CREATE TABLE IF NOT EXISTS mspt_checkedin (
+        chart_number    TEXT NOT NULL,
+        mspt_stage      TEXT NOT NULL,
+        due_date        TEXT NOT NULL,
+        name            TEXT NOT NULL,
+        birth_date      TEXT NOT NULL,
+        last_visit_date TEXT,
+        last_stage      TEXT,
+        days_overdue    INTEGER NOT NULL,
+        contact_reason  TEXT,
+        checkedin_at    TEXT NOT NULL,
+        checkedin_time  TEXT,
+        nurse           TEXT DEFAULT '',
+        PRIMARY KEY (chart_number, mspt_stage, due_date)
+    )
+"""
+
 
 @contextmanager
 def _conn() -> Generator[sqlite3.Connection, None, None]:
@@ -100,6 +118,7 @@ def init() -> None:
         conn.execute(_CREATE_SUBMITTED)
         conn.execute(_CREATE_EXCLUDED)
         conn.execute(_CREATE_MSPT_COMPLETED)
+        conn.execute(_CREATE_MSPT_CHECKEDIN)
         conn.execute(_CREATE_MANUAL_PICKUPS)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
@@ -387,7 +406,7 @@ def get_excluded_entries() -> list[ExcludedEntry]:
     return result
 
 
-# ── MSPT completed (掛MSPT完成) ──────────────────────────────────────────────
+# ── MSPT completed (完成MSPT) ──────────────────────────────────────────────
 
 def mark_mspt_completed(entry: FollowupEntry, nurse: str = '') -> None:
     with _conn() as conn:
@@ -421,6 +440,68 @@ def get_mspt_completed_keys() -> set[tuple[str, str, str]]:
             "SELECT chart_number, mspt_stage, due_date FROM mspt_completed"
         ).fetchall()
     return {(r[0], r[1], r[2]) for r in rows}
+
+
+def mark_mspt_checkedin(entry: FollowupEntry, nurse: str = '') -> None:
+    with _conn() as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO mspt_checkedin
+               (chart_number, mspt_stage, due_date, name, birth_date,
+                last_visit_date, last_stage, days_overdue, contact_reason,
+                checkedin_at, checkedin_time, nurse)
+               VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                entry.patient.chart_number, entry.mspt_stage,
+                entry.due_date.isoformat(),
+                entry.patient.name, entry.patient.birth_date.isoformat(),
+                entry.last_visit_date.isoformat() if entry.last_visit_date else None,
+                entry.last_stage, entry.days_overdue, entry.contact_reason,
+                date.today().isoformat(), datetime.now().strftime('%H:%M'), nurse,
+            ),
+        )
+
+
+def unmark_mspt_checkedin(chart_number: str, mspt_stage: str, due_date: str) -> None:
+    with _conn() as conn:
+        conn.execute(
+            "DELETE FROM mspt_checkedin WHERE chart_number=? AND mspt_stage=? AND due_date=?",
+            (chart_number, mspt_stage, due_date),
+        )
+
+
+def get_mspt_checkedin_keys() -> set[tuple[str, str, str]]:
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT chart_number, mspt_stage, due_date FROM mspt_checkedin"
+        ).fetchall()
+    return {(r[0], r[1], r[2]) for r in rows}
+
+
+def get_mspt_checkedin_entries() -> list[FollowupEntry]:
+    with _conn() as conn:
+        rows = conn.execute(
+            """SELECT chart_number, mspt_stage, due_date, name, birth_date,
+                      last_visit_date, last_stage, days_overdue, contact_reason,
+                      checkedin_at, checkedin_time, nurse
+               FROM mspt_checkedin ORDER BY checkedin_at DESC, checkedin_time DESC""",
+        ).fetchall()
+    return [
+        FollowupEntry(
+            patient=Patient(chart_number=r[0], name=r[3], birth_date=date.fromisoformat(r[4])),
+            disease_name='代謝症候群',
+            mspt_stage=r[1],
+            due_date=date.fromisoformat(r[2]),
+            last_visit_date=date.fromisoformat(r[5]) if r[5] else None,
+            last_stage=r[6],
+            days_overdue=r[7],
+            contact_reason=r[8],
+            category='代謝症候群',
+            contacted_at=date.fromisoformat(r[9]) if r[9] else None,
+            contacted_time=r[10],
+            nurse=r[11] or "",
+        )
+        for r in rows
+    ]
 
 
 def get_mspt_completed_entries() -> list[FollowupEntry]:

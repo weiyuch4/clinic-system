@@ -477,6 +477,22 @@
     tr.done-complete .patient-name { color: var(--text); font-weight: 600; }
     tr.done-complete td:first-child { box-shadow: inset 3px 0 0 var(--green); }
 
+    /* Check-in (待建檔) button */
+    .btn-checkedin {
+      padding: 4px 10px; font-size: 11px; font-weight: 600; border-radius: 6px;
+      background: #fffbeb; color: #d97706; border: 1px solid #fcd34d; cursor: pointer;
+    }
+    .btn-checkedin:hover { background: var(--amber); border-color: var(--amber); color: white; }
+    .btn-checkedin:disabled { opacity: 0.35; cursor: not-allowed; }
+    /* Checked-in rows */
+    tr.checkedin-row td { background: #fffbeb; }
+    tr.checkedin-row .patient-name { color: var(--text); font-weight: 600; }
+    tr.checkedin-row td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
+    /* Check-in section header */
+    .collapse-toggle.checkedin-section { background: #fffbeb; }
+    .collapse-toggle.checkedin-section:hover { background: #fef3c7; }
+    .collapse-toggle.checkedin-section .collapse-label { color: #92400e; font-weight: 700; }
+
     /* ── Archive divider ── */
     .archive-divider {
       display: flex; align-items: center; gap: 10px;
@@ -928,6 +944,20 @@
         <tbody id="mspt-inactive-rows"></tbody>
       </table>
     </div>
+    <div class="collapse-toggle checkedin-section" onclick="toggleSection('mspt-checkedin-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 待建檔 <span id="mspt-checkedin-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="mspt-checkedin-body">
+      <div style="font-size:12px;color:#92400e;padding:8px 16px 4px;background:#fffbeb">病患現場到診，等待建檔。請完成 VPN 資料輸入後，點擊「完成MSPT」。</div>
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>下個階段</th><th>到診時間</th><th></th>
+        </tr></thead>
+        <tbody id="mspt-checkedin-rows"></tbody>
+      </table>
+    </div>
     <div class="archive-divider">
       <div class="archive-divider-line"></div>
       <span class="archive-divider-label">歸檔紀錄</span>
@@ -935,7 +965,7 @@
     </div>
     <div class="collapse-toggle archive" onclick="toggleSection('mspt-completed-body', this)">
       <div class="collapse-line"></div>
-      <span class="collapse-label"><i class="chevron">›</i> 已掛MSPT完成 <span id="mspt-completed-count">0</span></span>
+      <span class="collapse-label"><i class="chevron">›</i> 已完成MSPT <span id="mspt-completed-count">0</span></span>
       <div class="collapse-line"></div>
     </div>
     <div class="collapse-body" id="mspt-completed-body">
@@ -1147,10 +1177,11 @@
       <td>
         <div class="action-cell">
           ${actionBtn}
-          <button class="btn-complete" title="已完成所有流程並掛號">掛MSPT完成</button>
+          <button class="btn-complete" title="已完成所有流程並掛號">完成MSPT</button>
           <div class="more-actions-wrapper">
             <button class="btn-more" title="更多操作">•••</button>
             <div class="dropdown-menu">
+              <button class="dropdown-item" data-act="checkedin">現場掛號（待建檔）</button>
               <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
             </div>
           </div>
@@ -1207,6 +1238,13 @@
         dropdown.classList.remove("open");
         openExcludeModal(e, pendingBodyId, pendingBadgeId);
       };
+      const checkedinItem = tr.querySelector("[data-act='checkedin']");
+      if (checkedinItem) {
+        checkedinItem.onclick = () => {
+          dropdown.classList.remove("open");
+          markCheckedin(checkedinItem, followupKey(e));
+        };
+      }
       const manualPickupItem = tr.querySelector("[data-act='manual-pickup']");
       if (manualPickupItem) {
         manualPickupItem.onclick = () => {
@@ -1290,7 +1328,7 @@
         <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
         <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
         <td>${statusPill(e.days_overdue)}</td>
-        <td><div class="action-cell"><button class="btn-complete">掛MSPT完成</button><button class="btn-undo">撤銷</button></div></td>
+        <td><div class="action-cell"><button class="btn-complete">完成MSPT</button><button class="btn-undo">撤銷</button></div></td>
       `;
       tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
       tr.querySelector(".btn-undo").onclick = (ev) =>
@@ -1318,7 +1356,7 @@
         <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
         <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
         <td>${statusPill(e.days_overdue)}</td>
-        <td><div class="action-cell"><button class="btn-complete">掛MSPT完成</button><button class="btn-undo">撤銷</button></div></td>
+        <td><div class="action-cell"><button class="btn-complete">完成MSPT</button><button class="btn-undo">撤銷</button></div></td>
       `;
       tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
       tr.querySelector(".btn-undo").onclick = (ev) => undoCalled(ev.currentTarget, key, calledRowsId, calledCountId);
@@ -1441,7 +1479,7 @@
       tr.className = rowClass;
       tr.dataset.key = key;
       const actionsCell = isMspt
-        ? `<div class="action-cell"><button class="btn-complete">掛MSPT完成</button><button class="btn-undo">撤銷</button></div>`
+        ? `<div class="action-cell"><button class="btn-checkedin">現場掛號</button><button class="btn-complete">完成MSPT</button><button class="btn-undo">撤銷</button></div>`
         : `<button class="btn-undo">撤銷</button>`;
       tr.innerHTML = `
         <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
@@ -1451,7 +1489,10 @@
         <td>${statusPill(e.days_overdue)}</td>
         <td>${actionsCell}</td>
       `;
-      if (isMspt) tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
+      if (isMspt) {
+        tr.querySelector(".btn-checkedin").onclick = (ev) => markCheckedin(ev.currentTarget, key);
+        tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
+      }
       if (isContacted) {
         tr.querySelector(".btn-undo").onclick = (ev) =>
           undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId);
@@ -1539,6 +1580,7 @@
     renderDoneRows("mspt-contacted-rows",    "mspt-contacted-count",    data.contacted.filter(e => e.category === "代謝症候群"), "done");
     renderDoneRows("mspt-called-rows",       "mspt-called-count",       data.called.filter(e => e.category === "代謝症候群"),    "done-final");
     renderMsptInactiveRows(data.mspt_inactive || []);
+    renderMsptCheckedinRows(data.mspt_checkedin || []);
     renderMsptCompletedRows(data.mspt_completed || []);
     renderExcludedRows(data.excluded || []);
   }
@@ -1554,7 +1596,7 @@
     document.querySelectorAll(".dropdown-menu.open").forEach(d => d.classList.remove("open"));
   });
 
-  // ── 掛MSPT完成 ──
+  // ── 完成MSPT ──
 
   async function doMarkMsptCompleted(triggerBtn) {
     if (!activeNurse()) { warnNoNurse(); return; }
@@ -1563,25 +1605,34 @@
     const entry = followupStore.get(key);
     if (!entry) return;
     triggerBtn.disabled = true;
+    const tbody = tr.parentElement;
+    const tbodyId = tbody.id;
+    const fromCheckedin = tbodyId === "mspt-checkedin-rows";
     try {
       await apiFetch("/api/mspt-completed", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entry, nurse: activeNurse() }),
       });
-      const tbody = tr.parentElement;
-      const tbodyId = tbody.id;
+      if (fromCheckedin) {
+        await apiFetch("/api/mspt-checkedin", {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chart_number: entry.patient.chart_number, mspt_stage: entry.mspt_stage, due_date: entry.due_date }),
+        });
+      }
       fadeRemove(tr, () => {
         if (tbodyId === "mspt-body") {
           tbody.dispatchEvent(new Event("rowremoved"));
           updateFollowupBadge("mspt-badge", tbody);
+        } else if (fromCheckedin) {
+          updateBadge("mspt-checkedin-count", tbody.querySelectorAll("tr[data-key]").length);
         } else {
-          const countId = tbodyId.replace("-rows", "-count");
-          updateCountLabel(countId, tbodyId);
+          updateCountLabel(tbodyId.replace("-rows", "-count"), tbodyId);
         }
         appendMsptCompletedRow(entry, todayIso);
       });
-      showToast(`${entry.patient.name} 掛MSPT完成 ✓`, "ok");
+      showToast(`${entry.patient.name} 完成MSPT ✓`, "ok");
     } catch (err) {
       triggerBtn.disabled = false;
       showToast(err.message);
@@ -1625,10 +1676,130 @@
         updateBadge("mspt-completed-count", tbody.querySelectorAll("tr[data-key]").length);
         restoreFollowupRow(entry, "mspt-body", "mspt-badge", "mspt-contacted-rows", "mspt-contacted-count", "mspt-called-rows", "mspt-called-count");
       });
-      showToast("已撤銷掛MSPT完成", "ok");
+      showToast("已撤銷完成MSPT", "ok");
     } catch (err) {
       btn.disabled = false;
       showToast(err.message);
+    }
+  }
+
+  // ── 待建檔 (patient checked in, pending data entry) ──
+
+  const msptCheckedinStore = new Map();
+
+  async function markCheckedin(btn, key) {
+    if (!activeNurse()) { warnNoNurse(); return; }
+    btn.disabled = true;
+    const entry = followupStore.get(key);
+    if (!entry) { btn.disabled = false; return; }
+    try {
+      await apiFetch("/api/mspt-checkedin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entry, nurse: activeNurse() }),
+      });
+      const tr = btn.closest("tr");
+      const tbody = tr.parentElement;
+      const tbodyId = tbody.id;
+      fadeRemove(tr, () => {
+        if (tbodyId === "mspt-body") {
+          tbody.dispatchEvent(new Event("rowremoved"));
+          updateFollowupBadge("mspt-badge", tbody);
+        } else if (tbodyId === "mspt-inactive-rows") {
+          updateCountLabel("mspt-inactive-count", "mspt-inactive-rows");
+        } else {
+          updateCountLabel(tbodyId.replace("-rows", "-count"), tbodyId);
+        }
+        appendMsptCheckedinRow(entry, activeNurse());
+      });
+      showToast(`${entry.patient.name} 已加入待建檔 ✓`, "ok");
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function appendMsptCheckedinRow(entry, nurse) {
+    const key = followupKey(entry);
+    msptCheckedinStore.set(key, entry);
+    followupStore.set(key, entry);
+    const tbody = document.getElementById("mspt-checkedin-rows");
+    const tr = document.createElement("tr");
+    tr.className = "checkedin-row";
+    tr.dataset.key = key;
+    const nowTime = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
+    const nurseLabel = nurse ? ` ／ ${nurse}` : "";
+    tr.innerHTML = `
+      <td><div class="patient-name">${entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div></td>
+      <td class="mono">${fmt(entry.patient.birth_date)}</td>
+      <td>${entry.mspt_stage ? stageTag(entry.mspt_stage) : "—"}</td>
+      <td style="font-size:13px;color:var(--text-sub)">${nowTime}${nurseLabel}</td>
+      <td><div class="action-cell"><button class="btn-complete">完成MSPT</button><button class="btn-undo">撤銷</button></div></td>
+    `;
+    tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
+    tr.querySelector(".btn-undo").onclick = (ev) => undoCheckedin(ev.currentTarget, key);
+    tbody.prepend(tr);
+    const body = document.getElementById("mspt-checkedin-body");
+    if (!body.classList.contains("open")) {
+      body.classList.add("open");
+      body.previousElementSibling.querySelector(".chevron").classList.add("open");
+    }
+    updateBadge("mspt-checkedin-count", tbody.querySelectorAll("tr[data-key]").length);
+  }
+
+  async function undoCheckedin(btn, key) {
+    btn.disabled = true;
+    const entry = followupStore.get(key) || msptCheckedinStore.get(key);
+    if (!entry) { btn.disabled = false; return; }
+    try {
+      await apiFetch("/api/mspt-checkedin", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chart_number: entry.patient.chart_number, mspt_stage: entry.mspt_stage, due_date: entry.due_date }),
+      });
+      const tr = btn.closest("tr");
+      fadeRemove(tr, () => {
+        const tbody = document.getElementById("mspt-checkedin-rows");
+        updateBadge("mspt-checkedin-count", tbody.querySelectorAll("tr[data-key]").length);
+        restoreFollowupRow(entry, "mspt-body", "mspt-badge", "mspt-contacted-rows", "mspt-contacted-count", "mspt-called-rows", "mspt-called-count");
+      });
+      showToast("已撤銷待建檔", "ok");
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function renderMsptCheckedinRows(entries) {
+    const tbody = document.getElementById("mspt-checkedin-rows");
+    tbody.innerHTML = "";
+    entries.forEach(e => {
+      const key = followupKey(e);
+      msptCheckedinStore.set(key, e);
+      followupStore.set(key, e);
+      const tr = document.createElement("tr");
+      tr.className = "checkedin-row";
+      tr.dataset.key = key;
+      const timeLabel = e.contacted_time || "—";
+      const nurseLabel = e.nurse ? ` ／ ${e.nurse}` : "";
+      tr.innerHTML = `
+        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td class="mono">${fmt(e.patient.birth_date)}</td>
+        <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
+        <td style="font-size:13px;color:var(--text-sub)">${timeLabel}${nurseLabel}</td>
+        <td><div class="action-cell"><button class="btn-complete">完成MSPT</button><button class="btn-undo">撤銷</button></div></td>
+      `;
+      tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
+      tr.querySelector(".btn-undo").onclick = (ev) => undoCheckedin(ev.currentTarget, key);
+      tbody.appendChild(tr);
+    });
+    updateBadge("mspt-checkedin-count", entries.length);
+    if (entries.length > 0) {
+      const body = document.getElementById("mspt-checkedin-body");
+      if (!body.classList.contains("open")) {
+        body.classList.add("open");
+        body.previousElementSibling.querySelector(".chevron").classList.add("open");
+      }
     }
   }
 
@@ -1656,6 +1827,7 @@
           <div class="more-actions-wrapper">
             <button class="btn-more" title="更多操作">•••</button>
             <div class="dropdown-menu">
+              <button class="dropdown-item" data-act="checkedin">現場掛號（待建檔）</button>
               <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
             </div>
           </div>
@@ -1666,6 +1838,10 @@
         ev.stopPropagation();
         document.querySelectorAll(".dropdown-menu.open").forEach(d => { if (d !== dropdown) d.classList.remove("open"); });
         dropdown.classList.toggle("open");
+      });
+      tr.querySelector("[data-act='checkedin']").addEventListener("click", () => {
+        dropdown.classList.remove("open");
+        markCheckedin(tr.querySelector("[data-act='checkedin']"), followupKey(e));
       });
       tr.querySelector("[data-act='exclude']").addEventListener("click", () => {
         dropdown.classList.remove("open");
@@ -2254,7 +2430,7 @@
     const timedEntries = [
       ...printHistoryData.contacted.map(e => ({ ...e, _status: '已通知' })),
       ...printHistoryData.called.map(e => ({ ...e, _status: '已通知' })),
-      ...(printHistoryData.mspt_completed || []).map(e => ({ ...e, _status: '掛MSPT完成' })),
+      ...(printHistoryData.mspt_completed || []).map(e => ({ ...e, _status: '完成MSPT' })),
     ].sort((a, b) => (a.contacted_time || '').localeCompare(b.contacted_time || ''));
     const excludedEntries = (printHistoryData.excluded || []).map(e => ({ ...e, _status: '已排除' }));
     const pickupEntries = (printHistoryData.manual_pickups || []).map(e => ({ ...e, _status: '已手動取藥' }));
@@ -2309,8 +2485,8 @@
         ? `<span style="font-size:11px;color:#0369a1;font-weight:600">已手動取藥</span>`
         : isExcluded
           ? `<span style="font-size:11px;color:#6b7280;font-weight:600">已排除</span>`
-          : e._status === '掛MSPT完成'
-            ? `<span style="font-size:11px;color:#7c3aed;font-weight:600">掛MSPT完成</span>`
+          : e._status === '完成MSPT'
+            ? `<span style="font-size:11px;color:#7c3aed;font-weight:600">完成MSPT</span>`
             : `<span style="font-size:11px;color:#16a34a;font-weight:600">已通知</span>`;
       return `<tr${(isExcluded || isPickup) ? ' style="opacity:0.75"' : ''}>
         <td><div style="font-weight:600">${patientName}</div><div style="font-size:11px;color:var(--text-muted)">${patientChart}</div></td>
