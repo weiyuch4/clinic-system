@@ -602,6 +602,58 @@ def get_lab_results(national_id: str) -> dict:
     return lab_results.get_lab_results(national_id.strip().upper())
 
 
+@app.get("/api/lab-debug")
+def lab_debug() -> dict:
+    """Diagnostic: inspect PAT_HIST.DBF field names and a few sample rows."""
+    import os, struct
+    zz = r"Z:\Z"
+    path = os.path.join(zz, "PAT_HIST.DBF")
+    result: dict = {"path": path, "exists": os.path.isfile(path), "fields": [], "sample_rows": []}
+    if not result["exists"]:
+        result["files_in_zz"] = os.listdir(zz) if os.path.isdir(zz) else "Z:\\Z not accessible"
+        return result
+    try:
+        with open(path, "rb") as f:
+            hdr = f.read(32)
+            header_size = struct.unpack_from("<H", hdr, 8)[0]
+            record_size = struct.unpack_from("<H", hdr, 10)[0]
+            fields = []
+            f.seek(32)
+            while True:
+                fd = f.read(32)
+                if not fd or fd[0] == 0x0D:
+                    break
+                name = fd[:11].rstrip(b"\x00").decode("ascii", errors="replace").strip()
+                flen = fd[16]
+                if name:
+                    fields.append((name, flen))
+            result["fields"] = [f"{n}({l})" for n, l in fields]
+            f.seek(header_size)
+            col_offsets = []
+            off = 1
+            for n, l in fields:
+                col_offsets.append((n, off, l))
+                off += l
+            count = 0
+            while count < 3:
+                raw = f.read(record_size)
+                if not raw or len(raw) < record_size:
+                    break
+                if raw[0] == 0x2A:
+                    continue
+                row = {}
+                for n, o, l in col_offsets:
+                    try:
+                        row[n] = raw[o:o+l].decode("big5").strip()
+                    except Exception:
+                        row[n] = raw[o:o+l].decode("latin-1").strip()
+                result["sample_rows"].append(row)
+                count += 1
+    except Exception as e:
+        result["error"] = str(e)
+    return result
+
+
 @app.get("/api/debug/mspt")
 def debug_mspt(nat_id: str | None = None) -> dict:
     """Diagnostic: show MSPT stage detection across the full 2-year scan window.
