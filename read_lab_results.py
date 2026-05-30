@@ -18,11 +18,90 @@ Output is also saved to read_lab_results_output.txt in the same folder.
 import os
 import sys
 import struct
-import glob
 
 UPEXAMD_ROOT = r"Z:\01\UPEXAMD"
 ZZ_DIR       = r"Z:\Z"
 OUTPUT_FILE  = os.path.join(os.path.dirname(__file__), "read_lab_results_output.txt")
+
+# ── VAR column labels for bioc.dbf / BIO2C.DBF ───────────────────────────────
+# VAR1-3 = year (2-digit ROC last 2 digits) / month / day — skip in display
+# Labels inferred from observed values and typical biochemistry panels.
+# Unknown positions are left empty (raw VAR number shown as fallback).
+BIO_LABELS: dict[str, str] = {
+    'VAR1': '',     # year (part of date)
+    'VAR2': '',     # month
+    'VAR3': '',     # day
+    'VAR4':  'Glucose (AC)',
+    'VAR5':  'hsCRP',
+    'VAR6':  '',
+    'VAR7':  '',
+    'VAR8':  'UA (尿酸)',
+    'VAR9':  '',
+    'VAR10': 'HbA1c',
+    'VAR11': '',
+    'VAR12': '',
+    'VAR13': '',
+    'VAR14': 'Ferritin',
+    'VAR15': 'AST (GOT)',
+    'VAR16': '',
+    'VAR17': 'ALT (GPT)',
+    'VAR18': 'GGT',
+    'VAR19': '',
+    'VAR20': 'BUN',
+    'VAR21': 'Glucose (PC)',
+    'VAR22': '',
+    'VAR23': 'Insulin',
+    'VAR24': 'T-Bili',
+    'VAR25': 'Ca (鈣)',
+    'VAR26': 'Cr (Creatinine, 血)',
+    'VAR27': '',
+    'VAR28': '',
+    'VAR29': 'HbA1c (alt)',
+    'VAR30': '',
+    'VAR31': 'Na',
+    'VAR32': 'K (鉀)',
+    'VAR33': '',
+    'VAR34': 'Phosphate',
+    'VAR35': 'eGFR / Cr',
+    'VAR36': '',
+    'VAR37': 'T-Chol (總膽固醇)',
+    'VAR38': 'TG (三酸甘油脂)',
+    'VAR39': '',
+    'VAR40': 'LDL',
+    'VAR41': '備註 / 特殊檢查',
+    'VAR42': 'T-Chol (alt)',
+    'VAR43': '',
+    'VAR44': 'TG (alt)',
+    'VAR45': 'HDL',
+    'VAR46': 'LDL (alt)',
+    'VAR47': '',
+    'VAR48': 'Glucose (alt)',
+    'VAR49': '',
+}
+
+# ── VAR column labels for CBCC.DBF ───────────────────────────────────────────
+# VAR1-3 = year/month/day (skip), VAR4+ = CBC values in standard order.
+CBC_LABELS: dict[str, str] = {
+    'VAR1': '',   # year
+    'VAR2': '',   # month
+    'VAR3': '',   # day
+    'VAR4':  'WBC (×10³)',
+    'VAR5':  'Hgb (g/dL)',
+    'VAR6':  'Hct (%)',
+    'VAR7':  'MCV (fL)',
+    'VAR8':  'MCH (pg)',
+    'VAR9':  'MCHC (g/dL)',
+    'VAR10': 'RDW',
+    'VAR11': '',
+    'VAR12': 'RBC (×10⁴)',
+    'VAR13': '',
+    'VAR14': 'NE% (嗜中性)',
+    'VAR15': 'MO% (單核)',
+    'VAR16': 'EO% (嗜酸)',
+    'VAR17': 'LY% (淋巴)',
+    'VAR18': 'BA% (嗜鹼)',
+    'VAR24': 'Plt (×10³)',
+}
 
 
 # ── DBF reading helpers ───────────────────────────────────────────────────────
@@ -82,12 +161,28 @@ def _iter_rows(path: str):
         print(f"  [Warning] Could not read {path}: {e}")
 
 
+def _decode_roc_year(prefix: str) -> str:
+    """Decode 2-char year prefix used in 6-char dates: A0-A9 = 100-109, B0-B9 = 110-119."""
+    if len(prefix) == 2 and prefix[0].isalpha():
+        base = (ord(prefix[0].upper()) - ord('A') + 10) * 10
+        digit = int(prefix[1]) if prefix[1].isdigit() else 0
+        return str(base + digit)
+    return prefix  # plain digits (e.g. '92', '04')
+
+
 def _roc_to_display(roc: str) -> str:
-    """Convert YYYMMDD (ROC) to YYY/MM/DD display."""
+    """Convert ROC date string to YYY/MM/DD display.
+    Handles: YYYMMDD (7 chars), YYMMDD (6 chars), and
+    the A/B prefix encoding where A0=100, B5=115, etc.
+    """
     roc = roc.strip()
     if len(roc) == 7:
         return f"{roc[:3]}/{roc[3:5]}/{roc[5:]}"
-    if len(roc) == 6:  # YYMMDD older format
+    if len(roc) == 6:
+        # Check for letter-prefix year encoding (A0-A9, B0-B9, ...)
+        if roc[0].isalpha():
+            year = _decode_roc_year(roc[:2])
+            return f"{year}/{roc[2:4]}/{roc[4:]}"
         return f"{roc[:2]}/{roc[2:4]}/{roc[4:]}"
     return roc
 
@@ -234,20 +329,26 @@ def format_eplat(visits: list[dict]) -> list[str]:
     return lines
 
 
-def format_bio(rows: list[dict], source: str) -> list[str]:
+def format_bio(rows: list[dict], source: str, labels: dict[str, str]) -> list[str]:
+    # Skip VAR1-3 (date parts) and any empty-label field when a label dict is given
+    DATE_VARS = {'VAR1', 'VAR2', 'VAR3'}
     lines = []
     if not rows:
         lines.append(f"  (no {source} records found)")
         return lines
     for row in rows:
         date = _roc_to_display(row.get('DATE', '???'))
-        vals = {k: v for k, v in row.items() if k not in ('CODE', 'DATE') and v}
         lines.append(f"\n  日期: {date}")
-        # Print VAR fields in pairs for readability
-        items = list(vals.items())
-        for i in range(0, len(items), 5):
-            chunk = items[i:i+5]
-            lines.append("    " + "  ".join(f"{k}={v}" for k, v in chunk))
+        for k, v in row.items():
+            if k in ('CODE', 'DATE') or k in DATE_VARS or not v:
+                continue
+            label = labels.get(k, '')
+            if label == '':
+                # Unknown column — show raw key=value
+                display = f"    {k:<8} {v}"
+            else:
+                display = f"    {label:<28} {v}"
+            lines.append(display)
     return lines
 
 
@@ -288,10 +389,10 @@ def main():
         bio2c_rows = search_bio_file(os.path.join(ZZ_DIR, 'BIO2C.DBF'), patient_code)
 
     output_lines.append(f"\n【各項檢驗 BIO (bioc.dbf)】 — {len(bio_rows)} record(s)")
-    output_lines += format_bio(bio_rows, 'bioc.dbf')
+    output_lines += format_bio(bio_rows, 'bioc.dbf', BIO_LABELS)
 
     output_lines.append(f"\n【各項檢驗 BIO2C (BIO2C.DBF)】 — {len(bio2c_rows)} record(s)")
-    output_lines += format_bio(bio2c_rows, 'BIO2C.DBF')
+    output_lines += format_bio(bio2c_rows, 'BIO2C.DBF', BIO_LABELS)
 
     # 4. CBCC.DBF
     print("[4/4] Searching CBCC.DBF (CBC)...")
@@ -300,7 +401,7 @@ def main():
         cbc_rows = search_bio_file(os.path.join(ZZ_DIR, 'CBCC.DBF'), patient_code)
 
     output_lines.append(f"\n【CBC 血球計數 (CBCC.DBF)】 — {len(cbc_rows)} record(s)")
-    output_lines += format_bio(cbc_rows, 'CBCC.DBF')
+    output_lines += format_bio(cbc_rows, 'CBCC.DBF', CBC_LABELS)
 
     # Save and print
     output = "\n".join(output_lines)
