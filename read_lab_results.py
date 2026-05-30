@@ -24,60 +24,59 @@ ZZ_DIR       = r"Z:\Z"
 OUTPUT_FILE  = os.path.join(os.path.dirname(__file__), "read_lab_results_output.txt")
 
 # ── VAR column labels for bioc.dbf / BIO2C.DBF ───────────────────────────────
-# VAR1-3 = year (2-digit ROC last 2 digits) / month / day — skip in display
-# Labels inferred from observed values and typical biochemistry panels.
-# Unknown positions are left empty (raw VAR number shown as fallback).
-BIO_LABELS: dict[str, str] = {
-    'VAR1': '',     # year (part of date)
-    'VAR2': '',     # month
-    'VAR3': '',     # day
+# New platform started 2026-04-01 (ROC 115/04/01 = raw DATE 'B50401').
+# Old and new platforms store different tests in the same VAR columns.
+_NEW_PLATFORM_DATE = 'B50401'
+
+OLD_BIO_LABELS: dict[str, str] = {
     'VAR4':  'Glucose (AC)',
-    'VAR5':  'hsCRP',
-    'VAR6':  '',
-    'VAR7':  '',
+    'VAR5':  'HBsAg',
     'VAR8':  'HBsAb',
-    'VAR9':  '',
-    'VAR10': 'HbA1c',
-    'VAR11': '',
-    'VAR12': '',
-    'VAR13': '',
-    'VAR14': 'Ferritin',
+    'VAR10': 'T-Protein (總蛋白)',
+    'VAR14': 'IgE',
     'VAR15': 'AST (GOT)',
-    'VAR16': '',
     'VAR17': 'ALT (GPT)',
     'VAR18': 'Anti-HCV',
-    'VAR19': '',
     'VAR20': 'GGT (r-GT)',
-    'VAR21': 'Glucose (PC)',
-    'VAR22': '',
-    'VAR23': 'Insulin',
+    'VAR21': 'TIBC',
+    'VAR23': 'ALK-P (鹼性磷酸酶)',
     'VAR24': 'Fe (鐵)',
-    'VAR25': 'Ca (鈣)',
-    'VAR26': 'Cr (Creatinine, 血)',
-    'VAR27': '',
-    'VAR28': '',
+    'VAR25': 'TSH',
+    'VAR26': 'Bil-T (總膽紅素)',
     'VAR29': 'HbA1c',
-    'VAR30': '',
     'VAR31': 'Albumin',
     'VAR32': 'BUN',
-    'VAR33': '',
-    'VAR34': 'Phosphate',
-    'VAR35': 'eGFR / Cr',
-    'VAR36': '',
+    'VAR34': 'Globulin (球蛋白)',
+    'VAR35': 'Cr (Creatinine, 血)',
     'VAR37': 'A/G ratio',
     'VAR38': 'UA (尿酸)',
-    'VAR39': '',
+    'VAR40': 'eGFR',
+    'VAR41': '備註 / 特殊檢查',
+    'VAR42': 'T-Chol (總膽固醇)',
+    'VAR43': 'HDL',
+    'VAR44': 'TG (三酸甘油脂)',
+    'VAR45': 'TC/HDL ratio',
+    'VAR48': 'LDL',
+}
+
+NEW_BIO_LABELS: dict[str, str] = {
+    'VAR4':  'Glucose (AC)',
+    'VAR10': 'HbA1c',
+    'VAR20': 'GGT (r-GT)',
+    'VAR29': 'HbA1c',
+    'VAR35': 'Cr (Creatinine, 血)',
     'VAR40': 'LDL',
     'VAR41': '備註 / 特殊檢查',
     'VAR42': 'T-Chol (總膽固醇)',
-    'VAR43': 'LDL',
+    'VAR43': 'HDL',
     'VAR44': 'TG (三酸甘油脂)',
     'VAR45': 'TC/HDL ratio',
-    'VAR46': 'LDL (alt)',
-    'VAR47': '',
-    'VAR48': 'Glucose (alt)',
-    'VAR49': '',
+    'VAR48': 'eAG',
 }
+
+
+def _bio_labels_for_date(raw_date: str) -> dict[str, str]:
+    return NEW_BIO_LABELS if raw_date.strip() >= _NEW_PLATFORM_DATE else OLD_BIO_LABELS
 
 # ── VAR column labels for CBCC.DBF ───────────────────────────────────────────
 # VAR1-3 = year/month/day (skip), VAR4+ = CBC values in standard order.
@@ -329,8 +328,7 @@ def format_eplat(visits: list[dict]) -> list[str]:
     return lines
 
 
-def format_bio(rows: list[dict], source: str, labels: dict[str, str]) -> list[str]:
-    # Skip VAR1-3 (date parts) and any empty-label field when a label dict is given
+def format_bio(rows: list[dict], source: str, labels: dict[str, str] | None = None) -> list[str]:
     DATE_VARS = {'VAR1', 'VAR2', 'VAR3'}
     lines = []
     if not rows:
@@ -339,12 +337,12 @@ def format_bio(rows: list[dict], source: str, labels: dict[str, str]) -> list[st
     for row in rows:
         date = _roc_to_display(row.get('DATE', '???'))
         lines.append(f"\n  日期: {date}")
+        row_labels = labels if labels is not None else _bio_labels_for_date(row.get('DATE', ''))
         for k, v in row.items():
             if k in ('CODE', 'DATE') or k in DATE_VARS or not v:
                 continue
-            label = labels.get(k, '')
+            label = row_labels.get(k, '')
             if label == '':
-                # Unknown column — show raw key=value
                 display = f"    {k:<8} {v}"
             else:
                 display = f"    {label:<28} {v}"
@@ -389,10 +387,10 @@ def main():
         bio2c_rows = search_bio_file(os.path.join(ZZ_DIR, 'BIO2C.DBF'), patient_code)
 
     output_lines.append(f"\n【各項檢驗 BIO (bioc.dbf)】 — {len(bio_rows)} record(s)")
-    output_lines += format_bio(bio_rows, 'bioc.dbf', BIO_LABELS)
+    output_lines += format_bio(bio_rows, 'bioc.dbf')
 
     output_lines.append(f"\n【各項檢驗 BIO2C (BIO2C.DBF)】 — {len(bio2c_rows)} record(s)")
-    output_lines += format_bio(bio2c_rows, 'BIO2C.DBF', BIO_LABELS)
+    output_lines += format_bio(bio2c_rows, 'BIO2C.DBF')
 
     # 4. CBCC.DBF
     print("[4/4] Searching CBCC.DBF (CBC)...")

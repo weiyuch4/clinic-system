@@ -781,6 +781,116 @@
     }
     .btn-retry:hover { background: var(--red-soft); }
 
+    /* ── Lab results modal ── */
+    .lab-overlay {
+      display: none; position: fixed; inset: 0; z-index: 400;
+      background: rgba(0,0,0,0.48); align-items: center; justify-content: center;
+    }
+    .lab-overlay.open { display: flex; }
+    .lab-modal {
+      background: var(--card); border-radius: 14px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.22);
+      width: min(780px, 96vw); max-height: 88vh;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .lab-modal-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 16px 20px; flex-shrink: 0;
+      background: var(--green); color: white;
+      border-radius: 14px 14px 0 0;
+    }
+    .lab-modal-header h3 { font-size: 15px; font-weight: 700; flex: 1; margin: 0; letter-spacing: -0.2px; }
+    .lab-modal-header .lab-patient-sub { font-size: 12px; opacity: 0.82; }
+    .btn-close-lab {
+      width: 30px; height: 30px; border: none; border-radius: 6px;
+      background: rgba(255,255,255,0.18); color: white;
+      font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: background 0.15s; flex-shrink: 0;
+    }
+    .btn-close-lab:hover { background: rgba(255,255,255,0.32); }
+
+    .lab-tabs {
+      display: flex; border-bottom: 1px solid var(--border);
+      background: var(--card); flex-shrink: 0; padding: 0 20px;
+    }
+    .lab-tab {
+      padding: 10px 16px; font-size: 13px; font-weight: 600;
+      color: var(--text-muted); background: none; border: none;
+      border-bottom: 3px solid transparent; margin-bottom: -1px;
+      cursor: pointer; transition: color 0.15s, border-color 0.15s; font-family: inherit;
+    }
+    .lab-tab:hover { color: var(--text-sub); }
+    .lab-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+    .lab-modal-body { overflow-y: auto; padding: 20px; flex: 1; }
+
+    .lab-loading {
+      display: flex; align-items: center; justify-content: center;
+      gap: 12px; padding: 48px 0; color: var(--text-muted); font-size: 13px;
+    }
+    .lab-spinner {
+      width: 20px; height: 20px; border: 2px solid #d1fae5;
+      border-top-color: var(--green); border-radius: 50%;
+      animation: spin 0.7s linear infinite; flex-shrink: 0;
+    }
+    .lab-empty {
+      text-align: center; padding: 48px 0;
+      color: var(--text-muted); font-size: 13px;
+    }
+
+    .lab-visit {
+      margin-bottom: 20px;
+      border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+    }
+    .lab-visit-header {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 16px; background: #f0fdf4;
+      border-bottom: 1px solid #d1fae5;
+    }
+    .lab-visit-date {
+      font-size: 13px; font-weight: 700; color: var(--green);
+      font-variant-numeric: tabular-nums;
+    }
+    .lab-visit-latest {
+      font-size: 10px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.5px; padding: 2px 7px; border-radius: 4px;
+      background: var(--green); color: white;
+    }
+    .lab-visit-notes {
+      padding: 8px 16px; background: #fffbeb;
+      border-bottom: 1px solid #fde68a;
+      font-size: 12px; color: #78350f; line-height: 1.6;
+    }
+    .lab-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 0; padding: 4px 0;
+    }
+    .lab-item {
+      display: flex; align-items: baseline; justify-content: space-between;
+      padding: 7px 16px; gap: 8px;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .lab-item:nth-child(odd) { background: #fafbfc; }
+    .lab-item-label {
+      font-size: 12px; color: var(--text-sub); flex: 1; min-width: 0;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .lab-item-value {
+      font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+      white-space: nowrap; color: var(--text);
+    }
+    .lab-item-value.flag-high { color: var(--red); }
+    .lab-item-value.flag-low  { color: #1d4ed8; }
+    .lab-flag { font-size: 10px; font-weight: 700; margin-left: 2px; }
+
+    /* Clickable patient name in MSPT rows */
+    .name-link {
+      cursor: pointer; text-decoration: none; color: inherit;
+      border-bottom: 1px dashed var(--text-muted);
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .name-link:hover { color: var(--green); border-bottom-color: var(--green); }
+
   </style>
 </head>
 <body>
@@ -791,6 +901,32 @@
 </div>
 
 <div class="toast-container" id="toast-container" aria-live="assertive" aria-atomic="false"></div>
+
+<!-- ── Lab results modal ── -->
+<div class="lab-overlay" id="lab-overlay">
+  <div class="lab-modal" role="dialog" aria-modal="true" aria-labelledby="lab-modal-title">
+    <div class="lab-modal-header">
+      <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="flex-shrink:0"><path d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"/></svg>
+      <div style="flex:1;min-width:0">
+        <h3 id="lab-modal-title">檢驗結果</h3>
+        <div class="lab-patient-sub" id="lab-patient-sub"></div>
+      </div>
+      <button class="btn-close-lab" id="btn-close-lab" aria-label="關閉">✕</button>
+    </div>
+    <div class="lab-tabs">
+      <button class="lab-tab active" data-lab-tab="bio">各項檢驗 BIO</button>
+      <button class="lab-tab" data-lab-tab="cbc">CBC 血球計數</button>
+    </div>
+    <div class="lab-modal-body" id="lab-modal-body">
+      <div class="lab-loading" id="lab-loading">
+        <div class="lab-spinner"></div>
+        <span>資料讀取中…</span>
+      </div>
+      <div id="lab-panel-bio" class="lab-panel" style="display:none"></div>
+      <div id="lab-panel-cbc" class="lab-panel" style="display:none"></div>
+    </div>
+  </div>
+</div>
 
 <div id="error-banner" role="alert">
   <span>⚠</span>
@@ -1384,7 +1520,7 @@
       : `<button class="btn-action" title="已通知病患，等待回診">${e.mspt_stage ? "已通知抽血" : "已通知"}</button>`;
 
     tr.innerHTML = `
-      <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span></div><div class="chart-number">${e.patient.chart_number}</div></td>
       <td class="mono">${fmt(e.patient.birth_date)}</td>
       <td>${stageCell}</td>
       <td>${lastVisitCell}</td>
@@ -1559,7 +1695,7 @@
       tr.dataset.key = key;
       tr.dataset.search = patientSearchStr(e.patient);
       tr.innerHTML = `
-        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span></div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
         <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
         <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
@@ -1588,7 +1724,7 @@
       tr.dataset.key = key;
       tr.dataset.search = patientSearchStr(e.patient);
       tr.innerHTML = `
-        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span></div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
         <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
         <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
@@ -1897,7 +2033,7 @@
     tr.dataset.key = key;
     tr.dataset.search = patientSearchStr(entry.patient);
     tr.innerHTML = `
-      <td><div class="patient-name">${entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div></td>
+      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${entry.patient.chart_number}','${entry.patient.name}')">${entry.patient.name}</span></div><div class="chart-number">${entry.patient.chart_number}</div></td>
       <td class="mono">${fmt(entry.patient.birth_date)}</td>
       <td>${entry.mspt_stage ? stageTag(entry.mspt_stage) : "—"}</td>
       <td>${entry.last_visit_date ? fmt(entry.last_visit_date) : "—"}</td>
@@ -3295,6 +3431,111 @@
   window.addEventListener("scroll", () => {
     document.getElementById("back-to-top").classList.toggle("visible", window.scrollY > 300);
   }, { passive: true });
+
+  // ── Lab results modal ──────────────────────────────────────────────────────
+
+  let _labActiveTab = 'bio';
+
+  function openLabModal(nationalId, patientName) {
+    const overlay = document.getElementById('lab-overlay');
+    document.getElementById('lab-modal-title').textContent = `檢驗結果 — ${patientName}`;
+    document.getElementById('lab-patient-sub').textContent = nationalId;
+    document.getElementById('lab-loading').style.display = 'flex';
+    document.getElementById('lab-panel-bio').style.display = 'none';
+    document.getElementById('lab-panel-cbc').style.display = 'none';
+    document.getElementById('lab-panel-bio').innerHTML = '';
+    document.getElementById('lab-panel-cbc').innerHTML = '';
+    overlay.classList.add('open');
+    _setLabTab(_labActiveTab);
+
+    fetch(`/api/lab/${encodeURIComponent(nationalId)}`)
+      .then(r => r.json())
+      .then(data => _renderLabResults(data))
+      .catch(() => _renderLabError());
+  }
+
+  function _setLabTab(tab) {
+    _labActiveTab = tab;
+    document.querySelectorAll('.lab-tab').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.labTab === tab);
+    });
+    const loading = document.getElementById('lab-loading').style.display !== 'none';
+    if (!loading) {
+      document.getElementById('lab-panel-bio').style.display = tab === 'bio' ? 'block' : 'none';
+      document.getElementById('lab-panel-cbc').style.display = tab === 'cbc' ? 'block' : 'none';
+    }
+  }
+
+  function _renderLabResults(data) {
+    document.getElementById('lab-loading').style.display = 'none';
+    document.getElementById('lab-panel-bio').innerHTML = _buildLabBioHtml(data.bio || []);
+    document.getElementById('lab-panel-cbc').innerHTML = _buildLabCbcHtml(data.cbc || []);
+    _setLabTab(_labActiveTab);
+  }
+
+  function _renderLabError() {
+    document.getElementById('lab-loading').style.display = 'none';
+    const err = `<div class="lab-empty">⚠️ 無法連接檢驗資料，請確認網路磁碟機 Z:\\ 已連線</div>`;
+    document.getElementById('lab-panel-bio').innerHTML = err;
+    document.getElementById('lab-panel-cbc').innerHTML = err;
+    _setLabTab(_labActiveTab);
+  }
+
+  function _buildLabBioHtml(records) {
+    if (!records.length) return `<div class="lab-empty">此患者無 BIO 檢驗記錄</div>`;
+    return records.map((rec, i) => _buildVisitCard(rec, i === 0, true)).join('');
+  }
+
+  function _buildLabCbcHtml(records) {
+    if (!records.length) return `<div class="lab-empty">此患者無 CBC 血球計數記錄</div>`;
+    return records.map((rec, i) => _buildVisitCard(rec, i === 0, false)).join('');
+  }
+
+  function _buildVisitCard(rec, isLatest, showNotes) {
+    const notesHtml = showNotes && rec.notes
+      ? `<div class="lab-visit-notes">${escHtml(rec.notes)}</div>`
+      : '';
+    const itemsHtml = rec.items.map(item => {
+      const flagCls = item.flag === '+' ? ' flag-high' : item.flag === '-' ? ' flag-low' : '';
+      const flagMark = item.flag ? `<span class="lab-flag">${item.flag}</span>` : '';
+      return `
+        <div class="lab-item">
+          <span class="lab-item-label" title="${escHtml(item.label)}">${escHtml(item.label)}</span>
+          <span class="lab-item-value${flagCls}">${escHtml(item.value)}${flagMark}</span>
+        </div>`;
+    }).join('');
+    const latestBadge = isLatest ? `<span class="lab-visit-latest">最新</span>` : '';
+    return `
+      <div class="lab-visit">
+        <div class="lab-visit-header">
+          <span class="lab-visit-date">${escHtml(rec.date)}</span>
+          ${latestBadge}
+        </div>
+        ${notesHtml}
+        <div class="lab-grid">${itemsHtml}</div>
+      </div>`;
+  }
+
+  function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  // Tab switching
+  document.querySelectorAll('.lab-tab').forEach(btn => {
+    btn.addEventListener('click', () => _setLabTab(btn.dataset.labTab));
+  });
+
+  // Close handlers
+  document.getElementById('btn-close-lab').addEventListener('click', () => {
+    document.getElementById('lab-overlay').classList.remove('open');
+  });
+  document.getElementById('lab-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('lab-overlay'))
+      document.getElementById('lab-overlay').classList.remove('open');
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') document.getElementById('lab-overlay').classList.remove('open');
+  });
 </script>
 
 <button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂端">

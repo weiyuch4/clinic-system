@@ -14,6 +14,7 @@ from fastapi.staticfiles import StaticFiles
 import backup
 import contacts
 import database
+import lab_results
 from models import (
     ChartNumberRequest, ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
     ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest, MsptManualRemoveRequest,
@@ -593,6 +594,12 @@ def unmark_mspt_manual(req: MsptManualRemoveRequest) -> None:
     except Exception:
         logger.exception("unmark_mspt_manual failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷手動標記失敗，請稍後再試")
+
+
+@app.get("/api/lab/{national_id}")
+def get_lab_results(national_id: str) -> dict:
+    """Return structured blood test results for a patient by national ID."""
+    return lab_results.get_lab_results(national_id.strip().upper())
 
 
 @app.get("/api/debug/mspt")
