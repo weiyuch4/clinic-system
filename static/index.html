@@ -343,6 +343,23 @@
       border-color: #fed7aa;
     }
 
+    /* Chronic prescription stage tag (IC02 / IC03) */
+    .ic-stage-tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: #dbeafe;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+    .ic-stage-tag.ic02 {
+      background: #fef3c7;
+      color: #92400e;
+      border-color: #fde68a;
+    }
+
     /* Reason tag */
     .reason-tag {
       display: inline-block;
@@ -899,6 +916,7 @@
           <th class="sortable" onclick="sortTable('chronic-body','name',this)">病患</th>
           <th class="sortable" onclick="sortTable('chronic-body','birth',this)">出生日期</th>
           <th class="sortable" onclick="sortTable('chronic-body','disease',this)">病名</th>
+          <th>次別</th>
           <th class="sortable" onclick="sortTable('chronic-body','pickup',this)">上次取藥</th>
           <th class="sortable" onclick="sortTable('chronic-body','due',this)">到期日</th>
           <th class="sortable" onclick="sortTable('chronic-body','status',this)">狀態</th>
@@ -915,7 +933,7 @@
     <div class="collapse-body" id="chronic-contacted-body">
       <table>
         <thead><tr>
-          <th>病患</th><th>病名</th><th>上次取藥</th><th>到期日</th><th>聯絡日期</th><th>已等待</th><th></th>
+          <th>病患</th><th>病名</th><th>次別</th><th>上次取藥</th><th>到期日</th><th>聯絡日期</th><th>已等待</th><th></th>
         </tr></thead>
         <tbody id="chronic-contacted-rows"></tbody>
       </table>
@@ -928,7 +946,7 @@
     <div class="collapse-body" id="chronic-called-body">
       <table>
         <thead><tr>
-          <th>病患</th><th>病名</th><th>上次取藥</th><th>到期日</th><th>二次通知日期</th><th>已等待</th><th></th>
+          <th>病患</th><th>病名</th><th>次別</th><th>上次取藥</th><th>到期日</th><th>二次通知日期</th><th>已等待</th><th></th>
         </tr></thead>
         <tbody id="chronic-called-rows"></tbody>
       </table>
@@ -1309,6 +1327,11 @@
     return `<span class="stage-tag${isAnnual ? " annual" : ""}">${stage}</span>`;
   }
 
+  function icStageTag(s) {
+    if (!s) return `<span style="color:var(--text-muted)">—</span>`;
+    return `<span class="ic-stage-tag${s === 'IC02' ? ' ic02' : ''}">${s}</span>`;
+  }
+
   function toggleSection(bodyId, toggle) {
     const body = document.getElementById(bodyId);
     const open = body.classList.toggle("open");
@@ -1386,6 +1409,7 @@
         <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
         <td>${e.disease_name || "—"}</td>
+        <td>${icStageTag(e.chronic_stage)}</td>
         <td>${pickupCell}</td>
         <td><span class="mono" style="color:var(--text-sub)">${fmt(e.due_date)}</span></td>
         <td>${statusPill(e.days_overdue)}</td>
@@ -1504,6 +1528,7 @@
     tr.innerHTML = `
       <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
       <td>${e.disease_name || "—"}</td>
+      <td>${icStageTag(e.chronic_stage)}</td>
       <td>${pickupCell}</td>
       <td class="mono" style="color:var(--text-sub)">${fmt(e.due_date)}</td>
       <td class="mono" style="color:var(--text-sub)">${fmt(notifiedAt)}</td>
