@@ -47,11 +47,11 @@ BIO_LABELS: dict[str, str] = {
     'VAR17': 'ALT (GPT)',
     'VAR18': 'Anti-HCV',
     'VAR19': '',
-    'VAR20': '',    # unknown — was labeled BUN but VAR32 is confirmed BUN
+    'VAR20': 'GGT (r-GT)',
     'VAR21': 'Glucose (PC)',
     'VAR22': '',
     'VAR23': 'Insulin',
-    'VAR24': '',    # unknown — only appears once (value 95)
+    'VAR24': 'Fe (鐵)',
     'VAR25': 'Ca (鈣)',
     'VAR26': 'Cr (Creatinine, 血)',
     'VAR27': '',
@@ -70,9 +70,9 @@ BIO_LABELS: dict[str, str] = {
     'VAR40': 'LDL',
     'VAR41': '備註 / 特殊檢查',
     'VAR42': 'T-Chol (總膽固醇)',
-    'VAR43': '',
+    'VAR43': 'LDL',
     'VAR44': 'TG (三酸甘油脂)',
-    'VAR45': '',    # unknown — values 3.29–4.06, possibly Albumin from lipid panel
+    'VAR45': 'TC/HDL ratio',
     'VAR46': 'LDL (alt)',
     'VAR47': '',
     'VAR48': 'Glucose (alt)',
