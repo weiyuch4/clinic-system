@@ -32,7 +32,7 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR4':  'Glucose (AC)',
     'VAR5':  'HBsAg',
     'VAR8':  'HBsAb',
-    'VAR10': 'T-Protein (總蛋白)',
+    'VAR10': 'HbA1c',
     'VAR14': 'IgE',
     'VAR15': 'AST (GOT)',
     'VAR17': 'ALT (GPT)',
@@ -43,7 +43,7 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR24': 'Fe (鐵)',
     'VAR25': 'TSH',
     'VAR26': 'Bil-T (總膽紅素)',
-    'VAR29': 'HbA1c',
+    'VAR29': 'T-Protein (總蛋白)',
     'VAR31': 'Albumin',
     'VAR32': 'BUN',
     'VAR34': 'Globulin (球蛋白)',
@@ -56,6 +56,7 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR43': 'HDL',
     'VAR44': 'TG (三酸甘油脂)',
     'VAR45': 'TC/HDL ratio',
+    'VAR46': 'HDL',
     'VAR48': 'LDL',
 }
 
@@ -63,14 +64,14 @@ NEW_BIO_LABELS: dict[str, str] = {
     'VAR4':  'Glucose (AC)',
     'VAR10': 'HbA1c',
     'VAR20': 'GGT (r-GT)',
-    'VAR29': 'HbA1c',
     'VAR35': 'Cr (Creatinine, 血)',
     'VAR40': 'LDL',
     'VAR41': '備註 / 特殊檢查',
     'VAR42': 'T-Chol (總膽固醇)',
-    'VAR43': 'HDL',
+    'VAR43': 'LDL',
     'VAR44': 'TG (三酸甘油脂)',
     'VAR45': 'TC/HDL ratio',
+    'VAR46': 'HDL',
     'VAR48': 'eAG',
 }
 

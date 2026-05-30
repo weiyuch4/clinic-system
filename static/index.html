@@ -1855,8 +1855,11 @@
       const actionsCell = isMspt
         ? `<div class="action-cell"><button class="btn-checkedin">現場掛號</button><button class="btn-complete">完成MSPT</button><button class="btn-undo">撤銷</button></div>`
         : `<button class="btn-undo">撤銷</button>`;
+      const nameHtmlDone = isMspt
+        ? `<span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span>`
+        : e.patient.name;
       tr.innerHTML = `
-        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td><div class="patient-name">${nameHtmlDone}</div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
         <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
         <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
@@ -2116,7 +2119,7 @@
     const nowTime = new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit', hour12: false });
     const nurseLabel = nurse ? ` ／ ${nurse}` : "";
     tr.innerHTML = `
-      <td><div class="patient-name">${entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div></td>
+      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${entry.patient.chart_number}','${entry.patient.name}')">${entry.patient.name}</span></div><div class="chart-number">${entry.patient.chart_number}</div></td>
       <td class="mono">${fmt(entry.patient.birth_date)}</td>
       <td>${entry.mspt_stage ? stageTag(entry.mspt_stage) : "—"}</td>
       <td style="font-size:13px;color:var(--text-sub)">${nowTime}${nurseLabel}</td>
@@ -2170,7 +2173,7 @@
       const timeLabel = e.contacted_time || "—";
       const nurseLabel = e.nurse ? ` ／ ${e.nurse}` : "";
       tr.innerHTML = `
-        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span></div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
         <td>${e.mspt_stage ? stageTag(e.mspt_stage) : "—"}</td>
         <td style="font-size:13px;color:var(--text-sub)">${timeLabel}${nurseLabel}</td>
@@ -2206,7 +2209,7 @@
       tr.dataset.key = followupKey(e);
       tr.dataset.search = patientSearchStr(e.patient);
       tr.innerHTML = `
-        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span></div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
         <td>${e.last_stage || "—"}</td>
         <td class="mono">${lastVisit}</td>
@@ -2355,7 +2358,7 @@
     tr.className = "done-complete";
     tr.dataset.search = patientSearchStr({ name: m.name, chart_number: m.chart_number, birth_date: m.birth_date });
     tr.innerHTML = `
-      <td><div class="patient-name">${m.name}</div><div class="chart-number">${m.chart_number}</div></td>
+      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${m.chart_number}','${m.name}')">${m.name}</span></div><div class="chart-number">${m.chart_number}</div></td>
       <td class="mono">${fmt(m.birth_date)}</td>
       <td>${stageTag(m.mspt_stage)}</td>
       <td class="mono" style="color:var(--text-sub)">${fmt(m.completed_date)}</td>
@@ -2520,7 +2523,7 @@
 
     const nameCell = isManual
       ? `<div class="patient-name">${manualName}</div><div class="chart-number" style="color:#b45309">手動新增</div>`
-      : `<div class="patient-name">${entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div>`;
+      : `<div class="patient-name">${category === "代謝症候群" ? `<span class="name-link" onclick="openLabModal('${entry.patient.chart_number}','${entry.patient.name}')">${entry.patient.name}</span>` : entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div>`;
     const birthCell = isManual ? `<span style="color:var(--text-muted)">—</span>` : `<span class="mono">${fmt(entry.patient.birth_date)}</span>`;
     const typeCell = isManual
       ? `<span style="font-size:11px;color:#b45309;background:#fffbeb;border:1px solid #fde68a;border-radius:4px;padding:2px 6px">手動</span>`
@@ -2832,7 +2835,7 @@
     if (isMspt) {
       const stageCell = entry.mspt_stage ? stageTag(entry.mspt_stage) : "—";
       tr.innerHTML = `
-        <td><div class="patient-name">${entry.patient.name}</div><div class="chart-number">${entry.patient.chart_number}</div></td>
+        <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${entry.patient.chart_number}','${entry.patient.name}')">${entry.patient.name}</span></div><div class="chart-number">${entry.patient.chart_number}</div></td>
         <td class="mono">${fmt(entry.patient.birth_date)}</td>
         <td>${stageCell}</td>
         <td>${reason}${autoTag}${noteHtml}</td>
@@ -3483,7 +3486,7 @@
 
   function _buildLabBioHtml(records) {
     if (!records.length) return `<div class="lab-empty">此患者無 BIO 檢驗記錄</div>`;
-    return records.map((rec, i) => _buildVisitCard(rec, i === 0, true)).join('');
+    return records.map((rec, i) => _buildVisitCard(rec, i === 0, rec.date < '115/04/01')).join('');
   }
 
   function _buildLabCbcHtml(records) {
