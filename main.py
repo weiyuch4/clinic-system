@@ -603,12 +603,12 @@ def get_lab_results(national_id: str) -> dict:
 
 
 @app.get("/api/lab-debug")
-def lab_debug() -> dict:
-    """Diagnostic: inspect PAT_HIST.DBF field names and a few sample rows."""
+def lab_debug(search: str | None = None) -> dict:
+    """Diagnostic: inspect PAT_HIST.DBF. Pass ?search=ID to look up a specific national ID."""
     import os, struct
     zz = r"Z:\Z"
     path = os.path.join(zz, "PAT_HIST.DBF")
-    result: dict = {"path": path, "exists": os.path.isfile(path), "fields": [], "sample_rows": []}
+    result: dict = {"path": path, "exists": os.path.isfile(path), "fields": [], "sample_rows": [], "total_records": 0}
     if not result["exists"]:
         result["files_in_zz"] = os.listdir(zz) if os.path.isdir(zz) else "Z:\\Z not accessible"
         return result
@@ -628,27 +628,43 @@ def lab_debug() -> dict:
                 if name:
                     fields.append((name, flen))
             result["fields"] = [f"{n}({l})" for n, l in fields]
-            f.seek(header_size)
             col_offsets = []
             off = 1
             for n, l in fields:
                 col_offsets.append((n, off, l))
                 off += l
-            count = 0
-            while count < 3:
+            f.seek(header_size)
+            sample_count = 0
+            search_upper = search.strip().upper() if search else None
+            matches = []
+            sample_ids = []
+            while True:
                 raw = f.read(record_size)
                 if not raw or len(raw) < record_size:
                     break
                 if raw[0] == 0x2A:
                     continue
+                result["total_records"] += 1
                 row = {}
                 for n, o, l in col_offsets:
                     try:
                         row[n] = raw[o:o+l].decode("big5").strip()
                     except Exception:
                         row[n] = raw[o:o+l].decode("latin-1").strip()
-                result["sample_rows"].append(row)
-                count += 1
+                if sample_count < 3:
+                    result["sample_rows"].append(row)
+                    sample_count += 1
+                if search_upper:
+                    id_new = row.get("ID_NEW", "").strip()
+                    id_old = row.get("ID_OLD", "").strip()
+                    if id_new == search_upper or id_old == search_upper:
+                        matches.append({"CODE": row.get("CODE",""), "DATE": row.get("DATE",""), "ID_NEW": id_new, "ID_OLD": id_old})
+                    elif len(sample_ids) < 5 and (id_new or id_old):
+                        sample_ids.append({"ID_NEW": repr(id_new), "ID_OLD": repr(id_old)})
+            if search_upper:
+                result["search"] = search_upper
+                result["matches"] = matches
+                result["sample_ids_in_file"] = sample_ids
     except Exception as e:
         result["error"] = str(e)
     return result
