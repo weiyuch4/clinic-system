@@ -19,6 +19,7 @@ class FollowupEntry(BaseModel):
     category: Literal["慢簽", "代謝症候群"]
     mspt_stage: MsptStage | None = None      # MSPT entries only — the NEXT stage due
     last_stage: MsptStage | None = None      # the stage completed at last_visit_date
+    chronic_stage: str | None = None         # 慢簽 only — next prescription type: 'IC01', 'IC02', or 'IC03'
     contact_reason: str | None = None         # e.g. "需回診+抽血" or "需抽血"
     call_required: bool = False              # True when re-surfaced after 7 days
     last_visit_date: date | None = None      # MSPT: date of most recent stage visit

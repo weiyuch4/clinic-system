@@ -230,6 +230,9 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                     # M20 stores the prescription days directly on the IC01 record
                     m20 = r.get('M20', '').strip()
                     entry['m20_ps'] = int(m20) if m20.isdigit() and int(m20) > 0 else None
+                else:
+                    # M33 is the refill sequence: '2'=IC02, '3'=IC03
+                    entry['m33'] = r.get('M33', '').strip()
                 target[nat_id] = entry
             elif is_ae and v_date == target[nat_id]['date'] and cf and cf not in target[nat_id]['code_fs']:
                 # Same day, additional AE pickup — accumulate CODE_F for PS summing
@@ -291,6 +294,13 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             continue
         if days_overdue > MAX_CHRONIC_OVERDUE_DAYS:
             continue
+        if use_ic01:
+            next_stage = 'IC02'
+        elif v.get('m33') == '3':
+            next_stage = 'IC01'  # IC03 was last — series ended, needs new prescription
+        else:
+            next_stage = 'IC03'  # IC02 was last (or unknown) — next refill
+
         results.append(FollowupEntry(
             patient=Patient(
                 chart_number=nat_id,
@@ -302,6 +312,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             days_overdue=days_overdue,
             last_visit_date=v['date'],
             category='慢簽',
+            chronic_stage=next_stage,
         ))
     return sorted(results, key=lambda e: e.days_overdue, reverse=True)
 
