@@ -10,6 +10,7 @@ Returns structured JSON-ready dicts for the frontend modal.
 """
 
 import os
+import re
 import struct
 
 ZZ_DIR = r"Z:\Z"
@@ -144,6 +145,20 @@ def _decode_date(raw: str) -> str:
     return raw
 
 
+def _parse_new_platform_notes(text: str) -> list[dict]:
+    """Parse VAR41 structured text from new platform into individual items.
+    Input:  'Cr(u):243.79 CKD:0期 eGFR(CKD-EPI):127.37 Upcr:57.4 Urine pro:14'
+    Output: [{'label': 'Cr(u)', 'value': '243.79', 'flag': ''}, ...]
+    """
+    items = []
+    for key, val in re.findall(r'([^:]+?):\s*(\S+)', text):
+        key = key.strip()
+        if key:
+            v, flag = _parse_flag(val)
+            items.append({'label': key, 'value': v, 'flag': flag})
+    return items
+
+
 def _parse_flag(val: str) -> tuple[str, str]:
     """Split '7.1+' → ('7.1', '+'), '65.1-' → ('65.1', '-'), '92' → ('92', '')."""
     v = val.strip()
@@ -181,6 +196,7 @@ def _read_bio_records(patient_code: str, dbf_name: str) -> list[dict]:
     records = []
     for row in raw_rows:
         labels = _bio_labels_for(row.get('DATE', ''))
+        is_new = labels is NEW_BIO_LABELS
         items = []
         notes = ''
         for var, label in labels.items():
@@ -193,7 +209,12 @@ def _read_bio_records(patient_code: str, dbf_name: str) -> list[dict]:
             v, flag = _parse_flag(val)
             items.append({'label': label, 'value': v, 'flag': flag})
 
-        # Show unknown VAR fields as-is (without a label); always skip VAR41 (notes)
+        if is_new:
+            var41 = row.get('VAR41', '').strip()
+            if var41:
+                items.extend(_parse_new_platform_notes(var41))
+
+        # Show unknown VAR fields as-is (without a label); always skip VAR41
         labeled = set(labels.keys()) | DATE_VARS | {'CODE', 'DATE', 'VAR41'}
         for k, val in row.items():
             if k in labeled or not val:

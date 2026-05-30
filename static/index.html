@@ -3471,8 +3471,18 @@
 
   function _renderLabResults(data) {
     document.getElementById('lab-loading').style.display = 'none';
-    document.getElementById('lab-panel-bio').innerHTML = _buildLabBioHtml(data.bio || []);
-    document.getElementById('lab-panel-cbc').innerHTML = _buildLabCbcHtml(data.cbc || []);
+    if (data.error) {
+      const errHtml = `<div class="lab-empty">⚠️ 讀取失敗：${escHtml(data.error)}</div>`;
+      document.getElementById('lab-panel-bio').innerHTML = errHtml;
+      document.getElementById('lab-panel-cbc').innerHTML = errHtml;
+    } else if (!data.patient_code) {
+      const noCodeHtml = `<div class="lab-empty">查無患者代碼（PAT_HIST.DBF 無對應記錄）</div>`;
+      document.getElementById('lab-panel-bio').innerHTML = noCodeHtml;
+      document.getElementById('lab-panel-cbc').innerHTML = noCodeHtml;
+    } else {
+      document.getElementById('lab-panel-bio').innerHTML = _buildLabBioHtml(data.bio || []);
+      document.getElementById('lab-panel-cbc').innerHTML = _buildLabCbcHtml(data.cbc || []);
+    }
     _setLabTab(_labActiveTab);
   }
 

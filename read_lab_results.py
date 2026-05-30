@@ -16,6 +16,7 @@ Output is also saved to read_lab_results_output.txt in the same folder.
 """
 
 import os
+import re
 import sys
 import struct
 
@@ -329,6 +330,11 @@ def format_eplat(visits: list[dict]) -> list[str]:
     return lines
 
 
+def _parse_new_platform_notes(text: str) -> list[tuple[str, str]]:
+    """Parse 'Cr(u):243.79 CKD:0期 ...' into [(label, value), ...] pairs."""
+    return [(k.strip(), v) for k, v in re.findall(r'([^:]+?):\s*(\S+)', text) if k.strip()]
+
+
 def format_bio(rows: list[dict], source: str, labels: dict[str, str] | None = None) -> list[str]:
     DATE_VARS = {'VAR1', 'VAR2', 'VAR3'}
     lines = []
@@ -339,8 +345,13 @@ def format_bio(rows: list[dict], source: str, labels: dict[str, str] | None = No
         date = _roc_to_display(row.get('DATE', '???'))
         lines.append(f"\n  日期: {date}")
         row_labels = labels if labels is not None else _bio_labels_for_date(row.get('DATE', ''))
+        is_new = row_labels is NEW_BIO_LABELS
         for k, v in row.items():
             if k in ('CODE', 'DATE') or k in DATE_VARS or not v:
+                continue
+            if k == 'VAR41' and is_new:
+                for lbl, val in _parse_new_platform_notes(v):
+                    lines.append(f"    {lbl:<28} {val}")
                 continue
             label = row_labels.get(k, '')
             if label == '':
