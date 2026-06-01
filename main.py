@@ -602,6 +602,64 @@ def get_lab_results(national_id: str) -> dict:
     return lab_results.get_lab_results(national_id.strip().upper())
 
 
+@app.get("/api/ic-inspect")
+def ic_inspect() -> dict:
+    """Diagnostic: show fields and 2 sample rows from the most recent IC visit file in Z:\\IC."""
+    import os, struct, glob as _glob
+    ic_dir = r"Z:\IC"
+    if not os.path.isdir(ic_dir):
+        return {"error": "Z:\\IC not accessible"}
+    paths = sorted(_glob.glob(os.path.join(ic_dir, "IC?????.DBF")))
+    if not paths:
+        return {"error": "No IC?????.DBF files found", "files": os.listdir(ic_dir)[:20]}
+    path = paths[-1]
+    result: dict = {"file": os.path.basename(path), "fields": [], "sample_rows": [], "total_records": 0}
+    try:
+        with open(path, "rb") as f:
+            hdr = f.read(32)
+            header_size = struct.unpack_from("<H", hdr, 8)[0]
+            record_size = struct.unpack_from("<H", hdr, 10)[0]
+            fields = []
+            f.seek(32)
+            while True:
+                fd = f.read(32)
+                if not fd or fd[0] == 0x0D:
+                    break
+                name = fd[:11].rstrip(b"\x00").decode("ascii", errors="replace").strip()
+                flen = fd[16]
+                if name:
+                    fields.append((name, flen))
+            result["fields"] = [f"{n}({l})" for n, l in fields]
+            col_offsets = []
+            off = 1
+            for n, l in fields:
+                col_offsets.append((n, off, l))
+                off += l
+            f.seek(header_size)
+            sample_count = 0
+            while True:
+                raw = f.read(record_size)
+                if not raw or len(raw) < record_size:
+                    break
+                if raw[0] == 0x2A:
+                    continue
+                result["total_records"] += 1
+                if sample_count < 2:
+                    row = {}
+                    for n, o, l in col_offsets:
+                        try:
+                            v = raw[o:o+l].decode("big5").strip()
+                        except Exception:
+                            v = raw[o:o+l].decode("latin-1").strip()
+                        if v:
+                            row[n] = v
+                    result["sample_rows"].append(row)
+                    sample_count += 1
+    except Exception as e:
+        result["error"] = str(e)
+    return result
+
+
 @app.get("/api/lab-files")
 def lab_files(file: str | None = None) -> dict:
     """Diagnostic: list DBF files in Z:\\Z, or inspect a specific one with ?file=NAME.DBF."""
