@@ -322,7 +322,15 @@
     tr.today   td:first-child { box-shadow: inset 3px 0 0 var(--amber); }
 
     .patient-name  { font-weight: 600; font-size: 13px; }
-    .chart-number  { font-size: 11px; color: var(--text-muted); margin-top: 1px; }
+    .chart-number  { font-size: 11px; color: var(--text-muted); margin-top: 1px; cursor: pointer; }
+    .chart-number:hover { text-decoration: underline; }
+    .copy-toast {
+      position: fixed; z-index: 99999; pointer-events: none;
+      background: #333; color: #fff; font-size: 12px;
+      padding: 3px 9px; border-radius: 5px;
+      opacity: 0; transition: opacity 0.12s;
+    }
+    .copy-toast.show { opacity: 1; }
     .mono          { font-variant-numeric: tabular-nums; color: var(--text-sub); }
 
     /* Stage tag */
@@ -800,7 +808,8 @@
       border-radius: 14px 14px 0 0;
     }
     .lab-modal-header h3 { font-size: 15px; font-weight: 700; flex: 1; margin: 0; letter-spacing: -0.2px; }
-    .lab-modal-header .lab-patient-sub { font-size: 12px; opacity: 0.82; }
+    .lab-modal-header .lab-patient-sub { font-size: 12px; opacity: 0.82; cursor: pointer; }
+    .lab-modal-header .lab-patient-sub:hover { text-decoration: underline; }
     .btn-close-lab {
       width: 30px; height: 30px; border: none; border-radius: 6px;
       background: rgba(255,255,255,0.18); color: white;
@@ -851,10 +860,11 @@
       font-size: 13px; font-weight: 700; color: var(--green);
       font-variant-numeric: tabular-nums;
     }
+    .lab-visit-ago { font-size: 11px; color: var(--text-muted); font-weight: 400; }
     .lab-visit-latest {
       font-size: 10px; font-weight: 700; text-transform: uppercase;
       letter-spacing: 0.5px; padding: 2px 7px; border-radius: 4px;
-      background: var(--green); color: white;
+      background: var(--green); color: white; margin-left: auto;
     }
     .lab-visit-notes {
       padding: 8px 16px; background: #fffbeb;
@@ -3442,7 +3452,9 @@
   function openLabModal(nationalId, patientName) {
     const overlay = document.getElementById('lab-overlay');
     document.getElementById('lab-modal-title').textContent = `檢驗結果 — ${patientName}`;
-    document.getElementById('lab-patient-sub').textContent = nationalId;
+    const subEl = document.getElementById('lab-patient-sub');
+    subEl.textContent = nationalId;
+    subEl.onclick = () => copyTextWithFeedback(nationalId, subEl);
     document.getElementById('lab-loading').style.display = 'flex';
     document.getElementById('lab-panel-bio').style.display = 'none';
     document.getElementById('lab-panel-cbc').style.display = 'none';
@@ -3504,6 +3516,18 @@
     return records.map((rec, i) => _buildVisitCard(rec, i === 0, false)).join('');
   }
 
+  function _daysAgoLabel(rocDate) {
+    // rocDate is 'YYY/MM/DD' (ROC calendar, year always 3 digits)
+    const parts = rocDate.split('/');
+    if (parts.length !== 3) return '';
+    const ad = new Date(parseInt(parts[0]) + 1911, parseInt(parts[1]) - 1, parseInt(parts[2]));
+    if (isNaN(ad)) return '';
+    const days = Math.round((Date.now() - ad) / 86400000);
+    if (days < 0) return '';
+    if (days === 0) return '今天';
+    return `${days} 天前`;
+  }
+
   function _buildVisitCard(rec, isLatest, showNotes) {
     const notesHtml = showNotes && rec.notes
       ? `<div class="lab-visit-notes">${escHtml(rec.notes)}</div>`
@@ -3518,10 +3542,12 @@
         </div>`;
     }).join('');
     const latestBadge = isLatest ? `<span class="lab-visit-latest">最新</span>` : '';
+    const agoLabel = _daysAgoLabel(rec.date);
     return `
       <div class="lab-visit">
         <div class="lab-visit-header">
           <span class="lab-visit-date">${escHtml(rec.date)}</span>
+          <span class="lab-visit-ago">${agoLabel}</span>
           ${latestBadge}
         </div>
         ${notesHtml}
@@ -3532,6 +3558,29 @@
   function escHtml(s) {
     return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   }
+
+  function copyTextWithFeedback(text, el) {
+    navigator.clipboard.writeText(text).then(() => {
+      const rect = el.getBoundingClientRect();
+      const toast = document.createElement('div');
+      toast.className = 'copy-toast';
+      toast.textContent = '已複製!';
+      document.body.appendChild(toast);
+      toast.style.left = (rect.left + rect.width / 2 - toast.offsetWidth / 2) + 'px';
+      toast.style.top  = (rect.top - 26 + window.scrollY) + 'px';
+      requestAnimationFrame(() => toast.classList.add('show'));
+      setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 130);
+      }, 1400);
+    });
+  }
+
+  // Copy national ID on click for all chart-number cells (event delegation)
+  document.addEventListener('click', e => {
+    const cn = e.target.closest('.chart-number');
+    if (cn) copyTextWithFeedback(cn.textContent.trim(), cn);
+  });
 
   // Tab switching
   document.querySelectorAll('.lab-tab').forEach(btn => {

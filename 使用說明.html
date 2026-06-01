@@ -191,6 +191,7 @@
           <li><a href="#act-sort">5-9 欄位排序</a></li>
         </ul>
       </li>
+      <li><a href="#lab">查看病患檢驗報告</a></li>
       <li><a href="#print">列印功能</a></li>
       <li><a href="#faq">常見問題</a></li>
     </ol>
@@ -263,7 +264,7 @@
   <h3>欄位說明</h3>
   <table>
     <tr><th>欄位</th><th>說明</th></tr>
-    <tr><td><strong>病患</strong></td><td>病患姓名（上方）與身分證字號（下方）。</td></tr>
+    <tr><td><strong>病患</strong></td><td>病患姓名（上方，點擊可開啟檢驗報告）與身分證字號（下方，點擊可複製）。</td></tr>
     <tr><td><strong>出生日期</strong></td><td>病患生日，用來確認身分。</td></tr>
     <tr><td><strong>病名</strong></td><td>慢性病名稱，例如高血壓、糖尿病。</td></tr>
     <tr><td><strong>上次取藥</strong></td><td>病患最近一次領藥的日期。</td></tr>
@@ -280,7 +281,7 @@
   <h3>待聯絡欄位說明</h3>
   <table>
     <tr><th>欄位</th><th>說明</th></tr>
-    <tr><td><strong>病患</strong></td><td>病患姓名（上方）與身分證字號（下方）。</td></tr>
+    <tr><td><strong>病患</strong></td><td>病患姓名（上方，點擊可開啟檢驗報告）與身分證字號（下方，點擊可複製）。</td></tr>
     <tr><td><strong>出生日期</strong></td><td>病患生日，用來確認身分。</td></tr>
     <tr><td><strong>下個階段</strong></td><td>病患下一步需要進行的追蹤階段（見下方）。</td></tr>
     <tr><td><strong>上次MSPT</strong></td><td>上次完成的 MSPT 追蹤階段（小字）與該次回診日期。</td></tr>
@@ -448,8 +449,36 @@
 
   <hr class="section-divider" />
 
-  <!-- 6. 列印功能 -->
-  <h2 id="print">6. 列印功能</h2>
+  <!-- 6. 查看檢驗報告 -->
+  <h2 id="lab">6. 查看病患檢驗報告</h2>
+  <p>點擊清單中任一病患的<strong>姓名</strong>，即可開啟該病患的歷史檢驗報告視窗。</p>
+
+  <h3>報告頁籤</h3>
+  <table>
+    <tr><th>頁籤</th><th>內容</th></tr>
+    <tr><td><strong>各項檢驗（BIO）</strong></td><td>血糖、血脂、肝腎功能、HbA1c 等生化檢查結果。</td></tr>
+    <tr><td><strong>血球計數（CBC）</strong></td><td>白血球、紅血球、血色素、血小板等全血計數。</td></tr>
+  </table>
+
+  <h3>報告閱讀說明</h3>
+  <ul>
+    <li>每次報告標題顯示<strong>日期</strong>與<strong>距今幾天</strong>（例如：<code>115/04/03　60 天前</code>），方便快速判斷資料新舊。</li>
+    <li>最新一筆報告預設展開；其餘報告點擊標題列即可展開或收合。</li>
+    <li>數值後方若出現 <strong style="color:#dc2626">+</strong> 表示偏高，<strong style="color:#2563eb">−</strong> 表示偏低。</li>
+    <li>點擊右上角 ✕ 或視窗外的灰色區域可關閉報告視窗。</li>
+  </ul>
+
+  <h3>複製身分證字號</h3>
+  <ul>
+    <li><strong>在清單中</strong>：點擊病患姓名下方的身分證字號文字，即可複製至剪貼簿，畫面短暫顯示「已複製!」。</li>
+    <li><strong>在報告視窗中</strong>：點擊視窗標題下方的身分證字號，同樣可複製。</li>
+  </ul>
+  <div class="tip">💡 複製身分證字號後，可直接貼到其他系統（如燿聖、IC 讀卡機查詢欄位）中使用，不需手動輸入。</div>
+
+  <hr class="section-divider" />
+
+  <!-- 7. 列印功能 -->
+  <h2 id="print">7. 列印功能</h2>
   <p>需要列印當日處理紀錄時，點擊右上角的 <strong>列印聯絡清單</strong> 按鈕。</p>
   <div class="step-box">
     <ol>
@@ -475,8 +504,8 @@
 
   <hr class="section-divider" />
 
-  <!-- 7. 常見問題 -->
-  <h2 id="faq">7. 常見問題</h2>
+  <!-- 8. 常見問題 -->
+  <h2 id="faq">8. 常見問題</h2>
 
   <h3>Q：系統畫面是空白的或顯示錯誤？</h3>
   <p>開機後請稍等 10–15 秒再開啟瀏覽器。若已等待仍無法連線，請聯絡管理員重新啟動伺服器。</p>

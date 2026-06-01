@@ -126,9 +126,9 @@ def _iter_rows(path: str):
                 for name, off, flen in fields:
                     chunk = raw[off:off + flen]
                     try:
-                        val = chunk.decode('big5').strip()
+                        val = chunk.decode('cp950', errors='replace').strip()
                     except Exception:
-                        val = chunk.decode('latin-1').strip()
+                        val = chunk.decode('latin-1', errors='replace').strip()
                     if val and '\x00' not in val:
                         row[name] = val
                 yield row
@@ -137,16 +137,16 @@ def _iter_rows(path: str):
 
 
 def _decode_date(raw: str) -> str:
-    """Convert raw 6-char date (A4=104, B5=115 prefix encoding) to YYY/MM/DD."""
+    """Convert raw date to YYY/MM/DD (year always 3 digits so string sort works correctly)."""
     raw = raw.strip()
     if len(raw) == 6 and raw[0].isalpha():
         base = (ord(raw[0].upper()) - ord('A') + 10) * 10
         digit = int(raw[1]) if raw[1].isdigit() else 0
-        return f"{base + digit}/{raw[2:4]}/{raw[4:]}"
+        return f"{base + digit:03d}/{raw[2:4]}/{raw[4:]}"
     if len(raw) == 7:
         return f"{raw[:3]}/{raw[3:5]}/{raw[5:]}"
     if len(raw) == 6:
-        return f"{raw[:2]}/{raw[2:4]}/{raw[4:]}"
+        return f"{int(raw[:2]):03d}/{raw[2:4]}/{raw[4:]}"
     return raw
 
 

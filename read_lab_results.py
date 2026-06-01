@@ -153,9 +153,9 @@ def _iter_rows(path: str):
                 for name, off, flen in fields:
                     chunk = raw[off:off + flen]
                     try:
-                        val = chunk.decode('big5').strip()
+                        val = chunk.decode('cp950', errors='replace').strip()
                     except Exception:
-                        val = chunk.decode('latin-1').strip()
+                        val = chunk.decode('latin-1', errors='replace').strip()
                     # skip null-byte-only binary fields
                     if val and not all(c == '\x00' for c in val):
                         row[name] = val
@@ -174,19 +174,17 @@ def _decode_roc_year(prefix: str) -> str:
 
 
 def _roc_to_display(roc: str) -> str:
-    """Convert ROC date string to YYY/MM/DD display.
-    Handles: YYYMMDD (7 chars), YYMMDD (6 chars), and
-    the A/B prefix encoding where A0=100, B5=115, etc.
+    """Convert ROC date string to YYY/MM/DD (year always 3 digits so string sort works correctly).
+    Handles: YYYMMDD (7 chars), YYMMDD (6 chars), and A/B prefix encoding.
     """
     roc = roc.strip()
     if len(roc) == 7:
         return f"{roc[:3]}/{roc[3:5]}/{roc[5:]}"
     if len(roc) == 6:
-        # Check for letter-prefix year encoding (A0-A9, B0-B9, ...)
         if roc[0].isalpha():
             year = _decode_roc_year(roc[:2])
-            return f"{year}/{roc[2:4]}/{roc[4:]}"
-        return f"{roc[:2]}/{roc[2:4]}/{roc[4:]}"
+            return f"{int(year):03d}/{roc[2:4]}/{roc[4:]}"
+        return f"{int(roc[:2]):03d}/{roc[2:4]}/{roc[4:]}"
     return roc
 
 
