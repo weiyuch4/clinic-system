@@ -602,6 +602,17 @@ def get_lab_results(national_id: str) -> dict:
     return lab_results.get_lab_results(national_id.strip().upper())
 
 
+@app.get("/api/lab-files")
+def lab_files() -> dict:
+    """Diagnostic: list all DBF files in Z:\\Z."""
+    import os
+    zz = r"Z:\Z"
+    if not os.path.isdir(zz):
+        return {"error": "Z:\\Z not accessible"}
+    files = sorted(f for f in os.listdir(zz) if f.upper().endswith(".DBF"))
+    return {"files": files, "total": len(files)}
+
+
 @app.get("/api/lab-debug")
 def lab_debug(search: str | None = None) -> dict:
     """Diagnostic: inspect PAT_HIST.DBF. Pass ?search=ID to look up a specific national ID."""
