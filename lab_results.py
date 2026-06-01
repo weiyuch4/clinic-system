@@ -4,16 +4,19 @@ Lab results reader for the web API.
 Reads blood test results from:
   - Z:\\Z\\bioc.dbf      (各項檢驗 BIO)
   - Z:\\Z\\CBCC.DBF      (CBC 血球計數)
-  - Z:\\Z\\PAT_HIST.DBF  (national ID → 6-digit patient code)
+  - Z:\\Z\\PAT_HIST.DBF  (national ID → 6-digit patient code, change-log only)
+  - Z:\\IC\\IC?????.DBF  (IC visit files — fallback for patients not in PAT_HIST)
 
 Returns structured JSON-ready dicts for the frontend modal.
 """
 
+import glob as _glob
 import os
 import re
 import struct
 
 ZZ_DIR = r"Z:\Z"
+IC_DIR = r"Z:\IC"
 
 # New platform started 2026-04-01 (ROC 115/04/01 = raw DATE 'B50401').
 # Old and new platforms store different tests in the same VAR columns.
@@ -169,19 +172,47 @@ def _parse_flag(val: str) -> tuple[str, str]:
 
 # ── Patient code lookup ───────────────────────────────────────────────────────
 
+_patient_code_cache: dict[str, str] = {}  # national_id → 6-digit patient code
+
+
 def _find_patient_code(national_id: str) -> str | None:
-    path = os.path.join(ZZ_DIR, 'PAT_HIST.DBF')
-    if not os.path.isfile(path):
-        return None
-    best_code, best_date = None, ''
-    for row in _iter_rows(path):
-        if (row.get('ID_NEW', '').strip() == national_id or
-                row.get('ID_OLD', '').strip() == national_id):
-            d = row.get('DATE', '').strip()
-            if d >= best_date:
-                best_date = d
-                best_code = row.get('CODE', '').strip()
-    return best_code
+    if national_id in _patient_code_cache:
+        return _patient_code_cache[national_id]
+    code = _lookup_patient_code(national_id)
+    if code:
+        _patient_code_cache[national_id] = code
+    return code
+
+
+def _lookup_patient_code(national_id: str) -> str | None:
+    # Stage 1: PAT_HIST.DBF (change-log; fast but incomplete)
+    pat_hist = os.path.join(ZZ_DIR, 'PAT_HIST.DBF')
+    if os.path.isfile(pat_hist):
+        best_code, best_date = None, ''
+        for row in _iter_rows(pat_hist):
+            if (row.get('ID_NEW', '').strip() == national_id or
+                    row.get('ID_OLD', '').strip() == national_id):
+                d = row.get('DATE', '').strip()
+                if d >= best_date:
+                    best_date = d
+                    best_code = row.get('CODE', '').strip()
+        if best_code:
+            return best_code
+
+    # Stage 2: IC visit files — CODE_F[:6] is the 6-digit patient code
+    if os.path.isdir(IC_DIR):
+        ic_files = sorted(
+            (p for p in _glob.glob(os.path.join(IC_DIR, 'IC?????.DBF'))
+             if os.path.basename(p)[2:-4].isdigit()),
+            reverse=True,  # most-recent first so active patients found quickly
+        )
+        for ic_path in ic_files:
+            for row in _iter_rows(ic_path):
+                if row.get('ID', '').strip() == national_id:
+                    cf = row.get('CODE_F', '').strip()
+                    if len(cf) >= 6 and cf[:6].isdigit():
+                        return cf[:6]
+    return None
 
 
 # ── BIO record reader ─────────────────────────────────────────────────────────
