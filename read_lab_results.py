@@ -34,6 +34,7 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR5':  'HBsAg',
     'VAR8':  'HBsAb',
     'VAR10': 'HbA1c',
+    'VAR11': 'HBeAg',
     'VAR14': 'IgE',
     'VAR15': 'AST (GOT)',
     'VAR17': 'ALT (GPT)',
@@ -51,10 +52,11 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR35': 'Cr (Creatinine, 血)',
     'VAR37': 'A/G ratio',
     'VAR38': 'UA (尿酸)',
+    'VAR39': 'CA-199',
     'VAR40': 'eGFR',
     'VAR41': '備註 / 特殊檢查',
     'VAR42': 'T-Chol (總膽固醇)',
-    'VAR43': 'HDL',
+    'VAR43': 'eAG',
     'VAR44': 'TG (三酸甘油脂)',
     'VAR45': 'TC/HDL ratio',
     'VAR46': 'HDL',
@@ -306,7 +308,7 @@ def search_bio_file(dbf_path: str, patient_code: str) -> list[dict]:
     for row in _iter_rows(dbf_path):
         if row.get('CODE', '').strip() == patient_code:
             rows.append(row)
-    return sorted(rows, key=lambda r: r.get('DATE', ''), reverse=True)
+    return sorted(rows, key=lambda r: _roc_to_display(r.get('DATE', '')), reverse=True)
 
 
 # ── Output formatting ─────────────────────────────────────────────────────────

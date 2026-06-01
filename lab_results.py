@@ -27,6 +27,7 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR5':  'HBsAg',
     'VAR8':  'HBsAb',
     'VAR10': 'HbA1c',
+    'VAR11': 'HBeAg',
     'VAR14': 'IgE',
     'VAR15': 'AST (GOT)',
     'VAR17': 'ALT (GPT)',
@@ -44,10 +45,11 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR35': 'Cr (Creatinine, 血)',
     'VAR37': 'A/G ratio',
     'VAR38': 'UA (尿酸)',
+    'VAR39': 'CA-199',
     'VAR40': 'eGFR',
     'VAR41': '__notes__',
     'VAR42': 'T-Chol (總膽固醇)',
-    'VAR43': 'HDL',
+    'VAR43': 'eAG',
     'VAR44': 'TG (三酸甘油脂)',
     'VAR45': 'TC/HDL ratio',
     'VAR46': 'HDL',
@@ -222,7 +224,7 @@ def _read_bio_records(patient_code: str, dbf_name: str) -> list[dict]:
     if not os.path.isfile(path):
         return []
     raw_rows = [r for r in _iter_rows(path) if r.get('CODE', '').strip() == patient_code]
-    raw_rows.sort(key=lambda r: r.get('DATE', ''), reverse=True)
+    raw_rows.sort(key=lambda r: _decode_date(r.get('DATE', '')), reverse=True)
 
     records = []
     for row in raw_rows:
@@ -267,7 +269,7 @@ def _read_cbc_records(patient_code: str) -> list[dict]:
     if not os.path.isfile(path):
         return []
     raw_rows = [r for r in _iter_rows(path) if r.get('CODE', '').strip() == patient_code]
-    raw_rows.sort(key=lambda r: r.get('DATE', ''), reverse=True)
+    raw_rows.sort(key=lambda r: _decode_date(r.get('DATE', '')), reverse=True)
 
     records = []
     for row in raw_rows:
