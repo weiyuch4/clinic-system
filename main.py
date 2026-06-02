@@ -240,18 +240,19 @@ def get_report(report_date: date | None = None) -> DailyReport:
         ]
 
         # Filter chronic patients suppressed by a manual pickup record
+        _CHRONIC_GRACE = 5
         manual_pickup_map = contacts.get_manual_pickup_map()
 
         def chronic_suppressed(entry: FollowupEntry) -> bool:
             mp = manual_pickup_map.get(entry.patient.chart_number)
             if not mp:
                 return False
-            pickup_date = date.fromisoformat(mp[0])
+            pickup_date, ps_days = date.fromisoformat(mp[0]), mp[1]
             # If IC already has a newer visit, the manual record is superseded
             if entry.last_visit_date and pickup_date <= entry.last_visit_date:
                 return False
-            # Manual pickup newer than IC: suppress until IC catches up or nurse undoes it
-            return True
+            next_due = pickup_date + timedelta(days=ps_days)
+            return (as_of - next_due).days < _CHRONIC_GRACE
 
         chronic_prescriptions = [e for e in report.chronic_prescriptions if not chronic_suppressed(e)]
 

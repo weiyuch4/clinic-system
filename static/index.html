@@ -3560,7 +3560,7 @@
   }
 
   function copyTextWithFeedback(text, el) {
-    navigator.clipboard.writeText(text).then(() => {
+    function showToastAt(el) {
       const rect = el.getBoundingClientRect();
       const toast = document.createElement('div');
       toast.className = 'copy-toast';
@@ -3573,7 +3573,20 @@
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 130);
       }, 1400);
-    });
+    }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text).then(() => showToastAt(el));
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.cssText = 'position:fixed;opacity:0;pointer-events:none';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      document.execCommand('copy');
+      ta.remove();
+      showToastAt(el);
+    }
   }
 
   // Copy national ID on click for all chart-number cells (event delegation)
