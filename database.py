@@ -171,32 +171,44 @@ def _icd_to_name(icd: str) -> str | None:
     return None
 
 
+def _p_file_has_long1(p_path: str, cf: str) -> bool:
+    """Return True if the P file has any record for cf with LONG='1'."""
+    if not cf or not os.path.exists(p_path):
+        return False
+    try:
+        for r in _parse_dbf_cached(p_path):
+            if r.get('CODE_F', '').strip() == cf and r.get('LONG', '').strip() == '1':
+                return True
+    except Exception:
+        pass
+    return False
+
+
 # --- Real DB queries ---
 
 def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
     """Return patients whose last 慢簽 visit + prescription days is past as_of.
 
     Covers AE連續 (IC02/IC03 refills) and 01西醫 IC01 first prescriptions.
-    IC01 is identified by KIND='01' on the 01西醫 record (慢連續 initial prescription).
+    IC01 is identified by any P-file drug record having LONG='1' — this is set
+    exclusively on 連續處方箋 drugs and is absent on standalone 慢性病 visits.
     """
     since = as_of - timedelta(days=365)
 
-    # ae_best:  most recent AE連續 (IC02/IC03) per nat_id
-    # ic01_best: placeholder for IC01 detection — currently not reliably detectable
-    #            from IC/P DBF fields alone; KIND='04' is used by both IC01 and 慢性病
-    ae_best: dict[str, dict] = {}
-    ic01_best: dict[str, dict] = {}
+    ae_best: dict[str, dict] = {}    # most recent AE連續 (IC02/IC03) per nat_id
+    ic01_best: dict[str, dict] = {}  # most recent 01西醫 IC01 per nat_id
 
     for ic_path in _ic_files_since(since):
         try:
             records = _parse_dbf_cached(ic_path)
         except Exception:
             continue
+        p_path = ic_path[:-4] + 'P.DBF'
         for r in records:
             h_type = r.get('H_TYPE', '')
-            is_ae = h_type == 'AE連續'
-            is_ic01 = False  # TODO: find reliable IC01 field
-            if not is_ae and not is_ic01:
+            is_ae    = h_type == 'AE連續'
+            is_nishi = h_type == '01西醫'
+            if not is_ae and not is_nishi:
                 continue
             v_date = _roc_to_date(r.get('DATE', ''))
             if not v_date or v_date > as_of:
@@ -205,6 +217,16 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             if not nat_id:
                 continue
             cf = r.get('CODE_F', '').strip()
+
+            is_ic01 = False
+            if is_nishi:
+                # Skip P-file check if we already have a more recent IC01 for this patient
+                if nat_id in ic01_best and v_date <= ic01_best[nat_id]['date']:
+                    continue
+                if not _p_file_has_long1(p_path, cf):
+                    continue
+                is_ic01 = True
+
             target = ae_best if is_ae else ic01_best
 
             icd = next(
@@ -222,10 +244,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                     'icd': icd,
                     'ic_path': ic_path,
                 }
-                if is_ic01:
-                    m20 = r.get('M20', '').strip()
-                    entry['m20_ps'] = int(m20) if m20.isdigit() and int(m20) > 0 else None
-                else:
+                if not is_ic01:
                     entry['m33'] = r.get('M33', '').strip()
                 target[nat_id] = entry
             elif is_ae and v_date == target[nat_id]['date'] and cf and cf not in target[nat_id]['code_fs']:
@@ -269,11 +288,9 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             continue
 
         if use_ic01:
-            # P-file PS is the per-drug days supply (e.g. 28); prefer it over M20
-            # which may be an aggregate (3 drugs × 28 = 84).
-            ps = next((ps_lookup[cf] for cf in v['code_fs'] if cf in ps_lookup), None) or v.get('m20_ps')
+            ps = next((ps_lookup[cf] for cf in v['code_fs'] if cf in ps_lookup), None)
             if not ps:
-                continue  # no PS available — skip rather than guess
+                continue  # LONG=1 confirmed during scan but PS absent — skip
             total_ps = ps
         else:
             total_ps = sum(ps_lookup.get(cf, 28) for cf in v['code_fs']) if v['code_fs'] else 28
