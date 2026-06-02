@@ -14,6 +14,7 @@ import glob as _glob
 import os
 import re
 import struct
+import unicodedata
 
 ZZ_DIR = r"Z:\Z"
 IC_DIR = r"Z:\IC"
@@ -38,7 +39,10 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR24': 'Fe (鐵)',
     'VAR25': 'TSH',
     'VAR26': 'Bil-T (總膽紅素)',
+    'VAR27': 'Bil-D (直接膽紅素)',
+    'VAR28': 'AFP',
     'VAR29': 'T-Protein (總蛋白)',
+    'VAR30': 'CEA',
     'VAR31': 'Albumin',
     'VAR32': 'BUN',
     'VAR34': 'Globulin (球蛋白)',
@@ -54,6 +58,7 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR45': 'TC/HDL ratio',
     'VAR46': 'HDL',
     'VAR48': 'LDL',
+    'VAR49': 'Microalbumin (微白蛋白)',
 }
 
 NEW_BIO_LABELS: dict[str, str] = {
@@ -129,11 +134,43 @@ def _iter_rows(path: str):
                         val = chunk.decode('cp950', errors='replace').strip()
                     except Exception:
                         val = chunk.decode('latin-1', errors='replace').strip()
+                    val = unicodedata.normalize('NFKC', val)
                     if val and '\x00' not in val:
                         row[name] = val
                 yield row
     except Exception:
         return
+
+
+def _parse_var_date(row: dict) -> str:
+    """Parse VAR1/VAR2/VAR3 (actual lab date: year, month, day) into YYY/MM/DD.
+
+    Nurses on the old platform entered years as 2 digits (e.g. 14 for ROC 114).
+    We resolve ambiguity by cross-checking against the system DATE field year,
+    which is always correctly formatted.  Falls back to '' if invalid.
+    """
+    try:
+        y_raw = int(row.get('VAR1', '').strip())
+        m    = int(row.get('VAR2', '').strip())
+        d    = int(row.get('VAR3', '').strip())
+    except (ValueError, AttributeError):
+        return ''
+    if y_raw <= 0 or not (1 <= m <= 12) or not (1 <= d <= 31):
+        return ''
+
+    if y_raw >= 100:
+        return f"{y_raw:03d}/{m:02d}/{d:02d}"
+
+    # 2-digit year: resolve using the entry DATE field (always system-generated, always correct)
+    date_str = row.get('DATE', '').strip()
+    if len(date_str) == 7 and date_str.isdigit():
+        entry_year = int(date_str[:3])
+        # Lab date is either same year as entry or the year before (e.g. test Dec, entered Jan)
+        for candidate in (entry_year, entry_year - 1):
+            if candidate % 100 == y_raw:
+                return f"{candidate:03d}/{m:02d}/{d:02d}"
+
+    return ''  # can't resolve safely — fall back to DATE field in caller
 
 
 def _decode_date(raw: str) -> str:
@@ -224,7 +261,7 @@ def _read_bio_records(patient_code: str, dbf_name: str) -> list[dict]:
     if not os.path.isfile(path):
         return []
     raw_rows = [r for r in _iter_rows(path) if r.get('CODE', '').strip() == patient_code]
-    raw_rows.sort(key=lambda r: _decode_date(r.get('DATE', '')), reverse=True)
+    raw_rows.sort(key=lambda r: _parse_var_date(r) or _decode_date(r.get('DATE', '')), reverse=True)
 
     records = []
     for row in raw_rows:
@@ -257,7 +294,7 @@ def _read_bio_records(patient_code: str, dbf_name: str) -> list[dict]:
 
         if items or notes:
             records.append({
-                'date': _decode_date(row.get('DATE', '???')),
+                'date': _parse_var_date(row) or _decode_date(row.get('DATE', '???')),
                 'items': items,
                 'notes': notes,
             })
