@@ -115,35 +115,31 @@ def debug_patient(nat_id: str, as_of: date):
             m20    = r.get('M20', '').strip()
             m33    = r.get('M33', '').strip()
 
-            is_ae   = h_type == 'AE連續'
-            is_ic01 = h_type == '01西醫' and kind == '08'
+            is_ae       = h_type == 'AE連續'
+            is_01nishi  = h_type == '01西醫'
 
             entry = {
-                'file':   f'IC{stem}.DBF',
-                'h_type': h_type,
-                'kind':   kind,
-                'date':   v_date,
+                'file':     f'IC{stem}.DBF',
+                'h_type':   h_type,
+                'kind':     kind,
+                'date':     v_date,
                 'date_raw': r.get('DATE', '').strip(),
-                'cf':     cf,
-                'm20':    m20,
-                'm33':    m33,
-                'is_ae':  is_ae,
-                'is_ic01': is_ic01,
-                'p_path': p_path,
+                'cf':       cf,
+                'm20':      m20,
+                'm33':      m33,
+                'is_ae':    is_ae,
+                'is_01':    is_01nishi,
+                'p_path':   p_path,
             }
             all_visits.append(entry)
 
-            if not is_ae and not is_ic01:
+            if not is_ae:
                 continue
             if not v_date:
                 continue
 
-            target_best = ae_best if is_ae else ic01_best
-            if target_best is None or v_date > target_best['date']:
-                if is_ae:
-                    ae_best = entry
-                else:
-                    ic01_best = entry
+            if ae_best is None or v_date > ae_best['date']:
+                ae_best = entry
 
     # ── Print all visits found ────────────────────────────────────────────────
 
@@ -151,49 +147,50 @@ def debug_patient(nat_id: str, as_of: date):
         print(f"\n  ✗ No records found for this patient in any IC file.")
         return
 
-    # Separate into chronic-relevant and everything else
-    chronic_hits = [v for v in all_visits if v['is_ae'] or v['is_ic01']]
-    other_hits   = [v for v in all_visits if not v['is_ae'] and not v['is_ic01']]
+    ae_hits   = [v for v in all_visits if v['is_ae']]
+    nishi_hits = [v for v in all_visits if v['is_01']]
 
     print(f"\n  All visits for this patient: {len(all_visits)} record(s) across IC files")
 
-    if chronic_hits:
-        print(f"\n  ── Chronic-relevant visits (AE連續 or 01西醫/KIND=08) ──")
-        for v in sorted(chronic_hits, key=lambda x: x['date'] or date.min, reverse=True):
-            tag = '✓ AE連續' if v['is_ae'] else '✓ IC01 (KIND=08)'
-            print(f"    {tag:<22}  date={v['date_raw']!r} → {v['date']}  "
-                  f"KIND={v['kind']!r}  M20={v['m20']!r}  M33={v['m33']!r}  "
-                  f"CF={v['cf']!r}  [{v['file']}]")
-    else:
-        print(f"\n  ✗ No AE連續 or KIND=08 records found.")
+    if ae_hits:
+        print(f"\n  ── AE連續 visits (captured) ──")
+        for v in sorted(ae_hits, key=lambda x: x['date'] or date.min, reverse=True):
+            print(f"    ✓ AE連續  date={v['date_raw']!r} → {v['date']}  "
+                  f"M33={v['m33']!r}  CF={v['cf']!r}  [{v['file']}]")
 
-    if other_hits:
-        print(f"\n  ── Other 01西醫 visits (not captured as IC01 — KIND is not '08') ──")
-        for v in sorted(other_hits, key=lambda x: x['date'] or date.min, reverse=True):
-            print(f"    H_TYPE={v['h_type']!r}  KIND={v['kind']!r}  "
-                  f"date={v['date_raw']!r} → {v['date']}  CF={v['cf']!r}  [{v['file']}]")
+    # Check every 01西醫 visit for LONG=1 in P file — that's the IC01 signal
+    if nishi_hits:
+        print(f"\n  ── 01西醫 visits — checking P file LONG=1 for each ──")
+        for v in sorted(nishi_hits, key=lambda x: x['date'] or date.min, reverse=True):
+            has_long1 = False
+            long1_ps  = ''
+            p_path = v['p_path']
+            cf     = v['cf']
+            if cf and os.path.exists(p_path):
+                try:
+                    for pr in _parse_dbf(p_path):
+                        if pr.get('CODE_F', '').strip() == cf and pr.get('LONG', '').strip() == '1':
+                            has_long1 = True
+                            long1_ps  = pr.get('PS', '').strip()
+                            break
+                except Exception:
+                    pass
+            if has_long1:
+                flag = f'  ← LONG=1  PS={long1_ps!r}  *** likely IC01 ***'
+            else:
+                flag = '  (no LONG=1)'
+            print(f"    KIND={v['kind']!r}  date={v['date_raw']!r} → {v['date']}  "
+                  f"CF={v['cf']!r}  [{v['file']}]{flag}")
 
     # ── Show what the algorithm chose ────────────────────────────────────────
 
-    print(f"\n  ── Algorithm decision ──")
+    print(f"\n  ── Algorithm decision (current code — AE連續 only) ──")
 
-    if ae_best and ic01_best:
-        use_ic01 = ic01_best['date'] > ae_best['date']
-        print(f"    Both AE連續 and IC01 found.")
-        print(f"    AE連續 best:  {ae_best['date']}  [{ae_best['file']}]")
-        print(f"    IC01    best: {ic01_best['date']}  [{ic01_best['file']}]")
-        print(f"    → Using {'IC01' if use_ic01 else 'AE連續'} (more recent)")
-        chosen = ic01_best if use_ic01 else ae_best
-    elif ic01_best:
-        print(f"    IC01 only:  {ic01_best['date']}  [{ic01_best['file']}]")
-        use_ic01 = True
-        chosen = ic01_best
-    elif ae_best:
-        print(f"    AE連續 only: {ae_best['date']}  [{ae_best['file']}]")
-        use_ic01 = False
+    if ae_best:
+        print(f"    AE連續 best: {ae_best['date']}  [{ae_best['file']}]")
         chosen = ae_best
     else:
-        print(f"    ✗ No chronic visit selected — patient will NOT appear in list.")
+        print(f"    ✗ No AE連續 found — patient will NOT appear in list.")
         return
 
     # ── Check PS lookup ───────────────────────────────────────────────────────
@@ -201,33 +198,8 @@ def debug_patient(nat_id: str, as_of: date):
     print(f"\n  ── Prescription days (PS) lookup ──")
 
     ps = None
-    if use_ic01:
-        m20 = chosen['m20']
-        if m20.isdigit() and int(m20) > 0:
-            ps = int(m20)
-            print(f"    M20 on IC01 record = {m20!r} → PS = {ps} days")
-        else:
-            print(f"    M20 = {m20!r} (missing/invalid) → checking P file fallback...")
-            p_path = chosen['p_path']
-            cf = chosen['cf']
-            if cf and os.path.exists(p_path):
-                try:
-                    for r in _parse_dbf(p_path):
-                        if r.get('CODE_F', '').strip() == cf and r.get('LONG', '').strip() == '1':
-                            ps_val = r.get('PS', '').strip()
-                            if ps_val.isdigit() and int(ps_val) > 0:
-                                ps = int(ps_val)
-                                print(f"    P file LONG=1 record: PS = {ps_val!r} → PS = {ps} days")
-                                break
-                    else:
-                        print(f"    ✗ No LONG=1 record in P file for CF={cf!r}")
-                except Exception as e:
-                    print(f"    [!] Could not read P file: {e}")
-            else:
-                print(f"    P file not found or no CF: {p_path}")
-        if ps is None:
-            print(f"    ✗ No PS found — patient will be SKIPPED (this is likely the bug)")
-            return
+    if False:  # placeholder — ic01_best path kept for structure
+        pass
     else:
         cf = chosen['cf']
         p_path = chosen['p_path']
