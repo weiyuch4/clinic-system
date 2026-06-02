@@ -75,7 +75,10 @@ def _parse_dbf(path: str) -> list[dict]:
 
 
 def dump_patient(nat_id: str) -> None:
-    all_ic = sorted(glob.glob(os.path.join(IC_DATA_PATH, 'IC?????.DBF')))
+    all_ic = sorted(
+        p for p in glob.glob(os.path.join(IC_DATA_PATH, 'IC?????.DBF'))
+        if os.path.basename(p)[2:-4].isdigit()
+    )
     # Only the most recent 12 files (1 year) to keep output manageable
     recent = all_ic[-12:] if len(all_ic) > 12 else all_ic
 
