@@ -223,13 +223,12 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                 # Skip P-file check if we already have a more recent IC01 for this patient
                 if nat_id in ic01_best and v_date <= ic01_best[nat_id]['date']:
                     continue
-                kind = r.get('KIND', '').strip()
-                m33  = r.get('M33',  '').strip()
-                m26  = r.get('M26',  '').strip()
-                # 連續處方箋 IC01: online visits always have M33='1' AND M26='3' together;
-                # offline visits (no IC card) have KIND=''. Regular 慢性病 visits have
-                # KIND='04' with no M33/M26 and must be excluded even if LONG=1 is set.
-                if not ((m33 == '1' and m26 == '3') or kind == ''):
+                m33 = r.get('M33', '').strip()
+                m26 = r.get('M26', '').strip()
+                # 連續處方箋 IC01: NHI mandates M33='1' (cycle 1 of 3) and M26='3'
+                # (3-cycle series) on the IC main record. Regular 慢性病 visits and
+                # offline visits (KIND='') without these fields must be excluded.
+                if not (m33 == '1' and m26 == '3'):
                     continue
                 if not _p_file_has_long1(p_path, cf):
                     continue
