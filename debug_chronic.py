@@ -158,29 +158,36 @@ def debug_patient(nat_id: str, as_of: date):
             print(f"    ✓ AE連續  date={v['date_raw']!r} → {v['date']}  "
                   f"M33={v['m33']!r}  CF={v['cf']!r}  [{v['file']}]")
 
-    # Check every 01西醫 visit for LONG=1 in P file — that's the IC01 signal
+    # Check every 01西醫 visit for LONG=1 in P file and dump all fields so we
+    # can spot what distinguishes a real IC01 from a regular 慢性病 visit.
     if nishi_hits:
-        print(f"\n  ── 01西醫 visits — checking P file LONG=1 for each ──")
-        for v in sorted(nishi_hits, key=lambda x: x['date'] or date.min, reverse=True):
-            has_long1 = False
-            long1_ps  = ''
+        print(f"\n  ── 01西醫 visits — P file LONG=1 detail (most recent 2 years) ──")
+        cutoff = as_of - timedelta(days=730)
+        recent = [v for v in nishi_hits if v['date'] and v['date'] >= cutoff]
+        for v in sorted(recent, key=lambda x: x['date'] or date.min, reverse=True):
             p_path = v['p_path']
             cf     = v['cf']
+            long1_records = []
             if cf and os.path.exists(p_path):
                 try:
                     for pr in _parse_dbf(p_path):
                         if pr.get('CODE_F', '').strip() == cf and pr.get('LONG', '').strip() == '1':
-                            has_long1 = True
-                            long1_ps  = pr.get('PS', '').strip()
-                            break
+                            long1_records.append(pr)
                 except Exception:
                     pass
-            if has_long1:
-                flag = f'  ← LONG=1  PS={long1_ps!r}  *** likely IC01 ***'
+            if long1_records:
+                print(f"\n    KIND={v['kind']!r}  date={v['date_raw']!r} → {v['date']}  "
+                      f"CF={cf!r}  [{v['file']}]  ← HAS LONG=1")
+                for pr in long1_records:
+                    # Print every non-empty field
+                    fields_str = '  '.join(
+                        f"{k}={pr[k]!r}" for k in pr if pr[k].strip()
+                        and k not in ('CODE_F',)
+                    )
+                    print(f"      P: {fields_str}")
             else:
-                flag = '  (no LONG=1)'
-            print(f"    KIND={v['kind']!r}  date={v['date_raw']!r} → {v['date']}  "
-                  f"CF={v['cf']!r}  [{v['file']}]{flag}")
+                print(f"    KIND={v['kind']!r}  date={v['date_raw']!r} → {v['date']}  "
+                      f"CF={cf!r}  [{v['file']}]  (no LONG=1)")
 
     # ── Show what the algorithm chose ────────────────────────────────────────
 
