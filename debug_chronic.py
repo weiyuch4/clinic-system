@@ -104,6 +104,7 @@ def debug_patient(nat_id: str, as_of: date):
             print(f"  [!] Could not read {ic_path}: {e}")
             continue
 
+        found_in_file = []
         for r in records:
             if r.get('ID', '').strip() != nat_id:
                 continue
@@ -130,8 +131,10 @@ def debug_patient(nat_id: str, as_of: date):
                 'is_ae':    is_ae,
                 'is_01':    is_01nishi,
                 'p_path':   p_path,
+                'ic_row':   r,
             }
             all_visits.append(entry)
+            found_in_file.append(f"H_TYPE={h_type!r} KIND={kind!r} DATE={r.get('DATE','').strip()!r}")
 
             if not is_ae:
                 continue
@@ -140,6 +143,9 @@ def debug_patient(nat_id: str, as_of: date):
 
             if ae_best is None or v_date > ae_best['date']:
                 ae_best = entry
+
+        if found_in_file:
+            print(f"  [{stem}] {len(found_in_file)} record(s): " + " | ".join(found_in_file))
 
     # ── Print all visits found ────────────────────────────────────────────────
 
@@ -178,6 +184,14 @@ def debug_patient(nat_id: str, as_of: date):
             if long1_records:
                 print(f"\n    KIND={v['kind']!r}  date={v['date_raw']!r} → {v['date']}  "
                       f"CF={cf!r}  [{v['file']}]  ← HAS LONG=1")
+                # Dump IC main file fields (skip obvious/known ones)
+                ic_skip = {'ID', 'NAME', 'BIRTH', 'DATE', 'CODE_F', 'H_TYPE', 'KIND'}
+                ic_fields_str = '  '.join(
+                    f"{k}={v['ic_row'][k]!r}" for k in v['ic_row']
+                    if v['ic_row'][k].strip() and k not in ic_skip
+                )
+                if ic_fields_str:
+                    print(f"      IC: {ic_fields_str}")
                 for pr in long1_records:
                     # Print every non-empty field
                     fields_str = '  '.join(

@@ -176,18 +176,14 @@ def _icd_to_name(icd: str) -> str | None:
 def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
     """Return patients whose last 慢簽 visit + prescription days is past as_of.
 
-    Covers AE連續 (IC02/IC03 refills) and 01西醫 with KIND='08' (IC01 first
-    prescription). KIND='08' on the IC main record is the reliable indicator set
-    by the clinic software when a doctor issues a 慢性病連續處方箋; regular 01西醫
-    visits have KIND='04' and are ignored. IC01 PS is read from M20 on the IC
-    record; if absent the P-file LONG=1 lookup is used as fallback.
+    Covers AE連續 (IC02/IC03 refills) and 01西醫 IC01 first prescriptions.
+    IC01 is identified by KIND='01' on the 01西醫 record (慢連續 initial prescription).
     """
     since = as_of - timedelta(days=365)
 
-    # ae_best:  best AE連續 (IC02/IC03) per nat_id — confirmed chronic by H_TYPE.
-    # ic01_best: best 01西醫 with KIND='08' per nat_id — confirmed IC01 by KIND.
-    # Same-day multiple CODE_Fs accumulated in code_fs for PS summing (AE連續 only;
-    # IC01 is a single doctor visit so multi-pickup on the same day doesn't apply).
+    # ae_best:  most recent AE連續 (IC02/IC03) per nat_id
+    # ic01_best: placeholder for IC01 detection — currently not reliably detectable
+    #            from IC/P DBF fields alone; KIND='04' is used by both IC01 and 慢性病
     ae_best: dict[str, dict] = {}
     ic01_best: dict[str, dict] = {}
 
@@ -199,7 +195,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
         for r in records:
             h_type = r.get('H_TYPE', '')
             is_ae = h_type == 'AE連續'
-            is_ic01 = h_type == '01西醫' and r.get('KIND', '').strip() == '08'
+            is_ic01 = False  # TODO: find reliable IC01 field
             if not is_ae and not is_ic01:
                 continue
             v_date = _roc_to_date(r.get('DATE', ''))
@@ -227,18 +223,15 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                     'ic_path': ic_path,
                 }
                 if is_ic01:
-                    # M20 stores the prescription days directly on the IC01 record
                     m20 = r.get('M20', '').strip()
                     entry['m20_ps'] = int(m20) if m20.isdigit() and int(m20) > 0 else None
                 else:
-                    # M33 is the refill sequence: '2'=IC02, '3'=IC03
                     entry['m33'] = r.get('M33', '').strip()
                 target[nat_id] = entry
             elif is_ae and v_date == target[nat_id]['date'] and cf and cf not in target[nat_id]['code_fs']:
-                # Same day, additional AE pickup — accumulate CODE_F for PS summing
                 target[nat_id]['code_fs'].append(cf)
 
-    # Build P-file lookup for AE連續 CODE_Fs (and IC01 fallback if M20 is missing).
+    # Build P-file PS lookup for AE連續 and IC01 CODE_Fs.
     by_p_path: dict[str, set[str]] = {}
     for src in (ae_best, ic01_best):
         for v in src.values():
@@ -259,14 +252,13 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
         except Exception:
             pass
 
-    CHRONIC_GRACE_DAYS = 5        # auto-SMS goes out on due date; only follow up manually after this many days
-    MAX_CHRONIC_OVERDUE_DAYS = 60  # 慢簽 series expires; stop following up after 60d past due
+    CHRONIC_GRACE_DAYS = 5
+    MAX_CHRONIC_OVERDUE_DAYS = 60
     results = []
     for nat_id in set(ae_best) | set(ic01_best):
         ae   = ae_best.get(nat_id)
         ic01 = ic01_best.get(nat_id)
 
-        # Use the more recent of the two visit types
         if ae and ic01:
             use_ic01 = ic01['date'] > ae['date']
         else:
@@ -277,15 +269,13 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             continue
 
         if use_ic01:
-            # IC01: use M20 from the IC record directly; fall back to P-file LONG=1
-            ps = v.get('m20_ps') or next(
-                (ps_lookup[cf] for cf in v['code_fs'] if cf in ps_lookup), None
-            )
+            # P-file PS is the per-drug days supply (e.g. 28); prefer it over M20
+            # which may be an aggregate (3 drugs × 28 = 84).
+            ps = next((ps_lookup[cf] for cf in v['code_fs'] if cf in ps_lookup), None) or v.get('m20_ps')
             if not ps:
                 continue  # no PS available — skip rather than guess
             total_ps = ps
         else:
-            # AE連續: fall back to 28 days per CODE_F if P file is incomplete
             total_ps = sum(ps_lookup.get(cf, 28) for cf in v['code_fs']) if v['code_fs'] else 28
 
         due_date = v['date'] + timedelta(days=total_ps)
@@ -294,12 +284,13 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             continue
         if days_overdue > MAX_CHRONIC_OVERDUE_DAYS:
             continue
+
         if use_ic01:
             next_stage = 'IC02'
         elif v.get('m33') == '3':
-            next_stage = 'IC01'  # IC03 was last — series ended, needs new prescription
+            next_stage = 'IC01'
         else:
-            next_stage = 'IC03'  # IC02 was last (or unknown) — next refill
+            next_stage = 'IC03'
 
         results.append(FollowupEntry(
             patient=Patient(
