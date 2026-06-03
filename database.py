@@ -190,8 +190,8 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
     """Return patients whose last 慢簽 visit + prescription days is past as_of.
 
     Covers AE連續 (IC02/IC03 refills) and 01西醫 IC01 first prescriptions.
-    IC01 is identified by any P-file drug record having LONG='1' — this is set
-    exclusively on 連續處方箋 drugs and is absent on standalone 慢性病 visits.
+    IC01 is identified by M33='1' AND M26='3' on the IC main record (NHI-mandated
+    fields exclusive to 連續處方箋 initial prescriptions) plus LONG='1' in the P file.
     """
     since = as_of - timedelta(days=365)
 
@@ -256,6 +256,11 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                 target[nat_id] = entry
             elif is_ae and v_date == target[nat_id]['date'] and cf and cf not in target[nat_id]['code_fs']:
                 target[nat_id]['code_fs'].append(cf)
+                # Keep the highest M33 seen (e.g. IC02+IC03 same day → m33='3')
+                new_m33 = r.get('M33', '').strip()
+                cur_m33 = target[nat_id].get('m33', '')
+                if new_m33.isdigit() and (not cur_m33.isdigit() or int(new_m33) > int(cur_m33)):
+                    target[nat_id]['m33'] = new_m33
 
     # Build P-file PS lookup for AE連續 and IC01 CODE_Fs.
     by_p_path: dict[str, set[str]] = {}
