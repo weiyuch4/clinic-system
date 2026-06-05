@@ -26,15 +26,23 @@ _NEW_PLATFORM_DATE = 'B50401'
 OLD_BIO_LABELS: dict[str, str] = {
     'VAR4':  'Glucose (AC)',
     'VAR5':  'HBsAg',
+    'VAR6':  'RA',
+    'VAR7':  'PC Sugar',
     'VAR8':  'HBsAb',
+    'VAR9':  'CRP',
     'VAR10': 'HbA1c',
     'VAR11': 'HBeAg',
+    'VAR12': 'VDRL',
+    'VAR13': 'HBeAb',
     'VAR14': 'IgE',
     'VAR15': 'AST (GOT)',
+    'VAR16': 'HAV-IgG',
     'VAR17': 'ALT (GPT)',
     'VAR18': 'Anti-HCV',
+    'VAR19': 'T3',
     'VAR20': 'GGT (r-GT)',
     'VAR21': 'TIBC',
+    'VAR22': 'T4',
     'VAR23': 'ALK-P (鹼性磷酸酶)',
     'VAR24': 'Fe (鐵)',
     'VAR25': 'TSH',
@@ -45,8 +53,10 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR30': 'CEA',
     'VAR31': 'Albumin',
     'VAR32': 'BUN',
+    'VAR33': 'PSA',
     'VAR34': 'Globulin (球蛋白)',
     'VAR35': 'Cr (Creatinine, 血)',
+    'VAR36': 'CA-125',
     'VAR37': 'A/G ratio',
     'VAR38': 'UA (尿酸)',
     'VAR39': 'CA-199',
@@ -57,6 +67,7 @@ OLD_BIO_LABELS: dict[str, str] = {
     'VAR44': 'TG (三酸甘油脂)',
     'VAR45': 'TC/HDL ratio',
     'VAR46': 'HDL',
+    'VAR47': 'Colon',
     'VAR48': 'LDL',
     'VAR49': 'Microalbumin (微白蛋白)',
 }
@@ -76,19 +87,19 @@ NEW_BIO_LABELS: dict[str, str] = {
 }
 
 CBC_LABELS: dict[str, str] = {
-    'VAR4':  'WBC (×10³)',
-    'VAR5':  'Hgb (g/dL)',
+    'VAR4':  'RBC (×10⁴)',
+    'VAR5':  'Hb (g/dL)',
     'VAR6':  'Hct (%)',
     'VAR7':  'MCV (fL)',
     'VAR8':  'MCH (pg)',
     'VAR9':  'MCHC (g/dL)',
-    'VAR12': 'RBC (×10⁴)',
-    'VAR14': 'NE% (嗜中性)',
-    'VAR15': 'MO% (單核)',
-    'VAR16': 'EO% (嗜酸)',
+    'VAR12': 'WBC (×10³)',
+    'VAR14': 'Band',
+    'VAR15': 'Eos',
+    'VAR16': 'Basophils',
     'VAR17': 'LY% (淋巴)',
-    'VAR18': 'BA% (嗜鹼)',
-    'VAR24': 'Plt (×10³)',
+    'VAR18': 'Monocytes',
+    'VAR24': 'Platelet (×10³)',
 }
 
 DATE_VARS = {'VAR1', 'VAR2', 'VAR3'}
@@ -99,16 +110,8 @@ def _bio_labels_for(raw_date: str) -> dict[str, str]:
 
 
 def _bio_display_date(row: dict) -> str:
-    """Return the date string to show for a BIO record.
-
-    New platform uses the system DATE field (already correct).
-    Old platform nurses entered the actual lab date in VAR1/VAR2/VAR3, which
-    may be off from DATE by a few days, so prefer that over DATE.
-    """
-    raw_date = row.get('DATE', '')
-    if _bio_labels_for(raw_date) is NEW_BIO_LABELS:
-        return _decode_date(raw_date) or '???'
-    return _parse_var_date(row) or _decode_date(raw_date) or '???'
+    """VAR1/2/3 hold the actual lab/order date on both platforms; DATE is system entry date."""
+    return _parse_var_date(row) or _decode_date(row.get('DATE', '')) or '???'
 
 
 # ── DBF helpers ───────────────────────────────────────────────────────────────
@@ -156,11 +159,11 @@ def _iter_rows(path: str):
 
 
 def _parse_var_date(row: dict) -> str:
-    """Parse VAR1/VAR2/VAR3 (actual lab date: year, month, day) into YYY/MM/DD.
+    """Parse VAR1/VAR2/VAR3 (actual lab/order date) into YYY/MM/DD.
 
-    Nurses on the old platform entered years as 2 digits (e.g. 14 for ROC 114).
-    We resolve ambiguity by cross-checking against the system DATE field year,
-    which is always correctly formatted.  Falls back to '' if invalid.
+    Old-platform nurses entered 2-digit years (e.g. 14 for ROC 114).
+    New platform stores full 3-digit years (e.g. 115).
+    Year resolution uses _decode_date so it handles all DATE formats (alpha, 7-digit).
     """
     try:
         y_raw = int(row.get('VAR1', '').strip())
@@ -174,16 +177,15 @@ def _parse_var_date(row: dict) -> str:
     if y_raw >= 100:
         return f"{y_raw:03d}/{m:02d}/{d:02d}"
 
-    # 2-digit year: resolve using the entry DATE field (always system-generated, always correct)
-    date_str = row.get('DATE', '').strip()
-    if len(date_str) == 7 and date_str.isdigit():
-        entry_year = int(date_str[:3])
-        # Lab date is either same year as entry or the year before (e.g. test Dec, entered Jan)
+    # 2-digit year: decode the system DATE field (handles alpha + 7-digit formats)
+    decoded = _decode_date(row.get('DATE', ''))
+    if decoded and '/' in decoded:
+        entry_year = int(decoded.split('/')[0])
         for candidate in (entry_year, entry_year - 1):
             if candidate % 100 == y_raw:
                 return f"{candidate:03d}/{m:02d}/{d:02d}"
 
-    return ''  # can't resolve safely — fall back to DATE field in caller
+    return ''
 
 
 def _decode_date(raw: str) -> str:

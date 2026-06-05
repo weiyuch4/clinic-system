@@ -466,10 +466,6 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
         else:
             results.append(entry.model_copy(update={'mspt_stage': next_stage}))
 
-    # ── TEMP TEST ENTRY (remove when done) ───────────────────────────────────
-    results.append(_mspt_followup(as_of, "B123124596", "魏宏杰", date(1990, 1, 1), "追1", "需抽血", as_of))
-    # ─────────────────────────────────────────────────────────────────────────
-
     return (
         sorted(results, key=lambda e: e.days_overdue, reverse=True),
         sorted(inactive, key=lambda e: e.last_visit_date or date.min),
