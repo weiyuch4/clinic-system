@@ -139,9 +139,14 @@ _CREATE_MSPT_CHECKEDIN = """
 @contextmanager
 def _conn() -> Generator[sqlite3.Connection, None, None]:
     conn = sqlite3.connect(DB_PATH)
-    yield conn
-    conn.commit()
-    conn.close()
+    try:
+        yield conn
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def init() -> None:
@@ -580,6 +585,18 @@ def get_print_history(target_date_iso: str) -> dict:
                ORDER BY completed_time NULLS LAST""",
             (target_date_iso,),
         ).fetchall()
+        excl_rows = conn.execute(
+            """SELECT chart_number, name, birth_date, category, mspt_stage,
+                      due_date, last_visit_date, last_stage, reason, note, nurse
+               FROM excluded WHERE excluded_at = ?""",
+            (target_date_iso,),
+        ).fetchall()
+        pickup_rows = conn.execute(
+            """SELECT chart_number, name, birth_date, pickup_date, ps_days, nurse
+               FROM manual_pickups WHERE recorded_at = ?""",
+            (target_date_iso,),
+        ).fetchall()
+
     contacted, called = [], []
     for r in contact_rows:
         entry = _rows_to_followup_entries([r[:10]])[0].model_copy(
@@ -590,6 +607,7 @@ def get_print_history(target_date_iso: str) -> dict:
             }
         )
         (contacted if r[12] == 1 else called).append(entry)
+
     mspt_completed = [
         FollowupEntry(
             patient=Patient(chart_number=r[0], name=r[3], birth_date=date.fromisoformat(r[4])),
@@ -606,13 +624,6 @@ def get_print_history(target_date_iso: str) -> dict:
         )
         for r in mc_rows
     ]
-    with _conn() as conn:
-        excl_rows = conn.execute(
-            """SELECT chart_number, name, birth_date, category, mspt_stage,
-                      due_date, last_visit_date, last_stage, reason, note, nurse
-               FROM excluded WHERE excluded_at = ?""",
-            (target_date_iso,),
-        ).fetchall()
     excluded = [
         ExcludedEntry(
             patient=Patient(chart_number=r[0], name=r[1], birth_date=date.fromisoformat(r[2])),
@@ -628,12 +639,6 @@ def get_print_history(target_date_iso: str) -> dict:
         )
         for r in excl_rows
     ]
-    with _conn() as conn:
-        pickup_rows = conn.execute(
-            """SELECT chart_number, name, birth_date, pickup_date, ps_days, nurse
-               FROM manual_pickups WHERE recorded_at = ?""",
-            (target_date_iso,),
-        ).fetchall()
     manual_pickups = [
         ManualPickupEntry(
             chart_number=r[0], name=r[1], birth_date=date.fromisoformat(r[2]),
@@ -684,19 +689,17 @@ def get_manual_pickup_entries() -> list[ManualPickupEntry]:
         rows = conn.execute(
             "SELECT chart_number, name, birth_date, pickup_date, ps_days FROM manual_pickups ORDER BY recorded_at DESC"
         ).fetchall()
-    result = []
-    for r in rows:
-        pickup = date.fromisoformat(r[3])
-        ps = r[4]
-        result.append(ManualPickupEntry(
+    return [
+        ManualPickupEntry(
             chart_number=r[0],
             name=r[1],
             birth_date=date.fromisoformat(r[2]),
-            pickup_date=pickup,
-            ps_days=ps,
-            next_due=pickup + timedelta(days=ps),
-        ))
-    return result
+            pickup_date=date.fromisoformat(r[3]),
+            ps_days=r[4],
+            next_due=date.fromisoformat(r[3]) + timedelta(days=r[4]),
+        )
+        for r in rows
+    ]
 
 
 def mark_mspt_manual(chart_number: str, name: str, birth_date: date, mspt_stage: str,

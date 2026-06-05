@@ -12,8 +12,32 @@ from models import (
     Patient,
 )
 
-# In-memory cache for parsed DBF files.
-# IC files are historical and never change once a month ends, so caching is safe.
+# ── Constants ─────────────────────────────────────────────────────────────────
+
+CHRONIC_GRACE_DAYS       = 5    # days after due before a 慢簽 patient surfaces
+MAX_CHRONIC_OVERDUE_DAYS = 60   # days after which a 慢簽 patient drops off the list
+MSPT_REOPEN_DAYS         = 365  # overdue beyond this → restart from 收案
+
+# NHI procedure codes for 代謝症候群 tracking (DRUG_NO field in P files).
+_MSPT_CODE_MAP: dict[str, str] = {
+    'P7501C':  '收案',
+    'P7502C':  '追1',
+    'P75022C': '追2',
+    'P75023C': '追3',
+    'P7503C':  '年度追蹤',
+}
+
+MSPT_STAGE_NEXT: dict[str, str] = {
+    '收案': '追1', '追1': '追2', '追2': '追3', '追3': '年度追蹤', '年度追蹤': '追1',
+}
+
+# All MSPT stages use the same inter-stage gap.
+_MSPT_STAGE_GAP = METABOLIC_FOLLOWUP_DAYS
+
+# ── DBF cache ─────────────────────────────────────────────────────────────────
+
+# IC files are historical — once a month ends the file never changes — so caching is safe.
+# The current month's file is always re-read to pick up intra-month updates.
 _dbf_cache: dict[str, list[dict]] = {}
 
 
@@ -23,7 +47,6 @@ def _current_roc_month() -> str:
 
 
 def _parse_dbf_cached(path: str) -> list[dict]:
-    # Don't cache the current month's file — it's still being written as new visits arrive
     if _current_roc_month() in os.path.basename(path).upper():
         return _parse_dbf(path)
     if path not in _dbf_cache:
@@ -35,15 +58,16 @@ def warmup_cache() -> None:
     """Pre-load all IC (and P) files into the cache. Call in a background thread
     at server startup so the first user request doesn't pay the full parse cost."""
     for path in _ic_main_files():
-        if path not in _dbf_cache:
-            try:
-                _parse_dbf_cached(path)
-                p = path[:-4] + 'P.DBF'
-                if os.path.exists(p) and p not in _dbf_cache:
-                    _parse_dbf_cached(p)
-            except Exception:
-                pass
+        try:
+            _parse_dbf_cached(path)
+            p = path[:-4] + 'P.DBF'
+            if os.path.exists(p):
+                _parse_dbf_cached(p)
+        except Exception:
+            pass
 
+
+# ── Public API ────────────────────────────────────────────────────────────────
 
 def get_daily_report(as_of: date) -> DailyReport:
     if USE_MOCK_DATA:
@@ -59,7 +83,7 @@ def get_daily_report(as_of: date) -> DailyReport:
     )
 
 
-# --- DBF utilities ---
+# ── DBF utilities ─────────────────────────────────────────────────────────────
 
 def _parse_dbf(path: str) -> list[dict]:
     with open(path, 'rb') as f:
@@ -72,9 +96,9 @@ def _parse_dbf(path: str) -> list[dict]:
         f.seek(32)
         while True:
             fd = f.read(32)
-            if fd[0] == 0x0D:
+            if not fd or fd[0] == 0x0D:
                 break
-            name = fd[:11].rstrip(b'\x00').decode('ascii', errors='replace')
+            name = fd[:11].rstrip(b'\x00').decode('ascii', errors='replace').strip()
             flen = fd[16]
             fields.append((name, flen))
 
@@ -132,7 +156,7 @@ def _ic_files_since(since: date) -> list[str]:
     return result
 
 
-# --- ICD code → Chinese disease name ---
+# ── ICD code → Chinese disease name ──────────────────────────────────────────
 
 # Ordered list of (prefix, name); first match wins.
 _ICD_MAP: list[tuple[str, str]] = [
@@ -171,6 +195,8 @@ def _icd_to_name(icd: str) -> str | None:
     return None
 
 
+# ── Chronic prescription (慢簽) query ─────────────────────────────────────────
+
 def _p_file_has_long1(p_path: str, cf: str) -> bool:
     """Return True if the P file has any record for cf with LONG='1'."""
     if not cf or not os.path.exists(p_path):
@@ -184,8 +210,6 @@ def _p_file_has_long1(p_path: str, cf: str) -> bool:
     return False
 
 
-# --- Real DB queries ---
-
 def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
     """Return patients whose last 慢簽 visit + prescription days is past as_of.
 
@@ -195,7 +219,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
     """
     since = as_of - timedelta(days=365)
 
-    ae_best: dict[str, dict] = {}    # most recent AE連續 (IC02/IC03) per nat_id
+    ae_best: dict[str, dict]   = {}  # most recent AE連續 (IC02/IC03) per nat_id
     ic01_best: dict[str, dict] = {}  # most recent 01西醫 IC01 per nat_id
 
     for ic_path in _ic_files_since(since):
@@ -205,7 +229,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             continue
         p_path = ic_path[:-4] + 'P.DBF'
         for r in records:
-            h_type = r.get('H_TYPE', '')
+            h_type   = r.get('H_TYPE', '')
             is_ae    = h_type == 'AE連續'
             is_nishi = h_type == '01西醫'
             if not is_ae and not is_nishi:
@@ -218,21 +242,15 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                 continue
             cf = r.get('CODE_F', '').strip()
 
-            is_ic01 = False
             if is_nishi:
-                # Skip P-file check if we already have a more recent IC01 for this patient
                 if nat_id in ic01_best and v_date <= ic01_best[nat_id]['date']:
                     continue
-                m33 = r.get('M33', '').strip()
-                m26 = r.get('M26', '').strip()
                 # 連續處方箋 IC01: NHI mandates M33='1' (cycle 1 of 3) and M26='3'
-                # (3-cycle series) on the IC main record. Regular 慢性病 visits and
-                # offline visits (KIND='') without these fields must be excluded.
-                if not (m33 == '1' and m26 == '3'):
+                # (3-cycle series). Regular 慢性病 and offline visits lack these fields.
+                if not (r.get('M33', '').strip() == '1' and r.get('M26', '').strip() == '3'):
                     continue
                 if not _p_file_has_long1(p_path, cf):
                     continue
-                is_ic01 = True
 
             target = ae_best if is_ae else ic01_best
 
@@ -243,26 +261,26 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             )
 
             if nat_id not in target or v_date > target[nat_id]['date']:
-                entry = {
-                    'date': v_date,
+                entry: dict = {
+                    'date':    v_date,
                     'code_fs': [cf] if cf else [],
-                    'name': r.get('NAME', '').strip(),
-                    'birth': _roc_to_date(r.get('BIRTH', '')),
-                    'icd': icd,
+                    'name':    r.get('NAME', '').strip(),
+                    'birth':   _roc_to_date(r.get('BIRTH', '')),
+                    'icd':     icd,
                     'ic_path': ic_path,
                 }
-                if not is_ic01:
+                if is_ae:
                     entry['m33'] = r.get('M33', '').strip()
                 target[nat_id] = entry
             elif is_ae and v_date == target[nat_id]['date'] and cf and cf not in target[nat_id]['code_fs']:
                 target[nat_id]['code_fs'].append(cf)
-                # Keep the highest M33 seen (e.g. IC02+IC03 same day → m33='3')
+                # Keep the highest M33 seen (e.g. IC02 + IC03 same day → m33='3')
                 new_m33 = r.get('M33', '').strip()
                 cur_m33 = target[nat_id].get('m33', '')
                 if new_m33.isdigit() and (not cur_m33.isdigit() or int(new_m33) > int(cur_m33)):
                     target[nat_id]['m33'] = new_m33
 
-    # Build P-file PS lookup for AE連續 and IC01 CODE_Fs.
+    # Build CODE_F → days-supply map from LONG=1 P-file records.
     by_p_path: dict[str, set[str]] = {}
     for src in (ae_best, ic01_best):
         for v in src.values():
@@ -271,30 +289,24 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                 for cf in v['code_fs']:
                     by_p_path.setdefault(p_path, set()).add(cf)
 
-    ps_lookup: dict[str, int] = {}  # code_f → days supply (LONG=1 records only)
+    ps_lookup: dict[str, int] = {}
     for p_path, code_fs in by_p_path.items():
         try:
             for r in _parse_dbf_cached(p_path):
                 cf = r.get('CODE_F', '').strip()
                 if cf in code_fs and cf not in ps_lookup and r.get('LONG', '').strip() == '1':
-                    ps = r.get('PS', '').strip()
-                    if ps.isdigit() and int(ps) > 0:
-                        ps_lookup[cf] = int(ps)
+                    ps_val = r.get('PS', '').strip()
+                    if ps_val.isdigit() and int(ps_val) > 0:
+                        ps_lookup[cf] = int(ps_val)
         except Exception:
             pass
 
-    CHRONIC_GRACE_DAYS = 5
-    MAX_CHRONIC_OVERDUE_DAYS = 60
     results = []
     for nat_id in set(ae_best) | set(ic01_best):
         ae   = ae_best.get(nat_id)
         ic01 = ic01_best.get(nat_id)
 
-        if ae and ic01:
-            use_ic01 = ic01['date'] > ae['date']
-        else:
-            use_ic01 = ic01 is not None
-
+        use_ic01 = ic01 is not None and (ae is None or ic01['date'] > ae['date'])
         v = ic01 if use_ic01 else ae
         if not v or not v['name'] or not v['birth']:
             continue
@@ -307,11 +319,9 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
         else:
             total_ps = sum(ps_lookup.get(cf, 28) for cf in v['code_fs']) if v['code_fs'] else 28
 
-        due_date = v['date'] + timedelta(days=total_ps)
+        due_date     = v['date'] + timedelta(days=total_ps)
         days_overdue = (as_of - due_date).days
-        if days_overdue < CHRONIC_GRACE_DAYS:
-            continue
-        if days_overdue > MAX_CHRONIC_OVERDUE_DAYS:
+        if not (CHRONIC_GRACE_DAYS <= days_overdue <= MAX_CHRONIC_OVERDUE_DAYS):
             continue
 
         if use_ic01:
@@ -337,51 +347,38 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
     return sorted(results, key=lambda e: e.days_overdue, reverse=True)
 
 
-# NHI procedure codes for 代謝症候群 tracking, as they appear in the P file DRUG_NO field.
-# The clinic software displays these as "追蹤管理費 1 (>=70天)" etc., but the DBF stores codes.
-_MSPT_CODE_MAP: dict[str, str] = {
-    'P7501C':  '收案',
-    'P7502C':  '追1',
-    'P75022C': '追2',
-    'P75023C': '追3',
-    'P7503C':  '年度追蹤',
-}
-
+# ── MSPT (代謝症候群) query ───────────────────────────────────────────────────
 
 def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
     """Return (active_followups, inactive_patients).
 
     active_followups: MSPT patients whose next stage is overdue and who still visit the clinic.
-    inactive_patients: patients needing 收案 restart but with no clinic visit in the past year
-                       (any H_TYPE in IC data) — shown in the 長期未回診 section.
+    inactive_patients: patients needing 收案 restart but with no clinic visit in the past 6 months
+                       — shown in the 長期未回診 section.
 
     Stage detection uses NHI procedure codes in the P-file DRUG_NO field.
-    History is grouped by national ID (ID field) because CODE_F is assigned
-    per-visit and changes across visits for the same patient.
-    The P file has no DATE field, so each patient's latest IC visit date for
-    that month is used as the stage date."""
-    MAX_INACTIVE_DAYS  = 2 * 365  # older than 2 years — ignore entirely
-    REOPEN_AFTER_DAYS  = 365      # > 1 year inactive from MSPT → case closed, needs 收案 restart
-    LONG_INACTIVE_DAYS = 180      # > 6 months since last any clinic visit → 長期未回診
-    _STAGE_NEXT = {'收案': '追1', '追1': '追2', '追2': '追3', '追3': '年度追蹤', '年度追蹤': '追1'}
-    _STAGE_GAPS = {'收案': METABOLIC_FOLLOWUP_DAYS, '追1': METABOLIC_FOLLOWUP_DAYS,
-                   '追2': METABOLIC_FOLLOWUP_DAYS, '追3': METABOLIC_FOLLOWUP_DAYS, '年度追蹤': METABOLIC_FOLLOWUP_DAYS}
+    History is grouped by national ID because CODE_F changes across visits for the same patient.
+    The P file has no DATE field, so each CODE_F's IC visit date is used as the stage date.
+    """
+    MAX_INACTIVE_DAYS  = 2 * 365  # ignore patients whose last MSPT activity is > 2 years old
+    REOPEN_AFTER_DAYS  = 365      # > 1 year since last MSPT → case closed, needs 收案 restart
+    LONG_INACTIVE_DAYS = 180      # > 6 months since any clinic visit → 長期未回診
+
     since = as_of - timedelta(days=MAX_INACTIVE_DAYS)
 
-    # Keyed by national ID (身分證字號) for stable cross-visit identity
-    patient_info: dict[str, dict] = {}        # nat_id → {name, birth, latest_cf, latest_date}
-    stage_history: dict[str, list[dict]] = {} # nat_id → [{stage, date}, ...]
+    patient_info: dict[str, dict] = {}         # nat_id → {name, birth, latest_date}
+    stage_history: dict[str, list[dict]] = {}  # nat_id → [{stage, date}, ...]
 
     for ic_path in _ic_files_since(since):
-        month_cf_to_id: dict[str, str] = {}    # code_f → nat_id (built from IC file)
-        month_cf_dates: dict[str, date] = {}   # code_f → visit date (for precise stage dating)
+        month_cf_to_id: dict[str, str]  = {}
+        month_cf_dates: dict[str, date] = {}
 
         try:
             for r in _parse_dbf_cached(ic_path):
                 v_date = _roc_to_date(r.get('DATE', ''))
                 if not v_date or v_date > as_of:
                     continue
-                cf = r.get('CODE_F', '').strip()
+                cf     = r.get('CODE_F', '').strip()
                 nat_id = r.get('ID', '').strip()
                 if not cf or not nat_id:
                     continue
@@ -389,19 +386,17 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
                 month_cf_to_id[cf] = nat_id
                 month_cf_dates[cf] = v_date
 
-                name = r.get('NAME', '').strip()
+                name  = r.get('NAME', '').strip()
                 birth = _roc_to_date(r.get('BIRTH', ''))
                 if name and birth:
                     prev = patient_info.get(nat_id)
                     if prev is None or v_date > prev['latest_date']:
                         patient_info[nat_id] = {
-                            'name': name, 'birth': birth,
-                            'latest_cf': cf, 'latest_date': v_date,
+                            'name': name, 'birth': birth, 'latest_date': v_date,
                         }
-
                 # Enrollment from AC保健 is NOT used here to avoid false-positives from
                 # 成人健檢 visits (same AC保健/KIND=10/FEE=300, ICD=Z0000).
-                # 收案 is detected via P7501C in the P file below.
+                # 收案 is detected exclusively via P7501C in the P file below.
         except Exception:
             pass
 
@@ -410,16 +405,13 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
             continue
         try:
             for r in _parse_dbf_cached(p_path):
-                cf = r.get('CODE_F', '').strip()
+                cf     = r.get('CODE_F', '').strip()
                 nat_id = month_cf_to_id.get(cf)
                 if not nat_id:
                     continue
-                stage = _MSPT_CODE_MAP.get(r.get('DRUG_NO', '').strip())
-                if stage is None:
-                    continue
-                # Use the specific CODE_F's visit date for precise stage dating
+                stage  = _MSPT_CODE_MAP.get(r.get('DRUG_NO', '').strip())
                 v_date = month_cf_dates.get(cf)
-                if not v_date or v_date > as_of:
+                if not stage or not v_date or v_date > as_of:
                     continue
                 stage_history.setdefault(nat_id, []).append({'stage': stage, 'date': v_date})
         except Exception:
@@ -427,103 +419,90 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
 
     results: list[FollowupEntry] = []
     inactive: list[FollowupEntry] = []
+
     for nat_id, history in stage_history.items():
         info = patient_info.get(nat_id)
         if not info:
             continue
 
         history.sort(key=lambda x: x['date'])
-
         last_stage    = history[-1]['stage']
         last_date     = history[-1]['date']
         days_inactive = (as_of - last_date).days
 
-        # Ignore patients whose last MSPT activity is older than 2 years
         if days_inactive > MAX_INACTIVE_DAYS:
             continue
 
-        next_stage = _STAGE_NEXT.get(last_stage)
-        gap        = _STAGE_GAPS.get(last_stage)
-        if next_stage is None or gap is None:
+        next_stage = MSPT_STAGE_NEXT.get(last_stage)
+        if next_stage is None:
             continue
 
-        due_date     = last_date + timedelta(days=gap)
+        due_date     = last_date + timedelta(days=_MSPT_STAGE_GAP)
         days_overdue = (as_of - due_date).days
-
         if days_overdue < 0:
             continue  # next stage not yet due
 
-        # Case closed: missed their next stage by more than 1 year → needs 收案 restart.
-        # Use the most recent ANY clinic visit (info['latest_date']) to decide whether
-        # to put this patient in the active follow-up list or the 長期未回診 section.
-        if days_overdue > REOPEN_AFTER_DAYS:
-            latest_any_visit = info['latest_date']
-            entry = FollowupEntry(
-                patient=Patient(
-                    chart_number=nat_id,
-                    name=info['name'],
-                    birth_date=info['birth'],
-                ),
-                disease_name='代謝症候群',
-                due_date=due_date,
-                days_overdue=days_overdue,
-                category='代謝症候群',
-                mspt_stage='收案',
-                last_stage=last_stage,
-                contact_reason='需重新收案+抽血',
-                last_visit_date=last_date,  # last MSPT stage date; latest_any_visit used only for routing below
-            )
-            if (as_of - latest_any_visit).days > LONG_INACTIVE_DAYS:
-                inactive.append(entry)
-            else:
-                results.append(entry)
-            continue
-
-        results.append(FollowupEntry(
-            patient=Patient(
-                chart_number=nat_id,
-                name=info['name'],
-                birth_date=info['birth'],
-            ),
+        entry = FollowupEntry(
+            patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
             disease_name='代謝症候群',
             due_date=due_date,
             days_overdue=days_overdue,
             category='代謝症候群',
-            mspt_stage=next_stage,
-            last_stage=last_stage,
             last_visit_date=last_date,
-        ))
-    # inactive sorted oldest-visit-first so the most likely lost patients are at the top
+            last_stage=last_stage,
+        )
+
+        # Case closed: missed by > 1 year → needs 收案 restart.
+        # Route to inactive (長期未回診) if no clinic visit in the past 6 months.
+        if days_overdue > REOPEN_AFTER_DAYS:
+            entry = entry.model_copy(update={
+                'mspt_stage': '收案',
+                'contact_reason': '需重新收案+抽血',
+            })
+            if (as_of - info['latest_date']).days > LONG_INACTIVE_DAYS:
+                inactive.append(entry)
+            else:
+                results.append(entry)
+        else:
+            results.append(entry.model_copy(update={'mspt_stage': next_stage}))
+
     return (
         sorted(results, key=lambda e: e.days_overdue, reverse=True),
         sorted(inactive, key=lambda e: e.last_visit_date or date.min),
     )
 
 
+# ── Visit detection (has patient returned?) ───────────────────────────────────
+
 def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, date]:
     """Return {chart_number: latest visit date} for the given patients, looking back 30 days.
-    Used to detect whether a patient returned after being contacted.
+    Used to detect whether a contacted patient has since returned.
 
-    For 慢簽: chart_number is national ID (ID field), matched in AE連續 and 01西醫 records.
-    For 代謝症候群: chart_number is national ID, matched via ID field in any 01西醫 visit."""
+    For 慢簽: matches AE連續 or 01西醫 IC01 (M33='1', M26='3') records.
+    For 代謝症候群: matches any 01西醫 visit."""
     if not chart_numbers:
         return {}
-    since = date.today() - timedelta(days=30)
+    since  = date.today() - timedelta(days=30)
     result: dict[str, date] = {}
+
     for ic_path in _ic_files_since(since):
         try:
             for r in _parse_dbf_cached(ic_path):
+                h = r.get('H_TYPE', '')
                 if category == '慢簽':
-                    h = r.get('H_TYPE', '')
-                    is_ae = h == 'AE連續'
-                    is_ic01 = h == '01西醫' and r.get('KIND', '').strip() == '08'
+                    is_ae   = h == 'AE連續'
+                    is_ic01 = (
+                        h == '01西醫'
+                        and r.get('M33', '').strip() == '1'
+                        and r.get('M26', '').strip() == '3'
+                    )
                     if not is_ae and not is_ic01:
                         continue
-                    key = r.get('ID', '').strip()
                 else:
-                    if r.get('H_TYPE') != '01西醫':
+                    if h != '01西醫':
                         continue
-                    key = r.get('ID', '').strip()
+
+                key = r.get('ID', '').strip()
                 if not key or key not in chart_numbers:
                     continue
                 v_date = _roc_to_date(r.get('DATE', ''))
@@ -534,7 +513,93 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
     return result
 
 
-# --- Mock data (USE_MOCK_DATA = True) ---
+# ── Doctor return-rate analytics ──────────────────────────────────────────────
+
+def get_doctor_return_rates(month: str) -> list[dict]:
+    """Compute per-doctor 90-day same-doctor return rates for a Gregorian YYYY-MM month.
+
+    Only 01西醫 visits count — AE連續 (IC02/IC03 prescription pickups) are excluded
+    from both the denominator and the return check, since the patient isn't there
+    for a consultation with the doctor.
+
+    For each unique (patient, doctor) pair with a 01西醫 visit in the month,
+    checks whether the patient returned to the same doctor (01西醫 only) within 90 days.
+    """
+    year, m = int(month[:4]), int(month[5:])
+    roc_month = f"{year - 1911:03d}{m:02d}"
+    ic_file = os.path.join(IC_DATA_PATH, f"IC{roc_month}.DBF")
+    if not os.path.isfile(ic_file):
+        return []
+
+    # (nat_id, doctor) → last 01西醫 consultation date this month
+    target: dict[tuple[str, str], date] = {}
+    try:
+        for row in _parse_dbf(ic_file):
+            if row.get('H_TYPE', '').strip() != '01西醫':
+                continue
+            nat_id = row.get('ID', '').strip()
+            doctor = row.get('DOCTOR', '').strip()
+            vis = _roc_to_date(row.get('DATE', ''))
+            if not nat_id or not doctor or vis is None:
+                continue
+            key = (nat_id, doctor)
+            if key not in target or vis > target[key]:
+                target[key] = vis
+    except Exception:
+        return []
+
+    if not target:
+        return []
+
+    # Check next 3 months for a 01西醫 return visit to the same doctor within 90 days
+    returned: set[tuple[str, str]] = set()
+    for lookahead in range(1, 4):
+        next_m = (m - 1 + lookahead) % 12 + 1
+        next_y = year + (m - 1 + lookahead) // 12
+        roc_next = f"{next_y - 1911:03d}{next_m:02d}"
+        next_file = os.path.join(IC_DATA_PATH, f"IC{roc_next}.DBF")
+        if not os.path.isfile(next_file):
+            continue
+        try:
+            for row in _parse_dbf(next_file):
+                if row.get('H_TYPE', '').strip() != '01西醫':
+                    continue
+                nat_id = row.get('ID', '').strip()
+                doctor = row.get('DOCTOR', '').strip()
+                key = (nat_id, doctor)
+                if key not in target or key in returned:
+                    continue
+                ret = _roc_to_date(row.get('DATE', ''))
+                if ret is None:
+                    continue
+                if 0 < (ret - target[key]).days <= 90:
+                    returned.add(key)
+        except Exception:
+            continue
+
+    # Aggregate by doctor
+    doctor_stats: dict[str, dict[str, int]] = {}
+    for (nat_id, doctor) in target:
+        s = doctor_stats.setdefault(doctor, {'total': 0, 'returned': 0})
+        s['total'] += 1
+        if (nat_id, doctor) in returned:
+            s['returned'] += 1
+
+    return sorted(
+        [
+            {
+                'doctor': doctor,
+                'total': s['total'],
+                'returned': s['returned'],
+                'rate': round(s['returned'] / s['total'] * 100, 1),
+            }
+            for doctor, s in doctor_stats.items()
+        ],
+        key=lambda x: -x['rate'],
+    )
+
+
+# ── Mock data ─────────────────────────────────────────────────────────────────
 
 def _p(chart: str, name: str, birth: date) -> Patient:
     return Patient(chart_number=chart, name=name, birth_date=birth)

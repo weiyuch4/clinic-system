@@ -98,6 +98,19 @@ def _bio_labels_for(raw_date: str) -> dict[str, str]:
     return NEW_BIO_LABELS if raw_date.strip() >= _NEW_PLATFORM_DATE else OLD_BIO_LABELS
 
 
+def _bio_display_date(row: dict) -> str:
+    """Return the date string to show for a BIO record.
+
+    New platform uses the system DATE field (already correct).
+    Old platform nurses entered the actual lab date in VAR1/VAR2/VAR3, which
+    may be off from DATE by a few days, so prefer that over DATE.
+    """
+    raw_date = row.get('DATE', '')
+    if _bio_labels_for(raw_date) is NEW_BIO_LABELS:
+        return _decode_date(raw_date) or '???'
+    return _parse_var_date(row) or _decode_date(raw_date) or '???'
+
+
 # ── DBF helpers ───────────────────────────────────────────────────────────────
 
 def _iter_rows(path: str):
@@ -261,7 +274,7 @@ def _read_bio_records(patient_code: str, dbf_name: str) -> list[dict]:
     if not os.path.isfile(path):
         return []
     raw_rows = [r for r in _iter_rows(path) if r.get('CODE', '').strip() == patient_code]
-    raw_rows.sort(key=lambda r: _parse_var_date(r) or _decode_date(r.get('DATE', '')), reverse=True)
+    raw_rows.sort(key=_bio_display_date, reverse=True)
 
     records = []
     for row in raw_rows:
@@ -294,7 +307,7 @@ def _read_bio_records(patient_code: str, dbf_name: str) -> list[dict]:
 
         if items or notes:
             records.append({
-                'date': _parse_var_date(row) or _decode_date(row.get('DATE', '???')),
+                'date': _bio_display_date(row),
                 'items': items,
                 'notes': notes,
             })

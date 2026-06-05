@@ -5,15 +5,19 @@ import secrets
 import threading
 from datetime import date, timedelta
 
+import tempfile
+
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException
-from fastapi.responses import FileResponse, Response
+from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 
 import backup
+import config
 import contacts
 import database
+import lab_report
 import lab_results
 from models import (
     ChartNumberRequest, ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
@@ -56,6 +60,7 @@ app = FastAPI(title="診所追蹤系統")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 contacts.init()
+lab_report.init()
 backup.run()
 threading.Thread(target=database.warmup_cache, daemon=True).start()
 
@@ -75,80 +80,41 @@ def get_nurses() -> list[str]:
     return NURSE_NAMES
 
 
+@app.get("/admin")
+def admin_page(_: None = Depends(_require_admin)) -> Response:
+    try:
+        content = open("static/admin.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=503, detail="無法載入後台介面")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
 @app.get("/admin/stats")
-def admin_stats(month: str | None = None, _: None = Depends(_require_admin)) -> Response:
+def admin_stats_redirect() -> RedirectResponse:  # kept for old bookmarks
+    return RedirectResponse(url="/admin", status_code=302)
+
+
+@app.get("/api/admin/stats")
+def admin_stats_json(month: str | None = None, _: None = Depends(_require_admin)) -> dict:
     if not month:
         month = date.today().strftime("%Y-%m")
     try:
-        stats = contacts.get_activity_stats(month)
+        return {"month": month, "stats": contacts.get_activity_stats(month)}
     except Exception:
-        logger.exception("admin_stats failed for month=%s", month)
+        logger.exception("admin_stats_json failed for month=%s", month)
         raise HTTPException(status_code=500, detail="查詢失敗")
 
-    nurses = sorted(stats.keys(), key=lambda n: (n == "（未選擇）", n))
-    cols = [("contacted", "已通知"), ("called", "再次通知"), ("mspt", "完成MSPT"),
-            ("excluded", "排除"), ("pickup", "手動取藥")]
 
-    def td(val: int) -> str:
-        colour = "#111" if val else "#ccc"
-        return f'<td style="text-align:center;color:{colour}">{val}</td>'
-
-    rows_html = ""
-    totals = {k: 0 for k, _ in cols}
-    for nurse in nurses:
-        s = stats[nurse]
-        total = sum(s[k] for k, _ in cols)
-        for k, _ in cols:
-            totals[k] += s[k]
-        rows_html += (
-            f'<tr><td style="font-weight:600">{nurse}</td>'
-            + "".join(td(s[k]) for k, _ in cols)
-            + f'<td style="text-align:center;font-weight:700">{total}</td></tr>'
-        )
-
-    grand = sum(totals.values())
-    totals_html = (
-        '<tr style="background:#f0f4f8;font-weight:700"><td>合計</td>'
-        + "".join(f'<td style="text-align:center">{totals[k]}</td>' for k, _ in cols)
-        + f'<td style="text-align:center">{grand}</td></tr>'
-    )
-
-    thead = "".join(f'<th style="padding:10px 14px;text-align:center">{label}</th>' for _, label in cols)
-    prev_y, prev_m = (int(month[:4]), int(month[5:])-1) if int(month[5:]) > 1 else (int(month[:4])-1, 12)
-    next_y, next_m = (int(month[:4]), int(month[5:])+1) if int(month[5:]) < 12 else (int(month[:4])+1, 1)
-    prev_str = f"{prev_y}-{prev_m:02d}"
-    next_str = f"{next_y}-{next_m:02d}"
-
-    html = f"""<!DOCTYPE html>
-<html lang="zh-TW"><head><meta charset="UTF-8">
-<title>護理師活動統計</title>
-<style>
-  body{{font-family:-apple-system,"Microsoft JhengHei",sans-serif;background:#f0f4f8;padding:40px 20px;color:#111}}
-  .card{{max-width:700px;margin:0 auto;background:white;border-radius:12px;box-shadow:0 2px 16px rgba(0,0,0,.08);padding:40px 48px}}
-  h1{{font-size:22px;font-weight:800;margin-bottom:4px}}
-  .sub{{font-size:13px;color:#6b7280;margin-bottom:28px}}
-  .nav{{display:flex;align-items:center;gap:16px;margin-bottom:20px}}
-  .nav a{{color:#2563eb;text-decoration:none;font-size:14px}}
-  .nav a:hover{{text-decoration:underline}}
-  .month-label{{font-size:18px;font-weight:700;color:#1e3a5f}}
-  table{{width:100%;border-collapse:collapse;font-size:14px}}
-  th{{background:#f8fafc;padding:10px 14px;border:1px solid #e4e9f0;color:#374151;font-weight:700;text-align:left}}
-  td{{padding:10px 14px;border:1px solid #e4e9f0}}
-  tr:nth-child(even) td{{background:#fafbfc}}
-  .empty{{color:#9ca3af;font-size:14px;padding:24px 0;text-align:center}}
-</style></head>
-<body><div class="card">
-  <h1>護理師活動統計</h1>
-  <div class="sub">僅限管理員查閱 — 此頁面不對外顯示</div>
-  <div class="nav">
-    <a href="/admin/stats?month={prev_str}">← {prev_str}</a>
-    <span class="month-label">{month}</span>
-    <a href="/admin/stats?month={next_str}">{next_str} →</a>
-  </div>
-  {"<table><thead><tr><th>護理師</th>" + thead + "<th style='text-align:center'>合計</th></tr></thead><tbody>" + rows_html + totals_html + "</tbody></table>" if nurses else '<div class="empty">本月尚無紀錄</div>'}
-</div></body></html>"""
-
-    return Response(content=html, media_type="text/html")
+@app.get("/api/admin/doctors")
+def admin_doctors_json(month: str | None = None, _: None = Depends(_require_admin)) -> dict:
+    if not month:
+        month = date.today().strftime("%Y-%m")
+    try:
+        return {"month": month, "doctors": database.get_doctor_return_rates(month)}
+    except Exception:
+        logger.exception("admin_doctors failed for month=%s", month)
+        raise HTTPException(status_code=500, detail="查詢失敗")
 
 
 @app.get("/api/report")
@@ -165,10 +131,6 @@ def get_report(report_date: date | None = None) -> DailyReport:
         manual_overrides = contacts.get_mspt_manual_overrides()
         as_of = report_date or date.today()
 
-        _STAGE_NEXT_M = {'收案': '追1', '追1': '追2', '追2': '追3', '追3': '年度追蹤', '年度追蹤': '追1'}
-        _MSPT_FOLLOWUP_DAYS = 70
-        _MSPT_REOPEN_DAYS = 365
-
         def apply_mspt_overrides(entries: list[FollowupEntry]) -> list[FollowupEntry]:
             if not manual_overrides:
                 return entries
@@ -183,21 +145,21 @@ def get_report(report_date: date | None = None) -> DailyReport:
                 if e.last_visit_date and m_date <= e.last_visit_date:
                     result.append(e)
                     continue
-                next_s = _STAGE_NEXT_M.get(m_stage)
+                next_s = database.MSPT_STAGE_NEXT.get(m_stage)
                 if not next_s:
                     result.append(e)
                     continue
-                new_due = m_date + timedelta(days=_MSPT_FOLLOWUP_DAYS)
+                new_due = m_date + timedelta(days=config.METABOLIC_FOLLOWUP_DAYS)
                 new_ov = (as_of - new_due).days
                 if new_ov < 0:
                     continue  # not yet due — drop from pending
                 result.append(e.model_copy(update={
-                    'mspt_stage': '收案' if new_ov > _MSPT_REOPEN_DAYS else next_s,
+                    'mspt_stage': '收案' if new_ov > database.MSPT_REOPEN_DAYS else next_s,
                     'last_stage': m_stage,
                     'last_visit_date': m_date,
                     'due_date': new_due,
                     'days_overdue': new_ov,
-                    'contact_reason': '需重新收案+抽血' if new_ov > _MSPT_REOPEN_DAYS else None,
+                    'contact_reason': '需重新收案+抽血' if new_ov > database.MSPT_REOPEN_DAYS else None,
                 }))
             return result
 
@@ -240,7 +202,6 @@ def get_report(report_date: date | None = None) -> DailyReport:
         ]
 
         # Filter chronic patients suppressed by a manual pickup record
-        _CHRONIC_GRACE = 5
         manual_pickup_map = contacts.get_manual_pickup_map()
 
         def chronic_suppressed(entry: FollowupEntry) -> bool:
@@ -252,7 +213,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
             if entry.last_visit_date and pickup_date <= entry.last_visit_date:
                 return False
             next_due = pickup_date + timedelta(days=ps_days)
-            return (as_of - next_due).days < _CHRONIC_GRACE
+            return (as_of - next_due).days < database.CHRONIC_GRACE_DAYS
 
         chronic_prescriptions = [e for e in report.chronic_prescriptions if not chronic_suppressed(e)]
 
@@ -379,7 +340,6 @@ def unmark_mspt_completed(req: MsptCompleteRequest) -> None:
         raise HTTPException(status_code=500, detail="撤銷完成MSPT失敗，請稍後再試")
 
 
-
 @app.post("/api/mspt-checkedin")
 def mark_mspt_checkedin(req: NurseEntryRequest) -> None:
     try:
@@ -500,6 +460,64 @@ def unmark_mspt_manual(req: MsptManualRemoveRequest) -> None:
 def get_lab_results(national_id: str) -> dict:
     """Return structured blood test results for a patient by national ID."""
     return lab_results.get_lab_results(national_id.strip().upper())
+
+
+@app.post("/api/admin/lab-report")
+async def upload_lab_report(
+    file: UploadFile = File(...),
+    _: None = Depends(_require_admin),
+) -> dict:
+    if not file.filename.lower().endswith('.xlsx'):
+        raise HTTPException(status_code=400, detail="請上傳 .xlsx 檔案")
+    try:
+        with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
+            tmp.write(await file.read())
+            tmp_path = tmp.name
+        report_id = lab_report.save_report(tmp_path, file.filename)
+        return {"id": report_id}
+    except Exception:
+        logger.exception("upload_lab_report failed for %s", file.filename)
+        raise HTTPException(status_code=500, detail="檔案解析失敗，請確認格式正確")
+    finally:
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
+
+
+@app.get("/api/admin/lab-reports")
+def list_lab_reports(_: None = Depends(_require_admin)) -> list:
+    try:
+        return lab_report.list_reports()
+    except Exception:
+        logger.exception("list_lab_reports failed")
+        raise HTTPException(status_code=500, detail="查詢失敗")
+
+
+@app.get("/api/admin/lab-report/{report_id}")
+def get_lab_report(report_id: int, _: None = Depends(_require_admin)) -> dict:
+    try:
+        data = lab_report.get_report(report_id)
+        if data is None:
+            raise HTTPException(status_code=404, detail="找不到此報告")
+        return data
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("get_lab_report failed for id=%s", report_id)
+        raise HTTPException(status_code=500, detail="查詢失敗")
+
+
+@app.delete("/api/admin/lab-report/{report_id}")
+def delete_lab_report(report_id: int, _: None = Depends(_require_admin)) -> None:
+    try:
+        if not lab_report.delete_report(report_id):
+            raise HTTPException(status_code=404, detail="找不到此報告")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("delete_lab_report failed for id=%s", report_id)
+        raise HTTPException(status_code=500, detail="刪除失敗")
 
 
 if __name__ == "__main__":

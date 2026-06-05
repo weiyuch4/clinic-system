@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>管理員後台</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+
+:root {
+  --bg:           #F1F5F9;
+  --surface:      #FFFFFF;
+  --border:       #E2E8F0;
+  --border-mid:   #CBD5E1;
+  --text-1:       #0F172A;
+  --text-2:       #475569;
+  --text-3:       #94A3B8;
+  --blue:         #2563EB;
+  --blue-bg:      #EFF6FF;
+  --emerald:      #059669;
+  --amber:        #D97706;
+  --red:          #DC2626;
+  --header:       #0F172A;
+  --radius-s:     6px;
+  --radius:       10px;
+  --radius-l:     14px;
+  --shadow-s:     0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
+  --shadow:       0 4px 16px rgba(0,0,0,.06), 0 1px 4px rgba(0,0,0,.04);
+  --font:         -apple-system, 'Microsoft JhengHei', 'Segoe UI', system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text-1);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Top bar ─────────────────────────────────────────────────────────────── */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--header);
+  height: 56px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.brand-icon {
+  width: 30px; height: 30px;
+  background: var(--blue);
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+.brand-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255,255,255,.9);
+  white-space: nowrap;
+}
+.topbar-divider {
+  width: 1px;
+  height: 18px;
+  background: rgba(255,255,255,.12);
+}
+.topbar-sub {
+  font-size: 12px;
+  color: rgba(255,255,255,.35);
+  white-space: nowrap;
+}
+
+/* month picker (light, inside sections) */
+.section-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+}
+.month-picker {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-s);
+  padding: 3px;
+  box-shadow: var(--shadow-s);
+}
+.mp-btn {
+  background: none;
+  border: none;
+  width: 28px; height: 28px;
+  color: var(--text-2);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  display: grid;
+  place-items: center;
+  transition: background .12s, color .12s;
+}
+.mp-btn:hover { background: var(--bg); color: var(--text-1); }
+.month-display {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-1);
+  padding: 0 10px;
+  min-width: 80px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Tab bar ─────────────────────────────────────────────────────────────── */
+.tabbar {
+  position: sticky;
+  top: 56px;
+  z-index: 99;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex;
+}
+.tab {
+  padding: 15px 2px;
+  margin-right: 28px;
+  border: none;
+  background: none;
+  font: 600 13px/1 var(--font);
+  color: var(--text-3);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text-2); }
+.tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+main {
+  padding: 28px 32px 48px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+.section { display: none; }
+.section.active { display: block; animation: fadeUp .2s ease both; }
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+
+#back-to-top {
+  position: fixed; bottom: 28px; right: 28px; z-index: 200;
+  width: 42px; height: 42px;
+  background: var(--blue); color: #fff;
+  border: none; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 16px rgba(37,99,235,0.35);
+  opacity: 0; visibility: hidden; pointer-events: none;
+  transform: translateY(8px);
+  transition: opacity .2s, visibility .2s, transform .2s, background .15s;
+}
+#back-to-top.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: translateY(0); }
+#back-to-top:hover { background: #1d4ed8; }
+#back-to-top:active { transform: translateY(1px); }
+
+/* ── KPI row ─────────────────────────────────────────────────────────────── */
+.kpi-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px 16px;
+  box-shadow: var(--shadow-s);
+}
+.kpi-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 10px;
+}
+.kpi-value {
+  font-size: 30px;
+  font-weight: 800;
+  color: var(--text-1);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+.kpi-value.blue   { color: var(--blue); }
+.kpi-value.green  { color: var(--emerald); }
+.kpi-value.amber  { color: var(--amber); }
+
+/* ── Card ────────────────────────────────────────────────────────────────── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-s);
+  overflow: hidden;
+}
+.card-head {
+  padding: 16px 24px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.card-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+.card-badge {
+  font-size: 11px;
+  font-weight: 600;
+  background: var(--bg);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+.card-spacer { flex: 1; }
+.card-meta {
+  font-size: 12px;
+  color: var(--text-3);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Table ───────────────────────────────────────────────────────────────── */
+.tbl-wrap { overflow-x: auto; }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+thead th {
+  padding: 10px 20px;
+  background: #FAFBFC;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-2);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  text-align: right;
+  white-space: nowrap;
+  user-select: none;
+}
+thead th.l { text-align: left; }
+tbody td {
+  padding: 13px 20px;
+  border-bottom: 1px solid #F1F5F9;
+  text-align: right;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+}
+tbody td.l { text-align: left; }
+tbody tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #F7F9FF; }
+.total-row td {
+  background: #F8FAFC;
+  border-top: 1px solid var(--border-mid);
+  border-bottom: none;
+  font-weight: 700;
+  color: var(--text-1);
+}
+.total-row:hover td { background: #F8FAFC; }
+.zero { color: var(--text-3); }
+
+/* nurse name chip */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+.avatar {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  background: var(--blue-bg);
+  color: var(--blue);
+  font-size: 11px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.nurse-name { font-weight: 500; }
+
+/* ── Rate bar ────────────────────────────────────────────────────────────── */
+.rate-cell {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.bar-track {
+  width: 100px;
+  height: 5px;
+  background: var(--border);
+  border-radius: 99px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 99px;
+  transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+.bar-fill.hi { background: var(--emerald); }
+.bar-fill.md { background: var(--amber); }
+.bar-fill.lo { background: var(--red); }
+.rate-pct {
+  font-size: 13.5px;
+  font-weight: 700;
+  min-width: 46px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.rate-pct.hi { color: var(--emerald); }
+.rate-pct.md { color: var(--amber); }
+.rate-pct.lo { color: var(--red); }
+
+/* ── States ──────────────────────────────────────────────────────────────── */
+.empty {
+  padding: 52px 24px;
+  text-align: center;
+  color: var(--text-3);
+}
+.empty-icon { font-size: 32px; margin-bottom: 12px; }
+.empty-title { font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+.empty-sub { font-size: 12.5px; }
+.err { color: var(--red); }
+
+/* ── Shimmer ─────────────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  from { background-position: -500px 0; }
+  to   { background-position:  500px 0; }
+}
+.shim {
+  background: linear-gradient(90deg, #EEF2F7 25%, #E2E8F0 50%, #EEF2F7 75%);
+  background-size: 500px 100%;
+  animation: shimmer 1.3s infinite linear;
+  border-radius: 4px;
+  display: inline-block;
+}
+.shim-kpi {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px 16px;
+}
+
+/* ── Footer note ─────────────────────────────────────────────────────────── */
+.foot-note {
+  padding: 12px 24px;
+  border-top: 1px solid var(--border);
+  font-size: 11.5px;
+  color: var(--text-3);
+  background: #FAFBFC;
+}
+
+/* ── Lab report tab ──────────────────────────────────────────────────────── */
+.upload-zone {
+  border: 2px dashed var(--border-mid);
+  border-radius: var(--radius);
+  padding: 32px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color .15s, background .15s;
+  background: #FAFBFC;
+  margin-bottom: 22px;
+}
+.upload-zone:hover, .upload-zone.drag { border-color: var(--blue); background: var(--blue-bg); }
+.upload-zone input[type=file] { display: none; }
+.upload-icon { font-size: 28px; margin-bottom: 10px; }
+.upload-label { font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+.upload-sub { font-size: 12px; color: var(--text-3); }
+.upload-btn {
+  display: inline-block;
+  margin-top: 14px;
+  padding: 8px 20px;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: var(--radius-s);
+  font: 600 13px/1 var(--font);
+  cursor: pointer;
+  transition: opacity .15s;
+}
+.upload-btn:hover { opacity: .88; }
+.upload-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+.lab-layout {
+  display: grid;
+  grid-template-columns: 224px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.report-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-s);
+  overflow: hidden;
+  position: sticky;
+  top: 116px;
+}
+.rp-header {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.rp-item {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background .12s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-left: 3px solid transparent;
+}
+.rp-item:last-child { border-bottom: none; }
+.rp-item:hover { background: var(--bg); }
+.rp-item.active { background: var(--blue-bg); border-left-color: var(--blue); }
+.rp-info { flex: 1; min-width: 0; }
+.rp-period { font-weight: 700; font-size: 13px; color: var(--text-1); }
+.rp-item.active .rp-period { color: var(--blue); }
+.rp-date { font-size: 11px; color: var(--text-3); margin-top: 2px; }
+.rp-del {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  color: var(--text-3);
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 5px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity .12s, color .12s, background .12s;
+}
+.rp-item:hover .rp-del { opacity: 1; }
+.rp-del:hover { color: var(--red); background: #FEF2F2; }
+
+/* verify cards */
+.verify-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 22px;
+}
+.verify-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 18px 20px 16px;
+  box-shadow: var(--shadow-s);
+  position: relative;
+}
+.verify-card.ok   { border-top: 3px solid var(--emerald); }
+.verify-card.warn { border-top: 3px solid var(--amber); }
+.verify-card.fail { border-top: 3px solid var(--red); }
+.verify-label { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
+.verify-value { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 5px; }
+.verify-card.ok   .verify-value { color: var(--emerald); }
+.verify-card.warn .verify-value { color: var(--amber); }
+.verify-card.fail .verify-value { color: var(--red); }
+.verify-stated { font-size: 12px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.verify-badge {
+  position: absolute;
+  top: 16px; right: 16px;
+  font-size: 16px;
+}
+
+/* note breakdown */
+.note-pills { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 6px; }
+.note-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.note-pill.np { background: #EFF6FF; color: var(--blue); }
+.note-pill.n  { background: #F0FDF4; color: var(--emerald); }
+.note-pill.p  { background: #FFFBEB; color: var(--amber); }
+.note-pill.other { background: var(--bg); color: var(--text-2); }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon">診</div>
+    <span class="brand-name">診所管理後台</span>
+  </div>
+  <div class="topbar-divider"></div>
+  <span class="topbar-sub">管理員專用</span>
+</header>
+
+<div class="tabbar">
+  <button class="tab active" data-section="nurses">護理師統計</button>
+  <button class="tab"        data-section="doctors">醫師回診率</button>
+  <button class="tab"        data-section="labreport">代檢對帳單</button>
+</div>
+
+<main>
+
+  <!-- ── Nurses ── -->
+  <section id="nurses" class="section active">
+    <div class="section-bar">
+      <div class="month-picker">
+        <button class="mp-btn prev-month">&#8592;</button>
+        <span class="month-display">—</span>
+        <button class="mp-btn next-month">&#8594;</button>
+      </div>
+    </div>
+    <div class="kpi-row" id="nurse-kpis"></div>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">護理師活動明細</span>
+        <span class="card-spacer"></span>
+        <span class="card-meta" id="nurse-meta"></span>
+      </div>
+      <div class="tbl-wrap" id="nurses-body"></div>
+    </div>
+  </section>
+
+  <!-- ── Lab Report ── -->
+  <section id="labreport" class="section">
+
+    <!-- Upload zone -->
+    <div class="upload-zone" id="upload-zone" onclick="$('file-input').click()">
+      <input type="file" id="file-input" accept=".xlsx">
+      <div class="upload-icon">📊</div>
+      <div class="upload-label">拖曳 xlsx 檔案至此，或點擊上傳</div>
+      <div class="upload-sub">院所明申報暨代檢費對帳單</div>
+      <div id="upload-status" style="margin-top:10px;font-size:12.5px;color:var(--text-3)"></div>
+    </div>
+
+    <!-- Two-panel: report list + detail -->
+    <div class="lab-layout" id="lab-layout" style="display:none">
+      <div class="report-panel" id="report-list"></div>
+      <div id="labreport-body"></div>
+    </div>
+
+  </section>
+
+  <!-- ── Doctors ── -->
+  <section id="doctors" class="section">
+    <div class="section-bar">
+      <div class="month-picker">
+        <button class="mp-btn prev-month">&#8592;</button>
+        <span class="month-display">—</span>
+        <button class="mp-btn next-month">&#8594;</button>
+      </div>
+    </div>
+    <div class="kpi-row" id="doctor-kpis"></div>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">醫師回診率</span>
+        <span class="card-badge">90天・同一醫師</span>
+        <span class="card-spacer"></span>
+        <span class="card-meta" id="doctor-meta"></span>
+      </div>
+      <div class="tbl-wrap" id="doctors-body"></div>
+      <div class="foot-note">
+        統計方式：計算該月每位患者最後一次就診日，90天內回診同一醫師即計入。
+        近期月份因後續IC檔案尚未到齊，回診率可能偏低屬正常現象。
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂端">
+  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+    <path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z"/>
+  </svg>
+</button>
+
+<script>
+'use strict';
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const today = new Date();
+let month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
+let activeSection = 'nurses';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function shiftMonth(m, delta) {
+  const [y, mo] = m.split('-').map(Number);
+  const d = new Date(y, mo - 1 + delta, 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+}
+
+async function api(path) {
+  const r = await fetch(path, { credentials: 'include' });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+function rateLevel(r) { return r >= 70 ? 'hi' : r >= 40 ? 'md' : 'lo'; }
+
+function shimBlock(w, h) {
+  return `<span class="shim" style="width:${w};height:${h}px"></span>`;
+}
+function shimKPI(n) {
+  return Array.from({length: n}, () =>
+    `<div class="shim-kpi">${shimBlock('55%',10)}<br><br>${shimBlock('35%',26)}</div>`
+  ).join('');
+}
+function shimTable(rows, cols) {
+  const ws = ['38%','13%','13%','13%','13%','13%','13%'];
+  const td = (i) => `<td class="${i===0?'l':''}">${shimBlock(ws[i]||'13%', 14)}</td>`;
+  const tr = `<tr>${Array.from({length:cols},(_,i)=>td(i)).join('')}</tr>`;
+  return `<table><tbody>${tr.repeat(rows)}</tbody></table>`;
+}
+
+// ── Month nav ─────────────────────────────────────────────────────────────────
+document.querySelectorAll('.prev-month').forEach(b => b.onclick = () => { month = shiftMonth(month, -1); refresh(); });
+document.querySelectorAll('.next-month').forEach(b => b.onclick = () => { month = shiftMonth(month, +1); refresh(); });
+
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+    btn.classList.add('active');
+    activeSection = btn.dataset.section;
+    $(activeSection).classList.add('active');
+    load(activeSection);
+  };
+});
+
+// ── Nurse constants ───────────────────────────────────────────────────────────
+const COLS = [
+  ['contacted', '已通知'],
+  ['called',    '再次通知'],
+  ['mspt',      '完成MSPT'],
+  ['excluded',  '排除'],
+  ['pickup',    '手動取藥'],
+];
+
+// ── Nurses ────────────────────────────────────────────────────────────────────
+async function loadNurses() {
+  $('nurse-kpis').innerHTML = shimKPI(4);
+  $('nurses-body').innerHTML = shimTable(5, 7);
+  $('nurse-meta').textContent = '';
+
+  try {
+    const { stats } = await api(`/api/admin/stats?month=${month}`);
+    renderNurses(stats);
+  } catch(e) {
+    $('nurse-kpis').innerHTML = '';
+    $('nurses-body').innerHTML = errState(e.message);
+  }
+}
+
+function renderNurses(stats) {
+  // totals
+  const tot = Object.fromEntries(COLS.map(([k]) => [k, 0]));
+  Object.values(stats).forEach(s => COLS.forEach(([k]) => { tot[k] += s[k] || 0; }));
+  const grand = Object.values(tot).reduce((a,b)=>a+b, 0);
+
+  // KPIs
+  const kpiDefs = [
+    { label: '已通知',   value: tot.contacted, cls: 'blue'  },
+    { label: '再次通知', value: tot.called,    cls: ''      },
+    { label: '完成MSPT', value: tot.mspt,      cls: 'green' },
+    { label: '手動取藥', value: tot.pickup,    cls: ''      },
+  ];
+  $('nurse-kpis').innerHTML = kpiDefs.map(k =>
+    `<div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value ${k.cls}">${k.value}</div>
+    </div>`
+  ).join('');
+
+  $('nurse-meta').textContent = grand ? `共 ${grand} 筆` : '';
+
+  // sort nurses: alphabetical, （未選擇） last
+  const nurses = Object.keys(stats).sort((a, b) =>
+    (a === '（未選擇）') - (b === '（未選擇）') || a.localeCompare(b, 'zh-TW')
+  );
+
+  if (!nurses.length) {
+    $('nurses-body').innerHTML = emptyState('📭', '本月尚無紀錄', '');
+    return;
+  }
+
+  const rows = nurses.map(n => {
+    const s = stats[n] || {};
+    const rowTot = COLS.reduce((a,[k]) => a + (s[k]||0), 0);
+    const initial = n === '（未選擇）' ? '?' : n[0];
+    return `<tr>
+      <td class="l">
+        <span class="chip">
+          <span class="avatar">${initial}</span>
+          <span class="nurse-name">${n}</span>
+        </span>
+      </td>
+      ${COLS.map(([k]) => {
+        const v = s[k] || 0;
+        return `<td class="${v===0?'zero':''}">${v}</td>`;
+      }).join('')}
+      <td><strong>${rowTot}</strong></td>
+    </tr>`;
+  }).join('');
+
+  const totalRow = `<tr class="total-row">
+    <td class="l">合計</td>
+    ${COLS.map(([k]) => `<td>${tot[k]}</td>`).join('')}
+    <td>${grand}</td>
+  </tr>`;
+
+  const thead = `<tr>
+    <th class="l">護理師</th>
+    ${COLS.map(([,l]) => `<th>${l}</th>`).join('')}
+    <th>合計</th>
+  </tr>`;
+
+  $('nurses-body').innerHTML =
+    `<table><thead>${thead}</thead><tbody>${rows}${totalRow}</tbody></table>`;
+}
+
+// ── Doctors ───────────────────────────────────────────────────────────────────
+async function loadDoctors() {
+  $('doctor-kpis').innerHTML = shimKPI(3);
+  $('doctors-body').innerHTML = shimTable(4, 4);
+  $('doctor-meta').textContent = '';
+
+  try {
+    const { doctors } = await api(`/api/admin/doctors?month=${month}`);
+    renderDoctors(doctors);
+  } catch(e) {
+    $('doctor-kpis').innerHTML = '';
+    $('doctors-body').innerHTML = errState(e.message);
+  }
+}
+
+function renderDoctors(doctors) {
+  if (!doctors.length) {
+    $('doctor-kpis').innerHTML = '';
+    $('doctors-body').innerHTML = emptyState(
+      '📊', '本月暫無資料',
+      'IC檔案可能尚未生成，或該月份無診次'
+    );
+    return;
+  }
+
+  const totalPts = doctors.reduce((a,d) => a + d.total, 0);
+  const totalRet = doctors.reduce((a,d) => a + d.returned, 0);
+  const avg = totalPts ? (totalRet / totalPts * 100).toFixed(1) : '—';
+  const avgLevel = totalPts ? rateLevel(+avg) : '';
+
+  $('doctor-kpis').innerHTML = [
+    { label: '整體回診率', value: totalPts ? `${avg}%` : '—', cls: avgLevel === 'hi' ? 'green' : avgLevel === 'md' ? 'amber' : 'blue' },
+    { label: '總看診人次', value: totalPts, cls: '' },
+    { label: '已回診人次', value: totalRet, cls: '' },
+  ].map(k =>
+    `<div class="kpi-card">
+      <div class="kpi-label">${k.label}</div>
+      <div class="kpi-value ${k.cls}">${k.value}</div>
+    </div>`
+  ).join('');
+
+  $('doctor-meta').textContent = `${doctors.length} 位醫師`;
+
+  const rows = doctors.map(d => {
+    const lv = rateLevel(d.rate);
+    return `<tr>
+      <td class="l"><strong>${d.doctor || '（未知）'}</strong></td>
+      <td>${d.total}</td>
+      <td>${d.returned}</td>
+      <td>
+        <div class="rate-cell">
+          <div class="bar-track">
+            <div class="bar-fill ${lv}" style="width:${Math.min(d.rate,100)}%"></div>
+          </div>
+          <span class="rate-pct ${lv}">${d.rate}%</span>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  const thead = `<tr>
+    <th class="l">醫師</th>
+    <th>看診人次</th>
+    <th>回診人次</th>
+    <th style="min-width:190px">回診率</th>
+  </tr>`;
+
+  $('doctors-body').innerHTML =
+    `<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
+}
+
+// ── UI helpers ────────────────────────────────────────────────────────────────
+function emptyState(icon, title, sub) {
+  return `<div class="empty">
+    <div class="empty-icon">${icon}</div>
+    <div class="empty-title">${title}</div>
+    ${sub ? `<div class="empty-sub">${sub}</div>` : ''}
+  </div>`;
+}
+function errState(msg) {
+  return `<div class="empty err">
+    <div class="empty-icon">⚠</div>
+    <div class="empty-title">載入失敗</div>
+    <div class="empty-sub">${msg}</div>
+  </div>`;
+}
+
+// ── Lab report ────────────────────────────────────────────────────────────────
+async function loadLabReport() {
+  try {
+    const reports = await api('/api/admin/lab-reports');
+    if (!reports.length) {
+      $('lab-layout').style.display = 'none';
+      $('labreport-body').innerHTML = '';
+      return;
+    }
+    $('lab-layout').style.display = 'grid';
+    $('report-list').innerHTML =
+      `<div class="rp-header">已儲存報告 <span style="font-weight:400">(${reports.length})</span></div>` +
+      reports.map(r => {
+        const label = formatPeriod(r.period) || r.filename;
+        const date  = (r.uploaded_at || '').slice(0, 10);
+        return `<div class="rp-item" data-id="${r.id}" onclick="selectReport(${r.id})">
+          <div class="rp-info">
+            <div class="rp-period">${label}</div>
+            <div class="rp-date">${date}</div>
+          </div>
+          <button class="rp-del" onclick="deleteReport(event,${r.id})" title="刪除">×</button>
+        </div>`;
+      }).join('');
+    selectReport(reports[0].id);
+  } catch(e) {
+    $('labreport-body').innerHTML = errState(e.message);
+  }
+}
+
+function selectReport(id) {
+  document.querySelectorAll('.rp-item').forEach(el =>
+    el.classList.toggle('active', +el.dataset.id === +id)
+  );
+  showReport(id);
+}
+
+async function showReport(id) {
+  $('labreport-body').innerHTML = shimTable(4, 6);
+  try {
+    const r = await api(`/api/admin/lab-report/${id}`);
+    $('labreport-body').innerHTML = renderLabReport(r);
+  } catch(e) {
+    $('labreport-body').innerHTML = errState(e.message);
+  }
+}
+
+async function deleteReport(e, id) {
+  e.stopPropagation();
+  if (!confirm('確定刪除此報告？')) return;
+  try {
+    const res = await fetch(`/api/admin/lab-report/${id}`, { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await loadLabReport();
+  } catch(e2) {
+    alert(`刪除失敗：${e2.message}`);
+  }
+}
+
+// Upload
+const fileInput = $('file-input');
+const uploadZone = $('upload-zone');
+const uploadStatus = $('upload-status');
+
+fileInput.addEventListener('change', () => {
+  if (fileInput.files[0]) doUpload(fileInput.files[0]);
+});
+
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag');
+  const f = e.dataTransfer.files[0];
+  if (f && f.name.endsWith('.xlsx')) doUpload(f);
+  else uploadStatus.textContent = '請選擇 .xlsx 檔案';
+});
+
+async function doUpload(file) {
+  uploadZone.style.pointerEvents = 'none';
+  uploadStatus.textContent = `正在解析 ${file.name}…`;
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/admin/lab-report', {
+      method: 'POST', credentials: 'include', body: fd,
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    uploadStatus.textContent = '上傳成功！';
+    await loadLabReport();
+  } catch(e) {
+    uploadStatus.textContent = `上傳失敗：${e.message}`;
+  } finally {
+    uploadZone.style.pointerEvents = '';
+    fileInput.value = '';
+  }
+}
+
+function fmt(n) {
+  if (n == null) return '—';
+  return Number(n).toLocaleString('zh-TW');
+}
+
+function formatPeriod(period) {
+  if (!period) return null;
+  const m = period.match(/^(\d+)-(\d+)$/);
+  if (!m) return period;
+  return `${m[1]}年${parseInt(m[2])}月`;
+}
+
+function verifyCard(label, computed, stated, opts = {}) {
+  if (stated == null) return '';
+  const diff = Math.abs(computed - stated);
+  const roundingOnly = diff < 1 && diff > 0;
+  const match = diff === 0;
+  const cls = match ? 'ok' : roundingOnly ? 'warn' : 'fail';
+  const icon = match ? '✓' : roundingOnly ? '≈' : '✗';
+  const statedNote = opts.statedLabel || `申報值 ${fmt(stated)}`;
+  const diffNote = (!match && !roundingOnly) ? `　差 ${fmt(diff)}` : roundingOnly ? '　（小數四捨五入）' : '';
+  return `<div class="verify-card ${cls}">
+    <div class="verify-badge">${icon}</div>
+    <div class="verify-label">${label}</div>
+    <div class="verify-value">${fmt(computed)}</div>
+    <div class="verify-stated">${statedNote}${diffNote}</div>
+  </div>`;
+}
+
+function renderLabReport(r) {
+  const { stated, computed, summary, top_tests_freq, top_tests_pts } = r;
+  const s = stated;
+
+  // Verification cards
+  const verifySection = `
+    <div class="verify-grid">
+      ${verifyCard('申報點數', computed['申報點數'], s['申報點數'])}
+      ${verifyCard('代收稅額', computed['代收稅額'], s['代收稅額'])}
+      ${verifyCard('代檢費用', computed['代檢費用'], s['代檢費用'])}
+      ${verifyCard('申報件數', computed['申報件數'], s['申報件數'])}
+    </div>`;
+
+  // Summary KPIs
+  const summaryKPIs = `
+    <div class="kpi-row" style="margin-bottom:22px">
+      <div class="kpi-card">
+        <div class="kpi-label">應收金額</div>
+        <div class="kpi-value" style="font-size:22px">${fmt(s['應收金額'])}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">暫收款</div>
+        <div class="kpi-value" style="font-size:22px">${fmt(s['暫收款'])}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">受檢患者數</div>
+        <div class="kpi-value blue" style="font-size:22px">${summary.unique_patients}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">工作天數</div>
+        <div class="kpi-value" style="font-size:22px">${summary.working_days}</div>
+      </div>
+    </div>`;
+
+  // 備註 pills
+  const nc = summary.note_counts || {};
+  const pills = Object.entries(nc).map(([k, v]) => {
+    const cls = k === 'NP' ? 'np' : k === 'N' ? 'n' : k === 'P' ? 'p' : 'other';
+    const desc = k === 'NP' ? '申報＋代檢' : k === 'N' ? '申報' : k === 'P' ? '代檢' : k;
+    return `<span class="note-pill ${cls}">${desc} ${v} 筆</span>`;
+  }).join('');
+
+  // Top tests tables
+  const freqRows = (top_tests_freq || []).map(t =>
+    `<tr><td class="l">${t.name}</td><td>${t.count}</td></tr>`).join('');
+  const ptsRows = (top_tests_pts || []).map(t =>
+    `<tr><td class="l">${t.name}</td><td>${fmt(t.pts)}</td></tr>`).join('');
+
+  const testTables = `
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px">
+      <div class="card">
+        <div class="card-head"><span class="card-title">最多申請項目</span><span class="card-meta">依件數</span></div>
+        <div class="tbl-wrap"><table><thead><tr><th class="l">項目名稱</th><th>件數</th></tr></thead>
+        <tbody>${freqRows}</tbody></table></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">最多申報點數項目</span><span class="card-meta">依點數</span></div>
+        <div class="tbl-wrap"><table><thead><tr><th class="l">項目名稱</th><th>點數</th></tr></thead>
+        <tbody>${ptsRows}</tbody></table></div>
+      </div>
+    </div>`;
+
+  const meta = `<div style="font-size:12px;color:var(--text-3);margin-bottom:16px">
+    ${s['院所名稱'] || ''}&ensp;${s['院所代號'] ? `(${s['院所代號']})` : ''}&ensp;
+    ${r.period ? `期間：${formatPeriod(r.period)}` : ''}&ensp;
+    上傳日：${(r.uploaded_at || '').slice(0,10)}
+  </div>`;
+
+  const noteCard = `<div class="card" style="margin-bottom:0">
+    <div class="card-head"><span class="card-title">項目類型分布</span></div>
+    <div style="padding:16px 24px">
+      <div class="note-pills">${pills}</div>
+      <div style="margin-top:12px;font-size:12px;color:var(--text-3)">
+        NP = 同時申報健保＋代檢費　N = 僅健保申報　P = 僅代檢費
+      </div>
+    </div>
+  </div>`;
+
+  return meta + verifySection + summaryKPIs + noteCard + testTables;
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+function load(section) {
+  if (section === 'nurses') loadNurses();
+  else if (section === 'doctors') loadDoctors();
+  else if (section === 'labreport') loadLabReport();
+}
+
+function refresh() {
+  document.querySelectorAll('.month-display').forEach(el => el.textContent = month);
+  load(activeSection);
+}
+
+window.addEventListener('scroll', () => {
+  document.getElementById('back-to-top').classList.toggle('visible', window.scrollY > 300);
+});
+
+refresh();
+</script>
+</body>
+</html>
