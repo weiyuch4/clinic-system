@@ -4,7 +4,7 @@ Run: python diag_patient.py
 """
 import glob, os, struct, sys
 
-NAT_ID   = 'B221745017'
+NAT_ID   = 'A121443480'
 IC_DIR   = r'Z:\3'
 
 def parse_dbf(path):
