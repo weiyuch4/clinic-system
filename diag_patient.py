@@ -42,7 +42,7 @@ def main():
     # Collect all IC main files sorted newest first
     main_files = sorted(
         [p for p in glob.glob(os.path.join(IC_DIR, 'IC?????.DBF'))
-         if len(os.path.basename(p)) == 12 and os.path.basename(p)[2:-4].isdigit()],
+         if os.path.basename(p)[2:-4].isdigit()],
         reverse=True
     )
 
