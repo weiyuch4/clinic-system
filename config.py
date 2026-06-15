@@ -1,6 +1,12 @@
 # Path to the folder containing IC?????.DBF files from 燿聖.
 IC_DATA_PATH: str = "mock/Data/IC"
 
+# Path to PATDB.DBF (patient master — name, national ID, allergy WARN field).
+PATDB_PATH: str = "mock/Data/S/PATDB.DBF"
+
+# Path to QLOOK1.DBF (live waiting-room queue written by the HIS).
+QUEUE_PATH: str = "mock/Data/S/QLOOK1.DBF"
+
 # Set to True to use hardcoded Python mock data instead of DBF files.
 USE_MOCK_DATA: bool = False
 

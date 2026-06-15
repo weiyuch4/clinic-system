@@ -75,6 +75,26 @@ def index() -> Response:
                     headers={"Cache-Control": "no-store"})
 
 
+@app.get("/doctor")
+def doctor_page() -> Response:
+    try:
+        content = open("static/doctor.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=503, detail="無法載入介面檔案")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/queue")
+def get_queue() -> list[dict]:
+    return database.get_queue()
+
+
+@app.get("/api/patient/search")
+def patient_search(q: str = "") -> list[dict]:
+    return database.search_patients(q)
+
+
 @app.get("/api/nurses")
 def get_nurses() -> list[str]:
     return NURSE_NAMES
@@ -460,6 +480,7 @@ def unmark_mspt_manual(req: MsptManualRemoveRequest) -> None:
 def get_lab_results(national_id: str) -> dict:
     """Return structured blood test results for a patient by national ID."""
     return lab_results.get_lab_results(national_id.strip().upper())
+
 
 
 @app.post("/api/admin/lab-report")

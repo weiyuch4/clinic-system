@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>醫師工作台</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+
+:root {
+  --bg:        #F1F5F9;
+  --surface:   #FFFFFF;
+  --border:    #E2E8F0;
+  --border-mid:#CBD5E1;
+  --text-1:    #0F172A;
+  --text-2:    #475569;
+  --text-3:    #94A3B8;
+  --blue:      #2563EB;
+  --blue-bg:   #EFF6FF;
+  --emerald:   #059669;
+  --emerald-bg:#F0FDF4;
+  --amber:     #D97706;
+  --amber-bg:  #FFFBEB;
+  --red:       #DC2626;
+  --header:    #0F172A;
+  --radius-s:  6px;
+  --radius:    10px;
+  --radius-l:  14px;
+  --shadow-s:  0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
+  --font:      -apple-system, 'Microsoft JhengHei', 'Segoe UI', system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font);
+  background: var(--bg);
+  color: var(--text-1);
+  min-height: 100vh;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Topbar ── */
+.topbar {
+  position: sticky; top: 0; z-index: 100;
+  background: var(--header);
+  height: 56px; padding: 0 32px;
+  display: flex; align-items: center; gap: 16px;
+}
+.brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+.brand-icon {
+  width: 30px; height: 30px; background: var(--emerald);
+  border-radius: 7px; display: grid; place-items: center;
+  font-size: 13px; font-weight: 800; color: #fff; flex-shrink: 0;
+}
+.brand-name { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.9); white-space: nowrap; }
+.topbar-divider { width: 1px; height: 18px; background: rgba(255,255,255,.12); }
+.topbar-sub { font-size: 12px; color: rgba(255,255,255,.35); }
+.topbar-spacer { flex: 1; }
+.topbar-link {
+  font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,.5);
+  text-decoration: none; padding: 5px 10px; border-radius: var(--radius-s);
+  transition: background .12s, color .12s;
+}
+.topbar-link:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.85); }
+
+/* ── Tab bar ── */
+.tabbar {
+  position: sticky; top: 56px; z-index: 99;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0 32px;
+  display: flex; align-items: center;
+  gap: 0;
+}
+.tab {
+  padding: 15px 2px; margin-right: 28px;
+  border: none; background: none;
+  font: 600 13px/1 var(--font);
+  color: var(--text-3); cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color .15s, border-color .15s;
+  white-space: nowrap;
+}
+.tab:hover { color: var(--text-2); }
+.tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.tab-spacer { flex: 1; }
+
+/* live indicator */
+.live-wrap { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-3); }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .3; } }
+.live-dot {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--emerald);
+  animation: pulse 2s infinite;
+}
+.live-dot.paused { background: var(--text-3); animation: none; }
+
+/* notification permission button */
+.notif-btn {
+  display: flex; align-items: center; gap: 5px;
+  margin-left: 16px;
+  font-size: 12px; font-weight: 600; font-family: var(--font);
+  border: 1px solid var(--border-mid); border-radius: var(--radius-s);
+  background: var(--surface); color: var(--text-2);
+  padding: 4px 10px; cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.notif-btn:hover { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+.notif-btn.granted { color: var(--emerald); border-color: #BBF7D0; background: var(--emerald-bg); cursor: default; }
+.notif-btn.denied  { color: var(--text-3);  border-color: var(--border); background: var(--bg); cursor: not-allowed; }
+
+/* ── Layout ── */
+main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; animation: fadeUp .2s ease both; }
+@keyframes fadeUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+
+/* ── Queue layout ── */
+.queue-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.queue-col {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-s);
+  overflow: hidden;
+}
+.queue-col-head {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+  background: var(--bg);
+}
+.queue-col-title { font-size: 13px; font-weight: 700; }
+.queue-count {
+  font-size: 11px; font-weight: 700;
+  background: var(--border); color: var(--text-2);
+  border-radius: 999px; padding: 2px 8px;
+  min-width: 24px; text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.queue-count.has { background: var(--blue); color: #fff; }
+.col-spacer { flex: 1; }
+.btn-clear {
+  font-size: 11.5px; font-weight: 600;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-s);
+  background: var(--surface); color: var(--text-2);
+  padding: 4px 10px; cursor: pointer;
+  transition: background .12s, border-color .12s;
+}
+.btn-clear:hover { background: var(--bg); border-color: var(--red); color: var(--red); }
+
+/* patient card in queue */
+.queue-card {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: flex-start; gap: 12px;
+}
+.queue-card:last-child { border-bottom: none; }
+.queue-num {
+  min-width: 32px; height: 32px;
+  border-radius: 50%;
+  background: var(--blue-bg); color: var(--blue);
+  font-size: 13px; font-weight: 800;
+  display: grid; place-items: center;
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+.queue-num.no-num { background: var(--bg); color: var(--text-3); font-size: 11px; }
+.queue-info { flex: 1; min-width: 0; }
+.queue-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.allergy-inline {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px;
+}
+.atag {
+  font-size: 11.5px; font-weight: 600;
+  background: #FEF3C7; border: 1px solid #FCD34D;
+  color: #92400E; border-radius: 999px; padding: 2px 8px;
+}
+.no-allergy-inline {
+  font-size: 12px; color: var(--emerald); font-weight: 600;
+  display: flex; align-items: center; gap: 4px; margin-top: 4px;
+}
+.unknown-allergy {
+  font-size: 12px; color: var(--text-3); margin-top: 4px;
+}
+.warn-icon { font-size: 13px; }
+
+/* done card */
+.done-card {
+  padding: 11px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 10px;
+}
+.done-card:last-child { border-bottom: none; }
+.done-check {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--emerald-bg); color: var(--emerald);
+  display: grid; place-items: center;
+  font-size: 12px; flex-shrink: 0;
+}
+.done-name { font-size: 13px; font-weight: 600; flex: 1; }
+.done-time { font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+
+/* empty state */
+.col-empty {
+  padding: 36px 20px;
+  text-align: center;
+  color: var(--text-3);
+}
+.col-empty-icon { font-size: 26px; margin-bottom: 8px; }
+.col-empty-text { font-size: 13px; }
+
+/* ── Search tab ── */
+.search-wrap { margin-bottom: 24px; }
+.search-field { position: relative; }
+.search-icon {
+  position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  color: var(--text-3); pointer-events: none; line-height: 0;
+}
+.search-input {
+  width: 100%; padding: 13px 16px 13px 42px;
+  font-size: 15px; font-family: var(--font);
+  border: 2px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text-1);
+  box-shadow: var(--shadow-s);
+  transition: border-color .15s, box-shadow .15s;
+}
+.search-input:focus {
+  outline: none; border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(37,99,235,.12);
+}
+.search-input::placeholder { color: var(--text-3); }
+.search-hint { margin-top: 6px; font-size: 12px; color: var(--text-3); padding-left: 2px; }
+
+/* patient card from search */
+.pat-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-l); box-shadow: var(--shadow-s);
+  overflow: hidden; margin-bottom: 12px;
+}
+.pat-head {
+  display: flex; align-items: center; gap: 14px; padding: 16px 20px;
+}
+.pat-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--blue-bg); color: var(--blue);
+  font-size: 16px; font-weight: 700;
+  display: grid; place-items: center; flex-shrink: 0;
+}
+.pat-name { font-size: 16px; font-weight: 700; }
+.pat-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.pat-spacer { flex: 1; }
+.pat-id {
+  font-size: 12px; color: var(--text-3);
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 999px; padding: 3px 10px;
+  font-variant-numeric: tabular-nums;
+}
+.allergy-banner {
+  margin: 0 20px 16px;
+  background: var(--amber-bg); border: 1.5px solid #FCD34D;
+  border-radius: var(--radius); padding: 14px 16px;
+  display: flex; gap: 12px; align-items: flex-start;
+}
+.allergy-icon { font-size: 20px; flex-shrink: 0; line-height: 1.2; }
+.allergy-title { font-size: 12px; font-weight: 700; color: var(--amber); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.allergy-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.allergy-tag {
+  background: #FEF3C7; border: 1px solid #FCD34D;
+  color: #92400E; font-size: 13px; font-weight: 600;
+  padding: 3px 10px; border-radius: 999px;
+}
+.no-allergy-card {
+  margin: 0 20px 16px;
+  background: var(--emerald-bg); border: 1.5px solid #BBF7D0;
+  border-radius: var(--radius); padding: 11px 16px;
+  font-size: 13px; font-weight: 600; color: var(--emerald);
+  display: flex; align-items: center; gap: 8px;
+}
+.empty {
+  padding: 60px 24px; text-align: center; color: var(--text-3);
+}
+.empty-icon { font-size: 36px; margin-bottom: 14px; }
+.empty-title { font-size: 15px; font-weight: 600; color: var(--text-2); margin-bottom: 5px; }
+.empty-sub { font-size: 13px; }
+
+@keyframes shimmer {
+  from { background-position: -500px 0; }
+  to   { background-position:  500px 0; }
+}
+.shim {
+  background: linear-gradient(90deg, #EEF2F7 25%, #E2E8F0 50%, #EEF2F7 75%);
+  background-size: 500px 100%; animation: shimmer 1.3s infinite linear;
+  border-radius: 4px; display: inline-block;
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-icon">醫</div>
+    <span class="brand-name">醫師工作台</span>
+  </div>
+  <div class="topbar-divider"></div>
+  <span class="topbar-sub">醫師專用</span>
+  <div class="topbar-spacer"></div>
+  <a href="/" class="topbar-link">護理師介面</a>
+</header>
+
+<div class="tabbar">
+  <button class="tab active" onclick="switchTab('queue')">候診名單</button>
+  <button class="tab"        onclick="switchTab('search')">病患查詢</button>
+  <div class="tab-spacer"></div>
+  <div class="live-wrap" id="live-wrap">
+    <div class="live-dot" id="live-dot"></div>
+    <span id="live-text">即時更新</span>
+  </div>
+  <button class="notif-btn" id="notif-btn" onclick="requestNotifPerm()">
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor">
+      <path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.42-1.72-4.44-4.005-4.901z"/>
+    </svg>
+    <span id="notif-label">開啟過敏通知</span>
+  </button>
+</div>
+
+<main>
+
+  <!-- Queue tab -->
+  <div class="tab-panel active" id="panel-queue">
+    <div class="queue-layout">
+
+      <div class="queue-col">
+        <div class="queue-col-head">
+          <span class="queue-col-title">候診中</span>
+          <span class="queue-count" id="waiting-count">0</span>
+        </div>
+        <div id="waiting-list">
+          <div class="col-empty">
+            <div class="col-empty-icon">🕐</div>
+            <div class="col-empty-text">正在載入候診名單…</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="queue-col">
+        <div class="queue-col-head">
+          <span class="queue-col-title">已看診</span>
+          <span class="queue-count" id="done-count">0</span>
+          <div class="col-spacer"></div>
+          <button class="btn-clear" onclick="clearDone()">清除</button>
+        </div>
+        <div id="done-list">
+          <div class="col-empty">
+            <div class="col-empty-icon">✓</div>
+            <div class="col-empty-text">尚無已看診患者</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Search tab -->
+  <div class="tab-panel" id="panel-search">
+    <div class="search-wrap">
+      <div class="search-field">
+        <span class="search-icon">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
+            <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.099zm-5.242 1.656a5.5 5.5 0 1 1 0-11 5.5 5.5 0 0 1 0 11z"/>
+          </svg>
+        </span>
+        <input class="search-input" id="search-input" type="text"
+               placeholder="輸入病患姓名或身分證號..."
+               autocomplete="off" spellcheck="false"
+               oninput="onSearch(this.value)">
+      </div>
+      <div class="search-hint">支援姓名模糊搜尋 或 身分證號精確搜尋</div>
+    </div>
+    <div id="search-results">
+      <div class="empty">
+        <div class="empty-icon">🔍</div>
+        <div class="empty-title">輸入姓名或身分證號以查詢病患</div>
+        <div class="empty-sub">系統將顯示過敏資訊及病歷摘要</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+'use strict';
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((b, i) =>
+    b.classList.toggle('active', ['queue','search'][i] === name)
+  );
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+let _lastNotifiedKey = null;
+
+function updateNotifBtn() {
+  const btn   = document.getElementById('notif-btn');
+  const label = document.getElementById('notif-label');
+  if (!('Notification' in window)) {
+    btn.classList.add('denied');
+    label.textContent = '此瀏覽器不支援通知';
+    return;
+  }
+  if (Notification.permission === 'granted') {
+    btn.classList.add('granted');
+    label.textContent = '過敏通知已開啟';
+  } else if (Notification.permission === 'denied') {
+    btn.classList.add('denied');
+    label.textContent = '通知已被封鎖';
+  }
+}
+
+async function requestNotifPerm() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'granted') return;
+  const result = await Notification.requestPermission();
+  updateNotifBtn();
+  if (result === 'granted') {
+    new Notification('通知已開啟', { body: '當下一位候診患者有藥物過敏時，系統將自動提醒您。', requireInteraction: false });
+  }
+}
+
+function notifyNextPatient(patients) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  if (!patients.length) return;
+  const top = patients[0];
+  if (!top.allergy_known || !top.allergies || top.allergies.length === 0) return;
+  const key = _key(top);
+  if (key === _lastNotifiedKey) return;
+  _lastNotifiedKey = key;
+  new Notification(`⚠️ 過敏警示：${top.name}`, {
+    body: `藥物過敏：${top.allergies.join('、')}`,
+    requireInteraction: true,
+  });
+}
+
+// ── Queue polling ─────────────────────────────────────────────────────────────
+let _prevKeys  = new Set();   // keys of patients seen last poll
+let _doneList  = [];          // accumulated done patients
+let _pollTimer = null;
+
+function _key(p) { return `${p.name}::${p.const}`; }
+
+function fmtTime(d) {
+  return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
+
+async function pollQueue() {
+  const dot  = document.getElementById('live-dot');
+  const text = document.getElementById('live-text');
+  try {
+    const res = await fetch('/api/queue');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const patients = await res.json();
+
+    const currentKeys = new Set(patients.map(_key));
+
+    // Patients who disappeared → moved to done
+    let anyMovedToDone = false;
+    for (const k of _prevKeys) {
+      if (!currentKeys.has(k)) {
+        const name = k.split('::')[0];
+        _doneList.unshift({ name, time: fmtTime(new Date()) });
+        anyMovedToDone = true;
+      }
+    }
+    _prevKeys = currentKeys;
+
+    renderWaiting(patients);
+    renderDone();
+
+    if (anyMovedToDone) notifyNextPatient(patients);
+
+    dot.classList.remove('paused');
+    text.textContent = '即時更新';
+  } catch(e) {
+    dot.classList.add('paused');
+    text.textContent = '連線失敗';
+  }
+}
+
+function renderWaiting(patients) {
+  const el    = document.getElementById('waiting-list');
+  const badge = document.getElementById('waiting-count');
+  badge.textContent = patients.length;
+  badge.classList.toggle('has', patients.length > 0);
+
+  if (!patients.length) {
+    el.innerHTML = `<div class="col-empty">
+      <div class="col-empty-icon">🪑</div>
+      <div class="col-empty-text">目前無候診患者</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = patients.map(p => {
+    const num = p.const || '—';
+    const numCls = p.const ? '' : 'no-num';
+
+    let allergyHtml = '';
+    if (!p.allergy_known) {
+      allergyHtml = `<div class="unknown-allergy">過敏資料未知</div>`;
+    } else if (p.allergies.length > 0) {
+      const tags = p.allergies.map(a => `<span class="atag">${a}</span>`).join('');
+      allergyHtml = `
+        <div style="display:flex;align-items:center;gap:5px;margin-top:4px">
+          <span class="warn-icon">⚠️</span>
+          <div class="allergy-inline">${tags}</div>
+        </div>`;
+    } else {
+      allergyHtml = `<div class="no-allergy-inline"><span>✓</span>無已知過敏</div>`;
+    }
+
+    return `<div class="queue-card">
+      <div class="queue-num ${numCls}">${num}</div>
+      <div class="queue-info">
+        <div class="queue-name">${p.name}</div>
+        ${allergyHtml}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderDone() {
+  const el    = document.getElementById('done-list');
+  const badge = document.getElementById('done-count');
+  badge.textContent = _doneList.length;
+  badge.classList.toggle('has', _doneList.length > 0);
+
+  if (!_doneList.length) {
+    el.innerHTML = `<div class="col-empty">
+      <div class="col-empty-icon">✓</div>
+      <div class="col-empty-text">尚無已看診患者</div>
+    </div>`;
+    return;
+  }
+
+  el.innerHTML = _doneList.map(d => `
+    <div class="done-card">
+      <div class="done-check">✓</div>
+      <div class="done-name">${d.name}</div>
+      <div class="done-time">${d.time}</div>
+    </div>`).join('');
+}
+
+function clearDone() {
+  _doneList = [];
+  renderDone();
+}
+
+// ── Patient search ─────────────────────────────────────────────────────────────
+let _searchTimer = null;
+
+function onSearch(val) {
+  clearTimeout(_searchTimer);
+  val = val.trim();
+  if (!val) { showSearchDefault(); return; }
+  if (val.length < 2) return;
+  _searchTimer = setTimeout(() => doSearch(val), 280);
+}
+
+function showSearchDefault() {
+  document.getElementById('search-results').innerHTML = `
+    <div class="empty">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">輸入姓名或身分證號以查詢病患</div>
+      <div class="empty-sub">系統將顯示過敏資訊及病歷摘要</div>
+    </div>`;
+}
+
+async function doSearch(q) {
+  document.getElementById('search-results').innerHTML =
+    `<div class="pat-card" style="padding:18px 20px"><span class="shim" style="width:40%;height:14px"></span></div>`;
+  try {
+    const patients = await fetch(`/api/patient/search?q=${encodeURIComponent(q)}`).then(r => r.json());
+    renderSearchResults(patients, q);
+  } catch(e) {
+    document.getElementById('search-results').innerHTML = `
+      <div class="empty"><div class="empty-icon">⚠</div>
+      <div class="empty-title">載入失敗</div><div class="empty-sub">${e.message}</div></div>`;
+  }
+}
+
+function formatBirth(raw) {
+  raw = (raw || '').trim();
+  if (raw.length === 6 && /^\d+$/.test(raw))
+    return `民國 ${parseInt(raw.slice(0,2))} 年 ${raw.slice(2,4)} 月 ${raw.slice(4,6)} 日`;
+  if (raw.length === 7 && /^\d+$/.test(raw))
+    return `民國 ${parseInt(raw.slice(0,3))} 年 ${raw.slice(3,5)} 月 ${raw.slice(5,7)} 日`;
+  return raw;
+}
+
+function renderSearchResults(patients, q) {
+  const el = document.getElementById('search-results');
+  if (!patients.length) {
+    el.innerHTML = `<div class="empty">
+      <div class="empty-icon">📭</div>
+      <div class="empty-title">找不到符合「${q}」的病患</div>
+      <div class="empty-sub">請確認姓名或身分證號是否正確</div>
+    </div>`;
+    return;
+  }
+  el.innerHTML = patients.map(p => {
+    const initial = p.name ? p.name[0] : '?';
+    let allergyHtml = '';
+    if (p.allergies && p.allergies.length > 0) {
+      const tags = p.allergies.map(a => `<span class="allergy-tag">${a}</span>`).join('');
+      allergyHtml = `<div class="allergy-banner">
+        <span class="allergy-icon">⚠️</span>
+        <div><div class="allergy-title">藥物過敏警示</div>
+        <div class="allergy-tags">${tags}</div></div>
+      </div>`;
+    } else {
+      allergyHtml = `<div class="no-allergy-card"><span>✓</span> 無已知藥物過敏紀錄</div>`;
+    }
+    return `<div class="pat-card">
+      <div class="pat-head">
+        <div class="pat-avatar">${initial}</div>
+        <div><div class="pat-name">${p.name}</div>
+        <div class="pat-meta">${formatBirth(p.birth)}</div></div>
+        <div class="pat-spacer"></div>
+        <span class="pat-id">${p.nat_id}</span>
+      </div>
+      ${allergyHtml}
+    </div>`;
+  }).join('');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+updateNotifBtn();
+pollQueue();
+setInterval(pollQueue, 5000);
+</script>
+</body>
+</html>

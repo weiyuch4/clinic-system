@@ -3,7 +3,7 @@ import glob
 import os
 import struct
 
-from config import IC_DATA_PATH, METABOLIC_FOLLOWUP_DAYS, USE_MOCK_DATA
+from config import IC_DATA_PATH, METABOLIC_FOLLOWUP_DAYS, PATDB_PATH, QUEUE_PATH, USE_MOCK_DATA
 from models import (
     DailyReport,
     FollowupEntry,
@@ -597,6 +597,79 @@ def get_doctor_return_rates(month: str) -> list[dict]:
         ],
         key=lambda x: -x['rate'],
     )
+
+
+# ── Patient search (PATDB) ────────────────────────────────────────────────────
+
+_patdb_cache: list[dict] | None = None
+
+def _load_patdb() -> list[dict]:
+    global _patdb_cache
+    if _patdb_cache is not None:
+        return _patdb_cache
+    if not os.path.exists(PATDB_PATH):
+        _patdb_cache = []
+        return _patdb_cache
+    _patdb_cache = _parse_dbf(PATDB_PATH)
+    return _patdb_cache
+
+
+def _parse_allergy(warn: str) -> list[str]:
+    return [a.strip() for a in warn.split('.') if a.strip()]
+
+
+def _allergy_by_name(name: str) -> list[str] | None:
+    """Exact name match in PATDB → allergy list. None = not found."""
+    for r in _load_patdb():
+        if r.get('NAME', '').strip() == name:
+            return _parse_allergy(r.get('WARN', ''))
+    return None
+
+
+def get_queue() -> list[dict]:
+    """Read QLOOK1.DBF and return current waiting patients with allergy info."""
+    if not os.path.exists(QUEUE_PATH):
+        return []
+    try:
+        records = _parse_dbf(QUEUE_PATH)
+    except Exception:
+        return []
+    result = []
+    for r in records:
+        name = r.get('NAME', '').strip()
+        if not name:
+            continue
+        allergies = _allergy_by_name(name)
+        result.append({
+            'name':          name,
+            'const':         r.get('CONST', '').strip(),
+            'date':          r.get('DATE',  '').strip(),
+            'allergies':     allergies if allergies is not None else [],
+            'allergy_known': allergies is not None,
+        })
+    return result
+
+
+def search_patients(q: str, limit: int = 20) -> list[dict]:
+    """Search PATDB by name (contains) or exact national ID. Returns up to `limit` results."""
+    q = q.strip()
+    if not q:
+        return []
+    q_lower = q.lower()
+    results = []
+    for r in _load_patdb():
+        name = r.get('NAME', '')
+        nat_id = r.get('ID', '')
+        if q_lower in name.lower() or q == nat_id:
+            results.append({
+                'name':      name,
+                'nat_id':    nat_id,
+                'birth':     r.get('BIRTH', ''),
+                'allergies': _parse_allergy(r.get('WARN', '')),
+            })
+            if len(results) >= limit:
+                break
+    return results
 
 
 # ── Mock data ─────────────────────────────────────────────────────────────────

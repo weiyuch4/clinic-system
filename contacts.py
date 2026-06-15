@@ -69,6 +69,7 @@ _CREATE_MANUAL_PICKUPS = """
     )
 """
 
+
 _CREATE_MSPT_COMPLETED = """
     CREATE TABLE IF NOT EXISTS mspt_completed (
         chart_number    TEXT NOT NULL,
@@ -883,3 +884,5 @@ def get_submitted_entries() -> list[MsptSubmittableEntry]:
         )
         for r in rows
     ]
+
+

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>管理員後台</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
@@ -513,6 +514,290 @@ tbody tr:hover td { background: #F7F9FF; }
 .note-pill.n  { background: #F0FDF4; color: var(--emerald); }
 .note-pill.p  { background: #FFFBEB; color: var(--amber); }
 .note-pill.other { background: var(--bg); color: var(--text-2); }
+
+/* ── Bonus calculator ─────────────────────────────────────────────────────── */
+.bonus-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 20px;
+  gap: 10px;
+}
+.btn-sm {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-s);
+  background: var(--surface);
+  color: var(--text-1);
+  font: 600 13px/1 var(--font);
+  cursor: pointer;
+  transition: background .12s, border-color .12s;
+  white-space: nowrap;
+}
+.btn-sm:hover { background: var(--bg); border-color: var(--blue); color: var(--blue); }
+.btn-sm.primary { background: var(--blue); color: #fff; border-color: var(--blue); }
+.btn-sm.primary:hover { background: #1d4ed8; border-color: #1d4ed8; color: #fff; }
+.bonus-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(268px, 1fr));
+  gap: 16px;
+  align-items: start;
+}
+.bc {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow-s);
+  display: flex;
+  flex-direction: column;
+}
+.bc-hd {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+  border-radius: var(--radius-l) var(--radius-l) 0 0;
+  cursor: grab;
+  user-select: none;
+}
+.bc-hd:active { cursor: grabbing; }
+.bc-grip {
+  color: var(--text-3);
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+  letter-spacing: -1px;
+}
+.bc.bc-dragging { opacity: 0.4; }
+.bc.bc-over { outline: 2px solid var(--blue); outline-offset: -2px; border-radius: var(--radius-l); }
+.bonus-std-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--blue-bg);
+  border: 1px solid #BFDBFE;
+  border-radius: var(--radius);
+  padding: 11px 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+.bonus-std-bar label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--blue);
+  white-space: nowrap;
+}
+.bonus-std-input {
+  border: 1px solid #93C5FD;
+  border-radius: var(--radius-s);
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+  background: var(--surface);
+  color: var(--text-1);
+  width: 108px;
+}
+.bonus-std-input:focus { outline: none; border-color: var(--blue); }
+.bonus-std-select {
+  border: 1px solid #93C5FD;
+  border-radius: var(--radius-s);
+  padding: 6px 10px;
+  font-size: 13px;
+  font-family: var(--font);
+  background: var(--surface);
+  color: var(--text-1);
+  cursor: pointer;
+}
+.bc-auto-amt {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+  padding: 5px 0 2px;
+}
+.bc-auto-formula { font-size: 11px; color: var(--text-3); }
+.bc-parttime-row { display: flex; align-items: center; gap: 8px; }
+.bc-pt-btn {
+  font-size: 12px; font-weight: 600;
+  padding: 4px 11px;
+  border: 1px solid var(--border-mid);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+  white-space: nowrap;
+}
+.bc-pt-btn.active { background: #FFFBEB; border-color: var(--amber); color: var(--amber); }
+.bc-pt-wrap { display: flex; align-items: center; gap: 4px; opacity: 0; pointer-events: none; transition: opacity .15s; }
+.bc-pt-input-num {
+  width: 52px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-s);
+  padding: 5px 6px;
+  font-size: 13px; text-align: right;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface); color: var(--text-1);
+  font-family: var(--font);
+}
+.bc-pt-input-num:focus { outline: none; border-color: var(--amber); }
+.bc-avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.bc-name { font-weight: 700; font-size: 14px; flex: 1; }
+.bc-del {
+  background: none; border: none; cursor: pointer;
+  color: var(--text-3); font-size: 17px; line-height: 1;
+  padding: 2px 5px; border-radius: 4px;
+  transition: background .12s, color .12s;
+}
+.bc-del:hover { background: var(--border); color: var(--text-1); }
+.bc-body {
+  padding: 16px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.bc-field-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 7px;
+}
+.bc-dates {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.bc-dates input[type=date] {
+  flex: 1; min-width: 0;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-s);
+  padding: 6px 8px;
+  font-size: 12.5px;
+  background: var(--surface);
+  color: var(--text-1);
+  font-family: var(--font);
+}
+.bc-dates input[type=date]:focus { outline: none; border-color: var(--blue); }
+.bc-dates-sep { font-size: 12px; color: var(--text-3); flex-shrink: 0; }
+.bc-days {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.bc-money-row {
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-s);
+  overflow: hidden;
+}
+.bc-currency {
+  padding: 0 10px;
+  font-size: 12px;
+  color: var(--text-2);
+  background: var(--bg);
+  border-right: 1px solid var(--border-mid);
+  display: flex; align-items: center;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.bc-money-row input[type=number] {
+  flex: 1; border: none; padding: 7px 10px;
+  font-size: 13px; background: transparent;
+  color: var(--text-1); font-family: var(--font);
+  font-variant-numeric: tabular-nums;
+  min-width: 0;
+}
+.bc-money-row input[type=number]:focus { outline: none; }
+.bc-score-rows { display: flex; flex-direction: column; gap: 9px; }
+.bc-score-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bc-score-name {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text-2);
+}
+.bc-score-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.bc-score-input {
+  width: 54px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-s);
+  padding: 5px 6px;
+  font-size: 13px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  background: var(--surface);
+  color: var(--text-1);
+  font-family: var(--font);
+}
+.bc-score-input:focus { outline: none; border-color: var(--blue); }
+.bc-pct { font-size: 12px; color: var(--text-3); }
+.bc-result {
+  border-top: 2px solid var(--border);
+  padding: 15px 16px;
+  background: var(--bg);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-radius: 0 0 var(--radius-l) var(--radius-l);
+}
+.bc-result-item { display: flex; flex-direction: column; gap: 3px; }
+.bc-result-item:last-child { text-align: right; }
+.bc-result-label {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.bc-avg-val {
+  font-size: 22px; font-weight: 800;
+  color: var(--text-1);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.bc-final-val {
+  font-size: 22px; font-weight: 800;
+  color: var(--blue);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+@media print {
+  .topbar, .tabbar, #back-to-top, .bonus-toolbar { display: none !important; }
+  main { padding: 0; max-width: none; }
+  .section { display: none !important; }
+  #bonus { display: block !important; }
+  .bonus-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .bc { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
+}
 </style>
 </head>
 <body>
@@ -530,6 +815,7 @@ tbody tr:hover td { background: #F7F9FF; }
   <button class="tab active" data-section="nurses">護理師統計</button>
   <button class="tab"        data-section="doctors">醫師回診率</button>
   <button class="tab"        data-section="labreport">代檢對帳單</button>
+  <button class="tab"        data-section="bonus">不定期獎金</button>
 </div>
 
 <main>
@@ -597,6 +883,31 @@ tbody tr:hover td { background: #F7F9FF; }
         近期月份因後續IC檔案尚未到齊，回診率可能偏低屬正常現象。
       </div>
     </div>
+  </section>
+
+  <!-- ── Bonus ── -->
+  <section id="bonus" class="section">
+    <div class="bonus-toolbar">
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm primary" onclick="addBonusCardPrompt()">＋ 新增護理師</button>
+        <button class="btn-sm" id="btn-prorata" onclick="toggleProrata()">依比例計算</button>
+      </div>
+      <button class="btn-sm" onclick="window.print()">列印</button>
+    </div>
+    <div class="bonus-std-bar" id="bonus-std-bar" style="display:none">
+      <label>標準金額</label>
+      <div class="bc-money-row" style="width:150px">
+        <span class="bc-currency">NT$</span>
+        <input type="number" class="bonus-std-input" id="bonus-std-amt" min="0" placeholder="0"
+               style="border:none;width:100%" oninput="recalcAllBonus()">
+      </div>
+      <label>基準護理師</label>
+      <select id="bonus-std-ref" class="bonus-std-select" onchange="recalcAllBonus()">
+        <option value="">— 選擇 —</option>
+      </select>
+      <span style="font-size:12px;color:#3B82F6;margin-left:4px">（其他護理師依天數比例換算）</span>
+    </div>
+    <div class="bonus-grid" id="bonus-grid"></div>
   </section>
 
 </main>
@@ -1051,11 +1362,297 @@ function renderLabReport(r) {
   return meta + verifySection + summaryKPIs + noteCard + testTables;
 }
 
+// ── Bonus calculator ──────────────────────────────────────────────────────────
+const BONUS_CATS = ['出勤狀況', '工作態度', '工作表現', '團隊合作', '服務品質', '追蹤效率'];
+
+async function loadBonus() {
+  const grid = $('bonus-grid');
+  if (grid.children.length > 0) return;
+  try {
+    const nurses = await api('/api/nurses');
+    if (nurses.length) {
+      nurses.forEach(addBonusCard);
+    } else {
+      grid.innerHTML = emptyState('📋', '尚無護理師名單', '請點擊「新增護理師」手動加入');
+    }
+  } catch(e) {
+    grid.innerHTML = emptyState('📋', '無法載入護理師名單', '請點擊「新增護理師」手動加入');
+  }
+}
+
+function addBonusCard(name) {
+  const grid = $('bonus-grid');
+  // Clear empty state if present
+  if (grid.querySelector('.empty')) grid.innerHTML = '';
+
+  const today2 = new Date();
+  const y = today2.getFullYear(), mo = String(today2.getMonth()+1).padStart(2,'0');
+  const defaultStart = `${y}-${mo}-01`;
+  const defaultEnd   = `${y}-${mo}-${String(today2.getDate()).padStart(2,'0')}`;
+
+  const initial = name ? name[0] : '?';
+  const scoreRows = BONUS_CATS.map(cat => `
+    <div class="bc-score-row">
+      <span class="bc-score-name">${cat}</span>
+      <div class="bc-score-wrap">
+        <input type="number" class="bc-score-input" min="0" max="100" value="100"
+               oninput="recalcCard(this)">
+        <span class="bc-pct">%</span>
+      </div>
+    </div>`).join('');
+
+  const card = document.createElement('div');
+  card.className = 'bc';
+  card.innerHTML = `
+    <div class="bc-hd">
+      <span class="bc-grip" title="拖曳排序">⠿</span>
+      <span class="bc-avatar">${initial}</span>
+      <span class="bc-name">${name}</span>
+      <button class="bc-del" onclick="removeBonusCard(this)" title="移除">×</button>
+    </div>
+    <div class="bc-body">
+      <div>
+        <div class="bc-field-label">計算期間</div>
+        <div class="bc-dates">
+          <input type="date" class="bc-start" value="${defaultStart}" oninput="recalcCard(this)">
+          <span class="bc-dates-sep">至</span>
+          <input type="date" class="bc-end" value="${defaultEnd}" oninput="recalcCard(this)">
+        </div>
+        <div class="bc-days"></div>
+      </div>
+      <div class="bc-manual-block">
+        <div class="bc-field-label">底薪獎金</div>
+        <div class="bc-money-row">
+          <span class="bc-currency">NT$</span>
+          <input type="number" class="bc-base-amt" min="0" placeholder="請輸入金額"
+                 oninput="recalcCard(this)">
+        </div>
+      </div>
+      <div class="bc-auto-block" style="display:none">
+        <div class="bc-field-label">底薪獎金（依比例）</div>
+        <div class="bc-auto-amt">—</div>
+        <div class="bc-auto-formula"></div>
+      </div>
+      <div>
+        <div class="bc-field-label">工時類型</div>
+        <div class="bc-parttime-row">
+          <button class="bc-pt-btn" onclick="toggleParttime(this)">兼職</button>
+          <span class="bc-pt-wrap">
+            <input type="number" class="bc-pt-input-num" min="1" max="100" value="50" oninput="recalcCard(this)">
+            <span class="bc-pct">%</span>
+          </span>
+        </div>
+      </div>
+      <div>
+        <div class="bc-field-label">績效評分</div>
+        <div class="bc-score-rows">${scoreRows}</div>
+      </div>
+    </div>
+    <div class="bc-result">
+      <div class="bc-result-item">
+        <span class="bc-result-label">平均分數</span>
+        <span class="bc-avg-val bc-avg">—</span>
+      </div>
+      <div class="bc-result-item">
+        <span class="bc-result-label">實際獎金</span>
+        <span class="bc-final-val bc-final">—</span>
+      </div>
+    </div>`;
+
+  grid.appendChild(card);
+  updateRefDropdown();
+  _recalcOne(card);
+  initBonusDrag(card);
+}
+
+function _refDays() {
+  const refName = ($('bonus-std-ref') || {}).value || '';
+  if (!refName) return 0;
+  const refCard = [...document.querySelectorAll('#bonus-grid > .bc')]
+    .find(c => c.querySelector('.bc-name').textContent === refName);
+  if (!refCard) return 0;
+  const rs = refCard.querySelector('.bc-start').value;
+  const re = refCard.querySelector('.bc-end').value;
+  return (rs && re && re >= rs)
+    ? Math.round((new Date(re) - new Date(rs)) / 86400000) + 1
+    : 0;
+}
+
+function _recalcOne(card) {
+  // Days
+  const start  = card.querySelector('.bc-start').value;
+  const end    = card.querySelector('.bc-end').value;
+  const daysEl = card.querySelector('.bc-days');
+  let days = 0;
+  if (start && end && end >= start) {
+    days = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
+    daysEl.textContent = `共 ${days} 天`;
+  } else {
+    daysEl.textContent = '';
+  }
+
+  // Base amount
+  let base = 0;
+  if (_prorataMode) {
+    const stdAmt = parseFloat(($('bonus-std-amt') || {}).value) || 0;
+    const refD   = _refDays();
+    const refName = ($('bonus-std-ref') || {}).value || '';
+    if (refD > 0 && days > 0) {
+      base = stdAmt * days / refD;
+      card.querySelector('.bc-auto-amt').textContent =
+        'NT$ ' + Math.round(base).toLocaleString('zh-TW');
+      card.querySelector('.bc-auto-formula').textContent =
+        `${stdAmt.toLocaleString('zh-TW')} × ${days} ÷ ${refD} 天（${refName}）`;
+    } else {
+      card.querySelector('.bc-auto-amt').textContent = '—';
+      card.querySelector('.bc-auto-formula').textContent =
+        refName ? '請確認基準護理師的日期範圍' : '請選擇基準護理師';
+    }
+  } else {
+    base = parseFloat(card.querySelector('.bc-base-amt').value) || 0;
+  }
+
+  // Scores
+  const scores = [...card.querySelectorAll('.bc-score-input')]
+    .map(i => Math.min(100, Math.max(0, parseFloat(i.value) || 0)));
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+
+  // Part-time multiplier
+  const ptBtn    = card.querySelector('.bc-pt-btn');
+  const ptActive = ptBtn && ptBtn.classList.contains('active');
+  const ptPct    = ptActive ? (parseFloat(card.querySelector('.bc-pt-input-num').value) || 50) : 100;
+
+  const avgLabel = card.querySelector('.bc-result-label');
+  const avgVal   = card.querySelector('.bc-avg');
+  if (ptActive) {
+    avgLabel.textContent = '兼職 × 分數';
+    avgVal.textContent   = `${ptPct}% × ${avg.toFixed(1)}%`;
+  } else {
+    avgLabel.textContent = '平均分數';
+    avgVal.textContent   = avg.toFixed(1) + '%';
+  }
+
+  // Final
+  const final = base * (ptPct / 100) * (avg / 100);
+  card.querySelector('.bc-final').textContent =
+    base > 0 ? 'NT$ ' + Math.round(final).toLocaleString('zh-TW') : '—';
+}
+
+function recalcCard(el) {
+  const card = el.closest('.bc');
+  if (!card) return;
+  _recalcOne(card);
+  // If this card is the reference nurse, ripple to all other cards
+  if (_prorataMode) {
+    const refName = ($('bonus-std-ref') || {}).value || '';
+    if (refName && card.querySelector('.bc-name').textContent === refName) {
+      document.querySelectorAll('#bonus-grid > .bc').forEach(c => { if (c !== card) _recalcOne(c); });
+    }
+  }
+}
+
+function recalcAllBonus() {
+  document.querySelectorAll('#bonus-grid > .bc').forEach(_recalcOne);
+}
+
+function updateRefDropdown() {
+  const sel = $('bonus-std-ref');
+  if (!sel) return;
+  const prev  = sel.value;
+  const names = [...document.querySelectorAll('#bonus-grid > .bc .bc-name')].map(el => el.textContent);
+  sel.innerHTML = '<option value="">— 選擇 —</option>' +
+    names.map(n => `<option value="${n}"${n === prev ? ' selected' : ''}>${n}</option>`).join('');
+}
+
+function toggleParttime(btn) {
+  btn.classList.toggle('active');
+  const wrap = btn.nextElementSibling;
+  const active = btn.classList.contains('active');
+  wrap.style.opacity = active ? '1' : '0';
+  wrap.style.pointerEvents = active ? '' : 'none';
+  recalcCard(btn);
+}
+
+function removeBonusCard(btn) {
+  btn.closest('.bc').remove();
+  updateRefDropdown();
+  recalcAllBonus();
+}
+
+let _prorataMode = false;
+
+function toggleProrata() {
+  _prorataMode = !_prorataMode;
+  $('bonus-std-bar').style.display = _prorataMode ? 'flex' : 'none';
+  $('btn-prorata').classList.toggle('primary', _prorataMode);
+  document.querySelectorAll('#bonus-grid > .bc').forEach(card => {
+    card.querySelector('.bc-manual-block').style.display = _prorataMode ? 'none' : '';
+    card.querySelector('.bc-auto-block').style.display   = _prorataMode ? ''     : 'none';
+  });
+  recalcAllBonus();
+}
+
+function recalcAllBonus() {
+  document.querySelectorAll('#bonus-grid > .bc').forEach(card =>
+    recalcCard(card.querySelector('.bc-start'))
+  );
+}
+
+let _dragSrc = null;
+
+function initBonusDrag(card) {
+  card.setAttribute('draggable', 'true');
+
+  card.addEventListener('dragstart', e => {
+    _dragSrc = card;
+    e.dataTransfer.effectAllowed = 'move';
+    setTimeout(() => card.classList.add('bc-dragging'), 0);
+  });
+
+  card.addEventListener('dragend', () => {
+    card.classList.remove('bc-dragging');
+    document.querySelectorAll('.bc-over').forEach(c => c.classList.remove('bc-over'));
+    _dragSrc = null;
+  });
+
+  card.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  });
+
+  card.addEventListener('dragenter', e => {
+    e.preventDefault();
+    if (_dragSrc && _dragSrc !== card) card.classList.add('bc-over');
+  });
+
+  card.addEventListener('dragleave', e => {
+    if (!card.contains(e.relatedTarget)) card.classList.remove('bc-over');
+  });
+
+  card.addEventListener('drop', e => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!_dragSrc || _dragSrc === card) return;
+    const grid = $('bonus-grid');
+    const all  = [...grid.querySelectorAll(':scope > .bc')];
+    const si   = all.indexOf(_dragSrc);
+    const ti   = all.indexOf(card);
+    grid.insertBefore(_dragSrc, si < ti ? card.nextSibling : card);
+    card.classList.remove('bc-over');
+  });
+}
+
+function addBonusCardPrompt() {
+  const name = prompt('輸入護理師姓名：');
+  if (name && name.trim()) addBonusCard(name.trim());
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 function load(section) {
-  if (section === 'nurses') loadNurses();
-  else if (section === 'doctors') loadDoctors();
+  if (section === 'nurses')    loadNurses();
+  else if (section === 'doctors')   loadDoctors();
   else if (section === 'labreport') loadLabReport();
+  else if (section === 'bonus')     loadBonus();
 }
 
 function refresh() {

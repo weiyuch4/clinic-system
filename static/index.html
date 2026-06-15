@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>診所追蹤系統</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -295,6 +296,9 @@
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
 
     thead th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
       padding: 8px 16px;
       text-align: left;
       font-size: 10px;
@@ -1067,7 +1071,7 @@
           <th class="sortable" onclick="sortTable('chronic-body','name',this)">病患</th>
           <th class="sortable" onclick="sortTable('chronic-body','birth',this)">出生日期</th>
           <th class="sortable" onclick="sortTable('chronic-body','disease',this)">病名</th>
-          <th>下次慢簽</th>
+          <th class="sortable" onclick="sortTable('chronic-body','next_chronic',this)">下次慢簽</th>
           <th class="sortable" onclick="sortTable('chronic-body','pickup',this)">上次取藥</th>
           <th class="sortable" onclick="sortTable('chronic-body','due',this)">到期日</th>
           <th class="sortable" onclick="sortTable('chronic-body','status',this)">狀態</th>
@@ -3074,6 +3078,7 @@
       case "disease":    return e.disease_name || "";
       case "pickup":     return e.last_visit_date || "";
       case "due":        return e.due_date || "";
+      case "next_chronic": return e.chronic_stage || "";
       case "stage":      return STAGE_ORDER.indexOf(e.mspt_stage);
       case "last_visit": return e.last_visit_date || "";
       case "status":     return e.days_overdue;
