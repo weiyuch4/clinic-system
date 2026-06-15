@@ -244,8 +244,9 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
     """Return patients whose last 慢簽 visit + prescription days is past as_of.
 
     Covers AE連續 (IC02/IC03 refills) and 01西醫 IC01 first prescriptions.
-    IC01 is identified by M33='1' AND M26='3' in the H file (IC?????H.DBF) —
-    these fields do not exist in the main IC file — plus LONG='1' in the P file.
+    IC01 is identified by M33='1' AND M26='3' in the main IC file plus LONG='1'
+    in the P file. M33/M26 are sparsely populated (~1% of records) which is why
+    they appeared absent in small samples, but they are real fields in the schema.
     """
     since = as_of - timedelta(days=365)
 
@@ -257,8 +258,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             records = _parse_dbf_cached(ic_path)
         except Exception:
             continue
-        p_path   = ic_path[:-4] + 'P.DBF'
-        h_lookup = _load_h_lookup(ic_path)  # {code_f: (m33, m26)} from H file
+        p_path = ic_path[:-4] + 'P.DBF'
 
         for r in records:
             h_type   = r.get('H_TYPE', '')
@@ -274,8 +274,9 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                 continue
             cf = r.get('CODE_F', '').strip()
 
-            # M33/M26 live in the H file (IC?????H.DBF), not in the main IC file.
-            m33, m26 = h_lookup.get(cf, ('', ''))
+            # M33/M26 are in the main IC file (not the H file).
+            m33 = r.get('M33', '').strip()
+            m26 = r.get('M26', '').strip()
 
             if is_nishi:
                 if nat_id in ic01_best and v_date <= ic01_best[nat_id]['date']:
@@ -304,7 +305,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                     'ic_path': ic_path,
                 }
                 if is_ae:
-                    entry['m33'] = m33  # from H file ('' if H file absent)
+                    entry['m33'] = m33
                 target[nat_id] = entry
             elif is_ae and v_date == target[nat_id]['date'] and cf and cf not in target[nat_id]['code_fs']:
                 target[nat_id]['code_fs'].append(cf)
@@ -511,7 +512,7 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
     """Return {chart_number: latest visit date} for the given patients, looking back 30 days.
     Used to detect whether a contacted patient has since returned.
 
-    For 慢簽: matches AE連續 or 01西醫 IC01 (M33='1', M26='3' from H file).
+    For 慢簽: matches AE連續 or 01西醫 IC01 (M33='1', M26='3' in main IC file).
     For 代謝症候群: matches any 01西醫 visit."""
     if not chart_numbers:
         return {}
@@ -519,7 +520,6 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
     result: dict[str, date] = {}
 
     for ic_path in _ic_files_since(since):
-        h_lookup = _load_h_lookup(ic_path) if category == '慢簽' else {}
         try:
             for r in _parse_dbf_cached(ic_path):
                 h = r.get('H_TYPE', '')
@@ -528,9 +528,7 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
                     if not is_ae:
                         if h != '01西醫':
                             continue
-                        cf = r.get('CODE_F', '').strip()
-                        m33, m26 = h_lookup.get(cf, ('', ''))
-                        if not (m33 == '1' and m26 == '3'):
+                        if not (r.get('M33', '').strip() == '1' and r.get('M26', '').strip() == '3'):
                             continue
                 else:
                     if h != '01西醫':
