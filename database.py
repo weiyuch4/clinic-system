@@ -55,7 +55,7 @@ def _parse_dbf_cached(path: str) -> list[dict]:
 
 
 def warmup_cache() -> None:
-    """Pre-load all IC (and P) files into the cache. Call in a background thread
+    """Pre-load all IC (and P and H) files into the cache. Call in a background thread
     at server startup so the first user request doesn't pay the full parse cost."""
     for path in _ic_main_files():
         try:
@@ -63,6 +63,9 @@ def warmup_cache() -> None:
             p = path[:-4] + 'P.DBF'
             if os.path.exists(p):
                 _parse_dbf_cached(p)
+            h = _h_file_path(path)
+            if os.path.exists(h):
+                _parse_dbf_cached(h)
         except Exception:
             pass
 
@@ -156,6 +159,33 @@ def _ic_files_since(since: date) -> list[str]:
     return result
 
 
+def _h_file_path(ic_path: str) -> str:
+    """Return the H-file path (IC?????H.DBF) for a given main IC file."""
+    base = os.path.basename(ic_path)   # e.g. 'IC11504.DBF'
+    stem = base[2:-4]                  # '11504'
+    return os.path.join(os.path.dirname(ic_path), f"IC{stem}H.DBF")
+
+
+def _load_h_lookup(ic_path: str) -> dict[str, tuple[str, str]]:
+    """Load the H file for an IC main file and return {code_f: (m33, m26)}.
+
+    M33 and M26 exist only in H files (IC?????H.DBF), not in the main IC files.
+    M33: '1'=IC01, '2'=IC02, '3'=IC03.  M26: '3'=3-cycle 連續處方箋 series.
+    """
+    h_path = _h_file_path(ic_path)
+    if not os.path.exists(h_path):
+        return {}
+    try:
+        result: dict[str, tuple[str, str]] = {}
+        for r in _parse_dbf_cached(h_path):
+            cf = r.get('CODE_F', '').strip()
+            if cf:
+                result[cf] = (r.get('M33', '').strip(), r.get('M26', '').strip())
+        return result
+    except Exception:
+        return {}
+
+
 # ── ICD code → Chinese disease name ──────────────────────────────────────────
 
 # Ordered list of (prefix, name); first match wins.
@@ -214,8 +244,8 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
     """Return patients whose last 慢簽 visit + prescription days is past as_of.
 
     Covers AE連續 (IC02/IC03 refills) and 01西醫 IC01 first prescriptions.
-    IC01 is identified by M33='1' AND M26='3' on the IC main record (NHI-mandated
-    fields exclusive to 連續處方箋 initial prescriptions) plus LONG='1' in the P file.
+    IC01 is identified by M33='1' AND M26='3' in the H file (IC?????H.DBF) —
+    these fields do not exist in the main IC file — plus LONG='1' in the P file.
     """
     since = as_of - timedelta(days=365)
 
@@ -227,7 +257,9 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             records = _parse_dbf_cached(ic_path)
         except Exception:
             continue
-        p_path = ic_path[:-4] + 'P.DBF'
+        p_path   = ic_path[:-4] + 'P.DBF'
+        h_lookup = _load_h_lookup(ic_path)  # {code_f: (m33, m26)} from H file
+
         for r in records:
             h_type   = r.get('H_TYPE', '')
             is_ae    = h_type == 'AE連續'
@@ -242,12 +274,14 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                 continue
             cf = r.get('CODE_F', '').strip()
 
+            # M33/M26 live in the H file (IC?????H.DBF), not in the main IC file.
+            m33, m26 = h_lookup.get(cf, ('', ''))
+
             if is_nishi:
                 if nat_id in ic01_best and v_date <= ic01_best[nat_id]['date']:
                     continue
-                # 連續處方箋 IC01: NHI mandates M33='1' (cycle 1 of 3) and M26='3'
-                # (3-cycle series). Regular 慢性病 and offline visits lack these fields.
-                if not (r.get('M33', '').strip() == '1' and r.get('M26', '').strip() == '3'):
+                # IC01: M33='1' (first cycle) and M26='3' (3-cycle series).
+                if not (m33 == '1' and m26 == '3'):
                     continue
                 if not _p_file_has_long1(p_path, cf):
                     continue
@@ -270,15 +304,14 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                     'ic_path': ic_path,
                 }
                 if is_ae:
-                    entry['m33'] = r.get('M33', '').strip()
+                    entry['m33'] = m33  # from H file ('' if H file absent)
                 target[nat_id] = entry
             elif is_ae and v_date == target[nat_id]['date'] and cf and cf not in target[nat_id]['code_fs']:
                 target[nat_id]['code_fs'].append(cf)
                 # Keep the highest M33 seen (e.g. IC02 + IC03 same day → m33='3')
-                new_m33 = r.get('M33', '').strip()
                 cur_m33 = target[nat_id].get('m33', '')
-                if new_m33.isdigit() and (not cur_m33.isdigit() or int(new_m33) > int(cur_m33)):
-                    target[nat_id]['m33'] = new_m33
+                if m33.isdigit() and (not cur_m33.isdigit() or int(m33) > int(cur_m33)):
+                    target[nat_id]['m33'] = m33
 
     # Build CODE_F → days-supply map from LONG=1 P-file records.
     by_p_path: dict[str, set[str]] = {}
@@ -478,7 +511,7 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
     """Return {chart_number: latest visit date} for the given patients, looking back 30 days.
     Used to detect whether a contacted patient has since returned.
 
-    For 慢簽: matches AE連續 or 01西醫 IC01 (M33='1', M26='3') records.
+    For 慢簽: matches AE連續 or 01西醫 IC01 (M33='1', M26='3' from H file).
     For 代謝症候群: matches any 01西醫 visit."""
     if not chart_numbers:
         return {}
@@ -486,18 +519,19 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
     result: dict[str, date] = {}
 
     for ic_path in _ic_files_since(since):
+        h_lookup = _load_h_lookup(ic_path) if category == '慢簽' else {}
         try:
             for r in _parse_dbf_cached(ic_path):
                 h = r.get('H_TYPE', '')
                 if category == '慢簽':
-                    is_ae   = h == 'AE連續'
-                    is_ic01 = (
-                        h == '01西醫'
-                        and r.get('M33', '').strip() == '1'
-                        and r.get('M26', '').strip() == '3'
-                    )
-                    if not is_ae and not is_ic01:
-                        continue
+                    is_ae = h == 'AE連續'
+                    if not is_ae:
+                        if h != '01西醫':
+                            continue
+                        cf = r.get('CODE_F', '').strip()
+                        m33, m26 = h_lookup.get(cf, ('', ''))
+                        if not (m33 == '1' and m26 == '3'):
+                            continue
                 else:
                     if h != '01西醫':
                         continue
