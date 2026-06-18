@@ -235,12 +235,14 @@ def get_report(report_date: date | None = None) -> DailyReport:
             mp = manual_pickup_map.get(entry.patient.chart_number)
             if not mp:
                 return False
-            pickup_date, ps_days = date.fromisoformat(mp[0]), mp[1]
+            pickup_date = date.fromisoformat(mp[0])
             # If IC already has a newer visit, the manual record is superseded
             if entry.last_visit_date and pickup_date <= entry.last_visit_date:
                 return False
-            next_due = pickup_date + timedelta(days=ps_days)
-            return (as_of - next_due).days < database.CHRONIC_GRACE_DAYS
+            # Manual pickup is more recent than IC — suppress until IC captures a newer visit.
+            # No time-based expiry: the clinic uses this to record pickups missed by the IC
+            # system (e.g. missing files), so the date may be weeks in the past.
+            return True
 
         chronic_prescriptions = [e for e in report.chronic_prescriptions if not chronic_suppressed(e)]
 

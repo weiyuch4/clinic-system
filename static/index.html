@@ -3288,13 +3288,10 @@
         nextDue.setDate(nextDue.getDate() + ps);
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const nextDueStr = nextDue.toISOString().slice(0, 10);
-        if (nextDue <= today) {
-          previewEl.style.color = "#e53e3e";
-          previewEl.textContent = `下次應回診 ${fmt(nextDueStr)} 已過期，存檔後病患仍會出現在清單中。`;
-        } else {
-          previewEl.style.color = "var(--text-muted)";
-          previewEl.textContent = `下次應回診：${fmt(nextDueStr)}（處方 ${ps} 天）`;
-        }
+        previewEl.style.color = "var(--text-muted)";
+        previewEl.textContent = nextDue <= today
+          ? `下次應取藥 ${fmt(nextDueStr)} 已到期（存檔後病患將從清單移除）`
+          : `下次應回診：${fmt(nextDueStr)}（處方 ${ps} 天）`;
       } else {
         previewEl.style.color = "var(--text-muted)";
         previewEl.textContent = "";
@@ -3329,8 +3326,9 @@
       document.getElementById("manual-pickup-date-input").focus();
       return;
     }
-    errEl.textContent = "";
     const ps = e._ps || 28;
+    errEl.textContent = "";
+
     const btn = document.getElementById("manual-pickup-confirm-btn");
     btn.disabled = true;
     try {
