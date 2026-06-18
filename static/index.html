@@ -3520,6 +3520,8 @@
 
   initNurseSelector();
   loadReport();
+  const _savedTab = localStorage.getItem('clinic_tab');
+  if (_savedTab && ['chronic', 'mspt', 'hep'].includes(_savedTab)) switchTab(_savedTab);
 
   // ── Refresh ──
 
@@ -3537,6 +3539,7 @@
     document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
     document.getElementById('tab-btn-' + tab).classList.add('active');
     document.getElementById('tab-panel-' + tab).classList.add('active');
+    localStorage.setItem('clinic_tab', tab);
   }
 
   // ── Sort helpers ──
