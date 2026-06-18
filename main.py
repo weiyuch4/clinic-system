@@ -204,11 +204,18 @@ def get_report(report_date: date | None = None) -> DailyReport:
         contacted_with_dates = contacts.get_contacted_with_dates()
         chronic_charts = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == '慢簽'}
         mspt_charts    = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == '代謝症候群'}
+        hep_charts     = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == 'B肝'}
         chronic_visits = database.get_latest_visit_dates(chronic_charts, '慢簽')
         mspt_visits    = database.get_latest_visit_dates(mspt_charts, '代謝症候群')
+        hep_visits     = database.get_latest_visit_dates(hep_charts, 'B肝')
 
         def has_returned(entry: FollowupEntry, contacted_at: date) -> bool:
-            visits = chronic_visits if entry.category == '慢簽' else mspt_visits
+            if entry.category == '慢簽':
+                visits = chronic_visits
+            elif entry.category == '代謝症候群':
+                visits = mspt_visits
+            else:
+                visits = hep_visits
             latest = visits.get(entry.patient.chart_number)
             return latest is not None and latest > contacted_at
 
@@ -262,6 +269,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
                 if (e.patient.chart_number, e.mspt_stage) not in submitted_keys
             ],
             mspt_waiting=report.mspt_waiting,
+            hep_followups=filter_followups(report.hep_followups),
+            hep_inactive=filter_followups(report.hep_inactive),
             contacted=contacted,
             called=called_filtered,
             submitted=contacts.get_submitted_entries(),

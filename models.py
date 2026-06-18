@@ -16,13 +16,13 @@ class FollowupEntry(BaseModel):
     disease_name: str
     due_date: date
     days_overdue: int
-    category: Literal["慢簽", "代謝症候群"]
+    category: Literal["慢簽", "代謝症候群", "B肝"]
     mspt_stage: MsptStage | None = None      # MSPT entries only — the NEXT stage due
-    last_stage: MsptStage | None = None      # the stage completed at last_visit_date
+    last_stage: str | None = None            # stage completed at last_visit_date (str to support hep values)
     chronic_stage: str | None = None         # 慢簽 only — next prescription type: 'IC01', 'IC02', or 'IC03'
-    contact_reason: str | None = None         # e.g. "需回診+抽血" or "需抽血"
+    contact_reason: str | None = None        # e.g. "需回診+抽血" or "需抽血"
     call_required: bool = False              # True when re-surfaced after 7 days
-    last_visit_date: date | None = None      # MSPT: date of most recent stage visit
+    last_visit_date: date | None = None      # date of most recent relevant visit
     contacted_at: date | None = None         # set only on already-contacted entries
     contacted_time: str | None = None        # HH:MM when contact was recorded
     nurse: str = ""                          # who recorded this action (print history only)
@@ -43,11 +43,11 @@ class MsptWaitingEntry(BaseModel):
 
 class ExcludedEntry(BaseModel):
     patient: Patient
-    category: Literal["慢簽", "代謝症候群"]
+    category: Literal["慢簽", "代謝症候群", "B肝"]
     mspt_stage: MsptStage | None = None
     due_date: date | None = None
     last_visit_date: date | None = None
-    last_stage: MsptStage | None = None
+    last_stage: str | None = None
     reason: str
     note: str = ""
     excluded_at: date
@@ -68,11 +68,11 @@ class ManualPickupEntry(BaseModel):
 class OnHoldEntry(BaseModel):
     hold_id: int
     patient: Patient | None = None             # None for manual entries
-    category: Literal["慢簽", "代謝症候群"] | None = None
+    category: Literal["慢簽", "代謝症候群", "B肝"] | None = None
     due_date: date | None = None
     days_overdue: int | None = None
     mspt_stage: MsptStage | None = None
-    last_stage: MsptStage | None = None
+    last_stage: str | None = None
     last_visit_date: date | None = None
     disease_name: str | None = None
     note: str
@@ -99,6 +99,8 @@ class DailyReport(BaseModel):
     mspt_inactive: list[FollowupEntry] = []   # need 收案 restart but no clinic visit in >1 year
     mspt_submittable: list[MsptSubmittableEntry]
     mspt_waiting: list[MsptWaitingEntry]
+    hep_followups: list[FollowupEntry] = []   # B/C hepatitis patients overdue for 161-day follow-up
+    hep_inactive: list[FollowupEntry] = []    # hepatitis patients 結案 or eligible for 再收案
     # Populated from contacts.db, not IC data
     contacted: list[FollowupEntry] = []
     called: list[FollowupEntry] = []
@@ -129,7 +131,7 @@ class ChartNumberRequest(BaseModel):
 
 class ContactRequest(BaseModel):
     chart_number: str
-    category: Literal["慢簽", "代謝症候群"]
+    category: Literal["慢簽", "代謝症候群", "B肝"]
     due_date: date
 
 
@@ -142,7 +144,7 @@ class ExcludeRequest(BaseModel):
 
 class UnexcludeRequest(BaseModel):
     chart_number: str
-    category: Literal["慢簽", "代謝症候群"]
+    category: Literal["慢簽", "代謝症候群", "B肝"]
 
 
 class MsptCompleteRequest(BaseModel):
@@ -166,7 +168,7 @@ class ManualOnHoldRequest(BaseModel):
     name: str
     note: str
     nurse: str = ""
-    category: Literal["慢簽", "代謝症候群"] | None = None
+    category: Literal["慢簽", "代謝症候群", "B肝"] | None = None
 
 
 class OnHoldRemoveRequest(BaseModel):

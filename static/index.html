@@ -181,6 +181,7 @@
     }
     .print-category-tag.chronic { background: #fef3c7; color: #92400e; }
     .print-category-tag.mspt    { background: #ede9fe; color: #5b21b6; }
+    .print-category-tag.hep     { background: #f3e8ff; color: #6d28d9; }
 
     /* ── @media print — hide everything except the modal table ── */
     @media print {
@@ -290,7 +291,11 @@
 
     #tab-btn-chronic .count-badge { background: var(--blue); }
     #tab-btn-mspt    .count-badge { background: var(--green); }
+    #tab-btn-hep     .count-badge { background: #7c3aed; }
     .count-badge.zero { background: var(--text-muted) !important; }
+
+    .tab-btn.hep-tab.active { color: #7c3aed; border-bottom-color: #7c3aed; }
+    .card--hep .card-top { background: #7c3aed; }
 
     /* ── Table ── */
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -1049,6 +1054,9 @@
   <button class="tab-btn mspt-tab" id="tab-btn-mspt" onclick="switchTab('mspt')">
     代謝症候群追蹤 <span class="count-badge zero" id="mspt-badge">0</span>
   </button>
+  <button class="tab-btn hep-tab" id="tab-btn-hep" onclick="switchTab('hep')">
+    B/C型肝炎追蹤 <span class="count-badge zero" id="hep-badge">0</span>
+  </button>
 </div>
 
 <div id="main-grid">
@@ -1283,6 +1291,108 @@
           <th>病患</th><th>出生日期</th><th>階段</th><th>排除原因</th><th>排除日期</th><th></th>
         </tr></thead>
         <tbody id="mspt-excluded-rows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-panel-hep">
+  <div class="card card--hep">
+    <div class="card-top"></div>
+    <div class="card-header">
+      <h2>B/C型肝炎追蹤</h2>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('hep-pending-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron open">›</i> 待聯絡</span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body open" id="hep-pending-body">
+      <table>
+        <thead><tr>
+          <th class="sortable" onclick="sortTable('hep-body','name',this)">病患</th>
+          <th class="sortable" onclick="sortTable('hep-body','birth',this)">出生日期</th>
+          <th class="sortable" onclick="sortTable('hep-body','disease',this)">病名</th>
+          <th class="sortable" onclick="sortTable('hep-body','last_visit',this)">上次追蹤</th>
+          <th>追蹤階段</th>
+          <th class="sortable" onclick="sortTable('hep-body','due',this)">到期日</th>
+          <th class="sortable" onclick="sortTable('hep-body','status',this)">狀態</th>
+          <th></th>
+        </tr></thead>
+        <tbody id="hep-body"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('hep-contacted-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已聯絡未回診 <span id="hep-contacted-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="hep-contacted-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>病名</th><th>上次追蹤</th><th>到期日</th><th>聯絡日期</th><th>已等待</th><th></th>
+        </tr></thead>
+        <tbody id="hep-contacted-rows"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('hep-called-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已二次通知 <span id="hep-called-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="hep-called-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>病名</th><th>上次追蹤</th><th>到期日</th><th>二次通知日期</th><th>已等待</th><th></th>
+        </tr></thead>
+        <tbody id="hep-called-rows"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle inactive" onclick="toggleSection('hep-inactive-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 長期未回診 <span id="hep-inactive-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="hep-inactive-body">
+      <div style="font-size:12px;color:#92400e;padding:8px 16px 4px;background:#fffbeb">超過一年未追蹤。結案後滿兩年可重新收案。</div>
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>病名</th><th>上次追蹤</th><th>距今</th><th>狀態</th><th></th>
+        </tr></thead>
+        <tbody id="hep-inactive-rows"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle onhold-section" onclick="toggleSection('hep-onhold-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 暫緩 <span id="hep-onhold-count">0</span></span>
+      <button class="btn-add-manual-onhold" onclick="event.stopPropagation();openManualOnHoldModal('B肝')">+ 手動新增</button>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="hep-onhold-body">
+      <div style="font-size:12px;color:#92400e;padding:8px 16px 4px;background:#fffbeb">待確認或處理的病患。可直接在此完成操作，或點擊「撤銷暫緩」使其回到待聯絡清單。</div>
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>病名</th><th>備註</th><th></th>
+        </tr></thead>
+        <tbody id="hep-onhold-rows"></tbody>
+      </table>
+    </div>
+    <div class="archive-divider">
+      <div class="archive-divider-line"></div>
+      <span class="archive-divider-label">歸檔紀錄</span>
+      <div class="archive-divider-line"></div>
+    </div>
+    <div class="collapse-toggle archive" onclick="toggleSection('hep-excluded-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已排除 <span id="hep-excluded-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="hep-excluded-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>排除原因</th><th>排除日期</th><th></th>
+        </tr></thead>
+        <tbody id="hep-excluded-rows"></tbody>
       </table>
     </div>
   </div>
@@ -1702,6 +1812,9 @@
     if (e.category === "慢簽") {
       tr = buildChronicDoneRow(e, (ev) =>
         undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId));
+    } else if (e.category === "B肝") {
+      tr = buildHepDoneRow(e, (ev) =>
+        undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId));
     } else {
       followupStore.set(key, e);
       tr = document.createElement("tr");
@@ -1730,6 +1843,9 @@
     let tr;
     if (e.category === "慢簽") {
       tr = buildChronicDoneRow(e, (ev) => undoCalled(ev.currentTarget, key, calledRowsId, calledCountId));
+      tr.className = "done-final";
+    } else if (e.category === "B肝") {
+      tr = buildHepDoneRow(e, (ev) => undoCalled(ev.currentTarget, key, calledRowsId, calledCountId));
       tr.className = "done-final";
     } else {
       followupStore.set(key, e);
@@ -1786,7 +1902,10 @@
     const tbody = document.getElementById(pendingBodyId);
     const empty = tbody.querySelector("td[colspan]");
     if (empty) empty.closest("tr").remove();
-    tbody.appendChild(buildFollowupRow(e, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId, calledRowsId, calledCountId));
+    const row = (e.category === "B肝")
+      ? buildHepRow(e, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId, calledRowsId, calledCountId)
+      : buildFollowupRow(e, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId, calledRowsId, calledCountId);
+    tbody.appendChild(row);
     reapplySort(pendingBodyId);
     updateFollowupBadge(pendingBadgeId, tbody);
   }
@@ -1976,6 +2095,12 @@
     renderMsptCompletedRows(data.mspt_completed || []);
     renderMsptManualRows(data.mspt_manual || []);
     renderExcludedRows(data.excluded || []);
+
+    // B/C型肝炎
+    renderHepFollowups(data.hep_followups || []);
+    renderHepContactedRows(data.contacted.filter(e => e.category === "B肝"));
+    renderHepCalledRows(data.called.filter(e => e.category === "B肝"));
+    renderHepInactiveRows(data.hep_inactive || []);
   }
 
   // ── Stores for new sections ──
@@ -2271,6 +2396,214 @@
     entries.forEach(e => appendMsptCompletedRow(e, e.contacted_at || todayIso));
   }
 
+  // ── B/C型肝炎追蹤 ──
+
+  function hepStageTag(stage) {
+    if (!stage) return '—';
+    const colors = {
+      '收案':  { bg: '#ede9fe', color: '#5b21b6' },
+      '追蹤':  { bg: '#dbeafe', color: '#1e40af' },
+      '結案':  { bg: '#f3f4f6', color: '#6b7280' },
+      '再收案': { bg: '#fef3c7', color: '#92400e' },
+    };
+    const c = colors[stage] || { bg: '#f3f4f6', color: '#374151' };
+    return `<span style="display:inline-block;padding:2px 9px;border-radius:12px;font-size:11px;font-weight:700;background:${c.bg};color:${c.color}">${stage}</span>`;
+  }
+
+  function buildHepRow(e, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId, calledRowsId, calledCountId) {
+    const key = followupKey(e);
+    followupStore.set(key, e);
+    const tr = document.createElement("tr");
+    tr.className = e.days_overdue === 0 ? "today" : "overdue";
+    tr.dataset.key = key;
+    tr.dataset.search = patientSearchStr(e.patient);
+
+    const lastVisitCell = e.last_visit_date
+      ? `<span class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</span>`
+      : `<span style="color:var(--text-muted)">—</span>`;
+
+    const actionBtn = e.call_required
+      ? `<button class="btn-call">再次通知</button>`
+      : `<button class="btn-action">已通知</button>`;
+
+    tr.innerHTML = `
+      <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td class="mono">${fmt(e.patient.birth_date)}</td>
+      <td>${e.disease_name || '—'}</td>
+      <td>${lastVisitCell}</td>
+      <td>${hepStageTag(e.last_stage)}</td>
+      <td><span class="mono" style="color:var(--text-sub)">${fmt(e.due_date)}</span></td>
+      <td>${statusPill(e.days_overdue)}</td>
+      <td>
+        <div class="action-cell">
+          ${actionBtn}
+          <div class="more-actions-wrapper">
+            <button class="btn-more" title="更多操作">•••</button>
+            <div class="dropdown-menu">
+              <button class="dropdown-item" data-act="onhold">暫緩…</button>
+              <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
+            </div>
+          </div>
+        </div>
+      </td>
+    `;
+
+    const btn = tr.querySelector("button.btn-action, button.btn-call");
+    btn.onclick = () => e.call_required
+      ? markCalled(btn, key, pendingBodyId, pendingBadgeId, calledRowsId, calledCountId)
+      : markContacted(btn, key, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId);
+
+    const moreBtn = tr.querySelector(".btn-more");
+    const dropdown = tr.querySelector(".dropdown-menu");
+    moreBtn.addEventListener("click", ev => {
+      ev.stopPropagation();
+      document.querySelectorAll(".dropdown-menu.open").forEach(d => { if (d !== dropdown) d.classList.remove("open"); });
+      dropdown.classList.toggle("open");
+    });
+    tr.querySelector("[data-act='exclude']").onclick = () => {
+      dropdown.classList.remove("open");
+      openExcludeModal(e, pendingBodyId, pendingBadgeId);
+    };
+    tr.querySelector("[data-act='onhold']").onclick = () => {
+      dropdown.classList.remove("open");
+      openOnHoldModal(e, pendingBodyId, pendingBadgeId);
+    };
+
+    return tr;
+  }
+
+  function renderHepFollowups(entries) {
+    const tbody = document.getElementById("hep-body");
+    tbody.innerHTML = "";
+    updateBadge("hep-badge", entries.length);
+
+    if (entries.length === 0) {
+      tbody.innerHTML = `<tr class="no-hover"><td colspan="99"><div class="empty-state"><div class="empty-icon">✓</div><div class="empty-text">今日無需追蹤</div></div></td></tr>`;
+      return;
+    }
+
+    entries
+      .sort((a, b) => b.days_overdue - a.days_overdue)
+      .forEach(e => {
+        try {
+          tbody.appendChild(buildHepRow(e, "hep-pending-body", "hep-badge", "hep-contacted-rows", "hep-contacted-count", "hep-called-rows", "hep-called-count"));
+        } catch (err) {
+          console.error("[renderHepFollowups] buildHepRow failed:", e, err);
+        }
+      });
+
+    tbody.addEventListener("rowremoved", () => updateFollowupBadge("hep-badge", tbody), { once: false });
+  }
+
+  function buildHepDoneRow(e, undoFn) {
+    const key = followupKey(e);
+    followupStore.set(key, e);
+    const notifiedAt = e.contacted_at || todayIso;
+    const daysWaited = Math.floor((new Date(todayIso) - new Date(notifiedAt)) / 86400000);
+    const lastVisitCell = e.last_visit_date
+      ? `<span class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</span>`
+      : `<span style="color:var(--text-muted)">—</span>`;
+    const tr = document.createElement("tr");
+    tr.className = "done";
+    tr.dataset.key = key;
+    tr.dataset.search = patientSearchStr(e.patient);
+    tr.innerHTML = `
+      <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td class="mono">${fmt(e.patient.birth_date)}</td>
+      <td>${e.disease_name || '—'}</td>
+      <td>${lastVisitCell}</td>
+      <td><span class="mono" style="color:var(--text-sub)">${fmt(e.due_date)}</span></td>
+      <td class="mono">${fmt(notifiedAt)}</td>
+      <td style="color:var(--text-muted)">${daysWaited} 天</td>
+      <td><button class="btn-undo">撤銷</button></td>
+    `;
+    tr.querySelector(".btn-undo").onclick = undoFn;
+    return tr;
+  }
+
+  function renderHepContactedRows(entries) {
+    const tbody = document.getElementById("hep-contacted-rows");
+    tbody.innerHTML = "";
+    entries.forEach(e => {
+      tbody.appendChild(buildHepDoneRow(e, (ev) =>
+        undoContacted(ev.currentTarget, followupKey(e), "hep-contacted-rows", "hep-contacted-count", "hep-body", "hep-badge")));
+    });
+    updateCountLabel("hep-contacted-count", "hep-contacted-rows");
+  }
+
+  function renderHepCalledRows(entries) {
+    const tbody = document.getElementById("hep-called-rows");
+    tbody.innerHTML = "";
+    entries.forEach(e => {
+      const tr = buildHepDoneRow(e, (ev) =>
+        undoCalled(ev.currentTarget, followupKey(e), "hep-called-rows", "hep-called-count"));
+      tr.className = "done-final";
+      tbody.appendChild(tr);
+    });
+    updateCountLabel("hep-called-count", "hep-called-rows");
+  }
+
+  function renderHepInactiveRows(entries) {
+    const tbody = document.getElementById("hep-inactive-rows");
+    const countEl = document.getElementById("hep-inactive-count");
+    tbody.innerHTML = "";
+    countEl.textContent = entries.length;
+    entries.forEach(e => {
+      followupStore.set(followupKey(e), e);
+      const lastVisit = e.last_visit_date ? fmt(e.last_visit_date) : "—";
+      const daysSince = e.last_visit_date
+        ? Math.floor((new Date(todayIso) - new Date(e.last_visit_date)) / 86400000)
+        : null;
+      const daysSinceStr = daysSince !== null ? `${daysSince} 天` : "—";
+      const canNotify = e.last_stage === '再收案';
+      const actionBtn = canNotify
+        ? `<button class="btn-action" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">已通知</button>`
+        : '';
+      const tr = document.createElement("tr");
+      tr.dataset.key = followupKey(e);
+      tr.dataset.search = patientSearchStr(e.patient);
+      tr.innerHTML = `
+        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td class="mono">${fmt(e.patient.birth_date)}</td>
+        <td>${e.disease_name || '—'}</td>
+        <td class="mono" style="color:var(--text-sub)">${lastVisit}</td>
+        <td style="color:var(--text-muted)">${daysSinceStr}</td>
+        <td>${hepStageTag(e.last_stage)}</td>
+        <td>
+          <div class="action-cell">
+            ${actionBtn}
+            <div class="more-actions-wrapper">
+              <button class="btn-more" title="更多操作">•••</button>
+              <div class="dropdown-menu">
+                <button class="dropdown-item" data-act="onhold">暫緩…</button>
+                <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
+              </div>
+            </div>
+          </div>
+        </td>`;
+      if (canNotify) {
+        const notifyBtn = tr.querySelector(".btn-action");
+        notifyBtn.onclick = () => markContacted(notifyBtn, followupKey(e), "hep-inactive-body", "hep-inactive-count", "hep-contacted-rows", "hep-contacted-count");
+      }
+      const moreBtn = tr.querySelector(".btn-more");
+      const dropdown = tr.querySelector(".dropdown-menu");
+      moreBtn.addEventListener("click", ev => {
+        ev.stopPropagation();
+        document.querySelectorAll(".dropdown-menu.open").forEach(d => { if (d !== dropdown) d.classList.remove("open"); });
+        dropdown.classList.toggle("open");
+      });
+      tr.querySelector("[data-act='exclude']").addEventListener("click", () => {
+        dropdown.classList.remove("open");
+        openExcludeModal(e, "hep-inactive-rows", "hep-inactive-count");
+      });
+      tr.querySelector("[data-act='onhold']").addEventListener("click", () => {
+        dropdown.classList.remove("open");
+        openOnHoldModal(e, "hep-inactive-body", "hep-inactive-count");
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
   // ── 手動標記MSPT ──
 
   let _msptManualEntry = null;
@@ -2465,7 +2798,7 @@
 
   function openManualOnHoldModal(category) {
     _manualOnHoldCategory = category;
-    const label = category === "慢簽" ? "慢簽追蹤" : "代謝症候群追蹤";
+    const label = category === "慢簽" ? "慢簽追蹤" : category === "B肝" ? "B/C型肝炎追蹤" : "代謝症候群追蹤";
     document.getElementById("manual-onhold-modal-desc").textContent = `新增至「${label}」暫緩清單`;
     document.getElementById("manual-onhold-name").value = "";
     document.getElementById("manual-onhold-note").value = "";
@@ -2510,7 +2843,7 @@
   }
 
   function appendOnHoldRow(holdId, entry, note) {
-    const tbodyId = entry.category === "慢簽" ? "chronic-onhold-rows" : "mspt-onhold-rows";
+    const tbodyId = entry.category === "慢簽" ? "chronic-onhold-rows" : entry.category === "B肝" ? "hep-onhold-rows" : "mspt-onhold-rows";
     _expandOnHoldSection(tbodyId);
     const tbody = document.getElementById(tbodyId);
     tbody.prepend(_buildOnHoldTr(holdId, entry, note, false, null, entry.category));
@@ -2518,7 +2851,7 @@
   }
 
   function appendManualOnHoldRow(holdId, name, note, category) {
-    const tbodyId = category === "慢簽" ? "chronic-onhold-rows" : "mspt-onhold-rows";
+    const tbodyId = category === "慢簽" ? "chronic-onhold-rows" : category === "B肝" ? "hep-onhold-rows" : "mspt-onhold-rows";
     _expandOnHoldSection(tbodyId);
     const tbody = document.getElementById(tbodyId);
     tbody.prepend(_buildOnHoldTr(holdId, null, note, true, name, category));
@@ -2571,7 +2904,7 @@
       <td>${actionsCellHtml}</td>
     `;
 
-    const tbodyId = category === "慢簽" ? "chronic-onhold-rows" : "mspt-onhold-rows";
+    const tbodyId = category === "慢簽" ? "chronic-onhold-rows" : category === "B肝" ? "hep-onhold-rows" : "mspt-onhold-rows";
     const countId = tbodyId.replace("-rows", "-count");
 
     const undoBtn = tr.querySelector(".btn-undo");
@@ -2590,7 +2923,7 @@
           fadeRemove(tr, () => {
             updateCountLabel(countId, tbodyId);
             if (entry) {
-              const prefix = category === "慢簽" ? "chronic" : "mspt";
+              const prefix = category === "慢簽" ? "chronic" : category === "B肝" ? "hep" : "mspt";
               restoreFollowupRow(entry, prefix + "-body", prefix + "-badge",
                 prefix + "-contacted-rows", prefix + "-contacted-count",
                 prefix + "-called-rows", prefix + "-called-count");
@@ -2612,7 +2945,7 @@
             body: JSON.stringify({ hold_id: holdId }) });
           fadeRemove(tr, () => {
             updateCountLabel(countId, tbodyId);
-            const prefix = category === "慢簽" ? "chronic" : "mspt";
+            const prefix = category === "慢簽" ? "chronic" : category === "B肝" ? "hep" : "mspt";
             appendContactedRow(entry, prefix + "-contacted-rows", prefix + "-contacted-count",
               prefix + "-body", prefix + "-badge");
           });
@@ -2635,11 +2968,15 @@
   function renderOnHoldRows(entries) {
     const chronicTbody = document.getElementById("chronic-onhold-rows");
     const msptTbody = document.getElementById("mspt-onhold-rows");
+    const hepTbody  = document.getElementById("hep-onhold-rows");
     chronicTbody.innerHTML = "";
     msptTbody.innerHTML = "";
+    hepTbody.innerHTML  = "";
     entries.forEach(e => {
-      const isChronicSection = e.category === "慢簽";
-      const tbody = isChronicSection ? chronicTbody : msptTbody;
+      let tbody;
+      if (e.category === "慢簽") tbody = chronicTbody;
+      else if (e.category === "B肝") tbody = hepTbody;
+      else tbody = msptTbody;
       const entry = e.is_manual ? null : e.patient ? {
         patient: e.patient, category: e.category, due_date: e.due_date,
         days_overdue: e.days_overdue, disease_name: e.disease_name,
@@ -2651,7 +2988,8 @@
     });
     updateCountLabel("chronic-onhold-count", "chronic-onhold-rows");
     updateCountLabel("mspt-onhold-count", "mspt-onhold-rows");
-    ["chronic-onhold", "mspt-onhold"].forEach(prefix => {
+    updateCountLabel("hep-onhold-count", "hep-onhold-rows");
+    ["chronic-onhold", "mspt-onhold", "hep-onhold"].forEach(prefix => {
       const tbody = document.getElementById(prefix + "-rows");
       if (tbody.querySelectorAll("tr").length > 0) {
         const body = document.getElementById(prefix + "-body");
@@ -2830,8 +3168,9 @@
   function appendExcludedRow(entry, reason, note, excludedAt, isAuto) {
     const excKey = `${entry.patient.chart_number}|${entry.category}`;
     const isMspt = entry.category === "代謝症候群";
-    const tbodyId = isMspt ? "mspt-excluded-rows" : "chronic-excluded-rows";
-    const countId = isMspt ? "mspt-excluded-count" : "chronic-excluded-count";
+    const isHep  = entry.category === "B肝";
+    const tbodyId = isMspt ? "mspt-excluded-rows" : isHep ? "hep-excluded-rows" : "chronic-excluded-rows";
+    const countId = isMspt ? "mspt-excluded-count" : isHep ? "hep-excluded-count" : "chronic-excluded-count";
     const tbody = document.getElementById(tbodyId);
     const tr = document.createElement("tr");
     tr.className = isAuto ? "excluded-auto-row" : "excluded-row";
@@ -2876,6 +3215,7 @@
     btn.disabled = true;
     const [chartNumber, category] = excKey.split("|");
     const isMspt = category === "代謝症候群";
+    const isHep  = category === "B肝";
     try {
       await apiFetch("/api/excluded", {
         method: "DELETE",
@@ -2885,12 +3225,14 @@
       const tr = btn.closest("tr");
       const entry = excludedEntryStore.get(excKey);
       fadeRemove(tr, () => {
-        const tbodyId = isMspt ? "mspt-excluded-rows" : "chronic-excluded-rows";
-        const countId = isMspt ? "mspt-excluded-count" : "chronic-excluded-count";
+        const tbodyId = isMspt ? "mspt-excluded-rows" : isHep ? "hep-excluded-rows" : "chronic-excluded-rows";
+        const countId = isMspt ? "mspt-excluded-count" : isHep ? "hep-excluded-count" : "chronic-excluded-count";
         updateBadge(countId, document.getElementById(tbodyId).querySelectorAll("tr[data-exc-key]").length);
         if (entry) {
           if (isMspt) {
             restoreFollowupRow(entry, "mspt-body", "mspt-badge", "mspt-contacted-rows", "mspt-contacted-count", "mspt-called-rows", "mspt-called-count");
+          } else if (isHep) {
+            restoreFollowupRow(entry, "hep-body", "hep-badge", "hep-contacted-rows", "hep-contacted-count", "hep-called-rows", "hep-called-count");
           } else {
             restoreFollowupRow(entry, "chronic-body", "chronic-badge", "chronic-contacted-rows", "chronic-contacted-count", "chronic-called-rows", "chronic-called-count");
           }
@@ -3045,8 +3387,10 @@
   function renderExcludedRows(entries) {
     document.getElementById("mspt-excluded-rows").innerHTML = "";
     document.getElementById("chronic-excluded-rows").innerHTML = "";
+    document.getElementById("hep-excluded-rows").innerHTML = "";
     updateBadge("mspt-excluded-count", 0);
     updateBadge("chronic-excluded-count", 0);
+    updateBadge("hep-excluded-count", 0);
     entries.forEach(exc => {
       const fakeEntry = {
         patient: exc.patient,
@@ -3294,7 +3638,9 @@
       const patientName   = isPickup ? e.name          : e.patient.name;
       const patientChart  = isPickup ? e.chart_number  : e.patient.chart_number;
       const isChron = isPickup ? true : e.category === '慢簽';
-      const tag = `<span class="print-category-tag ${isChron ? 'chronic' : 'mspt'}">${isPickup ? '慢簽' : e.category}</span>`;
+      const isHepCat = !isPickup && e.category === 'B肝';
+      const tagClass = isChron ? 'chronic' : isHepCat ? 'hep' : 'mspt';
+      const tag = `<span class="print-category-tag ${tagClass}">${isPickup ? '慢簽' : e.category}</span>`;
       let detail;
       if (isPickup) {
         detail = `已取藥 ${fmt(e.pickup_date)}（處方 ${e.ps_days} 天）`;
@@ -3303,7 +3649,7 @@
           ? `${e.mspt_stage}・${e.reason}${e.note ? '（' + e.note + '）' : ''}`
           : `${e.reason}${e.note ? '（' + e.note + '）' : ''}`;
       } else {
-        detail = isChron ? (e.disease_name || '—') : (e.mspt_stage || '—');
+        detail = isChron || isHepCat ? (e.disease_name || '—') : (e.mspt_stage || '—');
       }
       const timeStr = e.contacted_time || '—';
       const dueDateStr = isPickup ? fmt(e.next_due) : (e.due_date ? fmt(e.due_date) : '—');

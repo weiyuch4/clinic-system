@@ -76,6 +76,7 @@ def get_daily_report(as_of: date) -> DailyReport:
     if USE_MOCK_DATA:
         return _mock_report(as_of)
     mspt_followups, mspt_inactive = _query_mspt_followups(as_of)
+    hep_followups, hep_inactive   = _query_hep_followups(as_of)
     return DailyReport(
         report_date=as_of,
         chronic_prescriptions=_query_chronic_prescriptions(as_of),
@@ -83,6 +84,8 @@ def get_daily_report(as_of: date) -> DailyReport:
         mspt_inactive=mspt_inactive,
         mspt_submittable=[],
         mspt_waiting=[],
+        hep_followups=hep_followups,
+        hep_inactive=hep_inactive,
     )
 
 
@@ -506,6 +509,153 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
     )
 
 
+# ── B/C Hepatitis (B/C型肝炎) tracking ───────────────────────────────────────
+
+HEP_FOLLOWUP_DAYS = 161   # 追蹤間隔
+HEP_CLOSE_DAYS    = 365   # 超過此天數無追蹤 → 結案
+HEP_REOPEN_DAYS   = 365   # 結案後再等此天數 → 可再收案 (total 730 days since last visit)
+
+# ICD-9/ICD-10 codes for B and C hepatitis (dot-stripped, prefix-matched).
+_HEP_B_PREFIXES = (
+    '07030', '07031', '07032', '07033',   # ICD-9 HBV
+    'B16',                                 # ICD-10 acute HBV
+    'B181', 'B1900', 'B1910', 'B1911',    # ICD-10 chronic HBV
+    'V0261', 'Z2251',                      # ICD-9/10 HBV carrier
+)
+_HEP_C_PREFIXES = (
+    '07041', '07044', '07054',             # ICD-9 HCV
+    'B171', 'B172',                        # ICD-10 acute HCV
+    'B182', 'B1920', 'B1921',              # ICD-10 chronic HCV
+    'V0262', 'Z2252',                      # ICD-9/10 HCV carrier
+)
+_HEP_ICD_FIELDS = ('ICD', 'ICD1', 'ICD2', 'ICD3', 'ICD4', 'ICD5')
+
+
+def _hep_type(r: dict) -> str | None:
+    """Return 'B', 'C', 'BC', or None based on hepatitis ICD codes in the record."""
+    has_b = has_c = False
+    for field in _HEP_ICD_FIELDS:
+        code = r.get(field, '').strip().upper().replace('.', '')
+        if not code:
+            continue
+        if not has_b and any(code.startswith(p) for p in _HEP_B_PREFIXES):
+            has_b = True
+        if not has_c and any(code.startswith(p) for p in _HEP_C_PREFIXES):
+            has_c = True
+        if has_b and has_c:
+            break
+    if has_b and has_c:
+        return 'BC'
+    if has_b:
+        return 'B'
+    if has_c:
+        return 'C'
+    return None
+
+
+def _query_hep_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
+    """Return (active_overdue, inactive) hepatitis B/C patients.
+
+    active_overdue: patients 161–364 days since last hepatitis visit (overdue for 追蹤).
+    inactive: patients 365+ days since last hepatitis visit (結案 or eligible for 再收案).
+    """
+    # Look back 760 days to catch all 再收案-eligible patients (730 + buffer).
+    since = as_of - timedelta(days=HEP_CLOSE_DAYS + HEP_REOPEN_DAYS + 30)
+
+    # patient_info: {nat_id: {name, birth, last_visit, first_visit, hep_type}}
+    patient_info: dict[str, dict] = {}
+
+    for ic_path in _ic_files_since(since):
+        try:
+            for r in _parse_dbf_cached(ic_path):
+                if r.get('H_TYPE', '') not in ('01西醫', 'AE連續'):
+                    continue
+                hep = _hep_type(r)
+                if not hep:
+                    continue
+                nat_id = r.get('ID', '').strip()
+                if not nat_id:
+                    continue
+                v_date = _roc_to_date(r.get('DATE', ''))
+                if not v_date or v_date > as_of:
+                    continue
+                name  = r.get('NAME', '').strip()
+                birth = _roc_to_date(r.get('BIRTH', ''))
+
+                if nat_id not in patient_info:
+                    patient_info[nat_id] = {
+                        'name':       name or '',
+                        'birth':      birth,
+                        'last_visit': v_date,
+                        'first_visit': v_date,
+                        'hep_type':   hep,
+                    }
+                else:
+                    p = patient_info[nat_id]
+                    if v_date > p['last_visit']:
+                        p['last_visit'] = v_date
+                        if not p['name'] and name:
+                            p['name'] = name
+                        if not p['birth'] and birth:
+                            p['birth'] = birth
+                    if v_date < p['first_visit']:
+                        p['first_visit'] = v_date
+                    if hep != p['hep_type'] and p['hep_type'] != 'BC':
+                        p['hep_type'] = 'BC'
+        except Exception:
+            pass
+
+    results: list[FollowupEntry] = []
+    inactive: list[FollowupEntry] = []
+
+    for nat_id, info in patient_info.items():
+        if not info['name'] or not info['birth']:
+            continue
+
+        last_visit = info['last_visit']
+        days_since = (as_of - last_visit).days
+
+        if days_since < HEP_FOLLOWUP_DAYS:
+            continue  # not yet overdue
+
+        hep_type = info['hep_type']
+        disease = 'B型肝炎' if hep_type == 'B' else ('C型肝炎' if hep_type == 'C' else 'B/C型肝炎')
+
+        due_date     = last_visit + timedelta(days=HEP_FOLLOWUP_DAYS)
+        days_overdue = (as_of - due_date).days
+
+        # Determine last_stage label: 收案 if patient has only ever had one hepatitis visit
+        stage = '收案' if info['first_visit'] == info['last_visit'] else '追蹤'
+
+        entry = FollowupEntry(
+            patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
+            disease_name=disease,
+            due_date=due_date,
+            days_overdue=days_overdue,
+            category='B肝',
+            last_visit_date=last_visit,
+            last_stage=stage,
+            contact_reason='需抽血+超音波',
+        )
+
+        if days_since >= HEP_CLOSE_DAYS + HEP_REOPEN_DAYS:
+            # 730+ days: eligible for 再收案
+            inactive.append(entry.model_copy(update={
+                'last_stage': '再收案',
+                'contact_reason': '需重新收案+抽血+超音波',
+            }))
+        elif days_since >= HEP_CLOSE_DAYS:
+            # 365–729 days: 結案, waiting period before re-enrollment
+            inactive.append(entry.model_copy(update={'last_stage': '結案'}))
+        else:
+            results.append(entry)
+
+    return (
+        sorted(results, key=lambda e: e.days_overdue, reverse=True),
+        sorted(inactive, key=lambda e: e.last_visit_date or date.min),
+    )
+
+
 # ── Visit detection (has patient returned?) ───────────────────────────────────
 
 def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, date]:
@@ -513,7 +663,7 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
     Used to detect whether a contacted patient has since returned.
 
     For 慢簽: matches AE連續 or 01西醫 IC01 (M33='1', M26='3' in main IC file).
-    For 代謝症候群: matches any 01西醫 visit."""
+    For 代謝症候群 / B肝: matches any 01西醫 visit."""
     if not chart_numbers:
         return {}
     since  = date.today() - timedelta(days=30)
