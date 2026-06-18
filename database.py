@@ -594,9 +594,11 @@ def _query_hep_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
                     p = patient_info[nat_id]
                     if v_date > p['last_visit']:
                         p['last_visit'] = v_date
-                        if not p['name'] and name:
+                        # Always use the most recent visit's name — handles family members
+                        # sharing an IC card (被保險人) and name typo corrections over time.
+                        if name:
                             p['name'] = name
-                        if not p['birth'] and birth:
+                        if birth:
                             p['birth'] = birth
                     if v_date < p['first_visit']:
                         p['first_visit'] = v_date

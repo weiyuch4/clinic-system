@@ -300,12 +300,12 @@ for i, path in enumerate(files):
                 }
             else:
                 p = found_by_id[key]
-                if name and not p['name']:
-                    p['name'] = name
-                if birth and not p['birth']:
-                    p['birth'] = birth
                 if v_date and (not p['last_visit'] or v_date > p['last_visit']):
                     p['last_visit'] = v_date
+                    if name:
+                        p['name'] = name  # always use most recent name
+                    if birth:
+                        p['birth'] = birth
                 if hep != p['hep_type'] and p['hep_type'] != 'BC':
                     p['hep_type'] = 'BC'
                 p['icd_codes'].update(codes)
