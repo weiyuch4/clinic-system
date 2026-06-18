@@ -3276,25 +3276,37 @@
     document.getElementById("manual-pickup-desc").textContent =
       `${e.patient.name}（${e.patient.chart_number}）`;
     const dateInput = document.getElementById("manual-pickup-date-input");
-    dateInput.value = "";
-    document.getElementById("manual-pickup-preview").textContent = "";
-    document.getElementById("manual-pickup-date-error").textContent = "";
-    dateInput.oninput = () => {
-      const errEl = document.getElementById("manual-pickup-date-error");
+    const previewEl = document.getElementById("manual-pickup-preview");
+    const errEl2    = document.getElementById("manual-pickup-date-error");
+    errEl2.textContent = "";
+
+    function updatePickupPreview() {
       const iso = parseDateInput(dateInput.value.trim());
       if (iso) {
-        errEl.textContent = "";
-        const d = new Date(iso + "T00:00:00");
-        d.setDate(d.getDate() + ps);
-        document.getElementById("manual-pickup-preview").textContent =
-          `下次應回診：${fmt(d.toISOString().slice(0, 10))}（處方 ${ps} 天）`;
+        errEl2.textContent = "";
+        const nextDue = new Date(iso + "T00:00:00");
+        nextDue.setDate(nextDue.getDate() + ps);
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const nextDueStr = nextDue.toISOString().slice(0, 10);
+        if (nextDue <= today) {
+          previewEl.style.color = "#e53e3e";
+          previewEl.textContent = `下次應回診 ${fmt(nextDueStr)} 已過期，存檔後病患仍會出現在清單中。`;
+        } else {
+          previewEl.style.color = "var(--text-muted)";
+          previewEl.textContent = `下次應回診：${fmt(nextDueStr)}（處方 ${ps} 天）`;
+        }
       } else {
-        document.getElementById("manual-pickup-preview").textContent = "";
+        previewEl.style.color = "var(--text-muted)";
+        previewEl.textContent = "";
         const v = dateInput.value.trim();
-        if (v.length >= 8) errEl.textContent = "格式：20260520 或 2026-05-20";
-        else errEl.textContent = "";
+        if (v.length >= 8) errEl2.textContent = "格式：20260520 或 2026-05-20";
+        else errEl2.textContent = "";
       }
-    };
+    }
+
+    dateInput.oninput = updatePickupPreview;
+    dateInput.value = new Date().toISOString().slice(0, 10);
+    updatePickupPreview();
     document.getElementById("manual-pickup-modal").style.display = "flex";
   }
 
