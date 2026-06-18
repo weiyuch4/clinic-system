@@ -558,14 +558,14 @@ def _query_hep_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
 
     active_overdue: patients 161–364 days since last hepatitis visit (overdue for 追蹤).
     inactive: patients 365+ days since last hepatitis visit (結案 or eligible for 再收案).
-    """
-    # Look back 760 days to catch all 再收案-eligible patients (730 + buffer).
-    since = as_of - timedelta(days=HEP_CLOSE_DAYS + HEP_REOPEN_DAYS + 30)
 
+    Scans ALL IC files (not a fixed window) because hepatitis patients may not have
+    visited for years yet still need 結案/再收案 tracking.
+    """
     # patient_info: {nat_id: {name, birth, last_visit, first_visit, hep_type}}
     patient_info: dict[str, dict] = {}
 
-    for ic_path in _ic_files_since(since):
+    for ic_path in _ic_main_files():
         try:
             for r in _parse_dbf_cached(ic_path):
                 if r.get('H_TYPE', '') not in ('01西醫', 'AE連續'):
