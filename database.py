@@ -264,8 +264,18 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
         p_path = ic_path[:-4] + 'P.DBF'
 
         for r in records:
-            h_type   = r.get('H_TYPE', '')
-            is_ae    = h_type == 'AE連續'
+            h_type = r.get('H_TYPE', '')
+
+            # M33/M26 are in the main IC file (not the H file).
+            m33 = r.get('M33', '').strip()
+            m26 = r.get('M26', '').strip()
+
+            # A small number of refills are filed under H_TYPE values other than
+            # AE連續 (seen in practice: AB療程, AI同日) but still carry the same
+            # NHI 連續處方箋 cycle markers (M26='3', M33='2'/'3' = cycle 2/3 of 3).
+            # Trust the markers over H_TYPE for these — only 01西醫 is excluded
+            # since that's reserved for the IC01 first-dispense path below.
+            is_ae    = h_type == 'AE連續' or (h_type != '01西醫' and m26 == '3' and m33 in ('2', '3'))
             is_nishi = h_type == '01西醫'
             if not is_ae and not is_nishi:
                 continue
@@ -276,10 +286,6 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             if not nat_id:
                 continue
             cf = r.get('CODE_F', '').strip()
-
-            # M33/M26 are in the main IC file (not the H file).
-            m33 = r.get('M33', '').strip()
-            m26 = r.get('M26', '').strip()
 
             if is_nishi:
                 if nat_id in ic01_best and v_date <= ic01_best[nat_id]['date']:
@@ -676,11 +682,16 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
             for r in _parse_dbf_cached(ic_path):
                 h = r.get('H_TYPE', '')
                 if category == '慢簽':
-                    is_ae = h == 'AE連續'
+                    m33 = r.get('M33', '').strip()
+                    m26 = r.get('M26', '').strip()
+                    # See _query_chronic_prescriptions: some refills are filed under
+                    # H_TYPE values other than AE連續 (e.g. AB療程, AI同日) but still
+                    # carry the same cycle markers — trust the markers over H_TYPE.
+                    is_ae = h == 'AE連續' or (h != '01西醫' and m26 == '3' and m33 in ('2', '3'))
                     if not is_ae:
                         if h != '01西醫':
                             continue
-                        if not (r.get('M33', '').strip() == '1' and r.get('M26', '').strip() == '3'):
+                        if not (m33 == '1' and m26 == '3'):
                             continue
                 else:
                     if h != '01西醫':
