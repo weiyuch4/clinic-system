@@ -2456,12 +2456,17 @@
       ? `<button class="btn-call">再次通知</button>`
       : `<button class="btn-action">已通知</button>`;
 
+    // last_stage is the stage completed at last_visit_date — 收案 (enrollment)
+    // is always followed by 追蹤, so a patient overdue after their first visit
+    // is due for 追蹤 next, not 收案 again.
+    const nextStage = e.last_stage === '收案' ? '追蹤' : e.last_stage;
+
     tr.innerHTML = `
       <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span></div><div class="chart-number">${e.patient.chart_number}</div></td>
       <td class="mono">${fmt(e.patient.birth_date)}</td>
       <td>${e.disease_name || '—'}</td>
       <td>${lastVisitCell}</td>
-      <td>${hepStageTag(e.last_stage)}</td>
+      <td>${hepStageTag(nextStage)}</td>
       <td><span class="mono" style="color:var(--text-sub)">${fmt(e.due_date)}</span></td>
       <td>${statusPill(e.days_overdue)}</td>
       <td>
@@ -2585,7 +2590,7 @@
         ? Math.floor((new Date(todayIso) - new Date(e.last_visit_date)) / 86400000)
         : null;
       const daysSinceStr = daysSince !== null ? `${daysSince} 天` : "—";
-      const canNotify = e.last_stage === '再收案';
+      const canNotify = e.last_stage === '結案' || e.last_stage === '再收案';
       const actionBtn = canNotify
         ? `<button class="btn-action" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">已通知</button>`
         : '';
