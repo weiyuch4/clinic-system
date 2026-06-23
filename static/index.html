@@ -281,6 +281,24 @@
 
     .card-header h2 { font-size: 14px; font-weight: 700; flex: 1; }
 
+    .workflow-hint {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      padding: 10px 20px;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: var(--text-sub);
+      border-bottom: 1px solid var(--border);
+    }
+    .workflow-hint svg { flex-shrink: 0; margin-top: 2px; opacity: 0.75; }
+    .card--chronic .workflow-hint { background: #eff6ff; }
+    .card--mspt    .workflow-hint { background: #ecfdf5; }
+    .card--hep     .workflow-hint { background: #f5f3ff; }
+    .card--chronic .workflow-hint svg { color: var(--blue); }
+    .card--mspt    .workflow-hint svg { color: var(--green); }
+    .card--hep     .workflow-hint svg { color: #7c3aed; }
+
     .count-badge {
       font-size: 11px;
       font-weight: 700;
@@ -1068,6 +1086,10 @@
     <div class="card-header">
       <h2>慢簽追蹤</h2>
     </div>
+    <div class="workflow-hint">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+      <span>病患逾期未取藥（超過到期日 5 天）會自動出現在「待聯絡」。請致電提醒後點選「已通知」；7 天內未回診會自動移至「已二次通知」再次提醒。病患已自行取藥但系統未顯示時，請用「手動標記已取藥」記錄。</span>
+    </div>
     <div class="collapse-toggle" onclick="toggleSection('chronic-pending-body', this)">
       <div class="collapse-line"></div>
       <span class="collapse-label"><i class="chevron open">›</i> 待聯絡</span>
@@ -1170,6 +1192,10 @@
     <div class="card-top"></div>
     <div class="card-header">
       <h2>代謝症候群追蹤</h2>
+    </div>
+    <div class="workflow-hint">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+      <span>病患到達下一次追蹤時間（收案→追1→追2→追3→年度追蹤，約每 70 天一次）時會出現於此。請聯絡病患安排回診＋抽血，完成後點選「已通知」。點擊病患姓名可查看最新檢驗結果。</span>
     </div>
     <div class="collapse-toggle" onclick="toggleSection('mspt-pending-body', this)">
       <div class="collapse-line"></div>
@@ -1301,6 +1327,10 @@
     <div class="card-top"></div>
     <div class="card-header">
       <h2>B/C型肝炎追蹤</h2>
+    </div>
+    <div class="workflow-hint">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+      <span>B/C型肝炎病患逾期未回診（約 161 天一次）時會出現於此，需安排回診抽血＋腹部超音波。聯絡後點選「已通知」；超過一年未追蹤會自動結案，於「長期未回診」可查看並再次收案。</span>
     </div>
     <div class="collapse-toggle" onclick="toggleSection('hep-pending-body', this)">
       <div class="collapse-line"></div>
