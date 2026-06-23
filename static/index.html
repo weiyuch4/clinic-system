@@ -1392,6 +1392,20 @@
         <tbody id="hep-inactive-rows"></tbody>
       </table>
     </div>
+    <div class="collapse-toggle checkedin-section" onclick="toggleSection('hep-returned-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已回診，待輸入VPN <span id="hep-returned-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="hep-returned-body">
+      <div style="font-size:12px;color:#92400e;padding:8px 16px 4px;background:#fffbeb">病患已回診，抽血報告約需 3 個工作日。報告出來後，請完成 VPN 資料輸入並點擊「完成B肝」。</div>
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>病名</th><th>回診日期</th><th>已等待</th><th></th>
+        </tr></thead>
+        <tbody id="hep-returned-rows"></tbody>
+      </table>
+    </div>
     <div class="collapse-toggle onhold-section" onclick="toggleSection('hep-onhold-body', this)">
       <div class="collapse-line"></div>
       <span class="collapse-label"><i class="chevron">›</i> 暫緩 <span id="hep-onhold-count">0</span></span>
@@ -1411,6 +1425,19 @@
       <div class="archive-divider-line"></div>
       <span class="archive-divider-label">歸檔紀錄</span>
       <div class="archive-divider-line"></div>
+    </div>
+    <div class="collapse-toggle archive" onclick="toggleSection('hep-returned-completed-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已完成VPN建檔 <span id="hep-returned-completed-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="hep-returned-completed-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>病名</th><th>回診日期</th><th>建檔日期</th><th></th>
+        </tr></thead>
+        <tbody id="hep-returned-completed-rows"></tbody>
+      </table>
     </div>
     <div class="collapse-toggle archive" onclick="toggleSection('hep-excluded-body', this)">
       <div class="collapse-line"></div>
@@ -2131,6 +2158,8 @@
     renderHepContactedRows(data.contacted.filter(e => e.category === "B肝"));
     renderHepCalledRows(data.called.filter(e => e.category === "B肝"));
     renderHepInactiveRows(data.hep_inactive || []);
+    renderHepReturnedRows(data.hep_returned || []);
+    renderHepReturnedCompletedRows(data.hep_returned_completed || []);
   }
 
   // ── Stores for new sections ──
@@ -2637,6 +2666,114 @@
       });
       tbody.appendChild(tr);
     });
+  }
+
+  // ── 已回診，待輸入VPN (B肝 patient returned, pending VPN entry) ──
+
+  function buildHepReturnedRow(e) {
+    const key = followupKey(e);
+    followupStore.set(key, e);
+    const tr = document.createElement("tr");
+    tr.className = "checkedin-row";
+    tr.dataset.key = key;
+    tr.dataset.search = patientSearchStr(e.patient);
+    tr.innerHTML = `
+      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span></div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td class="mono">${fmt(e.patient.birth_date)}</td>
+      <td>${e.disease_name || '—'}</td>
+      <td class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</td>
+      <td style="color:var(--text-muted)">${e.days_overdue} 天</td>
+      <td><div class="action-cell"><button class="btn-complete">完成B肝</button></div></td>
+    `;
+    tr.querySelector(".btn-complete").onclick = (ev) => markHepReturnedCompleted(ev.currentTarget, key);
+    return tr;
+  }
+
+  function renderHepReturnedRows(entries) {
+    const tbody = document.getElementById("hep-returned-rows");
+    tbody.innerHTML = "";
+    entries.forEach(e => tbody.appendChild(buildHepReturnedRow(e)));
+    updateBadge("hep-returned-count", entries.length);
+  }
+
+  async function markHepReturnedCompleted(btn, key) {
+    if (!activeNurse()) { warnNoNurse(); return; }
+    btn.disabled = true;
+    const entry = followupStore.get(key);
+    if (!entry) { btn.disabled = false; return; }
+    try {
+      await apiFetch("/api/hep-returned-completed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entry, nurse: activeNurse() }),
+      });
+      const tr = btn.closest("tr");
+      fadeRemove(tr, () => {
+        const tbody = document.getElementById("hep-returned-rows");
+        updateBadge("hep-returned-count", tbody.querySelectorAll("tr[data-key]").length);
+        appendHepReturnedCompletedRow({ ...entry, contacted_at: todayIso }, true);
+      });
+      showToast(`${entry.patient.name} 已完成B肝建檔 ✓`, "ok");
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
+  }
+
+  function buildHepReturnedCompletedRow(e) {
+    const key = followupKey(e);
+    followupStore.set(key, e);
+    const tr = document.createElement("tr");
+    tr.dataset.key = key;
+    tr.dataset.search = patientSearchStr(e.patient);
+    tr.innerHTML = `
+      <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td class="mono">${fmt(e.patient.birth_date)}</td>
+      <td>${e.disease_name || '—'}</td>
+      <td class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</td>
+      <td class="mono">${fmt(e.contacted_at || todayIso)}</td>
+      <td><button class="btn-undo">撤銷</button></td>
+    `;
+    tr.querySelector(".btn-undo").onclick = (ev) => undoHepReturnedCompleted(ev.currentTarget, key);
+    return tr;
+  }
+
+  function appendHepReturnedCompletedRow(e, prepend) {
+    const tbody = document.getElementById("hep-returned-completed-rows");
+    const tr = buildHepReturnedCompletedRow(e);
+    if (prepend) tbody.prepend(tr); else tbody.appendChild(tr);
+    updateCountLabel("hep-returned-completed-count", "hep-returned-completed-rows");
+  }
+
+  function renderHepReturnedCompletedRows(entries) {
+    const tbody = document.getElementById("hep-returned-completed-rows");
+    tbody.innerHTML = "";
+    entries.forEach(e => tbody.appendChild(buildHepReturnedCompletedRow(e)));
+    updateCountLabel("hep-returned-completed-count", "hep-returned-completed-rows");
+  }
+
+  async function undoHepReturnedCompleted(btn, key) {
+    btn.disabled = true;
+    const entry = followupStore.get(key);
+    if (!entry) { btn.disabled = false; return; }
+    try {
+      await apiFetch("/api/hep-returned-completed", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chart_number: entry.patient.chart_number, last_visit_date: entry.last_visit_date }),
+      });
+      const tr = btn.closest("tr");
+      fadeRemove(tr, () => {
+        updateCountLabel("hep-returned-completed-count", "hep-returned-completed-rows");
+        const tbody = document.getElementById("hep-returned-rows");
+        tbody.prepend(buildHepReturnedRow(entry));
+        updateBadge("hep-returned-count", tbody.querySelectorAll("tr[data-key]").length);
+      });
+      showToast("已撤銷", "ok");
+    } catch (err) {
+      btn.disabled = false;
+      showToast(err.message);
+    }
   }
 
   // ── 手動標記MSPT ──

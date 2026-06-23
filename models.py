@@ -101,6 +101,7 @@ class DailyReport(BaseModel):
     mspt_waiting: list[MsptWaitingEntry]
     hep_followups: list[FollowupEntry] = []   # B/C hepatitis patients overdue for 161-day follow-up
     hep_inactive: list[FollowupEntry] = []    # hepatitis patients 結案 or eligible for 再收案
+    hep_returned: list[FollowupEntry] = []    # hepatitis patients who recently visited, pending VPN entry
     # Populated from contacts.db, not IC data
     contacted: list[FollowupEntry] = []
     called: list[FollowupEntry] = []
@@ -111,6 +112,7 @@ class DailyReport(BaseModel):
     chronic_manual_pickups: list[ManualPickupEntry] = []
     on_hold: list[OnHoldEntry] = []
     mspt_manual: list[MsptManualEntry] = []
+    hep_returned_completed: list[FollowupEntry] = []  # archived 完成B肝 (VPN entered) records
 
 
 class NurseEntryRequest(BaseModel):
@@ -151,6 +153,11 @@ class MsptCompleteRequest(BaseModel):
     chart_number: str
     mspt_stage: MsptStage
     due_date: date
+
+
+class HepReturnedCompleteRequest(BaseModel):
+    chart_number: str
+    last_visit_date: date
 
 
 class SubmitRequest(BaseModel):

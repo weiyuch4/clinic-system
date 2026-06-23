@@ -21,8 +21,8 @@ import lab_report
 import lab_results
 from models import (
     ChartNumberRequest, ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
-    ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest, MsptManualRemoveRequest,
-    MsptManualRequest, MsptSubmittableEntry,
+    HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest,
+    MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, OnHoldRemoveRequest, OnHoldRequest, SubmitRequest, UnexcludeRequest,
 )
 
@@ -148,6 +148,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
         mspt_completed_keys = contacts.get_mspt_completed_keys()  # (chart_number, mspt_stage, due_date)
         mspt_checkedin_keys = contacts.get_mspt_checkedin_keys()  # (chart_number, mspt_stage, due_date)
         on_hold_keys = contacts.get_on_hold_keys()            # (chart_number, category, due_date)
+        hep_returned_completed_keys = contacts.get_hep_returned_completed_keys()  # (chart_number, last_visit_date)
         manual_overrides = contacts.get_mspt_manual_overrides()
         as_of = report_date or date.today()
 
@@ -273,6 +274,11 @@ def get_report(report_date: date | None = None) -> DailyReport:
             mspt_waiting=report.mspt_waiting,
             hep_followups=filter_followups(report.hep_followups),
             hep_inactive=filter_followups(report.hep_inactive),
+            hep_returned=[
+                e for e in report.hep_returned
+                if (e.patient.chart_number, e.last_visit_date.isoformat()) not in hep_returned_completed_keys
+            ],
+            hep_returned_completed=contacts.get_hep_returned_completed_entries(),
             contacted=contacted,
             called=called_filtered,
             submitted=contacts.get_submitted_entries(),
@@ -387,6 +393,24 @@ def unmark_mspt_checkedin(req: MsptCompleteRequest) -> None:
     except Exception:
         logger.exception("unmark_mspt_checkedin failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷待建檔失敗，請稍後再試")
+
+
+@app.post("/api/hep-returned-completed")
+def mark_hep_returned_completed(req: NurseEntryRequest) -> None:
+    try:
+        contacts.mark_hep_returned_completed(req.entry, req.nurse)
+    except Exception:
+        logger.exception("mark_hep_returned_completed failed for %s", req.entry.patient.chart_number)
+        raise HTTPException(status_code=500, detail="完成B肝記錄儲存失敗，請稍後再試")
+
+
+@app.delete("/api/hep-returned-completed")
+def unmark_hep_returned_completed(req: HepReturnedCompleteRequest) -> None:
+    try:
+        contacts.unmark_hep_returned_completed(req.chart_number, req.last_visit_date.isoformat())
+    except Exception:
+        logger.exception("unmark_hep_returned_completed failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
 
 
 @app.post("/api/manual-pickup")

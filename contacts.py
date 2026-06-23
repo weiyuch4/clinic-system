@@ -136,6 +136,21 @@ _CREATE_MSPT_CHECKEDIN = """
     )
 """
 
+_CREATE_HEP_RETURNED_COMPLETED = """
+    CREATE TABLE IF NOT EXISTS hep_returned_completed (
+        chart_number    TEXT NOT NULL,
+        last_visit_date TEXT NOT NULL,
+        name            TEXT NOT NULL,
+        birth_date      TEXT NOT NULL,
+        disease_name    TEXT,
+        days_overdue    INTEGER NOT NULL,
+        completed_at    TEXT NOT NULL,
+        completed_time  TEXT,
+        nurse           TEXT DEFAULT '',
+        PRIMARY KEY (chart_number, last_visit_date)
+    )
+"""
+
 
 @contextmanager
 def _conn() -> Generator[sqlite3.Connection, None, None]:
@@ -160,6 +175,7 @@ def init() -> None:
         conn.execute(_CREATE_MSPT_MANUAL)
         conn.execute(_CREATE_ON_HOLD)
         conn.execute(_CREATE_MANUAL_PICKUPS)
+        conn.execute(_CREATE_HEP_RETURNED_COMPLETED)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
             try:
@@ -539,6 +555,62 @@ def get_mspt_checkedin_entries() -> list[FollowupEntry]:
             contacted_at=date.fromisoformat(r[9]) if r[9] else None,
             contacted_time=r[10],
             nurse=r[11] or "",
+        )
+        for r in rows
+    ]
+
+
+def mark_hep_returned_completed(entry: FollowupEntry, nurse: str = '') -> None:
+    with _conn() as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO hep_returned_completed
+               (chart_number, last_visit_date, name, birth_date, disease_name,
+                days_overdue, completed_at, completed_time, nurse)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (
+                entry.patient.chart_number,
+                entry.last_visit_date.isoformat(),
+                entry.patient.name, entry.patient.birth_date.isoformat(),
+                entry.disease_name, entry.days_overdue,
+                date.today().isoformat(), datetime.now().strftime('%H:%M'), nurse,
+            ),
+        )
+
+
+def unmark_hep_returned_completed(chart_number: str, last_visit_date: str) -> None:
+    with _conn() as conn:
+        conn.execute(
+            "DELETE FROM hep_returned_completed WHERE chart_number=? AND last_visit_date=?",
+            (chart_number, last_visit_date),
+        )
+
+
+def get_hep_returned_completed_keys() -> set[tuple[str, str]]:
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT chart_number, last_visit_date FROM hep_returned_completed"
+        ).fetchall()
+    return {(r[0], r[1]) for r in rows}
+
+
+def get_hep_returned_completed_entries() -> list[FollowupEntry]:
+    with _conn() as conn:
+        rows = conn.execute(
+            """SELECT chart_number, last_visit_date, name, birth_date, disease_name,
+                      days_overdue, completed_at, completed_time, nurse
+               FROM hep_returned_completed ORDER BY completed_at DESC, completed_time DESC""",
+        ).fetchall()
+    return [
+        FollowupEntry(
+            patient=Patient(chart_number=r[0], name=r[2], birth_date=date.fromisoformat(r[3])),
+            disease_name=r[4],
+            due_date=date.fromisoformat(r[1]),
+            days_overdue=r[5],
+            last_visit_date=date.fromisoformat(r[1]),
+            category='B肝',
+            contacted_at=date.fromisoformat(r[6]) if r[6] else None,
+            contacted_time=r[7],
+            nurse=r[8] or "",
         )
         for r in rows
     ]

@@ -86,6 +86,7 @@ def get_daily_report(as_of: date) -> DailyReport:
         mspt_waiting=[],
         hep_followups=hep_followups,
         hep_inactive=hep_inactive,
+        hep_returned=_query_hep_returned(as_of),
     )
 
 
@@ -517,9 +518,10 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
 
 # ── B/C Hepatitis (B/C型肝炎) tracking ───────────────────────────────────────
 
-HEP_FOLLOWUP_DAYS = 161   # 追蹤間隔
-HEP_CLOSE_DAYS    = 365   # 超過此天數無追蹤 → 結案
-HEP_REOPEN_DAYS   = 365   # 結案後再等此天數 → 可再收案 (total 730 days since last visit)
+HEP_FOLLOWUP_DAYS    = 161   # 追蹤間隔
+HEP_CLOSE_DAYS       = 365   # 超過此天數無追蹤 → 結案
+HEP_REOPEN_DAYS      = 365   # 結案後再等此天數 → 可再收案 (total 730 days since last visit)
+HEP_RETURN_WINDOW_DAYS = 14  # 回診後此天數內視為「待輸入VPN」(抽血報告約3個工作日)
 
 # ICD-9/ICD-10 codes for B and C hepatitis (dot-stripped, prefix-matched).
 _HEP_B_PREFIXES = (
@@ -559,16 +561,15 @@ def _hep_type(r: dict) -> str | None:
     return None
 
 
-def _query_hep_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
-    """Return (active_overdue, inactive) hepatitis B/C patients.
-
-    active_overdue: patients 161–364 days since last hepatitis visit (overdue for 追蹤).
-    inactive: patients 365+ days since last hepatitis visit (結案 or eligible for 再收案).
+def _scan_hep_patient_info(as_of: date) -> dict[str, dict]:
+    """Scan ALL IC files for hepatitis-coded visits (01西醫/AE連續 with a hep
+    B/C ICD code) and return {nat_id: {name, birth, last_visit, first_visit, hep_type}}.
 
     Scans ALL IC files (not a fixed window) because hepatitis patients may not have
-    visited for years yet still need 結案/再收案 tracking.
+    visited for years yet still need 結案/再收案 tracking. Shared by both the
+    overdue/inactive query and the recently-returned query below, so both stay
+    in sync on what counts as a hep visit.
     """
-    # patient_info: {nat_id: {name, birth, last_visit, first_visit, hep_type}}
     patient_info: dict[str, dict] = {}
 
     for ic_path in _ic_main_files():
@@ -613,6 +614,21 @@ def _query_hep_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
         except Exception:
             pass
 
+    return patient_info
+
+
+def _hep_disease_name(hep_type: str) -> str:
+    return 'B型肝炎' if hep_type == 'B' else ('C型肝炎' if hep_type == 'C' else 'B/C型肝炎')
+
+
+def _query_hep_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
+    """Return (active_overdue, inactive) hepatitis B/C patients.
+
+    active_overdue: patients 161–364 days since last hepatitis visit (overdue for 追蹤).
+    inactive: patients 365+ days since last hepatitis visit (結案 or eligible for 再收案).
+    """
+    patient_info = _scan_hep_patient_info(as_of)
+
     results: list[FollowupEntry] = []
     inactive: list[FollowupEntry] = []
 
@@ -626,8 +642,7 @@ def _query_hep_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
         if days_since < HEP_FOLLOWUP_DAYS:
             continue  # not yet overdue
 
-        hep_type = info['hep_type']
-        disease = 'B型肝炎' if hep_type == 'B' else ('C型肝炎' if hep_type == 'C' else 'B/C型肝炎')
+        disease = _hep_disease_name(info['hep_type'])
 
         due_date     = last_visit + timedelta(days=HEP_FOLLOWUP_DAYS)
         days_overdue = (as_of - due_date).days
@@ -664,6 +679,40 @@ def _query_hep_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
     )
 
 
+def _query_hep_returned(as_of: date) -> list[FollowupEntry]:
+    """Patients whose most recent hepatitis visit was within HEP_RETURN_WINDOW_DAYS.
+
+    They've returned for B/C型肝炎追蹤 (same hep-ICD visit detection as
+    _query_hep_followups) — blood results take ~3 working days, after which a
+    VPN entry is still needed. Returns ALL qualifying patients regardless of
+    contact history; filtering out ones already marked done (完成B肝) happens
+    in main.py, same as other completion-tracking lists (e.g. mspt_completed).
+    """
+    patient_info = _scan_hep_patient_info(as_of)
+    results: list[FollowupEntry] = []
+
+    for nat_id, info in patient_info.items():
+        if not info['name'] or not info['birth']:
+            continue
+
+        last_visit = info['last_visit']
+        days_since = (as_of - last_visit).days
+        if days_since > HEP_RETURN_WINDOW_DAYS:
+            continue
+
+        results.append(FollowupEntry(
+            patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
+            disease_name=_hep_disease_name(info['hep_type']),
+            due_date=last_visit,
+            days_overdue=days_since,
+            category='B肝',
+            last_visit_date=last_visit,
+            contact_reason='待輸入VPN',
+        ))
+
+    return sorted(results, key=lambda e: e.last_visit_date or date.min)
+
+
 # ── Visit detection (has patient returned?) ───────────────────────────────────
 
 def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, date]:
@@ -671,7 +720,10 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
     Used to detect whether a contacted patient has since returned.
 
     For 慢簽: matches AE連續 or 01西醫 IC01 (M33='1', M26='3' in main IC file).
-    For 代謝症候群 / B肝: matches any 01西醫 visit."""
+    For B肝: matches 01西醫/AE連續 visits that carry an actual hep B/C ICD code
+    (same check _query_hep_followups uses) — a B肝 patient coming in for an
+    unrelated reason should not count as a hep follow-up return.
+    For 代謝症候群: matches any 01西醫 visit."""
     if not chart_numbers:
         return {}
     since  = date.today() - timedelta(days=30)
@@ -693,6 +745,11 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
                             continue
                         if not (m33 == '1' and m26 == '3'):
                             continue
+                elif category == 'B肝':
+                    if h not in ('01西醫', 'AE連續'):
+                        continue
+                    if not _hep_type(r):
+                        continue
                 else:
                     if h != '01西醫':
                         continue
