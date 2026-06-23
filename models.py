@@ -100,7 +100,8 @@ class DailyReport(BaseModel):
     mspt_submittable: list[MsptSubmittableEntry]
     mspt_waiting: list[MsptWaitingEntry]
     hep_followups: list[FollowupEntry] = []   # B/C hepatitis patients overdue for 161-day follow-up
-    hep_inactive: list[FollowupEntry] = []    # hepatitis patients 結案 or eligible for 再收案
+    hep_inactive: list[FollowupEntry] = []    # 結案/再收案 — internal handoff field; merged into
+                                               # hep_followups in main.py before reaching the client
     hep_returned: list[FollowupEntry] = []    # hepatitis patients who recently visited, pending VPN entry
     # Populated from contacts.db, not IC data
     contacted: list[FollowupEntry] = []

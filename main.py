@@ -272,8 +272,15 @@ def get_report(report_date: date | None = None) -> DailyReport:
                 if (e.patient.chart_number, e.mspt_stage) not in submitted_keys
             ],
             mspt_waiting=report.mspt_waiting,
-            hep_followups=filter_followups(report.hep_followups),
-            hep_inactive=filter_followups(report.hep_inactive),
+            # 長期未回診 (結案/再收案) is merged into the same list rather than a
+            # separate section — we want to keep notifying these patients too,
+            # and a separate collapsed section was too easy to forget to check.
+            # Sorted ascending so mildly-overdue patients surface before the
+            # open-ended 結案/再收案 backlog, which can accumulate indefinitely.
+            hep_followups=sorted(
+                filter_followups(report.hep_followups) + filter_followups(report.hep_inactive),
+                key=lambda e: e.days_overdue,
+            ),
             hep_returned=[
                 e for e in report.hep_returned
                 if (e.patient.chart_number, e.last_visit_date.isoformat()) not in hep_returned_completed_keys

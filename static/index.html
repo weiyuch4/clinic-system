@@ -1330,7 +1330,7 @@
     </div>
     <div class="workflow-hint">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
-      <span>B/C型肝炎病患逾期未回診（約 161 天一次）時會出現於此，需安排回診抽血＋腹部超音波。聯絡後點選「已通知」；超過一年未追蹤會自動結案，於「長期未回診」可查看並再次收案。</span>
+      <span>B/C型肝炎病患逾期未回診（約 161 天一次）時會出現於此，需安排回診抽血＋腹部超音波。聯絡後點選「已通知」；超過一年未追蹤會標記「結案」或「再收案」，但仍會留在清單中持續通知。</span>
     </div>
     <div class="collapse-toggle" onclick="toggleSection('hep-pending-body', this)">
       <div class="collapse-line"></div>
@@ -1376,20 +1376,6 @@
           <th>病患</th><th>出生日期</th><th>病名</th><th>上次追蹤</th><th>到期日</th><th>二次通知日期</th><th>已等待</th><th></th>
         </tr></thead>
         <tbody id="hep-called-rows"></tbody>
-      </table>
-    </div>
-    <div class="collapse-toggle inactive" onclick="toggleSection('hep-inactive-body', this)">
-      <div class="collapse-line"></div>
-      <span class="collapse-label"><i class="chevron">›</i> 長期未回診 <span id="hep-inactive-count">0</span></span>
-      <div class="collapse-line"></div>
-    </div>
-    <div class="collapse-body" id="hep-inactive-body">
-      <div style="font-size:12px;color:#92400e;padding:8px 16px 4px;background:#fffbeb">超過一年未追蹤。結案後滿一年可重新收案。</div>
-      <table>
-        <thead><tr>
-          <th>病患</th><th>出生日期</th><th>病名</th><th>上次追蹤</th><th>距今</th><th>狀態</th><th></th>
-        </tr></thead>
-        <tbody id="hep-inactive-rows"></tbody>
       </table>
     </div>
     <div class="collapse-toggle checkedin-section" onclick="toggleSection('hep-returned-body', this)">
@@ -2157,7 +2143,6 @@
     renderHepFollowups(data.hep_followups || []);
     renderHepContactedRows(data.contacted.filter(e => e.category === "B肝"));
     renderHepCalledRows(data.called.filter(e => e.category === "B肝"));
-    renderHepInactiveRows(data.hep_inactive || []);
     renderHepReturnedRows(data.hep_returned || []);
     renderHepReturnedCompletedRows(data.hep_returned_completed || []);
   }
@@ -2546,8 +2531,10 @@
       return;
     }
 
+    // Ascending: mildly-overdue patients first, open-ended 結案/再收案 backlog last —
+    // matches the order main.py already sends, but sort defensively in case of re-renders.
     entries
-      .sort((a, b) => b.days_overdue - a.days_overdue)
+      .sort((a, b) => a.days_overdue - b.days_overdue)
       .forEach(e => {
         try {
           tbody.appendChild(buildHepRow(e, "hep-pending-body", "hep-badge", "hep-contacted-rows", "hep-contacted-count", "hep-called-rows", "hep-called-count"));
@@ -2605,67 +2592,6 @@
       tbody.appendChild(tr);
     });
     updateCountLabel("hep-called-count", "hep-called-rows");
-  }
-
-  function renderHepInactiveRows(entries) {
-    const tbody = document.getElementById("hep-inactive-rows");
-    const countEl = document.getElementById("hep-inactive-count");
-    tbody.innerHTML = "";
-    countEl.textContent = entries.length;
-    entries.forEach(e => {
-      followupStore.set(followupKey(e), e);
-      const lastVisit = e.last_visit_date ? fmt(e.last_visit_date) : "—";
-      const daysSince = e.last_visit_date
-        ? Math.floor((new Date(todayIso) - new Date(e.last_visit_date)) / 86400000)
-        : null;
-      const daysSinceStr = daysSince !== null ? `${daysSince} 天` : "—";
-      const canNotify = e.last_stage === '結案' || e.last_stage === '再收案';
-      const actionBtn = canNotify
-        ? `<button class="btn-action" style="background:#ede9fe;color:#5b21b6;border-color:#c4b5fd">已通知</button>`
-        : '';
-      const tr = document.createElement("tr");
-      tr.dataset.key = followupKey(e);
-      tr.dataset.search = patientSearchStr(e.patient);
-      tr.innerHTML = `
-        <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span></div><div class="chart-number">${e.patient.chart_number}</div></td>
-        <td class="mono">${fmt(e.patient.birth_date)}</td>
-        <td>${e.disease_name || '—'}</td>
-        <td class="mono" style="color:var(--text-sub)">${lastVisit}</td>
-        <td style="color:var(--text-muted)">${daysSinceStr}</td>
-        <td>${hepStageTag(e.last_stage)}</td>
-        <td>
-          <div class="action-cell">
-            ${actionBtn}
-            <div class="more-actions-wrapper">
-              <button class="btn-more" title="更多操作">•••</button>
-              <div class="dropdown-menu">
-                <button class="dropdown-item" data-act="onhold">暫緩…</button>
-                <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
-              </div>
-            </div>
-          </div>
-        </td>`;
-      if (canNotify) {
-        const notifyBtn = tr.querySelector(".btn-action");
-        notifyBtn.onclick = () => markContacted(notifyBtn, followupKey(e), "hep-inactive-body", "hep-inactive-count", "hep-contacted-rows", "hep-contacted-count");
-      }
-      const moreBtn = tr.querySelector(".btn-more");
-      const dropdown = tr.querySelector(".dropdown-menu");
-      moreBtn.addEventListener("click", ev => {
-        ev.stopPropagation();
-        document.querySelectorAll(".dropdown-menu.open").forEach(d => { if (d !== dropdown) d.classList.remove("open"); });
-        dropdown.classList.toggle("open");
-      });
-      tr.querySelector("[data-act='exclude']").addEventListener("click", () => {
-        dropdown.classList.remove("open");
-        openExcludeModal(e, "hep-inactive-rows", "hep-inactive-count");
-      });
-      tr.querySelector("[data-act='onhold']").addEventListener("click", () => {
-        dropdown.classList.remove("open");
-        openOnHoldModal(e, "hep-inactive-body", "hep-inactive-count");
-      });
-      tbody.appendChild(tr);
-    });
   }
 
   // ── 已回診，待輸入VPN (B肝 patient returned, pending VPN entry) ──
