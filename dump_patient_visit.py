@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 """
 Dump every field (main IC record + all P-file line items + H-file companion
-records) for one patient's visit, to find exactly which field/value holds
-the "BC肝追蹤6M" order (hover code [EX8]).
+records) for one patient's visit. The P-file line items are numbered in
+file order — pick a visit you know included the BC肝追蹤6M order, find its
+position in your HIS order list (e.g. "the 7th item"), and the matching
+DRUG_NO printed here tells us the real underlying code.
 
 Run on PC1: python dump_patient_visit.py P220094718 1150107
 (date in ROC YYYMMDD format, no slashes)
@@ -71,8 +73,17 @@ for path in _ic_main_files():
                 print("=" * 70)
                 print(f"P-FILE LINE ITEMS — file={os.path.basename(p_path)} ({len(p_records)} records)")
                 print("=" * 70)
-                for r in p_records:
-                    dump_record(f"P CODE_F={r.get('CODE_F','').strip()}", r)
+                print("Quick summary, numbered in file order (should match your HIS order list —")
+                print("tell me which # is the BC肝追蹤6M item):\n")
+                for idx, r in enumerate(p_records, 1):
+                    drug_no = r.get('DRUG_NO', '').strip()
+                    qty = r.get('QTY', '').strip()
+                    ps = r.get('PS', '').strip()
+                    no = r.get('NO', '').strip()
+                    print(f"  #{idx:<3d} DRUG_NO={drug_no:12s} QTY={qty:6s} PS={ps:4s} NO={no}")
+                print()
+                for idx, r in enumerate(p_records, 1):
+                    dump_record(f"#{idx} P CODE_F={r.get('CODE_F','').strip()}", r)
         except Exception as e:
             print(f"  ERROR reading P file: {e}")
 
