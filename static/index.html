@@ -1462,6 +1462,24 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="hep-complete-modal" onclick="maybeCloseHepCompleteModal(event)">
+  <div class="modal-box" style="max-width:380px">
+    <h3>完成B肝</h3>
+    <p id="hep-complete-desc" style="font-size:14px;color:var(--text-sub);margin:8px 0 20px"></p>
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">完成日期（請查閱病例）</label>
+    <input type="text" id="hep-complete-date-input" placeholder="例：20260515 或 2026-05-15"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:6px" />
+    <div id="hep-complete-date-error" style="font-size:12px;color:#e53e3e;min-height:16px;margin-bottom:4px"></div>
+    <div id="hep-complete-preview" style="font-size:13px;color:var(--text-muted);min-height:18px;margin-bottom:20px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeHepCompleteModal()"
+        style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;font-size:14px">取消</button>
+      <button id="hep-complete-confirm-btn" onclick="submitHepComplete()"
+        style="padding:8px 18px;border-radius:8px;border:none;background:#7c3aed;color:white;cursor:pointer;font-size:14px;font-weight:600">確認標記</button>
+    </div>
+  </div>
+</div>
+
 <!-- On-hold modal -->
 <div class="modal-overlay" id="onhold-modal" onclick="maybeCloseOnHoldModal(event)">
   <div class="modal-box" style="max-width:400px">
@@ -2489,6 +2507,7 @@
           <div class="more-actions-wrapper">
             <button class="btn-more" title="更多操作">•••</button>
             <div class="dropdown-menu">
+              <button class="dropdown-item" data-act="hep-complete">完成B肝…</button>
               <button class="dropdown-item" data-act="onhold">暫緩…</button>
               <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
             </div>
@@ -2516,6 +2535,10 @@
     tr.querySelector("[data-act='onhold']").onclick = () => {
       dropdown.classList.remove("open");
       openOnHoldModal(e, pendingBodyId, pendingBadgeId);
+    };
+    tr.querySelector("[data-act='hep-complete']").onclick = () => {
+      dropdown.classList.remove("open");
+      openHepCompleteModal(e, pendingBodyId, pendingBadgeId);
     };
 
     return tr;
@@ -2592,6 +2615,87 @@
       tbody.appendChild(tr);
     });
     updateCountLabel("hep-called-count", "hep-called-rows");
+  }
+
+  // ── 完成B肝（手動標記，待聯絡列表使用 — IC 資料未捕捉到回診/醫令時的備用方式） ──
+
+  let _hepCompleteEntry = null;
+  let _hepCompletePendingBodyId = null;
+  let _hepCompletePendingBadgeId = null;
+
+  function openHepCompleteModal(e, pendingBodyId, pendingBadgeId) {
+    _hepCompleteEntry = e;
+    _hepCompletePendingBodyId = pendingBodyId;
+    _hepCompletePendingBadgeId = pendingBadgeId;
+    document.getElementById("hep-complete-desc").textContent =
+      `${e.patient.name}（${e.patient.chart_number}）`;
+    const dateInput = document.getElementById("hep-complete-date-input");
+    const previewEl = document.getElementById("hep-complete-preview");
+    const errEl = document.getElementById("hep-complete-date-error");
+    errEl.textContent = "";
+
+    function updatePreview() {
+      const iso = parseDateInput(dateInput.value.trim());
+      if (iso) {
+        errEl.textContent = "";
+        const nextDue = new Date(iso + "T00:00:00");
+        nextDue.setDate(nextDue.getDate() + 161);
+        previewEl.style.color = "var(--text-muted)";
+        previewEl.textContent = `下次應追蹤：${fmt(nextDue.toISOString().slice(0, 10))}（約 161 天後）`;
+      } else {
+        previewEl.textContent = "";
+        const v = dateInput.value.trim();
+        errEl.textContent = v.length >= 8 ? "格式：20260520 或 2026-05-20" : "";
+      }
+    }
+
+    dateInput.oninput = updatePreview;
+    dateInput.value = new Date().toISOString().slice(0, 10);
+    updatePreview();
+    document.getElementById("hep-complete-modal").style.display = "flex";
+  }
+
+  function closeHepCompleteModal() {
+    document.getElementById("hep-complete-modal").style.display = "none";
+    _hepCompleteEntry = null;
+  }
+
+  function maybeCloseHepCompleteModal(event) {
+    if (event.target === document.getElementById("hep-complete-modal")) closeHepCompleteModal();
+  }
+
+  async function submitHepComplete() {
+    if (!activeNurse()) { warnNoNurse(); closeHepCompleteModal(); return; }
+    const e = _hepCompleteEntry;
+    const errEl = document.getElementById("hep-complete-date-error");
+    const completedDate = parseDateInput(document.getElementById("hep-complete-date-input").value.trim());
+    if (!completedDate) {
+      errEl.textContent = "請輸入日期，例：20260520 或 2026-05-20";
+      document.getElementById("hep-complete-date-input").focus();
+      return;
+    }
+    errEl.textContent = "";
+
+    const btn = document.getElementById("hep-complete-confirm-btn");
+    btn.disabled = true;
+    try {
+      const entryForApi = { ...e, last_visit_date: completedDate };
+      await apiFetch("/api/hep-returned-completed", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entry: entryForApi, nurse: activeNurse() }),
+      });
+      const pendingBody = document.getElementById(_hepCompletePendingBodyId);
+      const row = pendingBody.querySelector(`tr[data-key="${followupKey(e)}"]`);
+      if (row) row.remove();
+      updateFollowupBadge(_hepCompletePendingBadgeId, pendingBody);
+      appendHepReturnedCompletedRow({ ...e, last_visit_date: completedDate, contacted_at: todayIso }, true);
+      closeHepCompleteModal();
+    } catch (err) {
+      errEl.textContent = "儲存失敗：" + err.message;
+    } finally {
+      btn.disabled = false;
+    }
   }
 
   // ── 已回診，待輸入VPN (B肝 patient returned, pending VPN entry) ──

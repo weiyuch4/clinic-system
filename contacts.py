@@ -593,6 +593,16 @@ def get_hep_returned_completed_keys() -> set[tuple[str, str]]:
     return {(r[0], r[1]) for r in rows}
 
 
+def get_hep_completed_latest_map() -> dict[str, str]:
+    """Returns {chart_number: most recent completed last_visit_date} for
+    suppressing 待聯絡 entries a nurse has manually marked 完成B肝 on."""
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT chart_number, MAX(last_visit_date) FROM hep_returned_completed GROUP BY chart_number"
+        ).fetchall()
+    return {r[0]: r[1] for r in rows}
+
+
 def get_hep_returned_completed_entries() -> list[FollowupEntry]:
     with _conn() as conn:
         rows = conn.execute(

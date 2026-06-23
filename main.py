@@ -247,6 +247,20 @@ def get_report(report_date: date | None = None) -> DailyReport:
 
         chronic_prescriptions = [e for e in report.chronic_prescriptions if not chronic_suppressed(e)]
 
+        # Same pattern for B/C肝: a nurse can manually mark 完成B肝 from the
+        # pending list (e.g. the IC visit/order wasn't captured), which should
+        # suppress the entry until IC data itself shows a newer confirmed visit.
+        hep_completed_latest = contacts.get_hep_completed_latest_map()
+
+        def hep_suppressed(entry: FollowupEntry) -> bool:
+            completed_str = hep_completed_latest.get(entry.patient.chart_number)
+            if not completed_str:
+                return False
+            completed_date = date.fromisoformat(completed_str)
+            if entry.last_visit_date and completed_date <= entry.last_visit_date:
+                return False
+            return True
+
         manual_excluded = contacts.get_excluded_entries()
         auto_excluded = contacts.get_auto_excluded_entries()
         all_excluded = manual_excluded + [
@@ -278,7 +292,10 @@ def get_report(report_date: date | None = None) -> DailyReport:
             # Sorted ascending so mildly-overdue patients surface before the
             # open-ended 結案/再收案 backlog, which can accumulate indefinitely.
             hep_followups=sorted(
-                filter_followups(report.hep_followups) + filter_followups(report.hep_inactive),
+                [
+                    e for e in filter_followups(report.hep_followups) + filter_followups(report.hep_inactive)
+                    if not hep_suppressed(e)
+                ],
                 key=lambda e: e.days_overdue,
             ),
             hep_returned=[
