@@ -1088,7 +1088,7 @@
     </div>
     <div class="workflow-hint">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
-      <span>病患逾期未取藥（超過到期日 5 天）會自動出現在「待聯絡」。請致電提醒後點選「已通知」；7 天內未回診會自動移至「已二次通知」再次提醒。病患已自行取藥但系統未顯示時，請用「手動標記已取藥」記錄。</span>
+      <span>病患逾期未取藥會自動出現在「待聯絡」。請傳訊息提醒後點選「已通知」；7 天內未回診會自動移至「已二次通知」再次提醒。病患已取藥但系統未顯示時，請用「手動標記已取藥」記錄。</span>
     </div>
     <div class="collapse-toggle" onclick="toggleSection('chronic-pending-body', this)">
       <div class="collapse-line"></div>
@@ -1195,7 +1195,7 @@
     </div>
     <div class="workflow-hint">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
-      <span>病患到達下一次追蹤時間（收案→追1→追2→追3→年度追蹤，約每 70 天一次）時會出現於此。請聯絡病患安排回診＋抽血，完成後點選「已通知」。點擊病患姓名可查看最新檢驗結果。</span>
+      <span>病患到達下一次追蹤時間時會出現於此。不需抽血報告時可直接掛號、輸入VPN後點選「完成MSPT」；需要抽血報告者請安排回診＋抽血。點擊病患姓名可查看最新檢驗結果。</span>
     </div>
     <div class="collapse-toggle" onclick="toggleSection('mspt-pending-body', this)">
       <div class="collapse-line"></div>
@@ -1344,7 +1344,7 @@
           <th class="sortable" onclick="sortTable('hep-body','birth',this)">出生日期</th>
           <th class="sortable" onclick="sortTable('hep-body','disease',this)">病名</th>
           <th class="sortable" onclick="sortTable('hep-body','last_visit',this)">上次追蹤</th>
-          <th>追蹤階段</th>
+          <th>下個階段</th>
           <th class="sortable" onclick="sortTable('hep-body','due',this)">到期日</th>
           <th class="sortable" onclick="sortTable('hep-body','status',this)">狀態</th>
           <th></th>
