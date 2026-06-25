@@ -81,10 +81,11 @@ def _launch_detached_browser():
     Alleypin happens once here; later calls just attach via CDP."""
     exe = _edge_executable_path()
     PROFILE_DIR.mkdir(exist_ok=True)
-    subprocess.Popen(
-        [exe, f"--remote-debugging-port={DEBUG_PORT}", f"--user-data-dir={PROFILE_DIR}", config.ALLEYPIN_URL],
-        close_fds=True,
-    )
+    args = [exe, f"--remote-debugging-port={DEBUG_PORT}", f"--user-data-dir={PROFILE_DIR}"]
+    if config.ALLEYPIN_HEADLESS:
+        args.append("--headless=new")
+    args.append(config.ALLEYPIN_URL)
+    subprocess.Popen(args, close_fds=True)
 
 
 async def _get_page(p) -> Page:
@@ -121,6 +122,22 @@ async def _navigate_if_needed(page: Page):
     if config.ALLEYPIN_URL not in page.url:
         await page.goto(config.ALLEYPIN_URL)
         await page.wait_for_load_state("networkidle")
+
+
+async def _ensure_logged_in(page: Page):
+    """Fail loudly if the page doesn't look logged in, rather than letting
+    every subsequent patient search silently come back not_found. Matters
+    most after a PC reboot — Alleypin's session cookie doesn't appear to
+    survive a clean browser shutdown, and in headless mode there's no
+    visible window to notice a login page came up instead of the patient list."""
+    try:
+        await page.locator(SEARCH_INPUT_SELECTOR).wait_for(timeout=5000)
+    except PWTimeoutError:
+        raise RuntimeError(
+            "尚未登入 Alleypin（找不到搜尋欄位）。請將 config.py 的 ALLEYPIN_HEADLESS "
+            "暫時設為 False，執行 python test_line_notify.py --stop 後重新登入一次，"
+            "再改回 True。"
+        )
 
 
 async def _find_patient_row(page: Page, chart_number: str, dob_roc: str, expected_name: str = ""):
@@ -204,6 +221,7 @@ async def run_batch(targets: list[dict], dry_run: bool, on_result=None) -> list[
     async with async_playwright() as p:
         page = await _get_page(p)
         await _navigate_if_needed(page)
+        await _ensure_logged_in(page)
 
         for t in targets:
             dob_roc = t.get('dob_roc') or to_roc_slash_date(t['dob'])

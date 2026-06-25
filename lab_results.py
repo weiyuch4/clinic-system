@@ -169,8 +169,10 @@ def _iter_rows(path: str):
 
 
 _dbf_rows_cache: dict[str, tuple[float, list[dict]]] = {}  # path -> (cached_at, rows)
-_CACHE_TTL_SECONDS = 30  # covers one report's full MSPT scan; short enough that
-                          # same-day lab updates show up on the next request
+_CACHE_TTL_SECONDS = 4 * 3600  # long enough that database.warmup_cache()'s startup
+                                # pre-load stays warm through a clinic session, short
+                                # enough that a same-day new lab entry isn't stale for
+                                # more than half a shift
 
 
 def _cached_rows(path: str) -> list[dict]:

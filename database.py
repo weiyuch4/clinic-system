@@ -76,8 +76,11 @@ def _parse_dbf_cached(path: str) -> list[dict]:
 
 
 def warmup_cache() -> None:
-    """Pre-load all IC (and P and H) files into the cache. Call in a background thread
-    at server startup so the first user request doesn't pay the full parse cost."""
+    """Pre-load all IC (and P and H) files into the cache, then run today's
+    report once so dependent caches (lab_results' patient-code lookups and
+    BIO/CBC file reads, used by MSPT blood-test checks) are warm too. Call in
+    a background thread at server startup so the first real user request
+    doesn't pay the full parse cost."""
     for path in _ic_main_files():
         try:
             _parse_dbf_cached(path)
@@ -89,6 +92,10 @@ def warmup_cache() -> None:
                 _parse_dbf_cached(h)
         except Exception:
             pass
+    try:
+        get_daily_report(date.today())
+    except Exception:
+        pass
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -97,7 +104,11 @@ def get_daily_report(as_of: date) -> DailyReport:
     if USE_MOCK_DATA:
         return _mock_report(as_of)
     mspt_followups, mspt_inactive = _query_mspt_followups(as_of)
-    hep_followups, hep_inactive   = _query_hep_followups(as_of)
+    # Computed once and shared — _query_hep_followups and _query_hep_returned both
+    # need it, and it alone accounts for most of a cold report's runtime (it parses
+    # every IC file in the clinic's history looking for hep visits).
+    hep_patient_info = _scan_hep_patient_info(as_of)
+    hep_followups, hep_inactive = _query_hep_followups(as_of, hep_patient_info)
     return DailyReport(
         report_date=as_of,
         chronic_prescriptions=_query_chronic_prescriptions(as_of),
@@ -107,7 +118,7 @@ def get_daily_report(as_of: date) -> DailyReport:
         mspt_waiting=[],
         hep_followups=hep_followups,
         hep_inactive=hep_inactive,
-        hep_returned=_query_hep_returned(as_of),
+        hep_returned=_query_hep_returned(as_of, hep_patient_info),
     )
 
 
@@ -683,14 +694,15 @@ def _hep_disease_name(hep_type: str) -> str:
     return 'B型肝炎' if hep_type == 'B' else ('C型肝炎' if hep_type == 'C' else 'B/C型肝炎')
 
 
-def _query_hep_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
+def _query_hep_followups(as_of: date, patient_info: dict[str, dict]) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
     """Return (active_overdue, inactive) hepatitis B/C patients.
 
     active_overdue: patients 161–364 days since last hepatitis visit (overdue for 追蹤).
     inactive: patients 365+ days since last hepatitis visit (結案 or eligible for 再收案).
-    """
-    patient_info = _scan_hep_patient_info(as_of)
 
+    patient_info comes from _scan_hep_patient_info(as_of) — shared with
+    _query_hep_returned() since computing it is the most expensive part of a report.
+    """
     results: list[FollowupEntry] = []
     inactive: list[FollowupEntry] = []
 
@@ -741,7 +753,7 @@ def _query_hep_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
     )
 
 
-def _query_hep_returned(as_of: date) -> list[FollowupEntry]:
+def _query_hep_returned(as_of: date, patient_info: dict[str, dict]) -> list[FollowupEntry]:
     """Patients whose most recent hepatitis visit was within HEP_RETURN_WINDOW_DAYS.
 
     They've returned for B/C型肝炎追蹤 (same hep-ICD visit detection as
@@ -749,8 +761,10 @@ def _query_hep_returned(as_of: date) -> list[FollowupEntry]:
     VPN entry is still needed. Returns ALL qualifying patients regardless of
     contact history; filtering out ones already marked done (完成B肝) happens
     in main.py, same as other completion-tracking lists (e.g. mspt_completed).
+
+    patient_info comes from _scan_hep_patient_info(as_of) — shared with
+    _query_hep_followups() since computing it is the most expensive part of a report.
     """
-    patient_info = _scan_hep_patient_info(as_of)
     results: list[FollowupEntry] = []
 
     for nat_id, info in patient_info.items():

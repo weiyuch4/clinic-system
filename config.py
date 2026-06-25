@@ -17,6 +17,12 @@ METABOLIC_FOLLOWUP_DAYS: int = 70
 # in config_local.py — this placeholder will fail loudly if used by mistake).
 ALLEYPIN_URL: str = "https://REPLACE-ME-IN-config_local.py"
 
+# Run the Alleypin automation browser with no visible window. Set to False
+# temporarily whenever a fresh Alleypin login is needed — the login form has
+# to be visible to type into — then stop the browser (test_line_notify.py
+# --stop), log in once with this set to False, and switch it back to True.
+ALLEYPIN_HEADLESS: bool = True
+
 # config.local.py overrides the above — create it on the clinic PC with the real path.
 # It is gitignored and never committed.
 try:
