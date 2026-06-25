@@ -602,6 +602,10 @@
     .btn-add-manual-onhold:hover { background: #fffbeb; }
     tr.on-hold-row td:first-child { box-shadow: inset 3px 0 0 #f59e0b; }
 
+    /* LINE batch-send feature isn't reliable yet (Alleypin automation still
+       being debugged) — hidden so nurses can't trigger it. Remove this rule
+       to bring the buttons back once it's actually ready. */
+    .line-dryrun-label, .btn-line-batch { display: none !important; }
     .line-dryrun-label {
       font-size: 12px; color: var(--text-sub); display: flex; align-items: center;
       gap: 4px; cursor: pointer; white-space: nowrap;
