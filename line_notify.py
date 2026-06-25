@@ -1,11 +1,20 @@
 """
 Browser automation for sending Alleypin LINE preset-text notifications,
-driving the actual Alleypin web page in a dedicated Chrome profile (the
-nurse logs in once; the session persists in alleypin_profile/).
+driving the actual Alleypin web page in a dedicated Edge profile.
 
 No Alleypin API exists, so this drives the real page: search by DOB,
 verify the matched row's national ID, open the patient-tracking picker,
 click the preset-text template by its exact visible text.
+
+The automation browser is launched as an independent OS process (NOT via
+Playwright's launch()/launch_persistent_context(), which would tie its
+lifetime to our script and kill it on exit) and reused across calls by
+attaching to it over CDP. This matters because Alleypin's login appears
+to use a session-only cookie — Chrome/Edge discard those on a clean
+shutdown by default even with a persistent profile, so a browser that
+gets relaunched every call would need a fresh login every call. Logging
+in once, the first time it's ever launched, and never closing it
+sidesteps that. Use stop_browser() to force a clean restart if needed.
 
 Safety notes:
   - Every match is verified by national ID (data-e2e-id="users-list-table-
@@ -14,6 +23,9 @@ Safety notes:
     selectors can be verified without sending anything real.
 """
 import asyncio
+import shutil
+import subprocess
+import urllib.request
 from datetime import date
 from pathlib import Path
 
@@ -23,16 +35,92 @@ import config
 
 PROFILE_DIR = Path(__file__).parent / "alleypin_profile"
 
+# Fixed CDP port so the automation browser can be found and reused across
+# calls instead of being relaunched (and re-logged-in) every time.
+DEBUG_PORT = 9234
+
 SEARCH_INPUT_SELECTOR = '[data-e2e-id="users-search-input"]'
 ROW_SELECTOR = 'tr:has([data-e2e-id="users-list-table-col-tw-id"])'
 TWID_SELECTOR = '[data-e2e-id="users-list-table-col-tw-id"]'
 NAME_SELECTOR = '[data-e2e-id="users-list-table-col-name"]'
 TRACKING_CELL_SELECTOR = '[data-e2e-id="users-list-table-col-patient-tracking"]'
 
+# Nurses already use Edge daily, so drive that instead of installing Chrome.
+_EDGE_CANDIDATES = [
+    r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+    r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+]
+
 
 def to_roc_slash_date(d: date) -> str:
     """Convert a Gregorian date to Alleypin's expected ROC 'YYY/MM/DD' search format."""
     return f"{d.year - 1911}/{d.month:02d}/{d.day:02d}"
+
+
+def _edge_executable_path() -> str:
+    for c in _EDGE_CANDIDATES:
+        if Path(c).exists():
+            return c
+    found = shutil.which("msedge")
+    if found:
+        return found
+    raise RuntimeError("Could not find msedge.exe — set its path in _EDGE_CANDIDATES in line_notify.py")
+
+
+def _is_browser_alive() -> bool:
+    try:
+        urllib.request.urlopen(f"http://localhost:{DEBUG_PORT}/json/version", timeout=1)
+        return True
+    except Exception:
+        return False
+
+
+def _launch_detached_browser():
+    """Start Edge as an independent OS process — NOT a Playwright-managed
+    child — so it keeps running after our script exits. Logging into
+    Alleypin happens once here; later calls just attach via CDP."""
+    exe = _edge_executable_path()
+    PROFILE_DIR.mkdir(exist_ok=True)
+    subprocess.Popen(
+        [exe, f"--remote-debugging-port={DEBUG_PORT}", f"--user-data-dir={PROFILE_DIR}", config.ALLEYPIN_URL],
+        close_fds=True,
+    )
+
+
+async def _get_page(p) -> Page:
+    """Attach to the long-running automation browser, launching it first if
+    it isn't already up. Never closes it — only stop_browser() does."""
+    if not _is_browser_alive():
+        _launch_detached_browser()
+        for _ in range(30):
+            if _is_browser_alive():
+                break
+            await asyncio.sleep(0.5)
+        else:
+            raise RuntimeError("Edge did not start within 15s — check Edge is installed and the port is free")
+
+    browser = await p.chromium.connect_over_cdp(f"http://localhost:{DEBUG_PORT}")
+    context = browser.contexts[0] if browser.contexts else await browser.new_context()
+    page = context.pages[0] if context.pages else await context.new_page()
+    return page
+
+
+async def stop_browser() -> bool:
+    """Force-close the long-running automation browser (e.g. to clear a stuck
+    state, or to force a fresh login). Returns True if it was running."""
+    if not _is_browser_alive():
+        return False
+    async with async_playwright() as p:
+        browser = await p.chromium.connect_over_cdp(f"http://localhost:{DEBUG_PORT}")
+        await browser.close()
+    return True
+
+
+async def _navigate_if_needed(page: Page):
+    """Re-navigate to the Alleypin URL if the page somehow ended up elsewhere."""
+    if config.ALLEYPIN_URL not in page.url:
+        await page.goto(config.ALLEYPIN_URL)
+        await page.wait_for_load_state("networkidle")
 
 
 async def _find_patient_row(page: Page, chart_number: str, dob_roc: str, expected_name: str = ""):
@@ -97,19 +185,16 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
         return {**base, 'status': 'error', 'detail': str(e)}
 
 
-async def run_batch(targets: list[dict], dry_run: bool, headless: bool = False, slow_mo: int = 300) -> list[dict]:
+async def run_batch(targets: list[dict], dry_run: bool) -> list[dict]:
     """targets: [{'chart_number', 'dob_roc' or 'dob' (date), 'name', 'template'}, ...]
-    Launches a dedicated, persistent Chrome profile (session persists across runs —
-    log in once manually on the first run) and processes each target in order.
+    Attaches to the long-running automation browser (launching it first if
+    needed) and processes each target in order. Never closes the browser —
+    only stop_browser() does.
     """
     results = []
     async with async_playwright() as p:
-        context = await p.chromium.launch_persistent_context(
-            str(PROFILE_DIR), headless=headless, slow_mo=slow_mo,
-        )
-        page = context.pages[0] if context.pages else await context.new_page()
-        await page.goto(config.ALLEYPIN_URL)
-        await page.wait_for_load_state("networkidle")
+        page = await _get_page(p)
+        await _navigate_if_needed(page)
 
         for t in targets:
             dob_roc = t.get('dob_roc') or to_roc_slash_date(t['dob'])
@@ -117,5 +202,4 @@ async def run_batch(targets: list[dict], dry_run: bool, headless: bool = False, 
             results.append(result)
             print(f"  [{result['status']}] {result['chart_number']} {result.get('name', '')}: {result['detail']}")
 
-        await context.close()
     return results
