@@ -14,6 +14,7 @@ import glob as _glob
 import os
 import re
 import struct
+import time
 import unicodedata
 from datetime import date, timedelta
 
@@ -167,6 +168,24 @@ def _iter_rows(path: str):
         return
 
 
+_dbf_rows_cache: dict[str, tuple[float, list[dict]]] = {}  # path -> (cached_at, rows)
+_CACHE_TTL_SECONDS = 30  # covers one report's full MSPT scan; short enough that
+                          # same-day lab updates show up on the next request
+
+
+def _cached_rows(path: str) -> list[dict]:
+    """Parse a DBF file and cache the rows briefly. has_recent_metabolic_panel()
+    calls into this once per 追2/追3 MSPT entry (hundreds per report) — without
+    this, that's hundreds of full-file rescans of bioc.dbf per request."""
+    now = time.time()
+    cached = _dbf_rows_cache.get(path)
+    if cached and (now - cached[0]) < _CACHE_TTL_SECONDS:
+        return cached[1]
+    rows = list(_iter_rows(path))
+    _dbf_rows_cache[path] = (now, rows)
+    return rows
+
+
 def _parse_var_date(row: dict) -> str:
     """Parse VAR1/VAR2/VAR3 (actual lab/order date) into YYY/MM/DD.
 
@@ -242,8 +261,12 @@ def _find_patient_code(national_id: str) -> str | None:
     if national_id in _patient_code_cache:
         return _patient_code_cache[national_id]
     code = _lookup_patient_code(national_id)
-    if code:
-        _patient_code_cache[national_id] = code
+    # Cache the negative result too — without this, every miss (e.g. Z: drive
+    # unavailable, or a nat_id genuinely not in PAT_HIST/IC) re-runs the full
+    # lookup every single call. Harmless when this was only called once per
+    # manual lab-modal click, but has_recent_metabolic_panel() now calls it
+    # for every 追2/追3 MSPT entry in the report — hundreds of times.
+    _patient_code_cache[national_id] = code
     return code
 
 
@@ -284,7 +307,7 @@ def _read_bio_records(patient_code: str, dbf_name: str) -> list[dict]:
     path = os.path.join(ZZ_DIR, dbf_name)
     if not os.path.isfile(path):
         return []
-    raw_rows = [r for r in _iter_rows(path) if r.get('CODE', '').strip() == patient_code]
+    raw_rows = [r for r in _cached_rows(path) if r.get('CODE', '').strip() == patient_code]
     raw_rows.sort(key=_bio_display_date, reverse=True)
 
     records = []
@@ -329,7 +352,7 @@ def _read_cbc_records(patient_code: str) -> list[dict]:
     path = os.path.join(ZZ_DIR, 'CBCC.DBF')
     if not os.path.isfile(path):
         return []
-    raw_rows = [r for r in _iter_rows(path) if r.get('CODE', '').strip() == patient_code]
+    raw_rows = [r for r in _cached_rows(path) if r.get('CODE', '').strip() == patient_code]
     raw_rows.sort(key=lambda r: _decode_date(r.get('DATE', '')), reverse=True)
 
     records = []

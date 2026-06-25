@@ -601,6 +601,26 @@
     }
     .btn-add-manual-onhold:hover { background: #fffbeb; }
     tr.on-hold-row td:first-child { box-shadow: inset 3px 0 0 #f59e0b; }
+
+    .line-dryrun-label {
+      font-size: 12px; color: var(--text-sub); display: flex; align-items: center;
+      gap: 4px; cursor: pointer; white-space: nowrap;
+    }
+    .btn-line-batch {
+      padding: 6px 14px; font-size: 12px; font-weight: 700;
+      border-radius: 8px; border: 1px solid #06c755; background: #06c755; color: white;
+      cursor: pointer; white-space: nowrap;
+    }
+    .btn-line-batch:hover { background: #05a847; }
+    .btn-line-batch:disabled { opacity: 0.5; cursor: not-allowed; }
+    .line-batch-row {
+      padding: 6px 12px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; gap: 8px; font-size: 13px;
+    }
+    .line-batch-progress-track {
+      background: #e5e7eb; border-radius: 8px; height: 8px; overflow: hidden; margin-bottom: 16px;
+    }
+    .line-batch-progress-bar { background: #06c755; height: 100%; width: 0%; transition: width 0.3s; }
     .on-hold-note {
       display: inline-block; font-size: 11px; color: #92400e; background: #fffbeb;
       border: 1px solid #fde68a; padding: 2px 8px; border-radius: 4px;
@@ -1085,6 +1105,8 @@
     <div class="card-top"></div>
     <div class="card-header">
       <h2>慢簽追蹤</h2>
+      <label class="line-dryrun-label"><input type="checkbox" id="chronic-line-dryrun"> 測試模式</label>
+      <button class="btn-line-batch" onclick="startLineBatch('慢簽', 'chronic-line-dryrun', 'chronic-body')">批次發送LINE通知</button>
     </div>
     <div class="workflow-hint">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
@@ -1192,6 +1214,8 @@
     <div class="card-top"></div>
     <div class="card-header">
       <h2>代謝症候群追蹤</h2>
+      <label class="line-dryrun-label"><input type="checkbox" id="mspt-line-dryrun"> 測試模式</label>
+      <button class="btn-line-batch" onclick="startLineBatch('代謝症候群', 'mspt-line-dryrun', 'mspt-body')">批次發送LINE通知</button>
     </div>
     <div class="workflow-hint">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
@@ -1327,6 +1351,8 @@
     <div class="card-top"></div>
     <div class="card-header">
       <h2>B/C型肝炎追蹤</h2>
+      <label class="line-dryrun-label"><input type="checkbox" id="hep-line-dryrun"> 測試模式</label>
+      <button class="btn-line-batch" onclick="startLineBatch('B肝', 'hep-line-dryrun', 'hep-body')">批次發送LINE通知</button>
     </div>
     <div class="workflow-hint">
       <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
@@ -1476,6 +1502,21 @@
         style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;font-size:14px">取消</button>
       <button id="hep-complete-confirm-btn" onclick="submitHepComplete()"
         style="padding:8px 18px;border-radius:8px;border:none;background:#7c3aed;color:white;cursor:pointer;font-size:14px;font-weight:600">確認標記</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="line-batch-modal" onclick="maybeCloseLineBatchModal(event)">
+  <div class="modal-box" style="max-width:500px">
+    <h3 id="line-batch-title">批次發送LINE通知</h3>
+    <p id="line-batch-status" style="font-size:14px;color:var(--text-sub);margin:8px 0 12px"></p>
+    <div class="line-batch-progress-track">
+      <div id="line-batch-progress-bar" class="line-batch-progress-bar"></div>
+    </div>
+    <div id="line-batch-results" style="max-height:320px;overflow-y:auto;font-size:13px;border:1px solid var(--border);border-radius:8px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+      <button id="line-batch-close-btn" onclick="closeLineBatchModal()"
+        style="padding:8px 18px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;font-size:14px">關閉</button>
     </div>
   </div>
 </div>
@@ -2696,6 +2737,118 @@
     } finally {
       btn.disabled = false;
     }
+  }
+
+  // ── 批次發送LINE通知 ──
+
+  let _lineBatchPolling = null;
+
+  const LINE_STATUS_LABEL = {
+    sent: "已發送", dry_run_ok: "測試通過", not_found: "找不到病患",
+    template_not_found: "找不到範本", error: "錯誤",
+  };
+  const LINE_STATUS_COLOR = {
+    sent: "#059669", dry_run_ok: "#2563eb", not_found: "#d97706",
+    template_not_found: "#d97706", error: "#dc2626",
+  };
+
+  async function startLineBatch(category, dryRunCheckboxId, pendingTbodyId) {
+    if (!activeNurse()) { warnNoNurse(); return; }
+    const dryRun = document.getElementById(dryRunCheckboxId).checked;
+    const tbody = document.getElementById(pendingTbodyId);
+    const count = tbody ? tbody.querySelectorAll("tr[data-key]").length : 0;
+
+    if (count === 0) {
+      showToast("目前沒有待聯絡的病患");
+      return;
+    }
+
+    const modeLabel = dryRun ? "測試模式（不會真的發送）" : "正式發送";
+    if (!confirm(`即將以「${modeLabel}」處理約 ${count} 位${category}待聯絡病患的LINE通知，確定繼續嗎？`)) {
+      return;
+    }
+
+    _openLineBatchModal(category);
+
+    try {
+      const resp = await apiFetch("/api/send-line-notifications", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ category, nurse: activeNurse(), dry_run: dryRun }),
+      });
+      const data = await resp.json();
+      if (!data.started) {
+        document.getElementById("line-batch-status").textContent = data.detail || "沒有符合條件的病患";
+        return;
+      }
+      _pollLineBatchStatus();
+    } catch (err) {
+      if (err.message && err.message.includes("已有一個批次發送正在進行中")) {
+        _pollLineBatchStatus();
+        return;
+      }
+      document.getElementById("line-batch-status").textContent = "啟動失敗：" + err.message;
+    }
+  }
+
+  function _openLineBatchModal(category) {
+    document.getElementById("line-batch-title").textContent = `批次發送LINE通知 — ${category || ""}`;
+    document.getElementById("line-batch-status").textContent = "啟動中…";
+    document.getElementById("line-batch-progress-bar").style.width = "0%";
+    document.getElementById("line-batch-results").innerHTML = "";
+    document.getElementById("line-batch-modal").style.display = "flex";
+  }
+
+  function _renderLineBatchState(state) {
+    const total = state.total || 0;
+    const done = (state.results || []).length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    document.getElementById("line-batch-progress-bar").style.width = pct + "%";
+
+    let statusLabel = state.running ? `處理中… ${done}/${total}` : `完成：${done}/${total}`;
+    if (state.dry_run) statusLabel = `[測試模式] ${statusLabel}`;
+    if (state.error) statusLabel += ` — 發生錯誤：${state.error}`;
+    document.getElementById("line-batch-status").textContent = statusLabel;
+
+    const resultsHtml = (state.results || []).slice().reverse().map(r => `
+      <div class="line-batch-row">
+        <span>${r.name || ""} <span class="chart-number" style="font-size:11px">${r.chart_number || ""}</span></span>
+        <span style="color:${LINE_STATUS_COLOR[r.status] || "#6b7280"};font-weight:600">${LINE_STATUS_LABEL[r.status] || r.status}</span>
+      </div>
+    `).join("");
+    document.getElementById("line-batch-results").innerHTML =
+      resultsHtml || `<div style="padding:12px;color:var(--text-muted)">尚無結果</div>`;
+  }
+
+  async function _pollLineBatchStatus() {
+    try {
+      const resp = await apiFetch("/api/send-line-notifications/status");
+      const state = await resp.json();
+      _renderLineBatchState(state);
+
+      if (state.running) {
+        _lineBatchPolling = setTimeout(_pollLineBatchStatus, 2000);
+      } else {
+        _lineBatchPolling = null;
+        if (!state.dry_run && (state.results || []).some(r => r.status === "sent")) {
+          loadReport();  // refresh so successfully-notified patients disappear
+        }
+      }
+    } catch (err) {
+      document.getElementById("line-batch-status").textContent = "查詢進度失敗：" + err.message;
+    }
+  }
+
+  function closeLineBatchModal() {
+    document.getElementById("line-batch-modal").style.display = "none";
+    if (_lineBatchPolling) {
+      clearTimeout(_lineBatchPolling);
+      _lineBatchPolling = null;
+    }
+  }
+
+  function maybeCloseLineBatchModal(event) {
+    if (event.target === document.getElementById("line-batch-modal")) closeLineBatchModal();
   }
 
   // ── 已回診，待輸入VPN (B肝 patient returned, pending VPN entry) ──

@@ -162,6 +162,13 @@ class HepReturnedCompleteRequest(BaseModel):
     last_visit_date: date
 
 
+class SendLineNotificationsRequest(BaseModel):
+    category: Literal["慢簽", "代謝症候群", "B肝"]
+    nurse: str = ""
+    dry_run: bool = False
+    chart_numbers: list[str] | None = None  # restrict to specific patients (e.g. for a test send)
+
+
 class SubmitRequest(BaseModel):
     chart_number: str
     mspt_stage: MsptStage

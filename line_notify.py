@@ -190,11 +190,15 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
         return {**base, 'status': 'error', 'detail': str(e)}
 
 
-async def run_batch(targets: list[dict], dry_run: bool) -> list[dict]:
+async def run_batch(targets: list[dict], dry_run: bool, on_result=None) -> list[dict]:
     """targets: [{'chart_number', 'dob_roc' or 'dob' (date), 'name', 'template'}, ...]
     Attaches to the long-running automation browser (launching it first if
     needed) and processes each target in order. Never closes the browser —
     only stop_browser() does.
+
+    on_result, if given, is called with each result dict right after it
+    completes (e.g. so a caller can report live progress or mark a patient
+    as contacted immediately rather than waiting for the whole batch).
     """
     results = []
     async with async_playwright() as p:
@@ -206,5 +210,7 @@ async def run_batch(targets: list[dict], dry_run: bool) -> list[dict]:
             result = await send_one(page, t['chart_number'], dob_roc, t.get('name', ''), t['template'], dry_run)
             results.append(result)
             print(f"  [{result['status']}] {result['chart_number']} {result.get('name', '')}: {result['detail']}")
+            if on_result:
+                on_result(result)
 
     return results

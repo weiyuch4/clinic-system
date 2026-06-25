@@ -1,3 +1,4 @@
+import asyncio
 import hashlib
 import logging
 import os
@@ -23,7 +24,8 @@ from models import (
     ChartNumberRequest, ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
     HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest,
     MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
-    NurseEntryRequest, OnHoldRemoveRequest, OnHoldRequest, SubmitRequest, UnexcludeRequest,
+    NurseEntryRequest, OnHoldRemoveRequest, OnHoldRequest, SendLineNotificationsRequest,
+    SubmitRequest, UnexcludeRequest,
 )
 
 # ── Edit this list to match your clinic's nurse names ──────────────────────────
@@ -455,6 +457,109 @@ def unmark_manual_pickup(req: ChartNumberRequest) -> None:
     except Exception:
         logger.exception("unmark_manual_pickup failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
+
+
+_line_batch_state: dict = {
+    "running": False, "category": None, "dry_run": False,
+    "total": 0, "results": [], "error": None,
+}
+
+
+def _pick_line_template(entry: FollowupEntry) -> str | None:
+    if entry.category == "慢簽":
+        return "立即二次通知拿藥" if entry.call_required else "立即拿藥提醒"
+    if entry.category == "代謝症候群":
+        return "立即MSPT回診抽血" if entry.needs_blood_test else "立即MSPT定期追蹤"
+    if entry.category == "B肝":
+        return "立即B型肝炎追蹤"
+    return None
+
+
+async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -> None:
+    import line_notify  # deferred — depends on playwright, which is optional for the rest of the app
+
+    def on_result(result: dict) -> None:
+        _line_batch_state["results"].append(result)
+        if result["status"] == "sent" and not dry_run:
+            target = next((t for t in targets if t["chart_number"] == result["chart_number"]), None)
+            if not target:
+                return
+            try:
+                if target["call_required"]:
+                    contacts.mark_called(target["entry"], nurse)
+                else:
+                    contacts.mark_contacted(target["entry"], nurse)
+            except Exception:
+                logger.exception("failed to mark %s as contacted after LINE send", target["chart_number"])
+
+    try:
+        await line_notify.run_batch(
+            [
+                {
+                    "chart_number": t["chart_number"],
+                    "dob": t["entry"].patient.birth_date,
+                    "name": t["entry"].patient.name,
+                    "template": t["template"],
+                }
+                for t in targets
+            ],
+            dry_run=dry_run,
+            on_result=on_result,
+        )
+    except Exception as e:
+        logger.exception("LINE batch send failed")
+        _line_batch_state["error"] = str(e)
+    finally:
+        _line_batch_state["running"] = False
+
+
+@app.post("/api/send-line-notifications")
+async def send_line_notifications(req: SendLineNotificationsRequest) -> dict:
+    try:
+        import line_notify  # noqa: F401 — just checking it (and playwright) is installed
+    except ImportError:
+        raise HTTPException(status_code=500, detail="尚未安裝 playwright，請執行 pip install playwright 並 playwright install chromium")
+
+    if _line_batch_state["running"]:
+        raise HTTPException(status_code=409, detail="已有一個批次發送正在進行中，請稍候")
+
+    report_data = get_report(report_date=None)
+    source = {
+        "慢簽": report_data.chronic_prescriptions,
+        "代謝症候群": report_data.mspt_followups,
+        "B肝": report_data.hep_followups,
+    }[req.category]
+
+    if req.chart_numbers:
+        wanted = set(req.chart_numbers)
+        source = [e for e in source if e.patient.chart_number in wanted]
+
+    targets = []
+    for e in source:
+        template = _pick_line_template(e)
+        if not template:
+            continue
+        targets.append({
+            "chart_number": e.patient.chart_number,
+            "entry": e,
+            "template": template,
+            "call_required": e.call_required,
+        })
+
+    if not targets:
+        return {"started": False, "total": 0, "detail": "沒有符合條件的病患"}
+
+    _line_batch_state.update({
+        "running": True, "category": req.category, "dry_run": req.dry_run,
+        "total": len(targets), "results": [], "error": None,
+    })
+    asyncio.create_task(_run_line_batch_task(targets, req.dry_run, req.nurse))
+    return {"started": True, "total": len(targets)}
+
+
+@app.get("/api/send-line-notifications/status")
+def get_line_notifications_status() -> dict:
+    return _line_batch_state
 
 
 @app.get("/api/notice")
