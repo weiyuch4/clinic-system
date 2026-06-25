@@ -174,8 +174,10 @@ def get_report(report_date: date | None = None) -> DailyReport:
                 new_ov = (as_of - new_due).days
                 if new_ov < 0:
                     continue  # not yet due — drop from pending
+                final_stage = '收案' if new_ov > database.MSPT_REOPEN_DAYS else next_s
                 result.append(e.model_copy(update={
-                    'mspt_stage': '收案' if new_ov > database.MSPT_REOPEN_DAYS else next_s,
+                    'mspt_stage': final_stage,
+                    'needs_blood_test': database.mspt_needs_blood_test(final_stage, e.patient.chart_number, as_of),
                     'last_stage': m_stage,
                     'last_visit_date': m_date,
                     'due_date': new_due,

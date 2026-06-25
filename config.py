@@ -13,6 +13,10 @@ USE_MOCK_DATA: bool = False
 # Days after last visit before a 代謝症候群 patient is considered overdue.
 METABOLIC_FOLLOWUP_DAYS: int = 70
 
+# Alleypin page URL where the patient search table lives (set the real value
+# in config_local.py — this placeholder will fail loudly if used by mistake).
+ALLEYPIN_URL: str = "https://REPLACE-ME-IN-config_local.py"
+
 # config.local.py overrides the above — create it on the clinic PC with the real path.
 # It is gitignored and never committed.
 try:

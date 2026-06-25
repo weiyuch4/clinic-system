@@ -15,9 +15,18 @@ import os
 import re
 import struct
 import unicodedata
+from datetime import date, timedelta
 
 ZZ_DIR = r"Z:\Z"
 IC_DIR = r"Z:\IC"
+
+# Labels (from OLD_BIO_LABELS/NEW_BIO_LABELS below) considered part of the
+# MSPT (代謝症候群) metabolic panel — used to decide whether a recent blood
+# draw already covers the 追2/追3 blood-test requirement.
+# PROVISIONAL list — to be replaced with the precise marker list.
+MSPT_PANEL_LABELS = {
+    'Glucose (AC)', 'HbA1c', 'T-Chol (總膽固醇)', 'TG (三酸甘油脂)', 'HDL', 'LDL',
+}
 
 # New platform started 2026-04-01 (ROC 115/04/01 = raw DATE 'B50401').
 # Old and new platforms store different tests in the same VAR columns.
@@ -366,3 +375,35 @@ def get_lab_results(national_id: str) -> dict:
         return {'bio': bio, 'cbc': cbc, 'patient_code': patient_code, 'error': None}
     except Exception as e:
         return {'bio': [], 'cbc': [], 'patient_code': None, 'error': str(e)}
+
+
+def _parse_slash_date(s: str) -> date | None:
+    """Parse 'YYY/MM/DD' (3-digit ROC year, as returned by _bio_display_date) into a date."""
+    try:
+        y, m, d = s.split('/')
+        return date(int(y) + 1911, int(m), int(d))
+    except (ValueError, AttributeError, TypeError):
+        return None
+
+
+def has_recent_metabolic_panel(national_id: str, as_of: date, window_days: int = 70) -> bool:
+    """Return True if this patient has a BIO record within window_days before
+    as_of that includes at least one MSPT metabolic-panel marker
+    (MSPT_PANEL_LABELS) — used to decide whether a 追2/追3 MSPT stage still
+    needs a fresh blood draw or already has one recent enough to use.
+    """
+    try:
+        patient_code = _find_patient_code(national_id.strip().upper())
+        if not patient_code:
+            return False
+        cutoff = as_of - timedelta(days=window_days)
+        for dbf_name in ('bioc.dbf', 'BIO2C.DBF'):
+            for record in _read_bio_records(patient_code, dbf_name):
+                row_date = _parse_slash_date(record['date'])
+                if not row_date or row_date < cutoff or row_date > as_of:
+                    continue
+                if any(item['label'] in MSPT_PANEL_LABELS for item in record['items']):
+                    return True
+        return False
+    except Exception:
+        return False

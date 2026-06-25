@@ -3,6 +3,7 @@ import glob
 import os
 import struct
 
+import lab_results
 from config import IC_DATA_PATH, METABOLIC_FOLLOWUP_DAYS, PATDB_PATH, QUEUE_PATH, USE_MOCK_DATA
 from models import (
     DailyReport,
@@ -33,6 +34,26 @@ MSPT_STAGE_NEXT: dict[str, str] = {
 
 # All MSPT stages use the same inter-stage gap.
 _MSPT_STAGE_GAP = METABOLIC_FOLLOWUP_DAYS
+
+# Window for treating an existing blood draw as still covering a 追2/追3 stage.
+MSPT_BLOOD_TEST_WINDOW_DAYS = METABOLIC_FOLLOWUP_DAYS
+
+
+def mspt_needs_blood_test(mspt_stage: str, nat_id: str, as_of: date) -> bool:
+    """Whether this MSPT stage needs a fresh blood draw.
+
+    收案/年度追蹤 always do; 追1 never does; 追2/追3 only need one if no recent
+    (within MSPT_BLOOD_TEST_WINDOW_DAYS) metabolic-panel result already covers
+    it — a patient can have blood drawn at 追2 time and have it count for 追3,
+    or vice versa, so only one of the two actually needs a fresh draw.
+    """
+    if mspt_stage in ('收案', '年度追蹤'):
+        return True
+    if mspt_stage == '追1':
+        return False
+    if mspt_stage in ('追2', '追3'):
+        return not lab_results.has_recent_metabolic_panel(nat_id, as_of, MSPT_BLOOD_TEST_WINDOW_DAYS)
+    return False
 
 # ── DBF cache ─────────────────────────────────────────────────────────────────
 
@@ -501,6 +522,7 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
         if days_overdue > REOPEN_AFTER_DAYS:
             entry = entry.model_copy(update={
                 'mspt_stage': '收案',
+                'needs_blood_test': mspt_needs_blood_test('收案', nat_id, as_of),
                 'contact_reason': '需重新收案+抽血',
             })
             if (as_of - info['latest_date']).days > LONG_INACTIVE_DAYS:
@@ -508,7 +530,10 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
             else:
                 results.append(entry)
         else:
-            results.append(entry.model_copy(update={'mspt_stage': next_stage}))
+            results.append(entry.model_copy(update={
+                'mspt_stage': next_stage,
+                'needs_blood_test': mspt_needs_blood_test(next_stage, nat_id, as_of),
+            }))
 
     return (
         sorted(results, key=lambda e: e.days_overdue, reverse=True),

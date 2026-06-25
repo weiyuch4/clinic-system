@@ -4,3 +4,4 @@ pyodbc==5.1.0
 pydantic==2.8.2
 openpyxl>=3.1
 python-multipart>=0.0.9
+playwright>=1.45

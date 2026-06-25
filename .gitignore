@@ -5,6 +5,10 @@ backups/
 # Local config override (real IC data path goes here, not in config.py)
 config_local.py
 
+# Dedicated Chrome profile for the Alleypin LINE-notification automation —
+# holds a real logged-in session, must never be committed
+alleypin_profile/
+
 # Claude Code local settings
 .claude/
 
