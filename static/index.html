@@ -2811,12 +2811,9 @@
     document.getElementById("line-batch-status").textContent = statusLabel;
 
     const resultsHtml = (state.results || []).slice().reverse().map(r => `
-      <div class="line-batch-row" style="flex-direction:column;align-items:stretch;gap:2px">
-        <div style="display:flex;justify-content:space-between;gap:8px">
-          <span>${r.name || ""} <span class="chart-number" style="font-size:11px">${r.chart_number || ""}</span></span>
-          <span style="color:${LINE_STATUS_COLOR[r.status] || "#6b7280"};font-weight:600">${LINE_STATUS_LABEL[r.status] || r.status}</span>
-        </div>
-        ${r.detail ? `<div style="font-size:11px;color:var(--text-muted)">${r.detail}</div>` : ""}
+      <div class="line-batch-row">
+        <span>${r.name || ""} <span class="chart-number" style="font-size:11px">${r.chart_number || ""}</span></span>
+        <span style="color:${LINE_STATUS_COLOR[r.status] || "#6b7280"};font-weight:600">${LINE_STATUS_LABEL[r.status] || r.status}</span>
       </div>
     `).join("");
     document.getElementById("line-batch-results").innerHTML =
