@@ -8,6 +8,7 @@ config_local.py
 # Dedicated Chrome profile for the Alleypin LINE-notification automation —
 # holds a real logged-in session, must never be committed
 alleypin_profile/
+alleypin_browser.pid
 
 # Claude Code local settings
 .claude/

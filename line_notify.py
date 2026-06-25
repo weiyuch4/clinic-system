@@ -34,6 +34,7 @@ from playwright.async_api import async_playwright, Page, TimeoutError as PWTimeo
 import config
 
 PROFILE_DIR = Path(__file__).parent / "alleypin_profile"
+PID_FILE = Path(__file__).parent / "alleypin_browser.pid"
 
 # Fixed CDP port so the automation browser can be found and reused across
 # calls instead of being relaunched (and re-logged-in) every time.
@@ -78,13 +79,17 @@ def _is_browser_alive() -> bool:
 def _launch_detached_browser():
     """Start Edge as an independent OS process — NOT a Playwright-managed
     child — so it keeps running after our script exits. Logging into
-    Alleypin happens once here; later calls just attach via CDP."""
+    Alleypin happens once here; later calls just attach via CDP.
+
+    The PID is saved to PID_FILE so stop_browser() — possibly called from a
+    completely different process later — can find and kill it directly."""
     exe = _edge_executable_path()
     PROFILE_DIR.mkdir(exist_ok=True)
-    subprocess.Popen(
+    proc = subprocess.Popen(
         [exe, f"--remote-debugging-port={DEBUG_PORT}", f"--user-data-dir={PROFILE_DIR}", config.ALLEYPIN_URL],
         close_fds=True,
     )
+    PID_FILE.write_text(str(proc.pid))
 
 
 async def _get_page(p) -> Page:
@@ -107,12 +112,23 @@ async def _get_page(p) -> Page:
 
 async def stop_browser() -> bool:
     """Force-close the long-running automation browser (e.g. to clear a stuck
-    state, or to force a fresh login). Returns True if it was running."""
+    state, or to force a fresh login). Returns True if it was running.
+
+    Kills by PID rather than calling browser.close() over CDP — for a browser
+    Playwright didn't launch itself (i.e. attached via connect_over_cdp), close()
+    only ends Playwright's connection to it and does NOT terminate the actual
+    OS process, so the old browser (with whatever launch flags it started
+    with) silently kept running no matter how many times this was called."""
     if not _is_browser_alive():
         return False
-    async with async_playwright() as p:
-        browser = await p.chromium.connect_over_cdp(f"http://localhost:{DEBUG_PORT}")
-        await browser.close()
+    if PID_FILE.exists():
+        pid = PID_FILE.read_text().strip()
+        subprocess.run(["taskkill", "/F", "/T", "/PID", pid], capture_output=True)
+        PID_FILE.unlink(missing_ok=True)
+    for _ in range(20):
+        if not _is_browser_alive():
+            break
+        await asyncio.sleep(0.5)
     return True
 
 
