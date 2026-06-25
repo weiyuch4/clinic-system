@@ -178,7 +178,12 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
             return {**base, 'status': 'dry_run_ok', 'detail': f'would click {template_text!r}'}
 
         await container.click()
-        await page.wait_for_timeout(500)
+        await page.wait_for_timeout(300)
+        # Clicking the template only selects it — clicking outside the modal
+        # afterward is what actually commits/persists it (matches the manual
+        # workflow). Without this, the tag appears briefly then reverts.
+        await page.locator(SEARCH_INPUT_SELECTOR).click()
+        await page.wait_for_timeout(800)
         return {**base, 'status': 'sent', 'detail': f'clicked {template_text!r}'}
 
     except Exception as e:
