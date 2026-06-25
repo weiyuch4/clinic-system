@@ -81,11 +81,10 @@ def _launch_detached_browser():
     Alleypin happens once here; later calls just attach via CDP."""
     exe = _edge_executable_path()
     PROFILE_DIR.mkdir(exist_ok=True)
-    args = [exe, f"--remote-debugging-port={DEBUG_PORT}", f"--user-data-dir={PROFILE_DIR}"]
-    if config.ALLEYPIN_HEADLESS:
-        args.append("--headless=new")
-    args.append(config.ALLEYPIN_URL)
-    subprocess.Popen(args, close_fds=True)
+    subprocess.Popen(
+        [exe, f"--remote-debugging-port={DEBUG_PORT}", f"--user-data-dir={PROFILE_DIR}", config.ALLEYPIN_URL],
+        close_fds=True,
+    )
 
 
 async def _get_page(p) -> Page:
@@ -128,15 +127,14 @@ async def _ensure_logged_in(page: Page):
     """Fail loudly if the page doesn't look logged in, rather than letting
     every subsequent patient search silently come back not_found. Matters
     most after a PC reboot — Alleypin's session cookie doesn't appear to
-    survive a clean browser shutdown, and in headless mode there's no
-    visible window to notice a login page came up instead of the patient list."""
+    survive a clean browser shutdown, so the freshly-launched browser may
+    come up on a login page instead of the patient list."""
     try:
         await page.locator(SEARCH_INPUT_SELECTOR).wait_for(timeout=5000)
     except PWTimeoutError:
         raise RuntimeError(
-            "尚未登入 Alleypin（找不到搜尋欄位）。請將 config.py 的 ALLEYPIN_HEADLESS "
-            "暫時設為 False，執行 python test_line_notify.py --stop 後重新登入一次，"
-            "再改回 True。"
+            "尚未登入 Alleypin（找不到搜尋欄位）。請執行 python test_line_notify.py --stop，"
+            "等視窗開啟後手動登入一次。"
         )
 
 

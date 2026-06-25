@@ -17,12 +17,6 @@ METABOLIC_FOLLOWUP_DAYS: int = 70
 # in config_local.py — this placeholder will fail loudly if used by mistake).
 ALLEYPIN_URL: str = "https://REPLACE-ME-IN-config_local.py"
 
-# Run the Alleypin automation browser with no visible window. Currently False —
-# headless mode showed a real reliability gap in testing (first patient in a
-# batch succeeds, every one after errors out) that hasn't been root-caused yet.
-# Re-enable only after that's understood; see line_notify.py's send_one().
-ALLEYPIN_HEADLESS: bool = False
-
 # config.local.py overrides the above — create it on the clinic PC with the real path.
 # It is gitignored and never committed.
 try:
