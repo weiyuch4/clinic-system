@@ -143,6 +143,21 @@ async def _navigate_if_needed(page: Page):
         await page.wait_for_load_state("networkidle")
 
 
+async def _ensure_logged_in(page: Page):
+    """Fail loudly if the page doesn't look logged in, rather than letting
+    every subsequent patient search silently come back not_found. Matters
+    most after a PC reboot — Alleypin's session cookie doesn't appear to
+    survive a clean browser shutdown, so the freshly-launched browser may
+    come up on a login page instead of the patient list."""
+    try:
+        await page.locator(SEARCH_INPUT_SELECTOR).wait_for(timeout=5000)
+    except PWTimeoutError:
+        raise RuntimeError(
+            "尚未登入 Alleypin（找不到搜尋欄位）。請執行 python test_line_notify.py --stop，"
+            "等視窗開啟後手動登入一次。"
+        )
+
+
 async def _find_patient_row(page: Page, chart_number: str, dob_roc: str, expected_name: str = ""):
     """Search by DOB, return the row Locator matching chart_number, or None with a reason."""
     search = page.locator(SEARCH_INPUT_SELECTOR)
