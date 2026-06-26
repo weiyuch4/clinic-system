@@ -46,9 +46,16 @@ TWID_SELECTOR = '[data-e2e-id="users-list-table-col-tw-id"]'
 NAME_SELECTOR = '[data-e2e-id="users-list-table-col-name"]'
 TRACKING_CELL_SELECTOR = '[data-e2e-id="users-list-table-col-patient-tracking"]'
 # No data-e2e-id on the per-tag pills inside the tracking-history popup (per the
-# HTML the user pasted) — matched structurally instead: each pill is a
+# HTML the user pasted) — matched structurally instead: each applied tag is a
 # div.inline-flex containing the template-text span and a timestamp span.ml-1.
-TAG_ENTRY_SELECTOR = 'div.inline-flex'
+# Scoped to direct children of the applied-tags wrapper (rounded-lg + bg-white)
+# specifically because the SAME popup also lists all ~36 selectable templates
+# further down in a different container (text-xs, items wrapped in
+# div.cursor-pointer) — those also render as div.inline-flex with matching
+# text, just with an empty timestamp span and no remove svg. An unscoped
+# search matched that picker entry instead of the real tag and hung forever
+# waiting for a non-existent svg inside it.
+TAG_ENTRY_SELECTOR = 'div.rounded-lg.border-gray-300.bg-white > div.inline-flex'
 
 # Nurses already use Edge daily, so drive that instead of installing Chrome.
 _EDGE_CANDIDATES = [
