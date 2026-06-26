@@ -246,9 +246,10 @@ async def undo_one(page: Page, chart_number: str, dob_roc: str, name: str,
         await clickable.click()
         await page.wait_for_timeout(600)
 
-        entry = page.locator(TAG_ENTRY_SELECTOR).filter(
-            has=page.locator(f'span:text-is("{template_text}")')
-        )
+        # has_text does a substring match on the entry's whole text content,
+        # not an exact match on one span — robust to however the timestamp
+        # actually renders (own span, or appended after the name in the same one).
+        entry = page.locator(TAG_ENTRY_SELECTOR).filter(has_text=template_text)
         try:
             await entry.first.wait_for(timeout=3000)
         except PWTimeoutError:
