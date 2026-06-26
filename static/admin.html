@@ -798,6 +798,27 @@ tbody tr:hover td { background: #F7F9FF; }
   .bonus-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .bc { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
 }
+
+/* ── LINE notification ──────────────────────────────────────────────────────── */
+.ln-form { padding: 18px 24px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+.ln-field { display: flex; flex-direction: column; gap: 4px; }
+.ln-field label { font-size: 11px; font-weight: 700; color: var(--text-2); }
+.ln-input {
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-s);
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: var(--font);
+  background: var(--surface);
+  color: var(--text-1);
+}
+.ln-input:focus { outline: none; border-color: var(--blue); }
+.ln-check { display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-2); cursor: pointer; padding-bottom: 7px; }
+.ln-progress { padding: 0 24px 18px; }
+.ln-progress-status { font-size: 12.5px; color: var(--text-2); margin: 0 0 8px; }
+.ln-progress-track { background: var(--bg); border-radius: 999px; height: 7px; overflow: hidden; }
+.ln-progress-bar { background: var(--blue); height: 100%; width: 0%; transition: width .3s; }
+.ln-detail { font-size: 11px; color: var(--text-3); }
 </style>
 </head>
 <body>
@@ -816,6 +837,7 @@ tbody tr:hover td { background: #F7F9FF; }
   <button class="tab"        data-section="doctors">醫師回診率</button>
   <button class="tab"        data-section="labreport">代檢對帳單</button>
   <button class="tab"        data-section="bonus">不定期獎金</button>
+  <button class="tab"        data-section="linenotify">LINE 通知</button>
 </div>
 
 <main>
@@ -908,6 +930,46 @@ tbody tr:hover td { background: #F7F9FF; }
       <span style="font-size:12px;color:#3B82F6;margin-left:4px">（其他護理師依天數比例換算）</span>
     </div>
     <div class="bonus-grid" id="bonus-grid"></div>
+  </section>
+
+  <!-- ── LINE 通知 ── -->
+  <section id="linenotify" class="section">
+    <div class="card" style="margin-bottom:20px">
+      <div class="card-head">
+        <span class="card-title">批次發送LINE通知</span>
+        <span class="card-spacer"></span>
+        <span class="card-meta">尚未在 PC1 完整驗證，謹慎使用</span>
+      </div>
+      <div class="ln-form">
+        <div class="ln-field">
+          <label>類別</label>
+          <select id="ln-category" class="ln-input">
+            <option value="慢簽">慢簽</option>
+            <option value="代謝症候群">代謝症候群</option>
+            <option value="B肝">B肝</option>
+          </select>
+        </div>
+        <div class="ln-field">
+          <label>限制人數（留空＝全部）</label>
+          <input type="number" id="ln-limit" class="ln-input" min="1" placeholder="全部" style="width:110px">
+        </div>
+        <label class="ln-check"><input type="checkbox" id="ln-dryrun" checked> 測試模式（不會真的發送）</label>
+        <button class="btn-sm primary" onclick="startLineBatch()">發送</button>
+      </div>
+      <div class="ln-progress" id="ln-progress-wrap" style="display:none">
+        <p class="ln-progress-status" id="ln-status"></p>
+        <div class="ln-progress-track"><div class="ln-progress-bar" id="ln-progress-bar"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">發送記錄</span>
+        <span class="card-spacer"></span>
+        <button class="btn-sm" onclick="loadLineLog()">重新整理</button>
+      </div>
+      <div class="tbl-wrap" id="linenotify-body"></div>
+    </div>
   </section>
 
 </main>
@@ -1647,12 +1709,141 @@ function addBonusCardPrompt() {
   if (name && name.trim()) addBonusCard(name.trim());
 }
 
+// ── LINE notification ─────────────────────────────────────────────────────────
+const LN_STATUS_LABEL = {
+  sent: '已發送', dry_run_ok: '測試通過', not_found: '找不到病患',
+  template_not_found: '找不到範本', tag_not_found: '找不到標籤', error: '錯誤',
+};
+const LN_STATUS_COLOR = {
+  sent: 'var(--emerald)', dry_run_ok: 'var(--blue)', not_found: 'var(--amber)',
+  template_not_found: 'var(--amber)', tag_not_found: 'var(--amber)', error: 'var(--red)',
+};
+
+let _lnPolling = null;
+
+async function startLineBatch() {
+  const category = $('ln-category').value;
+  const limitVal = $('ln-limit').value.trim();
+  const limit = limitVal ? parseInt(limitVal, 10) : null;
+  const dryRun = $('ln-dryrun').checked;
+
+  const modeLabel = dryRun ? '測試模式（不會真的發送）' : '正式發送';
+  const countLabel = limit ? `最多 ${limit} 位` : '全部待聯絡';
+  if (!confirm(`即將以「${modeLabel}」處理 ${category}（${countLabel}）病患的LINE通知，確定繼續嗎？`)) return;
+
+  $('ln-progress-wrap').style.display = 'block';
+  $('ln-status').textContent = '啟動中…';
+  $('ln-progress-bar').style.width = '0%';
+
+  try {
+    const res = await fetch('/api/send-line-notifications', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category, nurse: 'admin', dry_run: dryRun, limit }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    if (!data.started) {
+      $('ln-status').textContent = data.detail || '沒有符合條件的病患';
+      return;
+    }
+    _pollLineBatch();
+  } catch (err) {
+    $('ln-status').textContent = '啟動失敗：' + err.message;
+  }
+}
+
+async function _pollLineBatch() {
+  try {
+    const res = await fetch('/api/send-line-notifications/status', { credentials: 'include' });
+    const state = await res.json();
+    const total = state.total || 0;
+    const done = (state.results || []).length;
+    const pct = total ? Math.round((done / total) * 100) : 0;
+    $('ln-progress-bar').style.width = pct + '%';
+
+    let label = state.running ? `處理中… ${done}/${total}` : `完成：${done}/${total}`;
+    if (state.dry_run) label = `[測試模式] ${label}`;
+    if (state.error) label += ` — 發生錯誤：${state.error}`;
+    $('ln-status').textContent = label;
+
+    if (state.running) {
+      _lnPolling = setTimeout(_pollLineBatch, 2000);
+    } else {
+      _lnPolling = null;
+      loadLineLog();
+    }
+  } catch (err) {
+    $('ln-status').textContent = '查詢進度失敗：' + err.message;
+  }
+}
+
+async function loadLineLog() {
+  $('linenotify-body').innerHTML = shimTable(8, 8);
+  try {
+    const rows = await api('/api/admin/line-notification-log');
+    renderLineLog(rows);
+  } catch (err) {
+    $('linenotify-body').innerHTML = errState(err.message);
+  }
+}
+
+function renderLineLog(rows) {
+  if (!rows.length) {
+    $('linenotify-body').innerHTML = emptyState('📨', '尚無發送記錄', '');
+    return;
+  }
+  const trs = rows.map(r => {
+    const canUndo = r.status === 'sent' && !r.dry_run && !r.undone_at;
+    const statusHtml = r.undone_at
+      ? `<span style="color:var(--text-3)">已復原</span>`
+      : `<span style="color:${LN_STATUS_COLOR[r.status] || 'var(--text-2)'};font-weight:600">${LN_STATUS_LABEL[r.status] || r.status}</span>`;
+    return `<tr>
+      <td class="l">${r.name} <span style="color:var(--text-3);font-size:11px">${r.chart_number}</span></td>
+      <td class="l">${r.category}</td>
+      <td class="l">${r.template}</td>
+      <td class="l">${statusHtml}<div class="ln-detail">${r.detail || ''}</div></td>
+      <td>${r.dry_run ? '測試' : '正式'}</td>
+      <td class="l">${r.sent_at} ${r.sent_time || ''}</td>
+      <td class="l">${r.nurse || ''}</td>
+      <td>${canUndo ? `<button class="btn-sm" onclick="undoLineLog(${r.id}, this)">復原</button>` : ''}</td>
+    </tr>`;
+  }).join('');
+  const thead = `<tr>
+    <th class="l">病患</th><th class="l">類別</th><th class="l">範本</th><th class="l">狀態</th>
+    <th>模式</th><th class="l">發送時間</th><th class="l">操作人員</th><th></th>
+  </tr>`;
+  $('linenotify-body').innerHTML = `<table><thead>${thead}</thead><tbody>${trs}</tbody></table>`;
+}
+
+async function undoLineLog(id, btn) {
+  if (!confirm('確定要從 Alleypin 移除這則通知標籤嗎？')) return;
+  btn.disabled = true;
+  btn.textContent = '處理中…';
+  try {
+    const res = await fetch(`/api/admin/line-notification-log/${id}/undo`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nurse: 'admin', dry_run: false }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+    if (data.status !== 'sent') throw new Error(data.detail || data.status);
+    await loadLineLog();
+  } catch (err) {
+    alert('復原失敗：' + err.message);
+    btn.disabled = false;
+    btn.textContent = '復原';
+  }
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 function load(section) {
   if (section === 'nurses')    loadNurses();
   else if (section === 'doctors')   loadDoctors();
   else if (section === 'labreport') loadLabReport();
   else if (section === 'bonus')     loadBonus();
+  else if (section === 'linenotify') loadLineLog();
 }
 
 function refresh() {

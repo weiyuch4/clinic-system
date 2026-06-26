@@ -16,12 +16,17 @@ Run on PC1:
   python test_line_notify.py B123124596 1980/05/20 王順鴻 "立即B型肝炎追蹤" --live
   python test_line_notify.py --stop
 
+To test removing a previously-applied tag, add --undo (matches by the
+template name alone — no need to look up a timestamp):
+  python test_line_notify.py B123124596 1980/05/20 王順鴻 "立即B型肝炎追蹤" --undo
+  python test_line_notify.py B123124596 1980/05/20 王順鴻 "立即B型肝炎追蹤" --undo --live
+
 DOB must be in ROC format (e.g. 115/01/15), matching what the search box expects.
 """
 import argparse
 import asyncio
 
-from line_notify import run_batch, stop_browser
+from line_notify import run_batch, run_undo, stop_browser
 
 
 def main():
@@ -30,7 +35,9 @@ def main():
     parser.add_argument("dob_roc", nargs="?", help="ROC format DOB, e.g. 115/01/15")
     parser.add_argument("name", nargs="?", help="Patient name, for the safety cross-check")
     parser.add_argument("template", nargs="?", help="Exact preset-text label, e.g. 立即B型肝炎追蹤")
-    parser.add_argument("--live", action="store_true", help="Actually click-send (default is dry-run)")
+    parser.add_argument("--undo", action="store_true",
+                         help="Remove this tag instead of sending one (matched by template name alone)")
+    parser.add_argument("--live", action="store_true", help="Actually click (default is dry-run)")
     parser.add_argument("--stop", action="store_true", help="Close the long-running automation browser and exit")
     args = parser.parse_args()
 
@@ -42,19 +49,26 @@ def main():
     if not all([args.chart_number, args.dob_roc, args.name, args.template]):
         parser.error("chart_number, dob_roc, name, and template are required unless using --stop")
 
-    targets = [{
-        'chart_number': args.chart_number,
-        'dob_roc': args.dob_roc,
-        'name': args.name,
-        'template': args.template,
-    }]
-
-    mode = "LIVE — this WILL send a real message" if args.live else "DRY-RUN — nothing will actually be sent"
+    action = "remove the tag" if args.undo else "send a real message"
+    mode = f"LIVE — this WILL {action}" if args.live else "DRY-RUN — nothing will actually happen"
     print(f"Mode: {mode}")
     print("If the browser isn't already running, a window will open — log into Alleypin")
     print("manually if prompted (only needed the first time). Watch each step.\n")
 
-    results = asyncio.run(run_batch(targets, dry_run=not args.live))
+    if args.undo:
+        target = {
+            'chart_number': args.chart_number, 'dob_roc': args.dob_roc,
+            'name': args.name, 'template': args.template,
+        }
+        results = [asyncio.run(run_undo(target, dry_run=not args.live))]
+    else:
+        targets = [{
+            'chart_number': args.chart_number,
+            'dob_roc': args.dob_roc,
+            'name': args.name,
+            'template': args.template,
+        }]
+        results = asyncio.run(run_batch(targets, dry_run=not args.live))
 
     print("\n" + "=" * 60)
     print("RESULT")

@@ -25,7 +25,7 @@ from models import (
     HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest,
     MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, OnHoldRemoveRequest, OnHoldRequest, SendLineNotificationsRequest,
-    SubmitRequest, UnexcludeRequest,
+    SubmitRequest, UnexcludeRequest, UndoLineNotificationRequest,
 )
 
 # ── Edit this list to match your clinic's nurse names ──────────────────────────
@@ -480,10 +480,26 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -
 
     def on_result(result: dict) -> None:
         _line_batch_state["results"].append(result)
+        target = next((t for t in targets if t["chart_number"] == result["chart_number"]), None)
+        if not target:
+            return
+
+        try:
+            contacts.log_line_notification(
+                chart_number=target["chart_number"],
+                name=target["entry"].patient.name,
+                birth_date=target["entry"].patient.birth_date.isoformat(),
+                category=target["entry"].category,
+                template=target["template"],
+                status=result["status"],
+                detail=result.get("detail", ""),
+                dry_run=dry_run,
+                nurse=nurse,
+            )
+        except Exception:
+            logger.exception("failed to log LINE notification result for %s", target["chart_number"])
+
         if result["status"] == "sent" and not dry_run:
-            target = next((t for t in targets if t["chart_number"] == result["chart_number"]), None)
-            if not target:
-                return
             try:
                 if target["call_required"]:
                     contacts.mark_called(target["entry"], nurse)
@@ -546,6 +562,9 @@ async def send_line_notifications(req: SendLineNotificationsRequest) -> dict:
             "call_required": e.call_required,
         })
 
+    if req.limit is not None:
+        targets = targets[:req.limit]
+
     if not targets:
         return {"started": False, "total": 0, "detail": "沒有符合條件的病患"}
 
@@ -560,6 +579,43 @@ async def send_line_notifications(req: SendLineNotificationsRequest) -> dict:
 @app.get("/api/send-line-notifications/status")
 def get_line_notifications_status() -> dict:
     return _line_batch_state
+
+
+@app.get("/api/admin/line-notification-log")
+def get_line_notification_log(_: None = Depends(_require_admin)) -> list:
+    return contacts.get_line_notification_log()
+
+
+@app.post("/api/admin/line-notification-log/{log_id}/undo")
+async def undo_line_notification(log_id: int, req: UndoLineNotificationRequest, _: None = Depends(_require_admin)) -> dict:
+    entry = contacts.get_line_notification_log_entry(log_id)
+    if entry is None:
+        raise HTTPException(status_code=404, detail="找不到此記錄")
+    if entry["status"] != "sent":
+        raise HTTPException(status_code=400, detail="此記錄並未成功發送，無需復原")
+    if entry["undone_at"]:
+        raise HTTPException(status_code=400, detail="此記錄已經復原過了")
+
+    try:
+        import line_notify
+    except ImportError:
+        raise HTTPException(status_code=500, detail="尚未安裝 playwright，請執行 pip install playwright 並 playwright install chromium")
+
+    target = {
+        "chart_number": entry["chart_number"],
+        "dob_roc": line_notify.to_roc_slash_date(date.fromisoformat(entry["birth_date"])),
+        "name": entry["name"],
+        "template": entry["template"],
+    }
+    try:
+        result = await line_notify.run_undo(target, req.dry_run)
+    except Exception as e:
+        logger.exception("undo_line_notification failed for log_id=%s", log_id)
+        raise HTTPException(status_code=500, detail=f"復原失敗：{e}")
+
+    if result["status"] == "sent":
+        contacts.mark_line_notification_undone(log_id, req.nurse)
+    return result
 
 
 @app.get("/api/notice")

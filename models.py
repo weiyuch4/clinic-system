@@ -167,6 +167,12 @@ class SendLineNotificationsRequest(BaseModel):
     nurse: str = ""
     dry_run: bool = False
     chart_numbers: list[str] | None = None  # restrict to specific patients (e.g. for a test send)
+    limit: int | None = None  # cap to the first N patients in the pending list, e.g. for a small test batch
+
+
+class UndoLineNotificationRequest(BaseModel):
+    nurse: str = ""
+    dry_run: bool = False
 
 
 class SubmitRequest(BaseModel):

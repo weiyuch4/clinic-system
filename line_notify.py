@@ -45,6 +45,10 @@ ROW_SELECTOR = 'tr:has([data-e2e-id="users-list-table-col-tw-id"])'
 TWID_SELECTOR = '[data-e2e-id="users-list-table-col-tw-id"]'
 NAME_SELECTOR = '[data-e2e-id="users-list-table-col-name"]'
 TRACKING_CELL_SELECTOR = '[data-e2e-id="users-list-table-col-patient-tracking"]'
+# No data-e2e-id on the per-tag pills inside the tracking-history popup (per the
+# HTML the user pasted) — matched structurally instead: each pill is a
+# div.inline-flex containing the template-text span and a timestamp span.ml-1.
+TAG_ENTRY_SELECTOR = 'div.inline-flex'
 
 # Nurses already use Edge daily, so drive that instead of installing Chrome.
 _EDGE_CANDIDATES = [
@@ -206,6 +210,52 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
         return {**base, 'status': 'error', 'detail': str(e)}
 
 
+async def undo_one(page: Page, chart_number: str, dob_roc: str, name: str,
+                    template_text: str, dry_run: bool) -> dict:
+    """Remove a previously-applied preset-text tag from a patient's tracking
+    history, identified by template text alone. We already know exactly
+    which template was sent to this patient (it's recorded at send time), so
+    there's no ambiguity to resolve — the same pasted history shows no two
+    tags with identical text active at once.
+
+    UNVERIFIED against the real Alleypin page — written from HTML the user
+    pasted, not yet tested live. Validate carefully before trusting it.
+    """
+    base = {'chart_number': chart_number, 'name': name}
+    try:
+        row, reason = await _find_patient_row(page, chart_number, dob_roc, name)
+        if row is None:
+            return {**base, 'status': 'not_found', 'detail': reason}
+
+        clickable = row.locator(TRACKING_CELL_SELECTOR).locator('.cursor-pointer').first
+        await clickable.click()
+        await page.wait_for_timeout(600)
+
+        entry = page.locator(TAG_ENTRY_SELECTOR).filter(
+            has=page.locator(f'span:text-is("{template_text}")')
+        )
+        try:
+            await entry.first.wait_for(timeout=3000)
+        except PWTimeoutError:
+            await page.keyboard.press("Escape")
+            return {**base, 'status': 'tag_not_found', 'detail': f'no tag matching {template_text!r} found in modal'}
+
+        remove_icon = entry.first.locator('svg')
+        if dry_run:
+            await page.keyboard.press("Escape")
+            return {**base, 'status': 'dry_run_ok', 'detail': f'would remove {template_text!r}'}
+
+        await remove_icon.click()
+        await page.wait_for_timeout(300)
+        # Same commit pattern as send_one() — clicking outside persists the change.
+        await page.locator(SEARCH_INPUT_SELECTOR).click()
+        await page.wait_for_timeout(800)
+        return {**base, 'status': 'sent', 'detail': f'removed {template_text!r}'}
+
+    except Exception as e:
+        return {**base, 'status': 'error', 'detail': str(e)}
+
+
 async def run_batch(targets: list[dict], dry_run: bool, on_result=None) -> list[dict]:
     """targets: [{'chart_number', 'dob_roc' or 'dob' (date), 'name', 'template'}, ...]
     Attaches to the long-running automation browser (launching it first if
@@ -220,6 +270,7 @@ async def run_batch(targets: list[dict], dry_run: bool, on_result=None) -> list[
     async with async_playwright() as p:
         page = await _get_page(p)
         await _navigate_if_needed(page)
+        await _ensure_logged_in(page)
 
         for t in targets:
             dob_roc = t.get('dob_roc') or to_roc_slash_date(t['dob'])
@@ -230,3 +281,20 @@ async def run_batch(targets: list[dict], dry_run: bool, on_result=None) -> list[
                 on_result(result)
 
     return results
+
+
+async def run_undo(target: dict, dry_run: bool) -> dict:
+    """Single-patient counterpart to run_batch(), for undo_one(). target:
+    {'chart_number', 'dob_roc' or 'dob' (date), 'name', 'template'}."""
+    async with async_playwright() as p:
+        page = await _get_page(p)
+        await _navigate_if_needed(page)
+        await _ensure_logged_in(page)
+
+        dob_roc = target.get('dob_roc') or to_roc_slash_date(target['dob'])
+        result = await undo_one(
+            page, target['chart_number'], dob_roc, target.get('name', ''),
+            target['template'], dry_run,
+        )
+        print(f"  [undo:{result['status']}] {result['chart_number']} {result.get('name', '')}: {result['detail']}")
+        return result

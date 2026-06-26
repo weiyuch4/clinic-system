@@ -152,6 +152,26 @@ _CREATE_HEP_RETURNED_COMPLETED = """
 """
 
 
+_CREATE_LINE_NOTIFICATION_LOG = """
+    CREATE TABLE IF NOT EXISTS line_notification_log (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        chart_number TEXT NOT NULL,
+        name         TEXT NOT NULL,
+        birth_date   TEXT NOT NULL,
+        category     TEXT NOT NULL,
+        template     TEXT NOT NULL,
+        status       TEXT NOT NULL,
+        detail       TEXT,
+        dry_run      INTEGER NOT NULL,
+        nurse        TEXT DEFAULT '',
+        sent_at      TEXT NOT NULL,
+        sent_time    TEXT,
+        undone_at    TEXT,
+        undone_by    TEXT
+    )
+"""
+
+
 @contextmanager
 def _conn() -> Generator[sqlite3.Connection, None, None]:
     conn = sqlite3.connect(DB_PATH)
@@ -176,6 +196,7 @@ def init() -> None:
         conn.execute(_CREATE_ON_HOLD)
         conn.execute(_CREATE_MANUAL_PICKUPS)
         conn.execute(_CREATE_HEP_RETURNED_COMPLETED)
+        conn.execute(_CREATE_LINE_NOTIFICATION_LOG)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
             try:
@@ -624,6 +645,58 @@ def get_hep_returned_completed_entries() -> list[FollowupEntry]:
         )
         for r in rows
     ]
+
+
+def log_line_notification(
+    chart_number: str, name: str, birth_date: str, category: str, template: str,
+    status: str, detail: str, dry_run: bool, nurse: str = '',
+) -> int:
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO line_notification_log
+               (chart_number, name, birth_date, category, template, status, detail,
+                dry_run, nurse, sent_at, sent_time)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (chart_number, name, birth_date, category, template, status, detail,
+             int(dry_run), nurse, date.today().isoformat(), datetime.now().strftime('%H:%M')),
+        )
+        return cur.lastrowid
+
+
+def get_line_notification_log(limit: int = 300) -> list[dict]:
+    with _conn() as conn:
+        rows = conn.execute(
+            """SELECT id, chart_number, name, birth_date, category, template, status, detail,
+                      dry_run, nurse, sent_at, sent_time, undone_at, undone_by
+               FROM line_notification_log ORDER BY id DESC LIMIT ?""",
+            (limit,),
+        ).fetchall()
+    cols = ('id', 'chart_number', 'name', 'birth_date', 'category', 'template', 'status',
+            'detail', 'dry_run', 'nurse', 'sent_at', 'sent_time', 'undone_at', 'undone_by')
+    return [dict(zip(cols, r)) for r in rows]
+
+
+def get_line_notification_log_entry(log_id: int) -> dict | None:
+    with _conn() as conn:
+        row = conn.execute(
+            """SELECT id, chart_number, name, birth_date, category, template, status, detail,
+                      dry_run, nurse, sent_at, sent_time, undone_at, undone_by
+               FROM line_notification_log WHERE id = ?""",
+            (log_id,),
+        ).fetchone()
+    if row is None:
+        return None
+    cols = ('id', 'chart_number', 'name', 'birth_date', 'category', 'template', 'status',
+            'detail', 'dry_run', 'nurse', 'sent_at', 'sent_time', 'undone_at', 'undone_by')
+    return dict(zip(cols, row))
+
+
+def mark_line_notification_undone(log_id: int, nurse: str = '') -> None:
+    with _conn() as conn:
+        conn.execute(
+            "UPDATE line_notification_log SET undone_at = ?, undone_by = ? WHERE id = ?",
+            (datetime.now().strftime('%Y-%m-%d %H:%M'), nurse, log_id),
+        )
 
 
 def get_mspt_completed_entries() -> list[FollowupEntry]:
