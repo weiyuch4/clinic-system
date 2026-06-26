@@ -463,6 +463,7 @@ _line_batch_state: dict = {
     "running": False, "category": None, "dry_run": False,
     "total": 0, "results": [], "error": None,
 }
+_line_batch_task: asyncio.Task | None = None  # kept separate from _line_batch_state — not JSON-serializable
 
 
 def _pick_line_template(entry: FollowupEntry) -> str | None:
@@ -572,13 +573,40 @@ async def send_line_notifications(req: SendLineNotificationsRequest) -> dict:
         "running": True, "category": req.category, "dry_run": req.dry_run,
         "total": len(targets), "results": [], "error": None,
     })
-    asyncio.create_task(_run_line_batch_task(targets, req.dry_run, req.nurse))
+    global _line_batch_task
+    _line_batch_task = asyncio.create_task(_run_line_batch_task(targets, req.dry_run, req.nurse))
     return {"started": True, "total": len(targets)}
 
 
 @app.get("/api/send-line-notifications/status")
 def get_line_notifications_status() -> dict:
     return _line_batch_state
+
+
+@app.post("/api/send-line-notifications/cancel")
+async def cancel_line_notifications() -> dict:
+    """Cancel any in-progress batch and force-close the automation browser —
+    covers both "it's stuck mid-batch" and "the browser itself is stuck for
+    some unrelated reason" in one action. Always attempts the browser stop,
+    even if nothing was running, so the CDP port is reliably freed either way."""
+    cancelled = False
+    if _line_batch_task is not None and not _line_batch_task.done():
+        _line_batch_task.cancel()
+        cancelled = True
+
+    browser_stopped = False
+    try:
+        import line_notify
+        browser_stopped = await line_notify.stop_browser()
+    except ImportError:
+        pass
+    except Exception:
+        logger.exception("stop_browser failed during cancel")
+
+    _line_batch_state["running"] = False
+    if cancelled:
+        _line_batch_state["error"] = "已手動取消"
+    return {"cancelled": cancelled, "browser_stopped": browser_stopped}
 
 
 @app.get("/api/admin/line-notification-log")

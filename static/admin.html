@@ -938,6 +938,7 @@ tbody tr:hover td { background: #F7F9FF; }
       <div class="card-head">
         <span class="card-title">批次發送LINE通知</span>
         <span class="card-spacer"></span>
+        <button class="btn-sm" style="border-color:var(--red);color:var(--red)" onclick="stopLineAutomation()">停止／重啟瀏覽器</button>
         <span class="card-meta">尚未在 PC1 完整驗證，謹慎使用</span>
       </div>
       <div class="ln-form">
@@ -1775,6 +1776,26 @@ async function _pollLineBatch() {
     }
   } catch (err) {
     $('ln-status').textContent = '查詢進度失敗：' + err.message;
+  }
+}
+
+async function stopLineAutomation() {
+  if (!confirm('確定要停止目前的批次發送並關閉自動化瀏覽器嗎？\n注意：瀏覽器關閉後，下次使用可能需要重新登入 Alleypin。')) return;
+  try {
+    const res = await fetch('/api/send-line-notifications/cancel', { method: 'POST', credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+
+    if (_lnPolling) { clearTimeout(_lnPolling); _lnPolling = null; }
+
+    let msg = data.cancelled ? '已取消目前的批次發送。' : '目前沒有正在執行的批次。';
+    msg += data.browser_stopped ? ' 自動化瀏覽器已關閉，下次使用會重新開啟一個新的。' : ' 自動化瀏覽器目前不是執行中的狀態。';
+    alert(msg);
+
+    $('ln-status').textContent = '已停止';
+    loadLineLog();
+  } catch (err) {
+    alert('停止失敗：' + err.message);
   }
 }
 
