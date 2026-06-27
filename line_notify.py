@@ -45,6 +45,12 @@ ROW_SELECTOR = 'tr:has([data-e2e-id="users-list-table-col-tw-id"])'
 TWID_SELECTOR = '[data-e2e-id="users-list-table-col-tw-id"]'
 NAME_SELECTOR = '[data-e2e-id="users-list-table-col-name"]'
 TRACKING_CELL_SELECTOR = '[data-e2e-id="users-list-table-col-patient-tracking"]'
+LINE_LINK_SELECTOR = '[data-e2e-id="users-list-table-col-line-message"]'
+# The bubble outline is fill="white" in both states; the distinguishing path
+# is the LINE glyph itself — green (#31C48D) when linked, gray (#D1D5DB) when
+# not. Checking this color is more reliable than the tooltip text ("可發送
+# LINE" / "不可發送 LINE"), which only renders on hover.
+LINE_LINKED_FILL = '#31C48D'
 # No data-e2e-id on the per-tag pills inside the tracking-history popup (per the
 # HTML the user pasted) — matched structurally instead: each applied tag is a
 # div.inline-flex containing the template-text span and a timestamp span.ml-1.
@@ -193,6 +199,15 @@ async def _find_patient_row(page: Page, chart_number: str, dob_roc: str, expecte
     return None, f"{count} result(s) found but none match chart_number {chart_number}"
 
 
+async def _is_line_linked(row) -> bool:
+    """Whether this patient's LINE account is linked to Alleypin. Sending a
+    template to an unlinked patient is accepted by the picker exactly like a
+    normal send, but never actually delivers anything — checking this first
+    avoids wasting a click on a send that would silently go nowhere."""
+    count = await row.locator(f'{LINE_LINK_SELECTOR} svg path[fill="{LINE_LINKED_FILL}"]').count()
+    return count > 0
+
+
 async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
                     template_text: str, dry_run: bool) -> dict:
     """Search, verify, open the picker, and click (or dry-run stop before clicking)
@@ -202,6 +217,9 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
         row, reason = await _find_patient_row(page, chart_number, dob_roc, name)
         if row is None:
             return {**base, 'status': 'not_found', 'detail': reason}
+
+        if not await _is_line_linked(row):
+            return {**base, 'status': 'line_not_linked', 'detail': 'patient has not linked LINE to Alleypin — would not be delivered'}
 
         clickable = row.locator(TRACKING_CELL_SELECTOR).locator('.cursor-pointer').first
         await clickable.click()

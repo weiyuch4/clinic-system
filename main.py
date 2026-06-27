@@ -152,6 +152,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
         mspt_completed_keys = contacts.get_mspt_completed_keys()  # (chart_number, mspt_stage, due_date)
         mspt_checkedin_keys = contacts.get_mspt_checkedin_keys()  # (chart_number, mspt_stage, due_date)
         on_hold_keys = contacts.get_on_hold_keys()            # (chart_number, category, due_date)
+        line_unlinked_charts = contacts.get_line_unlinked_chart_numbers()
         hep_returned_completed_keys = contacts.get_hep_returned_completed_keys()  # (chart_number, last_visit_date)
         manual_overrides = contacts.get_mspt_manual_overrides()
         as_of = report_date or date.today()
@@ -204,7 +205,10 @@ def get_report(report_date: date | None = None) -> DailyReport:
                     continue
                 if key in on_hold_keys:
                     continue
-                result.append(e.model_copy(update={"call_required": key in call_required_keys}))
+                result.append(e.model_copy(update={
+                    "call_required": key in call_required_keys,
+                    "line_unlinked": e.patient.chart_number in line_unlinked_charts,
+                }))
             return result
 
         # Filter 已聯絡 entries: exclude patients who have already returned since being contacted
@@ -510,6 +514,16 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -
                     contacts.mark_contacted(target["entry"], nurse)
             except Exception:
                 logger.exception("failed to mark %s as contacted after LINE send", target["chart_number"])
+            try:
+                contacts.clear_line_unlinked(target["chart_number"])
+            except Exception:
+                logger.exception("failed to clear line_unlinked flag for %s", target["chart_number"])
+
+        if result["status"] == "line_not_linked":
+            try:
+                contacts.flag_line_unlinked(target["chart_number"], target["entry"].patient.name, nurse)
+            except Exception:
+                logger.exception("failed to flag %s as line_unlinked", target["chart_number"])
 
     try:
         await line_notify.run_batch(

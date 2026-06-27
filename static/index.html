@@ -1716,6 +1716,15 @@
 
   function followupKey(e) { return `${e.patient.chart_number}|${e.category}|${e.due_date}`; }
 
+  // Set when a LINE send was attempted but this patient hasn't linked LINE
+  // to Alleypin — surfaced inline next to their name (not a separate list)
+  // so nurses see it in context and know to call instead.
+  function lineUnlinkedTag(e) {
+    return e.line_unlinked
+      ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#fef2f2;color:#b91c1c;white-space:nowrap" title="此病患的LINE帳號尚未連接Alleypin，自動發送不會送達，請改用電話聯絡">LINE未連接</span>`
+      : '';
+  }
+
   function fmt(iso) {
     const [y, m, d] = iso.split("-");
     return `${parseInt(y) - 1911}/${m}/${d}`;
@@ -1789,7 +1798,7 @@
       : `<button class="btn-action" title="已通知病患，等待回診">${e.mspt_stage ? "已通知抽血" : "已通知"}</button>`;
 
     tr.innerHTML = `
-      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span></div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span>${lineUnlinkedTag(e)}</div><div class="chart-number">${e.patient.chart_number}</div></td>
       <td class="mono">${fmt(e.patient.birth_date)}</td>
       <td>${stageCell}</td>
       <td>${lastVisitCell}</td>
@@ -1817,7 +1826,7 @@
         ? `<span class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</span>`
         : `<span style="color:var(--text-muted)">—</span>`;
       tr.innerHTML = `
-        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td><div class="patient-name">${e.patient.name}${lineUnlinkedTag(e)}</div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
         <td>${e.disease_name || "—"}</td>
         <td>${icStageTag(e.chronic_stage)}</td>
@@ -2578,7 +2587,7 @@
     const nextStage = e.last_stage === '收案' ? '追蹤' : e.last_stage;
 
     tr.innerHTML = `
-      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span></div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span>${lineUnlinkedTag(e)}</div><div class="chart-number">${e.patient.chart_number}</div></td>
       <td class="mono">${fmt(e.patient.birth_date)}</td>
       <td>${e.disease_name || '—'}</td>
       <td>${lastVisitCell}</td>

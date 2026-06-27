@@ -172,6 +172,16 @@ _CREATE_LINE_NOTIFICATION_LOG = """
 """
 
 
+_CREATE_LINE_UNLINKED = """
+    CREATE TABLE IF NOT EXISTS line_unlinked (
+        chart_number TEXT NOT NULL PRIMARY KEY,
+        name         TEXT NOT NULL,
+        flagged_at   TEXT NOT NULL,
+        nurse        TEXT DEFAULT ''
+    )
+"""
+
+
 @contextmanager
 def _conn() -> Generator[sqlite3.Connection, None, None]:
     conn = sqlite3.connect(DB_PATH)
@@ -197,6 +207,7 @@ def init() -> None:
         conn.execute(_CREATE_MANUAL_PICKUPS)
         conn.execute(_CREATE_HEP_RETURNED_COMPLETED)
         conn.execute(_CREATE_LINE_NOTIFICATION_LOG)
+        conn.execute(_CREATE_LINE_UNLINKED)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
             try:
@@ -697,6 +708,35 @@ def mark_line_notification_undone(log_id: int, nurse: str = '') -> None:
             "UPDATE line_notification_log SET undone_at = ?, undone_by = ? WHERE id = ?",
             (datetime.now().strftime('%Y-%m-%d %H:%M'), nurse, log_id),
         )
+
+
+def flag_line_unlinked(chart_number: str, name: str, nurse: str = '') -> None:
+    """Mark a patient as having no LINE account linked to Alleypin, so the
+    main dashboard can tag them in their existing pending list (across
+    whichever categories they appear in) to contact by phone instead."""
+    with _conn() as conn:
+        conn.execute(
+            """INSERT INTO line_unlinked (chart_number, name, flagged_at, nurse)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(chart_number) DO UPDATE SET
+                   flagged_at=excluded.flagged_at, nurse=excluded.nurse""",
+            (chart_number, name, date.today().isoformat(), nurse),
+        )
+
+
+def clear_line_unlinked(chart_number: str) -> None:
+    """Called when a later send to this patient actually succeeds — their
+    LINE is evidently linked now, so the flag no longer applies."""
+    with _conn() as conn:
+        conn.execute("DELETE FROM line_unlinked WHERE chart_number = ?", (chart_number,))
+
+
+def get_line_unlinked_chart_numbers() -> set[str]:
+    """Bulk-fetch flagged chart numbers for applying the tag while building
+    a report, instead of querying once per patient."""
+    with _conn() as conn:
+        rows = conn.execute("SELECT chart_number FROM line_unlinked").fetchall()
+    return {r[0] for r in rows}
 
 
 def get_mspt_completed_entries() -> list[FollowupEntry]:
