@@ -18,10 +18,11 @@ import backup
 import config
 import contacts
 import database
+import directory
 import lab_report
 import lab_results
 from models import (
-    ChartNumberRequest, ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
+    ChartNumberRequest, ClinicContactRequest, ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
     HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest,
     MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, OnHoldRemoveRequest, OnHoldRequest, SendLineNotificationsRequest,
@@ -62,6 +63,7 @@ app = FastAPI(title="診所追蹤系統")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 contacts.init()
+directory.init()
 lab_report.init()
 backup.run()
 threading.Thread(target=database.warmup_cache, daemon=True).start()
@@ -788,6 +790,39 @@ def delete_lab_report(report_id: int, _: None = Depends(_require_admin)) -> None
         raise
     except Exception:
         logger.exception("delete_lab_report failed for id=%s", report_id)
+        raise HTTPException(status_code=500, detail="刪除失敗")
+
+
+@app.get("/api/directory")
+def list_clinic_contacts() -> list:
+    try:
+        return directory.list_contacts()
+    except Exception:
+        logger.exception("list_clinic_contacts failed")
+        raise HTTPException(status_code=500, detail="查詢失敗")
+
+
+@app.post("/api/directory")
+def add_clinic_contact(req: ClinicContactRequest) -> dict:
+    if not req.name.strip():
+        raise HTTPException(status_code=400, detail="名稱不可空白")
+    try:
+        new_id = directory.add_contact(req.name.strip(), req.category.strip(), req.phone.strip(), req.note.strip(), req.nurse)
+        return {"id": new_id}
+    except Exception:
+        logger.exception("add_clinic_contact failed")
+        raise HTTPException(status_code=500, detail="新增失敗")
+
+
+@app.delete("/api/directory/{contact_id}")
+def delete_clinic_contact(contact_id: int) -> None:
+    try:
+        if not directory.delete_contact(contact_id):
+            raise HTTPException(status_code=404, detail="找不到此聯絡人")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("delete_clinic_contact failed for id=%s", contact_id)
         raise HTTPException(status_code=500, detail="刪除失敗")
 
 

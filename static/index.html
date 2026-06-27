@@ -101,6 +101,20 @@
     }
     #notice-close:hover { background: rgba(217,119,6,0.15); }
     #btn-notice.has-notice { border-color: var(--amber-border); color: var(--amber); }
+    #notice-dropdown {
+      position: absolute; top: calc(100% + 8px); right: 0;
+      width: 280px; max-width: 90vw;
+      background: var(--card);
+      border: 1px solid var(--amber-border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      padding: 14px 16px;
+      z-index: 200;
+      display: none;
+    }
+    #notice-dropdown.open { display: block; }
+    #notice-dropdown-title { font-size: 13px; font-weight: 700; color: #92400e; margin-bottom: 6px; }
+    #notice-dropdown-text { font-size: 13px; color: #78350f; white-space: pre-wrap; line-height: 1.6; }
 
     .btn-print {
       height: 34px; padding: 0 14px;
@@ -253,6 +267,11 @@
     .tab-btn:hover { color: var(--text-sub); }
     .tab-btn.active { color: var(--blue); border-bottom-color: var(--blue); }
     .tab-btn.mspt-tab.active { color: var(--green); border-bottom-color: var(--green); }
+    /* Set apart from the follow-up tabs — it's a reference lookup, not a queue
+       to work through, so it gets a divider, no badge, and a different
+       active treatment (fill, not a colored underline). */
+    .tab-btn.directory-tab { margin-left: auto; border-left: 1px solid var(--border); padding-left: 24px; }
+    .tab-btn.directory-tab.active { color: var(--text); background: var(--bg); border-bottom-color: transparent; }
 
     /* ── Tab panels ── */
     .tab-panel { display: none; padding: 22px 28px; }
@@ -997,11 +1016,17 @@
       </svg>
     </button>
   </div>
-  <button class="btn-print" id="btn-notice" onclick="toggleNotice()" title="公告訊息" style="display:none;position:relative">
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.158-1.342-4.087-3.005-4.901z"/></svg>
-    公告
-    <span id="notice-dot" style="position:absolute;top:4px;right:4px;width:7px;height:7px;background:#f59e0b;border-radius:50%;display:none"></span>
-  </button>
+  <div style="position:relative;display:inline-block" onclick="event.stopPropagation()">
+    <button class="btn-print" id="btn-notice" onclick="toggleNotice()" title="公告訊息" style="display:none;position:relative">
+      <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.158-1.342-4.087-3.005-4.901z"/></svg>
+      公告
+      <span id="notice-dot" style="position:absolute;top:4px;right:4px;width:7px;height:7px;background:#f59e0b;border-radius:50%;display:none"></span>
+    </button>
+    <div id="notice-dropdown">
+      <div id="notice-dropdown-title">系統公告</div>
+      <div id="notice-dropdown-text"></div>
+    </div>
+  </div>
   <button class="btn-print" id="btn-refresh" onclick="refreshReport()">
     <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2v1z"/><path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z"/></svg>
     重新整理
@@ -1074,6 +1099,9 @@
   </button>
   <button class="tab-btn hep-tab" id="tab-btn-hep" onclick="switchTab('hep')">
     B/C型肝炎追蹤 <span class="count-badge zero" id="hep-badge">0</span>
+  </button>
+  <button class="tab-btn directory-tab" id="tab-btn-directory" onclick="switchTab('directory')">
+    聯絡資訊
   </button>
 </div>
 
@@ -1441,6 +1469,52 @@
   </div>
 </div>
 
+<div class="tab-panel" id="tab-panel-directory">
+
+  <!-- 聯絡資訊 -->
+  <div class="card">
+    <div class="card-top"></div>
+    <div class="card-header">
+      <h2>聯絡資訊</h2>
+      <button class="btn-add-manual-onhold" onclick="openAddContactModal()">+ 新增</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table>
+        <thead><tr>
+          <th>類別</th><th>名稱</th><th>電話</th><th>備註</th><th></th>
+        </tr></thead>
+        <tbody id="directory-rows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<!-- Add contact modal -->
+<div class="modal-overlay" id="add-contact-modal" onclick="maybeCloseAddContactModal(event)">
+  <div class="modal-box" style="max-width:380px">
+    <h3>新增聯絡資訊</h3>
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">名稱</label>
+    <input type="text" id="contact-name-input" placeholder="例：OO健保局"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:12px" />
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">類別</label>
+    <input type="text" id="contact-category-input" placeholder="例：健保局／廠商"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:12px" />
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">電話</label>
+    <input type="text" id="contact-phone-input" placeholder="例：02-1234-5678"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:12px" />
+    <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">備註</label>
+    <input type="text" id="contact-note-input" placeholder="選填"
+      style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:6px" />
+    <div id="contact-add-error" style="font-size:12px;color:#e53e3e;min-height:16px;margin-bottom:14px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="closeAddContactModal()"
+        style="padding:8px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-card);cursor:pointer;font-size:14px">取消</button>
+      <button id="contact-add-confirm-btn" onclick="submitAddContact()"
+        style="padding:8px 18px;border-radius:8px;border:none;background:var(--blue);color:white;cursor:pointer;font-size:14px;font-weight:600">新增</button>
+    </div>
+  </div>
 </div>
 
 <!-- Manual pickup modal -->
@@ -1596,32 +1670,42 @@
       if (!text) return;
       _noticeText = text;
       document.getElementById("notice-text").textContent = text;
+      document.getElementById("notice-dropdown-text").textContent = text;
       const btn = document.getElementById("btn-notice");
       btn.style.display = "";
-      btn.classList.add("has-notice");
       const dismissed = sessionStorage.getItem("noticeDismissed") === text;
       document.getElementById("notice-bar").classList.toggle("visible", !dismissed);
-      document.getElementById("notice-dot").style.display = dismissed ? "" : "none";
+      document.getElementById("notice-dot").style.display = dismissed ? "none" : "";
+      btn.classList.toggle("has-notice", !dismissed);
     } catch {}
   }
 
-  function dismissNotice() {
+  // The amber color + dot both mean "this is a new, not-yet-seen notice" —
+  // either dismissing the banner or opening the dropdown counts as having
+  // seen it, after which the button goes back to looking like a plain button
+  // (still clickable to re-read it, just no longer flagged as new).
+  function _markNoticeSeen() {
     sessionStorage.setItem("noticeDismissed", _noticeText);
-    document.getElementById("notice-bar").classList.remove("visible");
-    document.getElementById("notice-dot").style.display = "";
+    document.getElementById("notice-dot").style.display = "none";
+    document.getElementById("btn-notice").classList.remove("has-notice");
   }
 
-  function toggleNotice() {
-    const bar = document.getElementById("notice-bar");
-    const isVisible = bar.classList.contains("visible");
-    bar.classList.toggle("visible", !isVisible);
-    if (isVisible) {
-      sessionStorage.setItem("noticeDismissed", _noticeText);
-      document.getElementById("notice-dot").style.display = "";
-    } else {
-      document.getElementById("notice-dot").style.display = "none";
-    }
+  function dismissNotice() {
+    document.getElementById("notice-bar").classList.remove("visible");
+    _markNoticeSeen();
   }
+
+  // Clicking 公告 always opens a small dropdown with the current notice — it
+  // no longer re-shows the big banner, which only ever appears on its own
+  // when the notice is new (and stays dismissable via its own close button).
+  function toggleNotice() {
+    document.getElementById("notice-dropdown").classList.toggle("open");
+    _markNoticeSeen();
+  }
+
+  document.addEventListener("click", () => {
+    document.getElementById("notice-dropdown").classList.remove("open");
+  });
 
   loadNotice();
 
@@ -3723,8 +3807,9 @@
 
   initNurseSelector();
   loadReport();
+  loadDirectory();
   const _savedTab = localStorage.getItem('clinic_tab');
-  if (_savedTab && ['chronic', 'mspt', 'hep'].includes(_savedTab)) switchTab(_savedTab);
+  if (_savedTab && ['chronic', 'mspt', 'hep', 'directory'].includes(_savedTab)) switchTab(_savedTab);
 
   // ── Refresh ──
 
@@ -3743,6 +3828,94 @@
     document.getElementById('tab-btn-' + tab).classList.add('active');
     document.getElementById('tab-panel-' + tab).classList.add('active');
     localStorage.setItem('clinic_tab', tab);
+  }
+
+  // ── 聯絡資訊 ──
+
+  async function loadDirectory() {
+    try {
+      const rows = await (await apiFetch('/api/directory')).json();
+      renderDirectory(rows);
+    } catch (err) {
+      document.getElementById('directory-rows').innerHTML =
+        `<tr><td colspan="5" style="color:#e53e3e">載入失敗：${err.message}</td></tr>`;
+    }
+  }
+
+  function renderDirectory(rows) {
+    const tbody = document.getElementById('directory-rows');
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-muted)">尚無聯絡資訊</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(r => `
+      <tr>
+        <td>${r.category || ''}</td>
+        <td>${r.name}</td>
+        <td>${r.phone || ''}</td>
+        <td>${r.note || ''}</td>
+        <td><button class="btn-add-manual-onhold" style="margin:0;border-color:#e53e3e;color:#e53e3e" onclick="deleteContact(${r.id}, this)">刪除</button></td>
+      </tr>
+    `).join('');
+  }
+
+  function openAddContactModal() {
+    document.getElementById('contact-name-input').value = '';
+    document.getElementById('contact-category-input').value = '';
+    document.getElementById('contact-phone-input').value = '';
+    document.getElementById('contact-note-input').value = '';
+    document.getElementById('contact-add-error').textContent = '';
+    document.getElementById('add-contact-modal').style.display = 'flex';
+  }
+
+  function closeAddContactModal() {
+    document.getElementById('add-contact-modal').style.display = 'none';
+  }
+
+  function maybeCloseAddContactModal(event) {
+    if (event.target === document.getElementById('add-contact-modal')) closeAddContactModal();
+  }
+
+  async function submitAddContact() {
+    const name = document.getElementById('contact-name-input').value.trim();
+    const errEl = document.getElementById('contact-add-error');
+    if (!name) {
+      errEl.textContent = '請輸入名稱';
+      return;
+    }
+    const btn = document.getElementById('contact-add-confirm-btn');
+    btn.disabled = true;
+    try {
+      await apiFetch('/api/directory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name,
+          category: document.getElementById('contact-category-input').value.trim(),
+          phone: document.getElementById('contact-phone-input').value.trim(),
+          note: document.getElementById('contact-note-input').value.trim(),
+          nurse: activeNurse(),
+        }),
+      });
+      closeAddContactModal();
+      loadDirectory();
+    } catch (err) {
+      errEl.textContent = '新增失敗：' + err.message;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function deleteContact(id, btn) {
+    if (!confirm('確定要刪除這筆聯絡資訊嗎？')) return;
+    btn.disabled = true;
+    try {
+      await apiFetch(`/api/directory/${id}`, { method: 'DELETE' });
+      loadDirectory();
+    } catch (err) {
+      showToast('刪除失敗：' + err.message);
+      btn.disabled = false;
+    }
   }
 
   // ── Sort helpers ──

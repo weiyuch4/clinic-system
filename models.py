@@ -175,6 +175,14 @@ class UndoLineNotificationRequest(BaseModel):
     dry_run: bool = False
 
 
+class ClinicContactRequest(BaseModel):
+    name: str
+    category: str = ""
+    phone: str = ""
+    note: str = ""
+    nurse: str = ""
+
+
 class SubmitRequest(BaseModel):
     chart_number: str
     mspt_stage: MsptStage
