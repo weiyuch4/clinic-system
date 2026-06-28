@@ -127,8 +127,15 @@ def _kill_stale_profile_processes() -> None:
         for proc_info in procs:
             cmdline = proc_info.get("CommandLine") or ""
             if profile_str in cmdline:
+                # No /T (tree-kill) here on purpose: every child process of
+                # the stale instance (renderer/gpu/utility) independently
+                # repeats --user-data-dir in its own command line, so this
+                # loop already matches and kills each of them on their own
+                # merits. /T kills the matched PID's whole process *tree*,
+                # which is unnecessary for that and a needless risk if any
+                # matched PID ever turns out not to be what we expect.
                 subprocess.run(
-                    ["taskkill", "/F", "/T", "/PID", str(proc_info["ProcessId"])],
+                    ["taskkill", "/F", "/PID", str(proc_info["ProcessId"])],
                     capture_output=True, timeout=10,
                 )
     except Exception:
