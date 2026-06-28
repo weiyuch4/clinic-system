@@ -181,6 +181,17 @@ _CREATE_LINE_UNLINKED = """
     )
 """
 
+_CREATE_LINE_RECENTLY_SENT = """
+    CREATE TABLE IF NOT EXISTS line_recently_sent (
+        chart_number TEXT NOT NULL,
+        template     TEXT NOT NULL,
+        name         TEXT NOT NULL,
+        last_sent_at TEXT NOT NULL,
+        nurse        TEXT DEFAULT '',
+        PRIMARY KEY (chart_number, template)
+    )
+"""
+
 
 @contextmanager
 def _conn() -> Generator[sqlite3.Connection, None, None]:
@@ -208,6 +219,7 @@ def init() -> None:
         conn.execute(_CREATE_HEP_RETURNED_COMPLETED)
         conn.execute(_CREATE_LINE_NOTIFICATION_LOG)
         conn.execute(_CREATE_LINE_UNLINKED)
+        conn.execute(_CREATE_LINE_RECENTLY_SENT)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
             try:
@@ -737,6 +749,30 @@ def get_line_unlinked_chart_numbers() -> set[str]:
     with _conn() as conn:
         rows = conn.execute("SELECT chart_number FROM line_unlinked").fetchall()
     return {r[0] for r in rows}
+
+
+def record_line_sent(chart_number: str, template: str, name: str, last_sent_at: str, nurse: str = '') -> None:
+    """Record the most recent known send date for a (patient, template) pair —
+    called whether a send just succeeded (last_sent_at = today) or was skipped
+    as a recent duplicate (last_sent_at = whatever Alleypin already showed).
+    Either way this is the freshest known date, so it's always an upsert."""
+    with _conn() as conn:
+        conn.execute(
+            """INSERT INTO line_recently_sent (chart_number, template, name, last_sent_at, nurse)
+               VALUES (?, ?, ?, ?, ?)
+               ON CONFLICT(chart_number, template) DO UPDATE SET
+                   name=excluded.name, last_sent_at=excluded.last_sent_at, nurse=excluded.nurse""",
+            (chart_number, template, name, last_sent_at, nurse),
+        )
+
+
+def get_line_recently_sent_map() -> dict[tuple[str, str], str]:
+    """Bulk-fetch {(chart_number, template): last_sent_at} so a report can
+    compute "days since" freshly against today, rather than baking in a
+    stale day-count at write time."""
+    with _conn() as conn:
+        rows = conn.execute("SELECT chart_number, template, last_sent_at FROM line_recently_sent").fetchall()
+    return {(r[0], r[1]): r[2] for r in rows}
 
 
 def get_mspt_completed_entries() -> list[FollowupEntry]:

@@ -1,6 +1,8 @@
 from datetime import date, timedelta
 import glob
+import gzip
 import os
+import pickle
 import struct
 
 import lab_results
@@ -61,6 +63,9 @@ def mspt_needs_blood_test(mspt_stage: str, nat_id: str, as_of: date) -> bool:
 # The current month's file is always re-read to pick up intra-month updates.
 _dbf_cache: dict[str, list[dict]] = {}
 
+_DISK_CACHE_PATH = "dbf_cache.pkl.gz"
+_DISK_CACHE_MAX_AGE_DAYS = 7  # force a full rebuild once the last one is this old
+
 
 def _current_roc_month() -> str:
     d = date.today()
@@ -75,12 +80,57 @@ def _parse_dbf_cached(path: str) -> list[dict]:
     return _dbf_cache[path]
 
 
+def _load_disk_cache() -> dict | None:
+    """Load the persisted {'built_at', 'data'} blob if the file is readable.
+    Returns None on any failure (missing or corrupt) — treated the same as
+    "no cache yet" by warmup_cache()."""
+    try:
+        with gzip.open(_DISK_CACHE_PATH, 'rb') as f:
+            return pickle.load(f)
+    except Exception:
+        return None
+
+
+def _save_disk_cache(built_at: str) -> None:
+    """Persist the current _dbf_cache under the given built_at date. Callers
+    pass either today's date (a full rebuild just happened) or the previous
+    built_at (just filling gaps) — see warmup_cache(). Written to a temp
+    file + os.replace so a crash mid-write can't leave a corrupt cache file."""
+    tmp = _DISK_CACHE_PATH + '.tmp'
+    try:
+        with gzip.open(tmp, 'wb') as f:
+            pickle.dump({'built_at': built_at, 'data': _dbf_cache}, f)
+        os.replace(tmp, _DISK_CACHE_PATH)
+    except Exception:
+        pass
+
+
 def warmup_cache() -> None:
     """Pre-load all IC (and P and H) files into the cache, then run today's
     report once so dependent caches (lab_results' patient-code lookups and
     BIO/CBC file reads, used by MSPT blood-test checks) are warm too. Call in
     a background thread at server startup so the first real user request
-    doesn't pay the full parse cost."""
+    doesn't pay the full parse cost.
+
+    Closed months are persisted to disk so a restart doesn't re-pay the full
+    parse cost — PC1 restarts unpredictably, possibly several times a day,
+    so staleness is judged by elapsed time since the last deliberate full
+    rebuild (built_at), not by restart count: built_at is only advanced when
+    a rebuild actually happens, so a restart 5 minutes after the last one is
+    just as fast as one a week later is slow, regardless of how many
+    restarts happened in between."""
+    saved = _load_disk_cache()
+    is_stale = (
+        saved is None
+        or (date.today() - date.fromisoformat(saved['built_at'])).days >= _DISK_CACHE_MAX_AGE_DAYS
+    )
+    if is_stale:
+        _dbf_cache.clear()
+        built_at = date.today().isoformat()
+    else:
+        _dbf_cache.update(saved['data'])
+        built_at = saved['built_at']
+
     for path in _ic_main_files():
         try:
             _parse_dbf_cached(path)
@@ -92,6 +142,8 @@ def warmup_cache() -> None:
                 _parse_dbf_cached(h)
         except Exception:
             pass
+
+    _save_disk_cache(built_at)  # always — persists gap-fills even on a non-stale restart
     try:
         get_daily_report(date.today())
     except Exception:

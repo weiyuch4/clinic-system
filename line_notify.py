@@ -62,6 +62,14 @@ LINE_LINKED_FILL = '#31C48D'
 # search matched that picker entry instead of the real tag and hung forever
 # waiting for a non-existent svg inside it.
 TAG_ENTRY_SELECTOR = 'div.rounded-lg.border-gray-300.bg-white > div.inline-flex'
+# The selectable-template list inside the same popup — div.cursor-pointer
+# items inside the text-xs results container ("搜尋結果 (36/36)"). Scoped here
+# for the same reason as TAG_ENTRY_SELECTOR above: a patient who already has
+# a template applied also shows it (read-only) directly in the row's own
+# tracking cell, which stays in the DOM even with the popup open — an
+# unscoped text search matches that too, and Playwright's strict mode then
+# refuses with "resolved to 2 elements" rather than guessing which to click.
+PICKER_OPTION_SELECTOR = 'div.flex.flex-wrap.gap-2.text-xs > div.cursor-pointer'
 
 # Nurses already use Edge daily, so drive that instead of installing Chrome.
 _EDGE_CANDIDATES = [
@@ -208,6 +216,30 @@ async def _is_line_linked(row) -> bool:
     return count > 0
 
 
+def _parse_alleypin_timestamp(text: str) -> date | None:
+    """Parse a tag's displayed timestamp, e.g. '2026/05/12 11:04' (Gregorian,
+    unlike the ROC-format DOB search box)."""
+    text = text.strip()
+    if not text:
+        return None
+    try:
+        y, m, d = text.split(' ')[0].split('/')
+        return date(int(y), int(m), int(d))
+    except (ValueError, IndexError):
+        return None
+
+
+async def _last_sent_at(row, template_text: str) -> date | None:
+    """Read the row's own tracking cell (visible without opening the popup)
+    for an existing tag matching this template, returning when it was last
+    sent, or None if it's never been sent to this patient."""
+    entry = row.locator(f'{TRACKING_CELL_SELECTOR} div.inline-flex').filter(has_text=template_text)
+    if await entry.count() == 0:
+        return None
+    ts_text = await entry.first.locator('span.ml-1').inner_text()
+    return _parse_alleypin_timestamp(ts_text)
+
+
 async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
                     template_text: str, dry_run: bool) -> dict:
     """Search, verify, open the picker, and click (or dry-run stop before clicking)
@@ -221,14 +253,28 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
         if not await _is_line_linked(row):
             return {**base, 'status': 'line_not_linked', 'detail': 'patient has not linked LINE to Alleypin — would not be delivered'}
 
+        last_sent = await _last_sent_at(row, template_text)
+        if last_sent is not None:
+            days_since = (date.today() - last_sent).days
+            if days_since < config.RECENT_SEND_THRESHOLD_DAYS:
+                return {
+                    **base, 'status': 'recently_sent', 'last_sent_at': last_sent.isoformat(),
+                    'detail': f'same template already sent {days_since} day(s) ago ({last_sent.isoformat()}) — skipping to avoid a duplicate',
+                }
+
         clickable = row.locator(TRACKING_CELL_SELECTOR).locator('.cursor-pointer').first
         await clickable.click()
         await page.wait_for_timeout(600)
 
-        span = page.locator(f'span:text-is("{template_text}")')
-        container = span.locator('xpath=ancestor::div[contains(@class, "cursor-pointer")][1]')
+        # Scoped to the picker's own list (div.cursor-pointer items inside the
+        # text-xs results container), not just "any cursor-pointer ancestor of
+        # matching text" — a patient who already has this exact template applied
+        # also shows it directly in the row's tracking cell (visible even with
+        # the popup open), which an unscoped search would also match, causing
+        # Playwright's strict mode to refuse with "resolved to 2 elements".
+        container = page.locator(PICKER_OPTION_SELECTOR).filter(has_text=template_text)
         try:
-            await container.wait_for(timeout=3000)
+            await container.first.wait_for(timeout=3000)
         except PWTimeoutError:
             await page.keyboard.press("Escape")
             return {**base, 'status': 'template_not_found', 'detail': f'template {template_text!r} not found in modal'}
@@ -237,7 +283,7 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
             await page.keyboard.press("Escape")
             return {**base, 'status': 'dry_run_ok', 'detail': f'would click {template_text!r}'}
 
-        await container.click()
+        await container.first.click()
         await page.wait_for_timeout(300)
         # Clicking the template only selects it — clicking outside the modal
         # afterward is what actually commits/persists it (matches the manual

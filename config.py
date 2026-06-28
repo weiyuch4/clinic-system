@@ -17,6 +17,10 @@ METABOLIC_FOLLOWUP_DAYS: int = 70
 # in config_local.py — this placeholder will fail loudly if used by mistake).
 ALLEYPIN_URL: str = "https://REPLACE-ME-IN-config_local.py"
 
+# Skip re-sending the same LINE template within this many days of its last
+# send, to avoid nagging a patient with an identical reminder too soon.
+RECENT_SEND_THRESHOLD_DAYS: int = 7
+
 # config.local.py overrides the above — create it on the clinic PC with the real path.
 # It is gitignored and never committed.
 try:

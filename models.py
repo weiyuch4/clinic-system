@@ -24,6 +24,7 @@ class FollowupEntry(BaseModel):
     contact_reason: str | None = None        # e.g. "需回診+抽血" or "需抽血"
     call_required: bool = False              # True when re-surfaced after 7 days
     line_unlinked: bool = False              # True if a LINE send was attempted but this patient hasn't linked LINE to Alleypin
+    recently_sent_days_ago: int | None = None  # set if the applicable LINE template was already sent within RECENT_SEND_THRESHOLD_DAYS
     last_visit_date: date | None = None      # date of most recent relevant visit
     contacted_at: date | None = None         # set only on already-contacted entries
     contacted_time: str | None = None        # HH:MM when contact was recorded

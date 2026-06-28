@@ -1725,6 +1725,16 @@
       : '';
   }
 
+  // Set when the applicable LINE template was already sent to this patient
+  // within the last few days — surfaced inline so nurses know a notification
+  // already went out recently, even though the patient hasn't returned yet.
+  function recentlySentTag(e) {
+    if (e.recently_sent_days_ago == null) return '';
+    const daysAgo = e.recently_sent_days_ago;
+    const label = daysAgo === 0 ? '今日已發送LINE' : `${daysAgo}天前已發送LINE`;
+    return `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#eff6ff;color:#1d4ed8;white-space:nowrap" title="近期已發送過相同訊息，自動發送已暫緩以避免重複通知">${label}</span>`;
+  }
+
   function fmt(iso) {
     const [y, m, d] = iso.split("-");
     return `${parseInt(y) - 1911}/${m}/${d}`;
@@ -1798,7 +1808,7 @@
       : `<button class="btn-action" title="已通知病患，等待回診">${e.mspt_stage ? "已通知抽血" : "已通知"}</button>`;
 
     tr.innerHTML = `
-      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span>${lineUnlinkedTag(e)}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span>${lineUnlinkedTag(e)}${recentlySentTag(e)}</div><div class="chart-number">${e.patient.chart_number}</div></td>
       <td class="mono">${fmt(e.patient.birth_date)}</td>
       <td>${stageCell}</td>
       <td>${lastVisitCell}</td>
@@ -1826,7 +1836,7 @@
         ? `<span class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</span>`
         : `<span style="color:var(--text-muted)">—</span>`;
       tr.innerHTML = `
-        <td><div class="patient-name">${e.patient.name}${lineUnlinkedTag(e)}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td><div class="patient-name">${e.patient.name}${lineUnlinkedTag(e)}${recentlySentTag(e)}</div><div class="chart-number">${e.patient.chart_number}</div></td>
         <td class="mono">${fmt(e.patient.birth_date)}</td>
         <td>${e.disease_name || "—"}</td>
         <td>${icStageTag(e.chronic_stage)}</td>
@@ -2587,7 +2597,7 @@
     const nextStage = e.last_stage === '收案' ? '追蹤' : e.last_stage;
 
     tr.innerHTML = `
-      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span>${lineUnlinkedTag(e)}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+      <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${e.patient.chart_number}','${e.patient.name}')">${e.patient.name}</span>${lineUnlinkedTag(e)}${recentlySentTag(e)}</div><div class="chart-number">${e.patient.chart_number}</div></td>
       <td class="mono">${fmt(e.patient.birth_date)}</td>
       <td>${e.disease_name || '—'}</td>
       <td>${lastVisitCell}</td>

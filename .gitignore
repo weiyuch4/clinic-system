@@ -2,6 +2,9 @@
 contacts.db
 backups/
 
+# Persisted DBF parse cache (see database.py warmup_cache) — large, local, rebuildable
+dbf_cache.pkl.gz
+
 # Local config override (real IC data path goes here, not in config.py)
 config_local.py
 

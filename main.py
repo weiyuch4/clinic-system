@@ -153,6 +153,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
         mspt_checkedin_keys = contacts.get_mspt_checkedin_keys()  # (chart_number, mspt_stage, due_date)
         on_hold_keys = contacts.get_on_hold_keys()            # (chart_number, category, due_date)
         line_unlinked_charts = contacts.get_line_unlinked_chart_numbers()
+        line_recently_sent_map = contacts.get_line_recently_sent_map()  # (chart_number, template) -> last_sent_at iso date
         hep_returned_completed_keys = contacts.get_hep_returned_completed_keys()  # (chart_number, last_visit_date)
         manual_overrides = contacts.get_mspt_manual_overrides()
         as_of = report_date or date.today()
@@ -205,10 +206,20 @@ def get_report(report_date: date | None = None) -> DailyReport:
                     continue
                 if key in on_hold_keys:
                     continue
-                result.append(e.model_copy(update={
+                # call_required must be set before picking the template (慢簽's
+                # template depends on it) — compute the copy first, then derive
+                # the template from it rather than from the stale original `e`.
+                updated = e.model_copy(update={
                     "call_required": key in call_required_keys,
                     "line_unlinked": e.patient.chart_number in line_unlinked_charts,
-                }))
+                })
+                template = _pick_line_template(updated)
+                sent_at = line_recently_sent_map.get((e.patient.chart_number, template)) if template else None
+                if sent_at:
+                    days_ago = (as_of - date.fromisoformat(sent_at)).days
+                    if 0 <= days_ago < config.RECENT_SEND_THRESHOLD_DAYS:
+                        updated = updated.model_copy(update={"recently_sent_days_ago": days_ago})
+                result.append(updated)
             return result
 
         # Filter 已聯絡 entries: exclude patients who have already returned since being contacted
@@ -518,12 +529,28 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -
                 contacts.clear_line_unlinked(target["chart_number"])
             except Exception:
                 logger.exception("failed to clear line_unlinked flag for %s", target["chart_number"])
+            try:
+                contacts.record_line_sent(
+                    target["chart_number"], target["template"], target["entry"].patient.name,
+                    date.today().isoformat(), nurse,
+                )
+            except Exception:
+                logger.exception("failed to record send date for %s", target["chart_number"])
 
         if result["status"] == "line_not_linked":
             try:
                 contacts.flag_line_unlinked(target["chart_number"], target["entry"].patient.name, nurse)
             except Exception:
                 logger.exception("failed to flag %s as line_unlinked", target["chart_number"])
+
+        if result["status"] == "recently_sent":
+            try:
+                contacts.record_line_sent(
+                    target["chart_number"], target["template"], target["entry"].patient.name,
+                    result["last_sent_at"], nurse,
+                )
+            except Exception:
+                logger.exception("failed to record send date for %s", target["chart_number"])
 
     try:
         await line_notify.run_batch(
