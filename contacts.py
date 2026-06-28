@@ -201,21 +201,14 @@ _CREATE_ALLEYPIN_NOT_FOUND = """
     )
 """
 
-_CREATE_SHIFT_TYPES = """
-    CREATE TABLE IF NOT EXISTS shift_types (
-        id          INTEGER PRIMARY KEY AUTOINCREMENT,
-        name        TEXT NOT NULL,
-        color       TEXT NOT NULL,
-        sort_order  INTEGER NOT NULL DEFAULT 0
-    )
-"""
-
 _CREATE_SHIFTS = """
     CREATE TABLE IF NOT EXISTS shifts (
         nurse         TEXT NOT NULL,
         shift_date    TEXT NOT NULL,
-        shift_type_id INTEGER NOT NULL,
-        PRIMARY KEY (nurse, shift_date)
+        slot          TEXT NOT NULL,
+        start_time    TEXT,
+        end_time      TEXT,
+        PRIMARY KEY (nurse, shift_date, slot)
     )
 """
 
@@ -248,7 +241,6 @@ def init() -> None:
         conn.execute(_CREATE_LINE_UNLINKED)
         conn.execute(_CREATE_LINE_RECENTLY_SENT)
         conn.execute(_CREATE_ALLEYPIN_NOT_FOUND)
-        conn.execute(_CREATE_SHIFT_TYPES)
         conn.execute(_CREATE_SHIFTS)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
@@ -1177,75 +1169,46 @@ def get_submitted_entries() -> list[MsptSubmittableEntry]:
     ]
 
 
-def get_shift_types() -> list[dict]:
-    with _conn() as conn:
-        rows = conn.execute(
-            "SELECT id, name, color, sort_order FROM shift_types ORDER BY sort_order"
-        ).fetchall()
-    return [dict(zip(('id', 'name', 'color', 'sort_order'), r)) for r in rows]
-
-
-def add_shift_type(name: str, color: str) -> dict:
-    with _conn() as conn:
-        max_order = conn.execute("SELECT COALESCE(MAX(sort_order), -1) FROM shift_types").fetchone()[0]
-        cur = conn.execute(
-            "INSERT INTO shift_types (name, color, sort_order) VALUES (?, ?, ?)",
-            (name, color, max_order + 1),
-        )
-        return {"id": cur.lastrowid, "name": name, "color": color, "sort_order": max_order + 1}
-
-
-def update_shift_type(shift_type_id: int, name: str, color: str) -> None:
-    with _conn() as conn:
-        conn.execute(
-            "UPDATE shift_types SET name = ?, color = ? WHERE id = ?",
-            (name, color, shift_type_id),
-        )
-
-
-def delete_shift_type(shift_type_id: int) -> None:
-    """Removing a shift type also clears any shifts assigned to it, since a
-    dangling shift_type_id would have nothing to render in the grid."""
-    with _conn() as conn:
-        conn.execute("DELETE FROM shifts WHERE shift_type_id = ?", (shift_type_id,))
-        conn.execute("DELETE FROM shift_types WHERE id = ?", (shift_type_id,))
-
-
 def get_shifts_for_week(week_start: str) -> list[dict]:
     week_end = (date.fromisoformat(week_start) + timedelta(days=6)).isoformat()
     with _conn() as conn:
         rows = conn.execute(
-            """SELECT nurse, shift_date, shift_type_id FROM shifts
+            """SELECT nurse, shift_date, slot, start_time, end_time FROM shifts
                WHERE shift_date BETWEEN ? AND ?""",
             (week_start, week_end),
         ).fetchall()
-    return [dict(zip(('nurse', 'shift_date', 'shift_type_id'), r)) for r in rows]
+    return [dict(zip(('nurse', 'shift_date', 'slot', 'start_time', 'end_time'), r)) for r in rows]
 
 
-def set_shift(nurse: str, shift_date: str, shift_type_id: int | None) -> None:
+def set_shift(nurse: str, shift_date: str, slot: str, start_time: str | None, end_time: str | None) -> None:
     with _conn() as conn:
-        if shift_type_id is None:
-            conn.execute("DELETE FROM shifts WHERE nurse = ? AND shift_date = ?", (nurse, shift_date))
+        if start_time is None and end_time is None:
+            conn.execute(
+                "DELETE FROM shifts WHERE nurse = ? AND shift_date = ? AND slot = ?",
+                (nurse, shift_date, slot),
+            )
         else:
             conn.execute(
-                """INSERT INTO shifts (nurse, shift_date, shift_type_id) VALUES (?, ?, ?)
-                   ON CONFLICT(nurse, shift_date) DO UPDATE SET shift_type_id=excluded.shift_type_id""",
-                (nurse, shift_date, shift_type_id),
+                """INSERT INTO shifts (nurse, shift_date, slot, start_time, end_time) VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(nurse, shift_date, slot) DO UPDATE SET
+                       start_time=excluded.start_time, end_time=excluded.end_time""",
+                (nurse, shift_date, slot, start_time, end_time),
             )
 
 
 def copy_week(from_week_start: str, to_week_start: str) -> None:
-    """Copies every shift in from_week_start's week to the same weekday in
-    to_week_start's week, overwriting any existing assignments there."""
+    """Copies every shift entry in from_week_start's week to the same weekday in
+    to_week_start's week, overwriting any existing entries there."""
     day_delta = (date.fromisoformat(to_week_start) - date.fromisoformat(from_week_start)).days
     rows = get_shifts_for_week(from_week_start)
     with _conn() as conn:
         for r in rows:
             new_date = (date.fromisoformat(r['shift_date']) + timedelta(days=day_delta)).isoformat()
             conn.execute(
-                """INSERT INTO shifts (nurse, shift_date, shift_type_id) VALUES (?, ?, ?)
-                   ON CONFLICT(nurse, shift_date) DO UPDATE SET shift_type_id=excluded.shift_type_id""",
-                (r['nurse'], new_date, r['shift_type_id']),
+                """INSERT INTO shifts (nurse, shift_date, slot, start_time, end_time) VALUES (?, ?, ?, ?, ?)
+                   ON CONFLICT(nurse, shift_date, slot) DO UPDATE SET
+                       start_time=excluded.start_time, end_time=excluded.end_time""",
+                (r['nurse'], new_date, r['slot'], r['start_time'], r['end_time']),
             )
 
 

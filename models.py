@@ -220,22 +220,15 @@ class MsptManualRemoveRequest(BaseModel):
     chart_number: str
 
 
-class ShiftType(BaseModel):
-    id: int
-    name: str
-    color: str
-    sort_order: int = 0
+ShiftSlot = Literal["早診", "午診", "晚診"]
 
 
-class ShiftTypeRequest(BaseModel):
-    name: str
-    color: str
-
-
-class ShiftAssignment(BaseModel):
+class ShiftEntry(BaseModel):
     nurse: str
     shift_date: date
-    shift_type_id: int | None = None  # None = clear that cell
+    slot: ShiftSlot
+    start_time: str | None = None  # 'HH:MM', None clears that slot
+    end_time: str | None = None
 
 
 class CopyWeekRequest(BaseModel):
