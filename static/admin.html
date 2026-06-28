@@ -1957,14 +1957,28 @@ let nursesCache = [];
 let shiftsCache = [];
 const SLOTS = ['早診', '午診', '晚診'];
 
-const TIME_OPTIONS = [];
-for (let h = 0; h < 24; h++) {
-  for (let m = 0; m < 60; m += 15) {
-    TIME_OPTIONS.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+const SLOT_RANGE = {
+  '早診': ['08:00', '13:00'],
+  '午診': ['15:00', '20:00'],
+  '晚診': ['18:00', '21:30'],
+};
+
+function timeRangeOptions([startStr, endStr]) {
+  const [sh, sm] = startStr.split(':').map(Number);
+  const [eh, em] = endStr.split(':').map(Number);
+  const startMin = sh * 60 + sm, endMin = eh * 60 + em;
+  const opts = [];
+  for (let t = startMin; t <= endMin; t += 15) {
+    opts.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
   }
+  return opts;
 }
-function timeSelectOptions(selected) {
-  const opts = TIME_OPTIONS.map(t => `<option value="${t}"${t === selected ? ' selected' : ''}>${t}</option>`).join('');
+
+const SLOT_TIME_OPTIONS = Object.fromEntries(SLOTS.map(slot => [slot, timeRangeOptions(SLOT_RANGE[slot])]));
+
+function timeSelectOptions(selected, slot) {
+  const opts = SLOT_TIME_OPTIONS[slot]
+    .map(t => `<option value="${t}"${t === selected ? ' selected' : ''}>${t}</option>`).join('');
   return `<option value=""></option>${opts}`;
 }
 
@@ -2018,8 +2032,8 @@ function renderGrid(nurses) {
         const entry = cellMap[`${nurse}|${d}|${slot}`] || {};
         return `<td>
           <div class="sched-time-pair" data-nurse="${nurse}" data-date="${d}" data-slot="${slot}">
-            <select class="sched-time-select start">${timeSelectOptions(entry.start_time)}</select>
-            <select class="sched-time-select end">${timeSelectOptions(entry.end_time)}</select>
+            <select class="sched-time-select start">${timeSelectOptions(entry.start_time, slot)}</select>
+            <select class="sched-time-select end">${timeSelectOptions(entry.end_time, slot)}</select>
           </div>
         </td>`;
       }).join('');
