@@ -839,6 +839,19 @@ tbody tr:hover td { background: #F7F9FF; }
   font-variant-numeric: tabular-nums;
 }
 .sched-time-select:focus { outline: none; border-color: var(--blue); }
+.sched-fill-btn {
+  margin-left: 4px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-3);
+  font-size: 11px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  vertical-align: middle;
+  transition: background .12s, color .12s;
+}
+.sched-fill-btn:hover { background: var(--bg); color: var(--blue); }
 
 @media print {
   .topbar, .tabbar, #back-to-top, .bonus-toolbar { display: none !important; }
@@ -2037,7 +2050,7 @@ function renderGrid(nurses) {
           </div>
         </td>`;
       }).join('');
-      return `<tr><td class="l">${slot}</td>${cells}</tr>`;
+      return `<tr><td class="l">${slot}<button class="sched-fill-btn" title="將週一的時間套用到本週其他天" onclick="applyRowToWeek('${nurse}','${slot}')">⤵</button></td>${cells}</tr>`;
     }).join('');
 
     return `<div class="card sched-nurse-card">
@@ -2081,6 +2094,30 @@ async function saveShiftEntry(nurse, shiftDate, slot, start, end) {
     if (totalCell) totalCell.textContent = `${calcWeeklyHours(nurse).toFixed(2)} 小時`;
   } catch (e) {
     alert('儲存排班失敗：' + e.message);
+  }
+}
+
+function applyRowToWeek(nurse, slot) {
+  const monday = weekStart;
+  const sourcePair = document.querySelector(
+    `.sched-time-pair[data-nurse="${nurse}"][data-slot="${slot}"][data-date="${monday}"]`
+  );
+  const start = sourcePair.querySelector('.start').value;
+  const end = sourcePair.querySelector('.end').value;
+  if (!start || !end) {
+    alert('請先在週一設定好這一格的時間，再套用到本週其他天。');
+    return;
+  }
+  if (!confirm(`將週一的時間（${start}–${end}）套用到本週剩下的天數，確定？`)) return;
+
+  for (let i = 1; i < 7; i++) {
+    const d = addDays(weekStart, i);
+    const pair = document.querySelector(
+      `.sched-time-pair[data-nurse="${nurse}"][data-slot="${slot}"][data-date="${d}"]`
+    );
+    pair.querySelector('.start').value = start;
+    pair.querySelector('.end').value = end;
+    saveShiftEntry(nurse, d, slot, start, end);
   }
 }
 
