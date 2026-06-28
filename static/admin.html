@@ -1098,7 +1098,7 @@ function fmtMD(iso) {
   const [, m, d] = iso.split('-').map(Number);
   return `${m}/${d}`;
 }
-const DOW_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
+const DOW_LABELS = ['一', '二', '三', '四', '五', '六'];  // 診所週日不營業，排班表不顯示週日
 let weekStart = mondayOf(today);
 
 async function api(path) {
@@ -2010,7 +2010,7 @@ function calcWeeklyHours(nurse) {
 }
 
 async function loadSchedule() {
-  $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 6))}`;
+  $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
   $('sched-grid').innerHTML = shimTable(4, 8);
   try {
     const [nurses, shifts] = await Promise.all([
@@ -2034,7 +2034,7 @@ function renderGrid(nurses) {
   const cellMap = {};
   shiftsCache.forEach(s => { cellMap[`${s.nurse}|${s.shift_date}|${s.slot}`] = s; });
 
-  const days = Array.from({length: 7}, (_, i) => addDays(weekStart, i));
+  const days = Array.from({length: 6}, (_, i) => addDays(weekStart, i));  // Mon–Sat only, clinic is closed Sundays
   const dayHeadCells = days.map((d, i) =>
     `<th class="sched-day-head"><span class="dow">${DOW_LABELS[i]}</span><span class="dnum">${fmtMD(d)}</span></th>`
   ).join('');
@@ -2110,7 +2110,7 @@ function applyRowToWeek(nurse, slot) {
   }
   if (!confirm(`將週一的時間（${start}–${end}）套用到本週剩下的天數，確定？`)) return;
 
-  for (let i = 1; i < 7; i++) {
+  for (let i = 1; i < 6; i++) {
     const d = addDays(weekStart, i);
     const pair = document.querySelector(
       `.sched-time-pair[data-nurse="${nurse}"][data-slot="${slot}"][data-date="${d}"]`
