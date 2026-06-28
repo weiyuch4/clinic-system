@@ -218,3 +218,26 @@ class MsptManualRequest(BaseModel):
 
 class MsptManualRemoveRequest(BaseModel):
     chart_number: str
+
+
+class ShiftType(BaseModel):
+    id: int
+    name: str
+    color: str
+    sort_order: int = 0
+
+
+class ShiftTypeRequest(BaseModel):
+    name: str
+    color: str
+
+
+class ShiftAssignment(BaseModel):
+    nurse: str
+    shift_date: date
+    shift_type_id: int | None = None  # None = clear that cell
+
+
+class CopyWeekRequest(BaseModel):
+    from_week_start: date
+    to_week_start: date

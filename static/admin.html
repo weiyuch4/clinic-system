@@ -93,7 +93,7 @@ body {
   justify-content: flex-end;
   margin-bottom: 20px;
 }
-.month-picker {
+.month-picker, .week-picker {
   display: flex;
   align-items: center;
   gap: 2px;
@@ -116,7 +116,7 @@ body {
   transition: background .12s, color .12s;
 }
 .mp-btn:hover { background: var(--bg); color: var(--text-1); }
-.month-display {
+.month-display, .week-display {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-1);
@@ -790,13 +790,94 @@ tbody tr:hover td { background: #F7F9FF; }
   line-height: 1.1;
 }
 
+/* ── Schedule ────────────────────────────────────────────────────────────── */
+.sched-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.sched-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-mid);
+  background: var(--surface);
+  font: 600 12.5px/1 var(--font);
+  color: var(--text-1);
+  cursor: pointer;
+  transition: border-color .12s;
+}
+.sched-chip:hover { border-color: var(--blue); }
+.sched-chip-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.sched-chip-add { border-style: dashed; color: var(--text-2); background: none; }
+.sched-day-head { text-align: center !important; }
+.sched-day-head .dow { display: block; }
+.sched-day-head .dnum { display: block; font-size: 10px; color: var(--text-3); font-weight: 600; margin-top: 2px; }
+.sched-cell {
+  cursor: pointer;
+  text-align: center !important;
+  min-width: 76px;
+  font-weight: 600;
+  transition: filter .1s;
+}
+.sched-cell:hover { filter: brightness(0.95); }
+.sched-cell.is-empty { color: var(--text-3); font-weight: 400; background: #FAFBFC; }
+
+.sched-popover, .sched-edit-pop {
+  position: fixed;
+  z-index: 300;
+  background: var(--surface);
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  display: none;
+}
+.sched-popover.show, .sched-edit-pop.show { display: block; }
+.sched-popover { padding: 6px; min-width: 150px; }
+.sched-pop-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: var(--radius-s);
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+.sched-pop-item:hover { background: var(--bg); }
+.sched-pop-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.sched-pop-sep { height: 1px; background: var(--border); margin: 4px 2px; }
+.sched-edit-pop { padding: 14px; width: 220px; }
+.sched-edit-pop input[type=text] {
+  width: 100%;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-s);
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: var(--font);
+  margin-bottom: 8px;
+}
+.sched-edit-pop input[type=color] {
+  width: 100%;
+  height: 32px;
+  border: 1px solid var(--border-mid);
+  border-radius: var(--radius-s);
+  margin-bottom: 10px;
+  cursor: pointer;
+}
+.sched-edit-actions { display: flex; gap: 6px; }
+
 @media print {
-  .topbar, .tabbar, #back-to-top, .bonus-toolbar { display: none !important; }
+  .topbar, .tabbar, #back-to-top, .bonus-toolbar, .sched-palette { display: none !important; }
   main { padding: 0; max-width: none; }
   .section { display: none !important; }
-  #bonus { display: block !important; }
+  .section.active { display: block !important; }
   .bonus-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .bc { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
+  #schedule tbody tr { break-inside: avoid; }
 }
 
 /* ── LINE notification ──────────────────────────────────────────────────────── */
@@ -838,6 +919,7 @@ tbody tr:hover td { background: #F7F9FF; }
   <button class="tab"        data-section="labreport">代檢對帳單</button>
   <button class="tab"        data-section="bonus">不定期獎金</button>
   <button class="tab"        data-section="linenotify">LINE 通知</button>
+  <button class="tab"        data-section="schedule">排班表</button>
 </div>
 
 <main>
@@ -973,7 +1055,29 @@ tbody tr:hover td { background: #F7F9FF; }
     </div>
   </section>
 
+  <!-- ── Schedule ── -->
+  <section id="schedule" class="section">
+    <div class="bonus-toolbar sched-toolbar">
+      <div class="week-picker">
+        <button class="mp-btn prev-week">&#8592;</button>
+        <span class="week-display" id="sched-week-display">—</span>
+        <button class="mp-btn next-week">&#8594;</button>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-sm" onclick="copyLastWeek()">複製上週</button>
+        <button class="btn-sm" onclick="window.print()">列印</button>
+      </div>
+    </div>
+    <div class="sched-palette" id="sched-palette"></div>
+    <div class="card">
+      <div class="tbl-wrap" id="sched-grid"></div>
+    </div>
+  </section>
+
 </main>
+
+<div class="sched-popover" id="sched-popover"></div>
+<div class="sched-edit-pop" id="sched-edit-pop"></div>
 
 <button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂端">
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -997,6 +1101,28 @@ function shiftMonth(m, delta) {
   const d = new Date(y, mo - 1 + delta, 1);
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
+
+function toISO(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function addDays(iso, n) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return toISO(d);
+}
+function mondayOf(d) {
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const m = new Date(d);
+  m.setDate(d.getDate() + diff);
+  return toISO(m);
+}
+function fmtMD(iso) {
+  const [, m, d] = iso.split('-').map(Number);
+  return `${m}/${d}`;
+}
+const DOW_LABELS = ['一', '二', '三', '四', '五', '六', '日'];
+let weekStart = mondayOf(today);
 
 async function api(path) {
   const r = await fetch(path, { credentials: 'include' });
@@ -1024,6 +1150,10 @@ function shimTable(rows, cols) {
 // ── Month nav ─────────────────────────────────────────────────────────────────
 document.querySelectorAll('.prev-month').forEach(b => b.onclick = () => { month = shiftMonth(month, -1); refresh(); });
 document.querySelectorAll('.next-month').forEach(b => b.onclick = () => { month = shiftMonth(month, +1); refresh(); });
+
+// ── Week nav (schedule) ──────────────────────────────────────────────────────
+document.querySelectorAll('.prev-week').forEach(b => b.onclick = () => { weekStart = addDays(weekStart, -7); loadSchedule(); });
+document.querySelectorAll('.next-week').forEach(b => b.onclick = () => { weekStart = addDays(weekStart, 7); loadSchedule(); });
 
 // ── Tabs ──────────────────────────────────────────────────────────────────────
 document.querySelectorAll('.tab').forEach(btn => {
@@ -1858,6 +1988,239 @@ async function undoLineLog(id, btn) {
   }
 }
 
+// ── Schedule ──────────────────────────────────────────────────────────────────
+let nursesCache = [];
+let shiftTypesCache = [];
+let shiftsCache = [];
+let _schedPopoverCell = null;
+const SCHED_DEFAULT_COLORS = ['#2563EB', '#059669', '#D97706', '#DC2626', '#7C3AED', '#0891B2'];
+
+function pickTextColor(hex) {
+  const c = hex.replace('#', '');
+  const r = parseInt(c.substring(0, 2), 16), g = parseInt(c.substring(2, 4), 16), b = parseInt(c.substring(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6 ? '#0F172A' : '#FFFFFF';
+}
+
+async function loadSchedule() {
+  $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 6))}`;
+  $('sched-grid').innerHTML = shimTable(4, 8);
+  try {
+    const [nurses, types, shifts] = await Promise.all([
+      api('/api/nurses'),
+      api('/api/admin/shift-types'),
+      api(`/api/admin/shifts?week_start=${weekStart}`),
+    ]);
+    nursesCache = nurses;
+    shiftTypesCache = types;
+    shiftsCache = shifts;
+    renderPalette(types);
+    renderGrid(nurses, types, shifts);
+  } catch (e) {
+    $('sched-grid').innerHTML = errState(e.message);
+  }
+}
+
+function renderPalette(types) {
+  const chips = types.map(t =>
+    `<button class="sched-chip" data-type-id="${t.id}">
+      <span class="sched-chip-dot" style="background:${t.color}"></span>${t.name}
+    </button>`
+  ).join('');
+  $('sched-palette').innerHTML = chips + `<button class="sched-chip sched-chip-add" onclick="addShiftTypePrompt()">＋ 新增班別</button>`;
+}
+
+function renderGrid(nurses, types, shifts) {
+  const typeById = Object.fromEntries(types.map(t => [t.id, t]));
+  const cellMap = {};
+  shifts.forEach(s => { cellMap[`${s.nurse}|${s.shift_date}`] = s.shift_type_id; });
+
+  const days = Array.from({length: 7}, (_, i) => addDays(weekStart, i));
+  const headCells = days.map((d, i) =>
+    `<th class="sched-day-head"><span class="dow">${DOW_LABELS[i]}</span><span class="dnum">${fmtMD(d)}</span></th>`
+  ).join('');
+
+  if (!nurses.length) {
+    $('sched-grid').innerHTML = emptyState('🗓️', '尚無護理師名單', '');
+    return;
+  }
+
+  const bodyRows = nurses.map(nurse => {
+    const cells = days.map(d => {
+      const tid = cellMap[`${nurse}|${d}`];
+      const t = tid != null ? typeById[tid] : null;
+      const style = t ? `background:${t.color};color:${pickTextColor(t.color)}` : '';
+      const cls = t ? 'sched-cell' : 'sched-cell is-empty';
+      return `<td class="${cls}" style="${style}" data-nurse="${nurse}" data-date="${d}">${t ? t.name : '－'}</td>`;
+    }).join('');
+    return `<tr><td class="l"><strong>${nurse}</strong></td>${cells}</tr>`;
+  }).join('');
+
+  $('sched-grid').innerHTML = `<table>
+    <thead><tr><th class="l"></th>${headCells}</tr></thead>
+    <tbody>${bodyRows}</tbody>
+  </table>`;
+}
+
+$('sched-grid').addEventListener('click', (e) => {
+  const td = e.target.closest('.sched-cell');
+  if (!td) return;
+  openCellPopover(td);
+});
+
+function openCellPopover(td) {
+  _schedPopoverCell = td;
+  const pop = $('sched-popover');
+  const items = shiftTypesCache.map(t =>
+    `<div class="sched-pop-item" data-type-id="${t.id}">
+      <span class="sched-pop-dot" style="background:${t.color}"></span>${t.name}
+    </div>`
+  ).join('');
+  pop.innerHTML = items + `<div class="sched-pop-sep"></div><div class="sched-pop-item" data-type-id="">清除</div>`;
+  const r = td.getBoundingClientRect();
+  pop.style.left = `${r.left}px`;
+  pop.style.top = `${r.bottom + 4}px`;
+  pop.classList.add('show');
+}
+
+$('sched-popover').addEventListener('click', async (e) => {
+  const item = e.target.closest('.sched-pop-item');
+  if (!item || !_schedPopoverCell) return;
+  const idAttr = item.dataset.typeId;
+  const shiftTypeId = idAttr === '' ? null : Number(idAttr);
+  const cell = _schedPopoverCell;
+  $('sched-popover').classList.remove('show');
+  await assignShift(cell.dataset.nurse, cell.dataset.date, shiftTypeId);
+});
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.sched-popover') && !e.target.closest('.sched-cell')) {
+    $('sched-popover').classList.remove('show');
+  }
+  if (!e.target.closest('.sched-edit-pop') && !e.target.closest('.sched-chip')) {
+    $('sched-edit-pop').classList.remove('show');
+  }
+});
+
+async function assignShift(nurse, shiftDate, shiftTypeId) {
+  try {
+    const res = await fetch('/api/admin/shifts', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nurse, shift_date: shiftDate, shift_type_id: shiftTypeId }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    await loadSchedule();
+  } catch (e) {
+    alert('儲存排班失敗：' + e.message);
+  }
+}
+
+async function copyLastWeek() {
+  if (!confirm('此操作將覆蓋本週已排的班別，確定？')) return;
+  try {
+    const res = await fetch('/api/admin/shifts/copy-week', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ from_week_start: addDays(weekStart, -7), to_week_start: weekStart }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    await loadSchedule();
+  } catch (e) {
+    alert('複製失敗：' + e.message);
+  }
+}
+
+async function addShiftTypePrompt() {
+  const name = prompt('輸入班別名稱：');
+  if (!name || !name.trim()) return;
+  const color = SCHED_DEFAULT_COLORS[shiftTypesCache.length % SCHED_DEFAULT_COLORS.length];
+  try {
+    const res = await fetch('/api/admin/shift-types', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim(), color }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    await loadSchedule();
+  } catch (e) {
+    alert('新增班別失敗：' + e.message);
+  }
+}
+
+$('sched-palette').addEventListener('click', (e) => {
+  const chip = e.target.closest('.sched-chip[data-type-id]');
+  if (!chip) return;
+  openShiftTypeEditor(Number(chip.dataset.typeId), chip);
+});
+
+function openShiftTypeEditor(id, chipEl) {
+  const t = shiftTypesCache.find(x => x.id === id);
+  if (!t) return;
+  const pop = $('sched-edit-pop');
+  pop.innerHTML = `
+    <input type="text" id="sched-edit-name" value="${t.name}">
+    <input type="color" id="sched-edit-color" value="${t.color}">
+    <div class="sched-edit-actions">
+      <button class="btn-sm primary" onclick="saveShiftType(${id})">儲存</button>
+      <button class="btn-sm" onclick="deleteShiftTypeConfirm(${id})">刪除</button>
+    </div>`;
+  const r = chipEl.getBoundingClientRect();
+  pop.style.left = `${r.left}px`;
+  pop.style.top = `${r.bottom + 4}px`;
+  pop.classList.add('show');
+}
+
+async function saveShiftType(id) {
+  const name = $('sched-edit-name').value.trim();
+  const color = $('sched-edit-color').value;
+  if (!name) return;
+  try {
+    const res = await fetch(`/api/admin/shift-types/${id}`, {
+      method: 'PUT', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, color }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    $('sched-edit-pop').classList.remove('show');
+    await loadSchedule();
+  } catch (e) {
+    alert('更新班別失敗：' + e.message);
+  }
+}
+
+async function deleteShiftTypeConfirm(id) {
+  const t = shiftTypesCache.find(x => x.id === id);
+  const inUse = shiftsCache.filter(s => s.shift_type_id === id).length;
+  const msg = inUse > 0
+    ? `「${t.name}」目前已套用在本週 ${inUse} 個格子，刪除將一併清除這些排班，確定？`
+    : `確定刪除「${t.name}」？`;
+  if (!confirm(msg)) return;
+  try {
+    const res = await fetch(`/api/admin/shift-types/${id}`, { method: 'DELETE', credentials: 'include' });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    $('sched-edit-pop').classList.remove('show');
+    await loadSchedule();
+  } catch (e) {
+    alert('刪除班別失敗：' + e.message);
+  }
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 function load(section) {
   if (section === 'nurses')    loadNurses();
@@ -1865,6 +2228,7 @@ function load(section) {
   else if (section === 'labreport') loadLabReport();
   else if (section === 'bonus')     loadBonus();
   else if (section === 'linenotify') loadLineLog();
+  else if (section === 'schedule')   loadSchedule();
 }
 
 function refresh() {

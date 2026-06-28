@@ -22,11 +22,11 @@ import directory
 import lab_report
 import lab_results
 from models import (
-    ChartNumberRequest, ClinicContactRequest, ContactRequest, DailyReport, ExcludeRequest, FollowupEntry,
-    HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest,
+    ChartNumberRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest, DailyReport, ExcludeRequest,
+    FollowupEntry, HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest,
     MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, OnHoldRemoveRequest, OnHoldRequest, SendLineNotificationsRequest,
-    SubmitRequest, UnexcludeRequest, UndoLineNotificationRequest,
+    ShiftAssignment, ShiftType, ShiftTypeRequest, SubmitRequest, UnexcludeRequest, UndoLineNotificationRequest,
 )
 
 # ── Edit this list to match your clinic's nurse names ──────────────────────────
@@ -139,6 +139,69 @@ def admin_doctors_json(month: str | None = None, _: None = Depends(_require_admi
     except Exception:
         logger.exception("admin_doctors failed for month=%s", month)
         raise HTTPException(status_code=500, detail="查詢失敗")
+
+
+@app.get("/api/admin/shift-types")
+def get_shift_types(_: None = Depends(_require_admin)) -> list[ShiftType]:
+    try:
+        return contacts.get_shift_types()
+    except Exception:
+        logger.exception("get_shift_types failed")
+        raise HTTPException(status_code=500, detail="查詢班別失敗")
+
+
+@app.post("/api/admin/shift-types")
+def add_shift_type(req: ShiftTypeRequest, _: None = Depends(_require_admin)) -> ShiftType:
+    try:
+        return contacts.add_shift_type(req.name, req.color)
+    except Exception:
+        logger.exception("add_shift_type failed for name=%s", req.name)
+        raise HTTPException(status_code=500, detail="新增班別失敗")
+
+
+@app.put("/api/admin/shift-types/{shift_type_id}")
+def update_shift_type(shift_type_id: int, req: ShiftTypeRequest, _: None = Depends(_require_admin)) -> None:
+    try:
+        contacts.update_shift_type(shift_type_id, req.name, req.color)
+    except Exception:
+        logger.exception("update_shift_type failed for id=%s", shift_type_id)
+        raise HTTPException(status_code=500, detail="更新班別失敗")
+
+
+@app.delete("/api/admin/shift-types/{shift_type_id}")
+def delete_shift_type(shift_type_id: int, _: None = Depends(_require_admin)) -> None:
+    try:
+        contacts.delete_shift_type(shift_type_id)
+    except Exception:
+        logger.exception("delete_shift_type failed for id=%s", shift_type_id)
+        raise HTTPException(status_code=500, detail="刪除班別失敗")
+
+
+@app.get("/api/admin/shifts")
+def get_shifts(week_start: date, _: None = Depends(_require_admin)) -> list[ShiftAssignment]:
+    try:
+        return contacts.get_shifts_for_week(week_start.isoformat())
+    except Exception:
+        logger.exception("get_shifts failed for week_start=%s", week_start)
+        raise HTTPException(status_code=500, detail="查詢排班失敗")
+
+
+@app.post("/api/admin/shifts")
+def set_shift(req: ShiftAssignment, _: None = Depends(_require_admin)) -> None:
+    try:
+        contacts.set_shift(req.nurse, req.shift_date.isoformat(), req.shift_type_id)
+    except Exception:
+        logger.exception("set_shift failed for nurse=%s date=%s", req.nurse, req.shift_date)
+        raise HTTPException(status_code=500, detail="儲存排班失敗")
+
+
+@app.post("/api/admin/shifts/copy-week")
+def copy_week(req: CopyWeekRequest, _: None = Depends(_require_admin)) -> None:
+    try:
+        contacts.copy_week(req.from_week_start.isoformat(), req.to_week_start.isoformat())
+    except Exception:
+        logger.exception("copy_week failed from=%s to=%s", req.from_week_start, req.to_week_start)
+        raise HTTPException(status_code=500, detail="複製排班失敗")
 
 
 @app.get("/api/report")
