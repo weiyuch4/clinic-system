@@ -192,6 +192,15 @@ _CREATE_LINE_RECENTLY_SENT = """
     )
 """
 
+_CREATE_ALLEYPIN_NOT_FOUND = """
+    CREATE TABLE IF NOT EXISTS alleypin_not_found (
+        chart_number TEXT NOT NULL PRIMARY KEY,
+        name         TEXT NOT NULL,
+        flagged_at   TEXT NOT NULL,
+        nurse        TEXT DEFAULT ''
+    )
+"""
+
 
 @contextmanager
 def _conn() -> Generator[sqlite3.Connection, None, None]:
@@ -220,6 +229,7 @@ def init() -> None:
         conn.execute(_CREATE_LINE_NOTIFICATION_LOG)
         conn.execute(_CREATE_LINE_UNLINKED)
         conn.execute(_CREATE_LINE_RECENTLY_SENT)
+        conn.execute(_CREATE_ALLEYPIN_NOT_FOUND)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
             try:
@@ -748,6 +758,36 @@ def get_line_unlinked_chart_numbers() -> set[str]:
     a report, instead of querying once per patient."""
     with _conn() as conn:
         rows = conn.execute("SELECT chart_number FROM line_unlinked").fetchall()
+    return {r[0] for r in rows}
+
+
+def flag_alleypin_not_found(chart_number: str, name: str, nurse: str = '') -> None:
+    """Mark a patient as not found in Alleypin's own patient list at all
+    (distinct from line_unlinked — found but not LINE-linked), so the main
+    dashboard can tag them to contact by phone instead."""
+    with _conn() as conn:
+        conn.execute(
+            """INSERT INTO alleypin_not_found (chart_number, name, flagged_at, nurse)
+               VALUES (?, ?, ?, ?)
+               ON CONFLICT(chart_number) DO UPDATE SET
+                   flagged_at=excluded.flagged_at, nurse=excluded.nurse""",
+            (chart_number, name, date.today().isoformat(), nurse),
+        )
+
+
+def clear_alleypin_not_found(chart_number: str) -> None:
+    """Called whenever a later attempt actually finds this patient on
+    Alleypin (sent, line_not_linked, or recently_sent all imply they were
+    found this time) — the flag no longer applies."""
+    with _conn() as conn:
+        conn.execute("DELETE FROM alleypin_not_found WHERE chart_number = ?", (chart_number,))
+
+
+def get_alleypin_not_found_chart_numbers() -> set[str]:
+    """Bulk-fetch flagged chart numbers for applying the tag while building
+    a report, instead of querying once per patient."""
+    with _conn() as conn:
+        rows = conn.execute("SELECT chart_number FROM alleypin_not_found").fetchall()
     return {r[0] for r in rows}
 
 

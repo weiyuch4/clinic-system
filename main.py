@@ -153,6 +153,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
         mspt_checkedin_keys = contacts.get_mspt_checkedin_keys()  # (chart_number, mspt_stage, due_date)
         on_hold_keys = contacts.get_on_hold_keys()            # (chart_number, category, due_date)
         line_unlinked_charts = contacts.get_line_unlinked_chart_numbers()
+        alleypin_not_found_charts = contacts.get_alleypin_not_found_chart_numbers()
         line_recently_sent_map = contacts.get_line_recently_sent_map()  # (chart_number, template) -> last_sent_at iso date
         hep_returned_completed_keys = contacts.get_hep_returned_completed_keys()  # (chart_number, last_visit_date)
         manual_overrides = contacts.get_mspt_manual_overrides()
@@ -212,6 +213,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
                 updated = e.model_copy(update={
                     "call_required": key in call_required_keys,
                     "line_unlinked": e.patient.chart_number in line_unlinked_charts,
+                    "alleypin_not_found": e.patient.chart_number in alleypin_not_found_charts,
+                    "phone": database.get_phone_by_chart_number(e.patient.chart_number),
                 })
                 template = _pick_line_template(updated)
                 sent_at = line_recently_sent_map.get((e.patient.chart_number, template)) if template else None
@@ -542,6 +545,20 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -
                 contacts.flag_line_unlinked(target["chart_number"], target["entry"].patient.name, nurse)
             except Exception:
                 logger.exception("failed to flag %s as line_unlinked", target["chart_number"])
+
+        if result["status"] == "not_found":
+            try:
+                contacts.flag_alleypin_not_found(target["chart_number"], target["entry"].patient.name, nurse)
+            except Exception:
+                logger.exception("failed to flag %s as alleypin_not_found", target["chart_number"])
+        elif result["status"] != "error":
+            # Any other status means _find_patient_row succeeded this time
+            # ("error" is ambiguous — it can happen during the search itself,
+            # so it's left alone rather than assumed to mean "found").
+            try:
+                contacts.clear_alleypin_not_found(target["chart_number"])
+            except Exception:
+                logger.exception("failed to clear alleypin_not_found flag for %s", target["chart_number"])
 
         if result["status"] == "recently_sent":
             try:

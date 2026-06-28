@@ -23,6 +23,7 @@ Safety notes:
     selectors can be verified without sending anything real.
 """
 import asyncio
+import json
 import shutil
 import subprocess
 import urllib.request
@@ -101,6 +102,39 @@ def _is_browser_alive() -> bool:
         return False
 
 
+def _kill_stale_profile_processes() -> None:
+    """Kill any existing msedge.exe process already bound to our specific
+    profile directory, before attempting a fresh launch. Edge's
+    single-instance behavior means launching a new process while an old one
+    (even one started without --remote-debugging-port, e.g. left over from
+    before that flag existed, or from a session Windows restored on its
+    own) already holds this profile just silently hands off to the old one
+    — our new --remote-debugging-port flag never takes effect, and
+    _is_browser_alive() then waits forever for a port that's never opened.
+    Best-effort: any failure here just means the launch attempt proceeds
+    as before, no worse than not having this check at all."""
+    try:
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-CimInstance Win32_Process -Filter \"name='msedge.exe'\" | "
+             "Select-Object ProcessId, CommandLine | ConvertTo-Json -Compress"],
+            capture_output=True, text=True, timeout=10,
+        )
+        procs = json.loads(result.stdout or "[]")
+        if isinstance(procs, dict):
+            procs = [procs]
+        profile_str = str(PROFILE_DIR)
+        for proc_info in procs:
+            cmdline = proc_info.get("CommandLine") or ""
+            if profile_str in cmdline:
+                subprocess.run(
+                    ["taskkill", "/F", "/T", "/PID", str(proc_info["ProcessId"])],
+                    capture_output=True, timeout=10,
+                )
+    except Exception:
+        pass
+
+
 def _launch_detached_browser():
     """Start Edge as an independent OS process — NOT a Playwright-managed
     child — so it keeps running after our script exits. Logging into
@@ -108,6 +142,7 @@ def _launch_detached_browser():
 
     The PID is saved to PID_FILE so stop_browser() — possibly called from a
     completely different process later — can find and kill it directly."""
+    _kill_stale_profile_processes()
     exe = _edge_executable_path()
     PROFILE_DIR.mkdir(exist_ok=True)
     proc = subprocess.Popen(
@@ -122,12 +157,16 @@ async def _get_page(p) -> Page:
     it isn't already up. Never closes it — only stop_browser() does."""
     if not _is_browser_alive():
         _launch_detached_browser()
-        for _ in range(30):
+        # A cold start (first launch in a while, profile not yet warm in the
+        # OS file cache) can genuinely take longer than a few seconds on
+        # PC1's hardware — seen as "fails once, an immediate retry works",
+        # i.e. the browser was about to finish right as we gave up too early.
+        for _ in range(90):
             if _is_browser_alive():
                 break
             await asyncio.sleep(0.5)
         else:
-            raise RuntimeError("Edge did not start within 15s — check Edge is installed and the port is free")
+            raise RuntimeError("Edge did not start within 45s — check Edge is installed and the port is free")
 
     browser = await p.chromium.connect_over_cdp(f"http://localhost:{DEBUG_PORT}")
     context = browser.contexts[0] if browser.contexts else await browser.new_context()

@@ -1004,6 +1004,29 @@ def _parse_allergy(warn: str) -> list[str]:
     return [a.strip() for a in warn.split('.') if a.strip()]
 
 
+_patdb_phone_index: dict[str, str] | None = None
+
+
+def _get_patdb_phone_index() -> dict[str, str]:
+    """National ID -> TEL, built once from PATDB and cached. PATDB has a
+    single combined phone field (no separate mobile/landline), so this is
+    whichever number the clinic has on file."""
+    global _patdb_phone_index
+    if _patdb_phone_index is None:
+        _patdb_phone_index = {
+            r.get('ID', '').strip(): r.get('TEL', '').strip()
+            for r in _load_patdb()
+            if r.get('ID', '').strip()
+        }
+    return _patdb_phone_index
+
+
+def get_phone_by_chart_number(chart_number: str) -> str:
+    """Look up a patient's phone number from PATDB by national ID. Returns
+    '' if not on file."""
+    return _get_patdb_phone_index().get(chart_number, '')
+
+
 def _allergy_by_name(name: str) -> list[str] | None:
     """Exact name match in PATDB → allergy list. None = not found."""
     for r in _load_patdb():
