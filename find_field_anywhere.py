@@ -3,16 +3,15 @@ import struct
 import os
 import glob
 import re
+import time
 
 sys.stdout.reconfigure(encoding="utf-8")
 
 if len(sys.argv) < 3:
     print("Usage: python find_field_anywhere.py <DIR_OR_GLOB> <SEARCH_TERM> [ANCHOR_ID]")
-    print("  Two-stage scan: Stage 1 reads field headers + samples a few records from")
-    print("  every .DBF file (fast) to shortlist specific fields whose SAMPLE VALUES")
-    print("  actually look like phone numbers (not just fields of a plausible length —")
-    print("  that alone matched 1610/1830 files here, far too broad to brute-force).")
-    print("  Stage 2 then does the full record scan only on those shortlisted fields.")
+    print("  Single full pass: for every .DBF file, decodes every record's character")
+    print("  fields sized 8-14 chars (phone-like) and checks each one against the")
+    print("  search term. Every record in every file is checked — no sampling.")
     print("  ANCHOR_ID is informational only — every match is shown regardless, with a")
     print("  note on whether ANCHOR_ID also appears in that same record. Different 燿聖")
     print("  tables may key a patient by different identifiers (national ID, IDNO, an")
@@ -24,23 +23,27 @@ search_arg = sys.argv[1]
 term = sys.argv[2]
 anchor = sys.argv[3] if len(sys.argv) > 3 else None
 
-PHONE_RE = re.compile(r"^09\d{8}$")  # exact Taiwan mobile format: 09 + 8 digits = 10 chars, nothing else
-SAMPLE_SIZE = 40
 SEP_CHARS = str.maketrans("", "", "-. ()\t")
 
 
 def strip_seps(s):
     return s.translate(SEP_CHARS)
 
+
 if os.path.isdir(search_arg):
     dbf_files = sorted(glob.glob(os.path.join(search_arg, "*.DBF")) + glob.glob(os.path.join(search_arg, "*.dbf")))
 else:
     dbf_files = sorted(set(glob.glob(search_arg)))
 
-print(f"Stage 1: sampling up to {SAMPLE_SIZE} records from {len(dbf_files)} file(s)...")
+print(f"Scanning {len(dbf_files)} DBF file(s), every record, for {term!r}"
+      + (f" (anchor {anchor!r} is informational only)" if anchor else "") + "...\n")
 
-candidates = []  # (path, fields, num_records, header_len, record_len, phone_field_names)
-for path in dbf_files:
+start_time = time.time()
+found_any = False
+total_records_scanned = 0
+
+for fi, path in enumerate(dbf_files):
+    fname = os.path.basename(path)
     try:
         with open(path, "rb") as f:
             header = f.read(32)
@@ -66,66 +69,39 @@ for path in dbf_files:
             if not phoneish_fields:
                 continue
 
-            # Spread sample positions across the WHOLE file rather than just the
-            # first N records — a field only populated for, say, recently-added
-            # patients would look empty (and get wrongly skipped) if we only ever
-            # sampled the start of the file.
-            n_samples = min(SAMPLE_SIZE, num_records)
-            sample_indices = {(num_records * k) // n_samples for k in range(n_samples)} if n_samples else set()
+            print(f"[{fi + 1}/{len(dbf_files)}] scanning {fname} ({num_records} records, "
+                  f"fields {phoneish_fields})...", flush=True)
 
-            confirmed = set()
-            for idx in sample_indices:
-                f.seek(header_len + idx * record_len)
-                raw = f.read(record_len)
-                if not raw or len(raw) < record_len:
-                    continue
-                if raw[0:1] == b"*":
-                    continue
-                offset = 1
-                for name, ftype, flen in fields:
-                    val_bytes = raw[offset:offset + flen]
-                    if name in phoneish_fields and name not in confirmed:
-                        try:
-                            val = val_bytes.decode("cp950", errors="replace").strip()
-                        except Exception:
-                            val = val_bytes.decode("latin-1", errors="replace").strip()
-                        if PHONE_RE.match(strip_seps(val)):
-                            confirmed.add(name)
-                    offset += flen
-
-            if confirmed:
-                candidates.append((path, fields, num_records, header_len, record_len, sorted(confirmed)))
-    except Exception:
-        continue
-
-total_candidate_records = sum(c[2] for c in candidates)
-print(f"Stage 1 done: {len(candidates)} file(s) have a field whose sampled values look like "
-      f"real phone numbers, {total_candidate_records} records total to scan.\n")
-for path, fields, num_records, header_len, record_len, phone_fields in candidates:
-    print(f"  {os.path.basename(path):16s} fields={phone_fields} ({num_records} records)")
-print()
-
-if not candidates:
-    print("No candidate fields found — the number may live in a non-character field, "
-          "a memo (.FPT) field, or a file not matched by this glob pattern.")
-    sys.exit(0)
-
-print(f"Stage 2: scanning those fields for {term!r}"
-      + (f" (anchored to records also containing {anchor!r})" if anchor else "") + "...\n")
-
-found_any = False
-for path, fields, num_records, header_len, record_len, phone_fields in candidates:
-    fname = os.path.basename(path)
-    try:
-        with open(path, "rb") as f:
             f.seek(header_len)
             for i in range(num_records):
                 raw = f.read(record_len)
                 if not raw or len(raw) < record_len:
                     break
+                total_records_scanned += 1
                 if raw[0:1] == b"*":
                     continue
 
+                offset = 1
+                phone_vals = {}
+                offsets = {}
+                for name, ftype, flen in fields:
+                    if name in phoneish_fields:
+                        try:
+                            val = raw[offset:offset + flen].decode("cp950", errors="replace").strip()
+                        except Exception:
+                            val = raw[offset:offset + flen].decode("latin-1", errors="replace").strip()
+                        phone_vals[name] = val
+                        offsets[name] = offset
+                    offset += flen
+
+                matching_fields = [
+                    n for n, v in phone_vals.items()
+                    if term in v or term in strip_seps(v)
+                ]
+                if not matching_fields:
+                    continue
+
+                # full row decode only on an actual match, to avoid wasting time on misses
                 offset = 1
                 row = {}
                 for name, ftype, flen in fields:
@@ -137,23 +113,18 @@ for path, fields, num_records, header_len, record_len, phone_fields in candidate
                     row[name] = val
                     offset += flen
 
-                matching_fields = [
-                    n for n in phone_fields
-                    if term in row.get(n, "") or term in strip_seps(row.get(n, ""))
-                ]
-                if not matching_fields:
-                    continue
-
                 anchor_present = anchor and any(anchor in v for v in row.values())
                 found_any = True
                 anchor_note = "" if not anchor else f"  [anchor {anchor!r} {'FOUND' if anchor_present else 'not found'} in this record]"
-                print(f"[{fname}] record #{i}: match in field(s) {matching_fields}{anchor_note}")
+                print(f"  >>> [{fname}] record #{i}: match in field(s) {matching_fields}{anchor_note}")
                 for name, _, _ in fields:
                     if row[name]:
-                        print(f"    {name:12s} = {row[name]!r}")
+                        print(f"        {name:12s} = {row[name]!r}")
                 print()
     except Exception as e:
         print(f"[{fname}] ERROR: {e}")
 
+elapsed = time.time() - start_time
+print(f"\nDone. Scanned {total_records_scanned} records in {elapsed:.1f}s.")
 if not found_any:
-    print("No matches found across any candidate field.")
+    print("No matches found anywhere.")
