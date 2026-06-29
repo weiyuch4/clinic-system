@@ -22,12 +22,16 @@ import directory
 import lab_report
 import lab_results
 from models import (
-    ChartNumberRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest, DailyReport, ExcludeRequest,
-    FollowupEntry, HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest,
-    MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
+    BulletinNoteRequest, ChartNumberRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest, DailyReport,
+    ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest,
+    MsptCompleteRequest, MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
     SendLineNotificationsRequest, ShiftEntry, SubmitRequest, UnexcludeRequest, UndoLineNotificationRequest,
 )
+
+# ── Edit this for your clinic's name ───────────────────────────────────────────
+CLINIC_NAME = "魏宏杰診所"
+# ───────────────────────────────────────────────────────────────────────────────
 
 # ── Edit this list to match your clinic's nurse names ──────────────────────────
 NURSE_NAMES: list[str] = ["媛淩", "巧潔", "辰優", "惠茗"]
@@ -59,7 +63,7 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="診所追蹤系統")
+app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 contacts.init()
@@ -106,6 +110,41 @@ def patient_search(q: str = "") -> list[dict]:
 @app.get("/api/nurses")
 def get_nurses() -> list[str]:
     return contacts.get_nurses()
+
+
+@app.get("/api/bulletin")
+def get_bulletin(limit: int = 100) -> list[dict]:
+    try:
+        return contacts.get_bulletin_notes(limit)
+    except Exception:
+        logger.exception("get_bulletin failed")
+        raise HTTPException(status_code=500, detail="載入留言失敗")
+
+
+@app.post("/api/bulletin")
+def add_bulletin(req: BulletinNoteRequest) -> dict:
+    content = req.content.strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="內容不可空白")
+    try:
+        return contacts.add_bulletin_note(req.nurse or "（未選擇）", content)
+    except Exception:
+        logger.exception("add_bulletin failed")
+        raise HTTPException(status_code=500, detail="發布失敗")
+
+
+@app.delete("/api/bulletin/{note_id}")
+def delete_bulletin(note_id: int, nurse: str = "") -> None:
+    try:
+        note = contacts.get_bulletin_note(note_id)
+        if note and note["nurse"] != nurse:
+            raise HTTPException(status_code=403, detail="只能刪除自己的留言")
+        contacts.delete_bulletin_note(note_id)
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("delete_bulletin failed for id=%s", note_id)
+        raise HTTPException(status_code=500, detail="刪除失敗")
 
 
 @app.post("/api/admin/nurses")
@@ -196,7 +235,10 @@ def get_shifts(week_start: date, _: None = Depends(_require_admin)) -> list[Shif
 @app.post("/api/admin/shifts")
 def set_shift(req: ShiftEntry, _: None = Depends(_require_admin)) -> None:
     try:
-        contacts.set_shift(req.nurse, req.shift_date.isoformat(), req.slot, req.start_time, req.end_time)
+        contacts.set_shift(
+            req.nurse, req.shift_date.isoformat(), req.slot, req.start_time, req.end_time,
+            req.clean_start, req.clean_end,
+        )
     except Exception:
         logger.exception("set_shift failed for nurse=%s date=%s slot=%s", req.nurse, req.shift_date, req.slot)
         raise HTTPException(status_code=500, detail="儲存排班失敗")

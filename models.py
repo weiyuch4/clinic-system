@@ -229,6 +229,8 @@ class ShiftEntry(BaseModel):
     slot: ShiftSlot
     start_time: str | None = None  # 'HH:MM', None clears that slot
     end_time: str | None = None
+    clean_start: str | None = None  # optional cleaning-duty sub-range within start_time/end_time
+    clean_end: str | None = None
 
 
 class CopyWeekRequest(BaseModel):
@@ -242,3 +244,8 @@ class NurseNameRequest(BaseModel):
 
 class PublishWeekRequest(BaseModel):
     week_start: date
+
+
+class BulletinNoteRequest(BaseModel):
+    nurse: str = ""
+    content: str

@@ -880,6 +880,15 @@ tbody tr:hover td { background: #F7F9FF; }
 }
 .sched-time-btn:hover { border-color: var(--blue); background: var(--blue-bg); }
 .sched-time-btn.is-empty { color: var(--text-3); font-weight: 400; border-style: dashed; }
+.sched-time-btn.has-clean { background: #FFFBEB; border-color: var(--amber); color: #92400E; }
+.sched-legend {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 11.5px; color: var(--text-2); font-weight: 600;
+}
+.sched-legend-swatch {
+  display: inline-block; width: 12px; height: 12px; border-radius: 3px;
+  background: #FFFBEB; border: 1px solid var(--amber); flex-shrink: 0;
+}
 
 /* time-range popover */
 .sched-time-popover {
@@ -943,6 +952,20 @@ tbody tr:hover td { background: #F7F9FF; }
   text-decoration: underline;
 }
 .stp-clear:hover { color: var(--red); }
+.stp-sep { height: 1px; background: var(--border); margin: 4px 0 10px; }
+.stp-clean-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; }
+.stp-dur-group { display: flex; gap: 6px; }
+.stp-dur-btn {
+  border: 1px solid var(--border-mid);
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 5px 12px;
+  font: 600 12px/1 var(--font);
+  cursor: pointer;
+  color: var(--text-1);
+}
+.stp-dur-btn:hover { border-color: var(--blue); }
+.stp-dur-btn.disabled { opacity: .35; pointer-events: none; }
 
 /* view toggle */
 .seg-toggle {
@@ -1276,6 +1299,9 @@ tbody tr:hover td { background: #F7F9FF; }
         <button class="btn-sm" onclick="copyLastWeek()">複製上週</button>
         <button class="btn-sm" onclick="window.print()">列印</button>
       </div>
+    </div>
+    <div class="sched-legend" id="sched-legend" style="margin-bottom:12px">
+      <span class="sched-legend-swatch"></span> 含清潔時段（點擊時段查看詳細時間）
     </div>
     <div id="sched-grid"></div>
   </section>
@@ -2250,6 +2276,7 @@ document.querySelectorAll('#sched-view-toggle .seg-btn').forEach(btn => {
     document.querySelectorAll('#sched-view-toggle .seg-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
     scheduleView = btn.dataset.view;
+    $('sched-legend').style.display = scheduleView === 'edit' ? 'flex' : 'none';
     if (scheduleView === 'edit') renderGrid(nursesCache);
     else renderCoverage(nursesCache);
   };
@@ -2325,11 +2352,14 @@ function renderGrid(nurses) {
       const cells = days.map(d => {
         const entry = cellMap[`${nurse}|${d}|${slot}`] || {};
         const hasValue = entry.start_time && entry.end_time;
+        const hasClean = entry.clean_start && entry.clean_end;
         const label = hasValue ? `${entry.start_time}–${entry.end_time}` : '－';
+        const title = hasClean ? ` title="清潔時段 ${entry.clean_start}–${entry.clean_end}"` : '';
         return `<td>
-          <button class="sched-time-btn${hasValue ? '' : ' is-empty'}"
+          <button class="sched-time-btn${hasValue ? '' : ' is-empty'}${hasClean ? ' has-clean' : ''}"${title}
             data-nurse="${nurse}" data-date="${d}" data-slot="${slot}"
-            data-start="${entry.start_time || ''}" data-end="${entry.end_time || ''}">${label}</button>
+            data-start="${entry.start_time || ''}" data-end="${entry.end_time || ''}"
+            data-clean-start="${entry.clean_start || ''}" data-clean-end="${entry.clean_end || ''}">${label}</button>
         </td>`;
       }).join('');
       return `<tr><td class="l">${slot}<button class="sched-fill-btn" title="將週一的時間套用到本週其他天" onclick="applyRowToWeek('${nurse}','${slot}')">⤵</button></td>${cells}</tr>`;
@@ -2531,6 +2561,8 @@ function openTimePopover(btn) {
     slot: btn.dataset.slot,
     start: btn.dataset.start || '',
     end: btn.dataset.end || '',
+    cleanStart: btn.dataset.cleanStart || '',
+    cleanEnd: btn.dataset.cleanEnd || '',
   };
   renderTimePopover();
 
@@ -2546,8 +2578,22 @@ function openTimePopover(btn) {
   pop.style.top = `${top}px`;
 }
 
+function addMinutes(timeStr, mins) {
+  const total = toMinutes(timeStr) + mins;
+  return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
+}
+
+function cleanStartOptions(start, end) {
+  const startMin = toMinutes(start), endMin = toMinutes(end);
+  const opts = [];
+  for (let t = startMin; t <= endMin - 15; t += 15) {
+    opts.push(`${String(Math.floor(t / 60)).padStart(2, '0')}:${String(t % 60).padStart(2, '0')}`);
+  }
+  return opts;
+}
+
 function renderTimePopover() {
-  const { slot, start, end } = _stpState;
+  const { start, end, cleanStart, cleanEnd, slot } = _stpState;
   const options = SLOT_TIME_OPTIONS[slot];
   const startChips = options.map(t =>
     `<button class="stp-chip${t === start ? ' selected' : ''}" data-role="start" data-time="${t}">${t}</button>`
@@ -2558,11 +2604,34 @@ function renderTimePopover() {
   }).join('');
   const duration = (start && end) ? `${timeDiffHours(start, end).toFixed(2)} 小時` : '';
 
+  let cleanHtml = '';
+  if (start && end) {
+    const cleanChips = cleanStartOptions(start, end).map(t =>
+      `<button class="stp-chip${t === cleanStart ? ' selected' : ''}" data-role="clean-start" data-time="${t}">${t}</button>`
+    ).join('');
+    const dur15Disabled = cleanStart && toMinutes(cleanStart) + 15 > toMinutes(end);
+    const dur30Disabled = cleanStart && toMinutes(cleanStart) + 30 > toMinutes(end);
+    const clearCleanBtn = (cleanStart && cleanEnd)
+      ? `<button class="stp-clear" data-role="clear-clean">清除清潔時段</button>` : '';
+    cleanHtml = `
+      <div class="stp-sep"></div>
+      <div class="stp-label"><span class="sched-legend-swatch"></span> 清潔時段（選填）</div>
+      <div class="stp-chips">${cleanChips}</div>
+      <div class="stp-clean-footer">
+        <div class="stp-dur-group">
+          <button class="stp-dur-btn${dur15Disabled ? ' disabled' : ''}" data-dur="15">15分</button>
+          <button class="stp-dur-btn${dur30Disabled ? ' disabled' : ''}" data-dur="30">30分</button>
+        </div>
+        ${clearCleanBtn}
+      </div>`;
+  }
+
   $('sched-time-popover').innerHTML = `
     <div class="stp-label">開始時間</div>
     <div class="stp-chips">${startChips}</div>
     <div class="stp-label">結束時間</div>
     <div class="stp-chips">${endChips}</div>
+    ${cleanHtml}
     <div class="stp-footer">
       <span class="stp-duration">${duration}</span>
       <button class="stp-clear">清除</button>
@@ -2572,8 +2641,20 @@ function renderTimePopover() {
 $('sched-time-popover').addEventListener('click', (e) => {
   e.stopPropagation();  // prevent the document-level outside-click listener from seeing this —
                          // it mutates innerHTML below, which detaches e.target before bubbling reaches document
+
+  if (e.target.closest('[data-role="clear-clean"]')) {
+    commitTimeSelection(_stpState.start, _stpState.end, null, null);
+    return;
+  }
   if (e.target.closest('.stp-clear')) {
-    commitTimeSelection('', '');
+    commitTimeSelection('', '', null, null);
+    return;
+  }
+  const durBtn = e.target.closest('.stp-dur-btn');
+  if (durBtn) {
+    if (durBtn.classList.contains('disabled') || !_stpState.cleanStart) return;
+    const cleanEnd = addMinutes(_stpState.cleanStart, Number(durBtn.dataset.dur));
+    commitTimeSelection(_stpState.start, _stpState.end, _stpState.cleanStart, cleanEnd);
     return;
   }
   const chip = e.target.closest('.stp-chip');
@@ -2581,10 +2662,20 @@ $('sched-time-popover').addEventListener('click', (e) => {
   if (chip.dataset.role === 'start') {
     _stpState.start = chip.dataset.time;
     if (_stpState.end && _stpState.end <= _stpState.start) _stpState.end = '';
+    if (_stpState.cleanStart && toMinutes(_stpState.cleanStart) < toMinutes(_stpState.start)) {
+      _stpState.cleanStart = ''; _stpState.cleanEnd = '';
+    }
     renderTimePopover();
-  } else {
+  } else if (chip.dataset.role === 'end') {
     _stpState.end = chip.dataset.time;
-    commitTimeSelection(_stpState.start, _stpState.end);
+    if (_stpState.cleanEnd && toMinutes(_stpState.cleanEnd) > toMinutes(_stpState.end)) {
+      _stpState.cleanStart = ''; _stpState.cleanEnd = '';
+    }
+    commitTimeSelection(_stpState.start, _stpState.end, _stpState.cleanStart, _stpState.cleanEnd);
+  } else if (chip.dataset.role === 'clean-start') {
+    _stpState.cleanStart = chip.dataset.time;
+    _stpState.cleanEnd = '';
+    renderTimePopover();
   }
 });
 
@@ -2594,29 +2685,45 @@ document.addEventListener('click', (e) => {
   }
 });
 
-function commitTimeSelection(start, end) {
+function commitTimeSelection(start, end, cleanStart, cleanEnd) {
   const { btn, nurse, date, slot } = _stpState;
+  cleanStart = cleanStart || '';
+  cleanEnd = cleanEnd || '';
+  const hasClean = cleanStart && cleanEnd;
   btn.dataset.start = start;
   btn.dataset.end = end;
+  btn.dataset.cleanStart = cleanStart;
+  btn.dataset.cleanEnd = cleanEnd;
   btn.textContent = (start && end) ? `${start}–${end}` : '－';
+  btn.title = hasClean ? `清潔時段 ${cleanStart}–${cleanEnd}` : '';
   btn.classList.toggle('is-empty', !(start && end));
+  btn.classList.toggle('has-clean', !!hasClean);
   $('sched-time-popover').classList.remove('show');
-  saveShiftEntry(nurse, date, slot, start, end);
+  saveShiftEntry(nurse, date, slot, start, end, cleanStart || null, cleanEnd || null);
 }
 
-async function saveShiftEntry(nurse, shiftDate, slot, start, end) {
+async function saveShiftEntry(nurse, shiftDate, slot, start, end, cleanStart, cleanEnd) {
   try {
     const res = await fetch('/api/admin/shifts', {
       method: 'POST', credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nurse, shift_date: shiftDate, slot, start_time: start || null, end_time: end || null }),
+      body: JSON.stringify({
+        nurse, shift_date: shiftDate, slot,
+        start_time: start || null, end_time: end || null,
+        clean_start: cleanStart || null, clean_end: cleanEnd || null,
+      }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${res.status}`);
     }
     shiftsCache = shiftsCache.filter(s => !(s.nurse === nurse && s.shift_date === shiftDate && s.slot === slot));
-    if (start && end) shiftsCache.push({ nurse, shift_date: shiftDate, slot, start_time: start, end_time: end });
+    if (start && end) {
+      shiftsCache.push({
+        nurse, shift_date: shiftDate, slot, start_time: start, end_time: end,
+        clean_start: cleanStart || null, clean_end: cleanEnd || null,
+      });
+    }
     const totalCell = document.querySelector(`[data-nurse-total="${nurse}"]`);
     if (totalCell) totalCell.textContent = `${calcWeeklyHours(nurse).toFixed(2)} 小時`;
   } catch (e) {
@@ -2631,6 +2738,9 @@ function applyRowToWeek(nurse, slot) {
   );
   const start = sourceBtn.dataset.start;
   const end = sourceBtn.dataset.end;
+  const cleanStart = sourceBtn.dataset.cleanStart || null;
+  const cleanEnd = sourceBtn.dataset.cleanEnd || null;
+  const hasClean = cleanStart && cleanEnd;
   if (!start || !end) {
     alert('請先在週一設定好這一格的時間，再套用到本週其他天。');
     return;
@@ -2644,9 +2754,13 @@ function applyRowToWeek(nurse, slot) {
     );
     btn.dataset.start = start;
     btn.dataset.end = end;
+    btn.dataset.cleanStart = cleanStart || '';
+    btn.dataset.cleanEnd = cleanEnd || '';
     btn.textContent = `${start}–${end}`;
+    btn.title = hasClean ? `清潔時段 ${cleanStart}–${cleanEnd}` : '';
     btn.classList.remove('is-empty');
-    saveShiftEntry(nurse, d, slot, start, end);
+    btn.classList.toggle('has-clean', !!hasClean);
+    saveShiftEntry(nurse, d, slot, start, end, cleanStart, cleanEnd);
   }
 }
 

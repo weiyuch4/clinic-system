@@ -208,6 +208,8 @@ _CREATE_SHIFTS = """
         slot          TEXT NOT NULL,
         start_time    TEXT,
         end_time      TEXT,
+        clean_start   TEXT,
+        clean_end     TEXT,
         PRIMARY KEY (nurse, shift_date, slot)
     )
 """
@@ -223,6 +225,15 @@ _CREATE_NURSES = """
 _CREATE_PUBLISHED_WEEKS = """
     CREATE TABLE IF NOT EXISTS published_weeks (
         week_start TEXT NOT NULL PRIMARY KEY
+    )
+"""
+
+_CREATE_BULLETIN_NOTES = """
+    CREATE TABLE IF NOT EXISTS bulletin_notes (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        nurse      TEXT NOT NULL,
+        content    TEXT NOT NULL,
+        created_at TEXT NOT NULL
     )
 """
 
@@ -258,6 +269,7 @@ def init() -> None:
         conn.execute(_CREATE_SHIFTS)
         conn.execute(_CREATE_NURSES)
         conn.execute(_CREATE_PUBLISHED_WEEKS)
+        conn.execute(_CREATE_BULLETIN_NOTES)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
             try:
@@ -272,6 +284,11 @@ def init() -> None:
         for tbl in ("excluded", "manual_pickups"):
             try:
                 conn.execute(f"ALTER TABLE {tbl} ADD COLUMN nurse TEXT DEFAULT ''")
+            except sqlite3.OperationalError:
+                pass
+        for col in ("clean_start TEXT", "clean_end TEXT"):
+            try:
+                conn.execute(f"ALTER TABLE shifts ADD COLUMN {col}")
             except sqlite3.OperationalError:
                 pass
 
@@ -1189,14 +1206,18 @@ def get_shifts_for_week(week_start: str) -> list[dict]:
     week_end = (date.fromisoformat(week_start) + timedelta(days=6)).isoformat()
     with _conn() as conn:
         rows = conn.execute(
-            """SELECT nurse, shift_date, slot, start_time, end_time FROM shifts
+            """SELECT nurse, shift_date, slot, start_time, end_time, clean_start, clean_end FROM shifts
                WHERE shift_date BETWEEN ? AND ?""",
             (week_start, week_end),
         ).fetchall()
-    return [dict(zip(('nurse', 'shift_date', 'slot', 'start_time', 'end_time'), r)) for r in rows]
+    cols = ('nurse', 'shift_date', 'slot', 'start_time', 'end_time', 'clean_start', 'clean_end')
+    return [dict(zip(cols, r)) for r in rows]
 
 
-def set_shift(nurse: str, shift_date: str, slot: str, start_time: str | None, end_time: str | None) -> None:
+def set_shift(
+    nurse: str, shift_date: str, slot: str, start_time: str | None, end_time: str | None,
+    clean_start: str | None = None, clean_end: str | None = None,
+) -> None:
     with _conn() as conn:
         if start_time is None and end_time is None:
             conn.execute(
@@ -1205,10 +1226,12 @@ def set_shift(nurse: str, shift_date: str, slot: str, start_time: str | None, en
             )
         else:
             conn.execute(
-                """INSERT INTO shifts (nurse, shift_date, slot, start_time, end_time) VALUES (?, ?, ?, ?, ?)
+                """INSERT INTO shifts (nurse, shift_date, slot, start_time, end_time, clean_start, clean_end)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT(nurse, shift_date, slot) DO UPDATE SET
-                       start_time=excluded.start_time, end_time=excluded.end_time""",
-                (nurse, shift_date, slot, start_time, end_time),
+                       start_time=excluded.start_time, end_time=excluded.end_time,
+                       clean_start=excluded.clean_start, clean_end=excluded.clean_end""",
+                (nurse, shift_date, slot, start_time, end_time, clean_start, clean_end),
             )
 
 
@@ -1221,10 +1244,12 @@ def copy_week(from_week_start: str, to_week_start: str) -> None:
         for r in rows:
             new_date = (date.fromisoformat(r['shift_date']) + timedelta(days=day_delta)).isoformat()
             conn.execute(
-                """INSERT INTO shifts (nurse, shift_date, slot, start_time, end_time) VALUES (?, ?, ?, ?, ?)
+                """INSERT INTO shifts (nurse, shift_date, slot, start_time, end_time, clean_start, clean_end)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)
                    ON CONFLICT(nurse, shift_date, slot) DO UPDATE SET
-                       start_time=excluded.start_time, end_time=excluded.end_time""",
-                (r['nurse'], new_date, r['slot'], r['start_time'], r['end_time']),
+                       start_time=excluded.start_time, end_time=excluded.end_time,
+                       clean_start=excluded.clean_start, clean_end=excluded.clean_end""",
+                (r['nurse'], new_date, r['slot'], r['start_time'], r['end_time'], r['clean_start'], r['clean_end']),
             )
 
 
@@ -1281,5 +1306,37 @@ def is_week_published(week_start: str) -> bool:
     with _conn() as conn:
         row = conn.execute("SELECT 1 FROM published_weeks WHERE week_start = ?", (week_start,)).fetchone()
     return row is not None
+
+
+def add_bulletin_note(nurse: str, content: str) -> dict:
+    created_at = datetime.now().strftime('%Y-%m-%d %H:%M')
+    with _conn() as conn:
+        cur = conn.execute(
+            "INSERT INTO bulletin_notes (nurse, content, created_at) VALUES (?, ?, ?)",
+            (nurse, content, created_at),
+        )
+        return {"id": cur.lastrowid, "nurse": nurse, "content": content, "created_at": created_at}
+
+
+def get_bulletin_notes(limit: int = 100) -> list[dict]:
+    with _conn() as conn:
+        rows = conn.execute(
+            "SELECT id, nurse, content, created_at FROM bulletin_notes ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+    return [dict(zip(('id', 'nurse', 'content', 'created_at'), r)) for r in rows]
+
+
+def get_bulletin_note(note_id: int) -> dict | None:
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT id, nurse, content, created_at FROM bulletin_notes WHERE id = ?", (note_id,)
+        ).fetchone()
+    return dict(zip(('id', 'nurse', 'content', 'created_at'), row)) if row else None
+
+
+def delete_bulletin_note(note_id: int) -> None:
+    with _conn() as conn:
+        conn.execute("DELETE FROM bulletin_notes WHERE id = ?", (note_id,))
 
 
