@@ -25,7 +25,7 @@ term = sys.argv[2]
 anchor = sys.argv[3] if len(sys.argv) > 3 else None
 
 PHONE_RE = re.compile(r"^09\d{8}$")  # exact Taiwan mobile format: 09 + 8 digits = 10 chars, nothing else
-SAMPLE_SIZE = 25
+SAMPLE_SIZE = 40
 SEP_CHARS = str.maketrans("", "", "-. ()\t")
 
 
@@ -66,14 +66,19 @@ for path in dbf_files:
             if not phoneish_fields:
                 continue
 
-            f.seek(header_len)
+            # Spread sample positions across the WHOLE file rather than just the
+            # first N records — a field only populated for, say, recently-added
+            # patients would look empty (and get wrongly skipped) if we only ever
+            # sampled the start of the file.
+            n_samples = min(SAMPLE_SIZE, num_records)
+            sample_indices = {(num_records * k) // n_samples for k in range(n_samples)} if n_samples else set()
+
             confirmed = set()
-            sampled = 0
-            while sampled < SAMPLE_SIZE:
+            for idx in sample_indices:
+                f.seek(header_len + idx * record_len)
                 raw = f.read(record_len)
                 if not raw or len(raw) < record_len:
-                    break
-                sampled += 1
+                    continue
                 if raw[0:1] == b"*":
                     continue
                 offset = 1
