@@ -271,11 +271,52 @@
        to work through, so it gets a divider, no badge, and a different
        active treatment (fill, not a colored underline). */
     .tab-btn.directory-tab { margin-left: auto; border-left: 1px solid var(--border); padding-left: 24px; }
-    .tab-btn.directory-tab.active { color: var(--text); background: var(--bg); border-bottom-color: transparent; }
+    .tab-btn.directory-tab.active,
+    .tab-btn.schedule-tab.active { color: var(--text); background: var(--bg); border-bottom-color: transparent; }
+    /* follows directory-tab immediately — no margin-left:auto here, otherwise
+       flexbox splits the push-right space across both and shoves directory-tab
+       back toward the middle instead of the edge */
+    .tab-btn.schedule-tab { border-left: 1px solid var(--border); padding-left: 24px; }
 
     /* ── Tab panels ── */
     .tab-panel { display: none; padding: 22px 28px; }
     .tab-panel.active { display: block; }
+
+    /* ── 排班表（唯讀） ── */
+    .nsched-week-nav {
+      display: flex; align-items: center; gap: 2px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 3px;
+    }
+    .nsched-nav-btn {
+      background: none; border: none; width: 26px; height: 26px; border-radius: 5px;
+      cursor: pointer; color: var(--text-sub); font-size: 13px;
+    }
+    .nsched-nav-btn:hover { background: var(--card); color: var(--text); }
+    #nsched-week-display { font-size: 12.5px; font-weight: 700; padding: 0 8px; min-width: 76px; text-align: center; }
+    .nsched-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(440px, 1fr)); gap: 14px; }
+    .nsched-nurse-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+    .nsched-card-head {
+      padding: 10px 16px; font-size: 13px; font-weight: 700;
+      border-bottom: 1px solid var(--border); background: var(--blue-soft); color: var(--blue);
+    }
+    /* table-layout:fixed + an explicit width on the label column makes every
+       day column share the remaining space equally — without it, a day with
+       a long "HH:MM–HH:MM" entry gets a wider column than a day showing "－" */
+    .nsched-mini { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .nsched-mini th, .nsched-mini td { padding: 6px 2px; text-align: center; font-size: 11px; }
+    .nsched-mini thead th { color: var(--text-sub); font-weight: 700; border-bottom: 1px solid var(--border); }
+    .nsched-mini thead th.l, .nsched-mini tbody td.l {
+      width: 50px; text-align: left; padding-left: 12px; font-weight: 700; color: var(--text-sub); white-space: nowrap;
+    }
+    .nsched-mini tbody tr:not(:last-child) td { border-bottom: 1px solid var(--bg); }
+    .nsched-day-head .dow { display: block; }
+    .nsched-day-head .dnum { display: block; font-size: 9.5px; color: var(--text-muted); font-weight: 600; }
+    .nsched-time {
+      font-size: 10px; font-weight: 700; color: var(--text);
+      font-variant-numeric: tabular-nums; white-space: nowrap;
+    }
+    .nsched-time.empty { color: var(--text-muted); font-weight: 400; }
+    .nsched-empty-state { padding: 40px 20px; text-align: center; color: var(--text-muted); }
 
     /* ── Card ── */
     .card {
@@ -1103,6 +1144,9 @@
   <button class="tab-btn directory-tab" id="tab-btn-directory" onclick="switchTab('directory')">
     聯絡資訊
   </button>
+  <button class="tab-btn schedule-tab" id="tab-btn-schedule" onclick="switchTab('schedule')">
+    排班表
+  </button>
 </div>
 
 <div id="main-grid">
@@ -1486,6 +1530,23 @@
         <tbody id="directory-rows"></tbody>
       </table>
     </div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-panel-schedule">
+
+  <!-- 排班表（唯讀） -->
+  <div class="card">
+    <div class="card-top"></div>
+    <div class="card-header">
+      <h2>排班表</h2>
+      <div class="nsched-week-nav">
+        <button class="nsched-nav-btn" onclick="shiftNurseScheduleWeek(-7)">&#8592;</button>
+        <span id="nsched-week-display">—</span>
+        <button class="nsched-nav-btn" onclick="shiftNurseScheduleWeek(7)">&#8594;</button>
+      </div>
+    </div>
+    <div id="nsched-body" style="padding:20px"></div>
   </div>
 </div>
 
@@ -3844,8 +3905,9 @@
   initNurseSelector();
   loadReport();
   loadDirectory();
+  loadNurseSchedule();
   const _savedTab = localStorage.getItem('clinic_tab');
-  if (_savedTab && ['chronic', 'mspt', 'hep', 'directory'].includes(_savedTab)) switchTab(_savedTab);
+  if (_savedTab && ['chronic', 'mspt', 'hep', 'directory', 'schedule'].includes(_savedTab)) switchTab(_savedTab);
 
   // ── Refresh ──
 
@@ -3893,6 +3955,93 @@
         <td><button class="btn-add-manual-onhold" style="margin:0;border-color:#e53e3e;color:#e53e3e" onclick="deleteContact(${r.id}, this)">刪除</button></td>
       </tr>
     `).join('');
+  }
+
+  // ── 排班表（唯讀） ──
+
+  const NSCHED_SLOTS = ['早診', '午診', '晚診'];
+  const NSCHED_DOW = ['一', '二', '三', '四', '五', '六'];
+
+  function nschedToISO(d) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+  function nschedAddDays(iso, n) {
+    const d = new Date(iso + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return nschedToISO(d);
+  }
+  function nschedMondayOf(d) {
+    const day = d.getDay();
+    const diff = day === 0 ? -6 : 1 - day;
+    const m = new Date(d);
+    m.setDate(d.getDate() + diff);
+    return nschedToISO(m);
+  }
+  function nschedFmtMD(iso) {
+    const [, m, d] = iso.split('-').map(Number);
+    return `${m}/${d}`;
+  }
+
+  let nschedWeekStart = nschedMondayOf(new Date());
+
+  async function loadNurseSchedule() {
+    document.getElementById('nsched-week-display').textContent =
+      `${nschedFmtMD(nschedWeekStart)} – ${nschedFmtMD(nschedAddDays(nschedWeekStart, 5))}`;
+    const body = document.getElementById('nsched-body');
+    body.innerHTML = `<div class="nsched-empty-state">載入中…</div>`;
+    try {
+      const data = await (await apiFetch(`/api/schedule?week_start=${nschedWeekStart}`)).json();
+      renderNurseSchedule(data);
+    } catch (err) {
+      body.innerHTML = `<div class="nsched-empty-state" style="color:#e53e3e">載入失敗：${err.message}</div>`;
+    }
+  }
+
+  function shiftNurseScheduleWeek(deltaDays) {
+    nschedWeekStart = nschedAddDays(nschedWeekStart, deltaDays);
+    loadNurseSchedule();
+  }
+
+  function renderNurseSchedule(data) {
+    const body = document.getElementById('nsched-body');
+    if (!data.published) {
+      body.innerHTML = `<div class="nsched-empty-state">本週班表尚未發布</div>`;
+      return;
+    }
+    if (!data.nurses.length) {
+      body.innerHTML = `<div class="nsched-empty-state">尚無排班資料</div>`;
+      return;
+    }
+
+    const cellMap = {};
+    data.shifts.forEach(s => { cellMap[`${s.nurse}|${s.shift_date}|${s.slot}`] = s; });
+
+    const days = Array.from({length: 6}, (_, i) => nschedAddDays(nschedWeekStart, i));
+    const dayHeadCells = days.map((d, i) =>
+      `<th class="nsched-day-head"><span class="dow">${NSCHED_DOW[i]}</span><span class="dnum">${nschedFmtMD(d)}</span></th>`
+    ).join('');
+
+    const cards = data.nurses.map(nurse => {
+      const rows = NSCHED_SLOTS.map(slot => {
+        const cells = days.map(d => {
+          const entry = cellMap[`${nurse}|${d}|${slot}`] || {};
+          const hasValue = entry.start_time && entry.end_time;
+          const label = hasValue ? `${entry.start_time}–${entry.end_time}` : '－';
+          return `<td><span class="nsched-time${hasValue ? '' : ' empty'}">${label}</span></td>`;
+        }).join('');
+        return `<tr><td class="l">${slot}</td>${cells}</tr>`;
+      }).join('');
+
+      return `<div class="nsched-nurse-card">
+        <div class="nsched-card-head">${nurse}</div>
+        <table class="nsched-mini">
+          <thead><tr><th class="l"></th>${dayHeadCells}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>`;
+    }).join('');
+
+    body.innerHTML = `<div class="nsched-cards">${cards}</div>`;
   }
 
   function openAddContactModal() {

@@ -212,6 +212,20 @@ _CREATE_SHIFTS = """
     )
 """
 
+_CREATE_NURSES = """
+    CREATE TABLE IF NOT EXISTS nurses (
+        id         INTEGER PRIMARY KEY AUTOINCREMENT,
+        name       TEXT NOT NULL UNIQUE,
+        sort_order INTEGER NOT NULL DEFAULT 0
+    )
+"""
+
+_CREATE_PUBLISHED_WEEKS = """
+    CREATE TABLE IF NOT EXISTS published_weeks (
+        week_start TEXT NOT NULL PRIMARY KEY
+    )
+"""
+
 
 @contextmanager
 def _conn() -> Generator[sqlite3.Connection, None, None]:
@@ -242,6 +256,8 @@ def init() -> None:
         conn.execute(_CREATE_LINE_RECENTLY_SENT)
         conn.execute(_CREATE_ALLEYPIN_NOT_FOUND)
         conn.execute(_CREATE_SHIFTS)
+        conn.execute(_CREATE_NURSES)
+        conn.execute(_CREATE_PUBLISHED_WEEKS)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
             try:
@@ -1210,5 +1226,60 @@ def copy_week(from_week_start: str, to_week_start: str) -> None:
                        start_time=excluded.start_time, end_time=excluded.end_time""",
                 (r['nurse'], new_date, r['slot'], r['start_time'], r['end_time']),
             )
+
+
+def get_nurses() -> list[str]:
+    with _conn() as conn:
+        rows = conn.execute("SELECT name FROM nurses ORDER BY sort_order, id").fetchall()
+    return [r[0] for r in rows]
+
+
+def add_nurse(name: str) -> bool:
+    """Returns False (no-op) if the name already exists."""
+    with _conn() as conn:
+        if conn.execute("SELECT 1 FROM nurses WHERE name = ?", (name,)).fetchone():
+            return False
+        max_order = conn.execute("SELECT COALESCE(MAX(sort_order), -1) FROM nurses").fetchone()[0]
+        conn.execute("INSERT INTO nurses (name, sort_order) VALUES (?, ?)", (name, max_order + 1))
+        return True
+
+
+def remove_nurse(name: str) -> None:
+    """Removes the nurse from the roster. Past shift/contact records under
+    this name are left untouched — only the active roster shrinks."""
+    with _conn() as conn:
+        conn.execute("DELETE FROM nurses WHERE name = ?", (name,))
+
+
+def rename_nurse(old_name: str, new_name: str) -> bool:
+    """Returns False (no-op) if new_name is already used by a different entry.
+    Updates the roster and this week's-and-future shifts table so the renamed
+    person's schedule carries over; older historical logs elsewhere (contacts,
+    activity stats, etc.) keep the name as it was recorded at the time."""
+    with _conn() as conn:
+        if conn.execute("SELECT 1 FROM nurses WHERE name = ? AND name != ?", (new_name, old_name)).fetchone():
+            return False
+        conn.execute("UPDATE nurses SET name = ? WHERE name = ?", (new_name, old_name))
+        conn.execute("UPDATE shifts SET nurse = ? WHERE nurse = ?", (new_name, old_name))
+        return True
+
+
+def publish_week(week_start: str) -> None:
+    with _conn() as conn:
+        conn.execute(
+            "INSERT INTO published_weeks (week_start) VALUES (?) ON CONFLICT(week_start) DO NOTHING",
+            (week_start,),
+        )
+
+
+def unpublish_week(week_start: str) -> None:
+    with _conn() as conn:
+        conn.execute("DELETE FROM published_weeks WHERE week_start = ?", (week_start,))
+
+
+def is_week_published(week_start: str) -> bool:
+    with _conn() as conn:
+        row = conn.execute("SELECT 1 FROM published_weeks WHERE week_start = ?", (week_start,)).fetchone()
+    return row is not None
 
 

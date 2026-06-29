@@ -25,8 +25,8 @@ from models import (
     ChartNumberRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest, DailyReport, ExcludeRequest,
     FollowupEntry, HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest, MsptCompleteRequest,
     MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
-    NurseEntryRequest, OnHoldRemoveRequest, OnHoldRequest, SendLineNotificationsRequest,
-    ShiftEntry, SubmitRequest, UnexcludeRequest, UndoLineNotificationRequest,
+    NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
+    SendLineNotificationsRequest, ShiftEntry, SubmitRequest, UnexcludeRequest, UndoLineNotificationRequest,
 )
 
 # ── Edit this list to match your clinic's nurse names ──────────────────────────
@@ -68,6 +68,10 @@ lab_report.init()
 backup.run()
 threading.Thread(target=database.warmup_cache, daemon=True).start()
 
+if not contacts.get_nurses():  # first run on this DB — seed from the hardcoded defaults above
+    for _name in NURSE_NAMES:
+        contacts.add_nurse(_name)
+
 
 @app.get("/")
 def index() -> Response:
@@ -101,7 +105,46 @@ def patient_search(q: str = "") -> list[dict]:
 
 @app.get("/api/nurses")
 def get_nurses() -> list[str]:
-    return NURSE_NAMES
+    return contacts.get_nurses()
+
+
+@app.post("/api/admin/nurses")
+def add_nurse(req: NurseNameRequest, _: None = Depends(_require_admin)) -> None:
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="姓名不可空白")
+    try:
+        if not contacts.add_nurse(name):
+            raise HTTPException(status_code=400, detail="此姓名已存在")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("add_nurse failed for name=%s", name)
+        raise HTTPException(status_code=500, detail="新增失敗")
+
+
+@app.put("/api/admin/nurses/{name}")
+def rename_nurse(name: str, req: NurseNameRequest, _: None = Depends(_require_admin)) -> None:
+    new_name = req.name.strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="姓名不可空白")
+    try:
+        if not contacts.rename_nurse(name, new_name):
+            raise HTTPException(status_code=400, detail="此姓名已存在")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("rename_nurse failed from=%s to=%s", name, new_name)
+        raise HTTPException(status_code=500, detail="更新失敗")
+
+
+@app.delete("/api/admin/nurses/{name}")
+def remove_nurse(name: str, _: None = Depends(_require_admin)) -> None:
+    try:
+        contacts.remove_nurse(name)
+    except Exception:
+        logger.exception("remove_nurse failed for name=%s", name)
+        raise HTTPException(status_code=500, detail="移除失敗")
 
 
 @app.get("/admin")
@@ -166,6 +209,44 @@ def copy_week(req: CopyWeekRequest, _: None = Depends(_require_admin)) -> None:
     except Exception:
         logger.exception("copy_week failed from=%s to=%s", req.from_week_start, req.to_week_start)
         raise HTTPException(status_code=500, detail="複製排班失敗")
+
+
+@app.get("/api/admin/shifts/publish-status")
+def get_publish_status(week_start: date, _: None = Depends(_require_admin)) -> dict:
+    return {"published": contacts.is_week_published(week_start.isoformat())}
+
+
+@app.post("/api/admin/shifts/publish")
+def publish_week(req: PublishWeekRequest, _: None = Depends(_require_admin)) -> None:
+    try:
+        contacts.publish_week(req.week_start.isoformat())
+    except Exception:
+        logger.exception("publish_week failed for week_start=%s", req.week_start)
+        raise HTTPException(status_code=500, detail="發布失敗")
+
+
+@app.post("/api/admin/shifts/unpublish")
+def unpublish_week(req: PublishWeekRequest, _: None = Depends(_require_admin)) -> None:
+    try:
+        contacts.unpublish_week(req.week_start.isoformat())
+    except Exception:
+        logger.exception("unpublish_week failed for week_start=%s", req.week_start)
+        raise HTTPException(status_code=500, detail="取消發布失敗")
+
+
+@app.get("/api/schedule")
+def get_public_schedule(week_start: date) -> dict:
+    """Public, read-only — nurses view this from the main dashboard with no
+    admin login. Only returns shift data once the admin has published that
+    week; otherwise reports unpublished without leaking draft data."""
+    ws = week_start.isoformat()
+    if not contacts.is_week_published(ws):
+        return {"published": False, "nurses": [], "shifts": []}
+    try:
+        return {"published": True, "nurses": contacts.get_nurses(), "shifts": contacts.get_shifts_for_week(ws)}
+    except Exception:
+        logger.exception("get_public_schedule failed for week_start=%s", week_start)
+        raise HTTPException(status_code=500, detail="查詢失敗")
 
 
 @app.get("/api/report")

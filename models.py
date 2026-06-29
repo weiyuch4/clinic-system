@@ -234,3 +234,11 @@ class ShiftEntry(BaseModel):
 class CopyWeekRequest(BaseModel):
     from_week_start: date
     to_week_start: date
+
+
+class NurseNameRequest(BaseModel):
+    name: str
+
+
+class PublishWeekRequest(BaseModel):
+    week_start: date

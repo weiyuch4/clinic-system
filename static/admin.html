@@ -799,7 +799,51 @@ tbody tr:hover td { background: #F7F9FF; }
 }
 .sched-nurse-card .card-head { padding: 13px 18px; }
 .sched-total-badge { font-size: 13.5px; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; }
-.sched-mini { width: 100%; border-collapse: collapse; }
+
+/* staff management modal */
+.sched-staff-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, .45);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 400;
+}
+.sched-staff-overlay.show { display: flex; }
+.sched-staff-modal {
+  background: var(--surface);
+  border-radius: var(--radius-l);
+  box-shadow: var(--shadow);
+  width: 380px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 22px;
+}
+.sched-staff-modal h3 { font-size: 15px; font-weight: 800; color: var(--text-1); margin-bottom: 4px; }
+.sched-staff-sub { font-size: 12px; color: var(--text-3); margin-bottom: 14px; }
+.sched-staff-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.sched-staff-row:last-child { border-bottom: none; }
+.sched-staff-name { flex: 1; font-size: 13.5px; font-weight: 700; color: var(--text-1); }
+.sched-staff-row .btn-sm { padding: 5px 11px; font-size: 12px; }
+.sched-staff-foot {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+/* table-layout:fixed + an explicit width on the label column makes every day
+   column share the remaining space equally — without it, a day with a long
+   "HH:MM–HH:MM" entry gets a wider column than a day showing just "－" */
+.sched-mini { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .sched-mini th, .sched-mini td { padding: 7px 3px; text-align: center; }
 .sched-mini thead th {
   font-size: 10.5px;
@@ -809,6 +853,7 @@ tbody tr:hover td { background: #F7F9FF; }
   white-space: nowrap;
 }
 .sched-mini thead th.l, .sched-mini tbody td.l {
+  width: 56px;
   text-align: left;
   padding-left: 14px;
   font-size: 12px;
@@ -821,15 +866,16 @@ tbody tr:hover td { background: #F7F9FF; }
 .sched-day-head .dnum { display: block; font-size: 9.5px; color: var(--text-3); font-weight: 600; margin-top: 1px; }
 .sched-time-btn {
   width: 100%;
-  min-width: 74px;
   border: 1px solid var(--border-mid);
   border-radius: var(--radius-s);
   background: var(--surface);
-  padding: 7px 4px;
-  font: 700 11.5px/1 var(--font);
+  padding: 6px 1px;
+  font: 700 10px/1.3 var(--font);
   color: var(--text-1);
   cursor: pointer;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  overflow: hidden;
   transition: border-color .12s, background .12s;
 }
 .sched-time-btn:hover { border-color: var(--blue); background: var(--blue-bg); }
@@ -919,12 +965,13 @@ tbody tr:hover td { background: #F7F9FF; }
 }
 .seg-btn:hover { color: var(--text-1); }
 .seg-btn.active { background: var(--surface); color: var(--blue); box-shadow: var(--shadow-s); }
+#sched-publish-btn.published { background: var(--emerald); border-color: var(--emerald); color: #fff; }
+#sched-publish-btn.published:hover { background: #047857; border-color: #047857; color: #fff; }
 
-/* coverage / overlap view */
-.cov-days { display: flex; flex-direction: column; gap: 14px; }
-.cov-day-card .card-head { padding: 12px 18px; }
-.cov-timeline { padding: 28px 18px 16px; }
-.cov-hours { position: relative; height: 16px; margin-bottom: 6px; margin-left: 64px; }
+/* coverage / overlap view — single card, whole week at a glance */
+.cov-week-card { padding: 16px 18px 10px; }
+.cov-timeline { position: relative; }
+.cov-hours { position: relative; height: 15px; margin-bottom: 8px; margin-left: 58px; }
 .cov-hour-mark {
   position: absolute;
   top: 0;
@@ -933,12 +980,15 @@ tbody tr:hover td { background: #F7F9FF; }
   font-variant-numeric: tabular-nums;
   transform: translateX(-50%);
 }
-.cov-row { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+.cov-day-group { padding: 6px 0; border-top: 1px solid var(--border); }
+.cov-day-group:first-child { border-top: none; padding-top: 0; }
+.cov-day-label { font-size: 11.5px; font-weight: 800; color: var(--text-1); margin: 0 0 4px 58px; }
+.cov-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
 .cov-row-label {
-  width: 56px;
+  width: 52px;
   flex-shrink: 0;
-  font-size: 11.5px;
-  font-weight: 700;
+  font-size: 10.5px;
+  font-weight: 600;
   color: var(--text-2);
   text-align: right;
   white-space: nowrap;
@@ -946,17 +996,17 @@ tbody tr:hover td { background: #F7F9FF; }
 .cov-row-track {
   position: relative;
   flex: 1;
-  height: 26px;
+  height: 18px;
   background: #FAFBFC;
-  border-radius: 6px;
+  border-radius: 4px;
   border: 1px solid var(--border);
 }
 .cov-bar {
   position: absolute;
-  top: 3px;
-  bottom: 3px;
-  border-radius: 5px;
-  font-size: 10px;
+  top: 1px;
+  bottom: 1px;
+  border-radius: 3px;
+  font-size: 9px;
   font-weight: 700;
   color: #fff;
   display: flex;
@@ -966,7 +1016,7 @@ tbody tr:hover td { background: #F7F9FF; }
   white-space: nowrap;
   cursor: default;
 }
-.cov-head-track { height: 22px; background: none; border: none; }
+.cov-head-track { height: 16px; background: none; border: none; margin-top: 1px; }
 .cov-head-seg {
   position: absolute;
   top: 0;
@@ -974,17 +1024,17 @@ tbody tr:hover td { background: #F7F9FF; }
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10.5px;
+  font-size: 9.5px;
   font-weight: 800;
   color: #fff;
   border-right: 1px solid rgba(255, 255, 255, .5);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 .cov-head-zero  { background: var(--red); }
 .cov-head-one   { background: var(--amber); }
 .cov-head-two   { background: var(--blue); }
 .cov-head-three { background: var(--emerald); }
-.cov-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 0 18px 14px; font-size: 11px; color: var(--text-2); }
+.cov-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 4px 0; font-size: 11px; color: var(--text-2); }
 .cov-legend-item { display: flex; align-items: center; gap: 5px; }
 .cov-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 .sched-fill-btn {
@@ -1002,13 +1052,35 @@ tbody tr:hover td { background: #F7F9FF; }
 .sched-fill-btn:hover { background: var(--bg); color: var(--blue); }
 
 @media print {
-  .topbar, .tabbar, #back-to-top, .bonus-toolbar { display: none !important; }
+  @page { size: landscape; margin: 10mm; }
+
+  /* browsers strip background colors from print/PDF by default — without this,
+     every colored badge/bar in the schedule views would print plain white */
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+
+  .topbar, .tabbar, #back-to-top, .bonus-toolbar:not(.sched-toolbar) { display: none !important; }
   main { padding: 0; max-width: none; }
   .section { display: none !important; }
   .section.active { display: block !important; }
   .bonus-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; }
   .bc { break-inside: avoid; box-shadow: none; border: 1px solid #ccc; }
   #schedule tbody tr { break-inside: avoid; }
+
+  /* schedule print layout */
+  .sched-toolbar {
+    box-shadow: none; border: none; background: none; padding: 0;
+    margin-bottom: 14px; padding-bottom: 10px; border-bottom: 2px solid #0F172A;
+  }
+  .sched-toolbar .mp-btn, .sched-toolbar .seg-toggle, .sched-toolbar .btn-sm { display: none !important; }
+  .week-picker { background: none; border: none; box-shadow: none; padding: 0; justify-content: flex-start; }
+  .week-display { font-size: 18px; font-weight: 800; color: #0F172A; }
+  .week-display::before { content: "排班表　"; }
+
+  .sched-cards { grid-template-columns: 1fr !important; }
+  .sched-nurse-card { break-inside: avoid; box-shadow: none !important; border: 1px solid #CBD5E1; }
+
+  .cov-week-card { box-shadow: none !important; border: 1px solid #CBD5E1; padding: 14px; }
+  .cov-day-group { break-inside: avoid; }
 }
 
 /* ── LINE notification ──────────────────────────────────────────────────────── */
@@ -1199,6 +1271,8 @@ tbody tr:hover td { background: #F7F9FF; }
           <button class="seg-btn active" data-view="edit">編輯班表</button>
           <button class="seg-btn" data-view="coverage">人力總覽</button>
         </div>
+        <button class="btn-sm" id="sched-publish-btn" onclick="togglePublish()">—</button>
+        <button class="btn-sm" onclick="openStaffModal()">管理人員</button>
         <button class="btn-sm" onclick="copyLastWeek()">複製上週</button>
         <button class="btn-sm" onclick="window.print()">列印</button>
       </div>
@@ -1209,6 +1283,18 @@ tbody tr:hover td { background: #F7F9FF; }
 </main>
 
 <div class="sched-time-popover" id="sched-time-popover"></div>
+
+<div class="sched-staff-overlay" id="sched-staff-overlay" onclick="if (event.target === this) closeStaffModal()">
+  <div class="sched-staff-modal">
+    <h3>排班人員管理</h3>
+    <p class="sched-staff-sub">新增、重新命名或移除排班表上的人員（包含兼職人員）</p>
+    <div id="sched-staff-list"></div>
+    <div class="sched-staff-foot">
+      <button class="btn-sm primary" onclick="addNursePrompt()">＋ 新增人員</button>
+      <button class="btn-sm" onclick="closeStaffModal()">關閉</button>
+    </div>
+  </div>
+</div>
 
 <button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂端">
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
@@ -2169,20 +2255,54 @@ document.querySelectorAll('#sched-view-toggle .seg-btn').forEach(btn => {
   };
 });
 
+let weekPublished = false;
+
 async function loadSchedule() {
   $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
   $('sched-grid').innerHTML = shimTable(4, 8);
   try {
-    const [nurses, shifts] = await Promise.all([
+    const [nurses, shifts, pub] = await Promise.all([
       api('/api/nurses'),
       api(`/api/admin/shifts?week_start=${weekStart}`),
+      api(`/api/admin/shifts/publish-status?week_start=${weekStart}`),
     ]);
     nursesCache = nurses;
     shiftsCache = shifts;
+    weekPublished = pub.published;
+    renderPublishBtn();
     if (scheduleView === 'edit') renderGrid(nurses);
     else renderCoverage(nurses);
   } catch (e) {
     $('sched-grid').innerHTML = errState(e.message);
+  }
+}
+
+function renderPublishBtn() {
+  const btn = $('sched-publish-btn');
+  btn.classList.toggle('published', weekPublished);
+  btn.textContent = weekPublished ? '✓ 已發布給護理師' : '發布給護理師';
+}
+
+async function togglePublish() {
+  const willPublish = !weekPublished;
+  const msg = willPublish
+    ? '發布後，護理師將可以在主控台看到本週排班表，確定？'
+    : '取消發布後，護理師將無法在主控台看到本週排班表，確定？';
+  if (!confirm(msg)) return;
+  try {
+    const res = await fetch(`/api/admin/shifts/${willPublish ? 'publish' : 'unpublish'}`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ week_start: weekStart }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    weekPublished = willPublish;
+    renderPublishBtn();
+  } catch (e) {
+    alert((willPublish ? '發布' : '取消發布') + '失敗：' + e.message);
   }
 }
 
@@ -2261,7 +2381,7 @@ function renderCoverage(nurses) {
     `<span class="cov-hour-mark" style="left:${((h * 60 - winStart) / winSpan) * 100}%">${h}</span>`
   ).join('');
 
-  const dayCards = days.map((d, i) => {
+  const dayGroups = days.map((d, i) => {
     const dayEntries = shiftsCache.filter(s => s.shift_date === d && s.start_time && s.end_time);
 
     const nurseRows = nurses.map(nurse => {
@@ -2299,17 +2419,19 @@ function renderCoverage(nurses) {
         return `<div class="cov-head-seg cov-head-${lvl}" style="left:${left}%;width:${width}%">${count || ''}</div>`;
       }).join('');
 
-    return `<div class="card cov-day-card">
-      <div class="card-head"><span class="card-title">${DOW_LABELS[i]} ${fmtMD(d)}</span></div>
-      <div class="cov-timeline">
-        <div class="cov-hours">${hoursHtml}</div>
-        ${nurseRows}
-        <div class="cov-row"><div class="cov-row-label">人數</div><div class="cov-row-track cov-head-track">${headcountHtml}</div></div>
-      </div>
+    return `<div class="cov-day-group">
+      <div class="cov-day-label">${DOW_LABELS[i]} ${fmtMD(d)}</div>
+      ${nurseRows}
+      <div class="cov-row"><div class="cov-row-label">人數</div><div class="cov-row-track cov-head-track">${headcountHtml}</div></div>
     </div>`;
   }).join('');
 
-  $('sched-grid').innerHTML = `<div class="cov-days">${dayCards}</div>
+  $('sched-grid').innerHTML = `<div class="card cov-week-card">
+      <div class="cov-timeline">
+        <div class="cov-hours">${hoursHtml}</div>
+        ${dayGroups}
+      </div>
+    </div>
     <div class="cov-legend">
       <div class="cov-legend-item"><span class="cov-legend-dot" style="background:var(--red)"></span>0 人（無人值班）</div>
       <div class="cov-legend-item"><span class="cov-legend-dot" style="background:var(--amber)"></span>1 人</div>
@@ -2319,10 +2441,85 @@ function renderCoverage(nurses) {
 }
 
 $('sched-grid').addEventListener('click', (e) => {
-  const btn = e.target.closest('.sched-time-btn');
-  if (!btn) return;
-  openTimePopover(btn);
+  const timeBtn = e.target.closest('.sched-time-btn');
+  if (timeBtn) openTimePopover(timeBtn);
 });
+
+function openStaffModal() {
+  renderStaffList();
+  $('sched-staff-overlay').classList.add('show');
+}
+
+function closeStaffModal() {
+  $('sched-staff-overlay').classList.remove('show');
+}
+
+function renderStaffList() {
+  $('sched-staff-list').innerHTML = nursesCache.map(nurse => `
+    <div class="sched-staff-row">
+      <span class="sched-staff-name">${nurse}</span>
+      <button class="btn-sm" onclick="renameNursePrompt('${nurse}')">重新命名</button>
+      <button class="btn-sm" onclick="removeNursePrompt('${nurse}')">移除</button>
+    </div>
+  `).join('') || '<p class="sched-staff-sub">尚無人員，請新增。</p>';
+}
+
+async function addNursePrompt() {
+  const name = prompt('輸入新人員姓名：');
+  if (!name || !name.trim()) return;
+  try {
+    const res = await fetch('/api/admin/nurses', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    await loadSchedule();
+    renderStaffList();
+  } catch (e) {
+    alert('新增失敗：' + e.message);
+  }
+}
+
+async function renameNursePrompt(oldName) {
+  const name = prompt('修改姓名：', oldName);
+  if (!name || !name.trim() || name.trim() === oldName) return;
+  try {
+    const res = await fetch(`/api/admin/nurses/${encodeURIComponent(oldName)}`, {
+      method: 'PUT', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    await loadSchedule();
+    renderStaffList();
+  } catch (e) {
+    alert('更新失敗：' + e.message);
+  }
+}
+
+async function removeNursePrompt(name) {
+  if (!confirm(`確定要將「${name}」從排班人員中移除嗎？\n（過去的排班記錄不會被刪除，但不會再顯示在排班表中）`)) return;
+  try {
+    const res = await fetch(`/api/admin/nurses/${encodeURIComponent(name)}`, {
+      method: 'DELETE', credentials: 'include',
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    await loadSchedule();
+    renderStaffList();
+  } catch (e) {
+    alert('移除失敗：' + e.message);
+  }
+}
 
 let _stpState = null;
 
@@ -2373,6 +2570,8 @@ function renderTimePopover() {
 }
 
 $('sched-time-popover').addEventListener('click', (e) => {
+  e.stopPropagation();  // prevent the document-level outside-click listener from seeing this —
+                         // it mutates innerHTML below, which detaches e.target before bubbling reaches document
   if (e.target.closest('.stp-clear')) {
     commitTimeSelection('', '');
     return;
