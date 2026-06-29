@@ -13,6 +13,11 @@ if len(sys.argv) < 3:
     print("  actually look like phone numbers (not just fields of a plausible length —")
     print("  that alone matched 1610/1830 files here, far too broad to brute-force).")
     print("  Stage 2 then does the full record scan only on those shortlisted fields.")
+    print("  ANCHOR_ID is informational only — every match is shown regardless, with a")
+    print("  note on whether ANCHOR_ID also appears in that same record. Different 燿聖")
+    print("  tables may key a patient by different identifiers (national ID, IDNO, an")
+    print("  internal sequence code, etc.), so requiring the anchor to match would risk")
+    print("  silently hiding the real answer if this table uses a different key.")
     sys.exit(1)
 
 search_arg = sys.argv[1]
@@ -133,11 +138,11 @@ for path, fields, num_records, header_len, record_len, phone_fields in candidate
                 ]
                 if not matching_fields:
                     continue
-                if anchor and not any(anchor in v for v in row.values()):
-                    continue
 
+                anchor_present = anchor and any(anchor in v for v in row.values())
                 found_any = True
-                print(f"[{fname}] record #{i}: match in field(s) {matching_fields}")
+                anchor_note = "" if not anchor else f"  [anchor {anchor!r} {'FOUND' if anchor_present else 'not found'} in this record]"
+                print(f"[{fname}] record #{i}: match in field(s) {matching_fields}{anchor_note}")
                 for name, _, _ in fields:
                     if row[name]:
                         print(f"    {name:12s} = {row[name]!r}")
