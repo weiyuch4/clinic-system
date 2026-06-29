@@ -21,6 +21,11 @@ anchor = sys.argv[3] if len(sys.argv) > 3 else None
 
 PHONE_RE = re.compile(r"^09\d{8}$")  # exact Taiwan mobile format: 09 + 8 digits = 10 chars, nothing else
 SAMPLE_SIZE = 25
+SEP_CHARS = str.maketrans("", "", "-. ()\t")
+
+
+def strip_seps(s):
+    return s.translate(SEP_CHARS)
 
 if os.path.isdir(search_arg):
     dbf_files = sorted(glob.glob(os.path.join(search_arg, "*.DBF")) + glob.glob(os.path.join(search_arg, "*.dbf")))
@@ -52,7 +57,7 @@ for path in dbf_files:
                 flen = desc[16]
                 fields.append((name, ftype, flen))
 
-            phoneish_fields = [n for n, t, l in fields if t == "C" and 9 <= l <= 11]
+            phoneish_fields = [n for n, t, l in fields if t == "C" and 8 <= l <= 14]
             if not phoneish_fields:
                 continue
 
@@ -74,7 +79,7 @@ for path in dbf_files:
                             val = val_bytes.decode("cp950", errors="replace").strip()
                         except Exception:
                             val = val_bytes.decode("latin-1", errors="replace").strip()
-                        if PHONE_RE.match(val):
+                        if PHONE_RE.match(strip_seps(val)):
                             confirmed.add(name)
                     offset += flen
 
@@ -122,7 +127,10 @@ for path, fields, num_records, header_len, record_len, phone_fields in candidate
                     row[name] = val
                     offset += flen
 
-                matching_fields = [n for n in phone_fields if term in row.get(n, "")]
+                matching_fields = [
+                    n for n in phone_fields
+                    if term in row.get(n, "") or term in strip_seps(row.get(n, ""))
+                ]
                 if not matching_fields:
                     continue
                 if anchor and not any(anchor in v for v in row.values()):
