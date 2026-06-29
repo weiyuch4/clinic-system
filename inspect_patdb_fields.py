@@ -1,7 +1,14 @@
+import sys
 import struct
-import config
 
-with open(config.PATDB_PATH, "rb") as f:
+if len(sys.argv) > 1:
+    path = sys.argv[1]
+else:
+    import config
+    path = config.PATDB_PATH
+
+print(f"Reading: {path}")
+with open(path, "rb") as f:
     header = f.read(32)
     num_records = struct.unpack("<I", header[4:8])[0]
     fields = []
