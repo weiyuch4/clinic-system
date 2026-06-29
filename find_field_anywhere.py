@@ -10,8 +10,11 @@ sys.stdout.reconfigure(encoding="utf-8")
 if len(sys.argv) < 3:
     print("Usage: python find_field_anywhere.py <DIR_OR_GLOB> <SEARCH_TERM> [ANCHOR_ID]")
     print("  Single full pass: for every .DBF file, decodes every record's character")
-    print("  fields sized 8-14 chars (phone-like) and checks each one against the")
-    print("  search term. Every record in every file is checked — no sampling.")
+    print("  fields sized 8-14 chars AND numeric fields sized 8-11 digits (phone-like)")
+    print("  and checks each one against the search term — both with the term as given")
+    print("  and with its leading zero stripped, since a Numeric-type DBF field would")
+    print("  store 0981204200 as 981204200 (FoxPro numeric fields drop leading zeros).")
+    print("  Every record in every file is checked — no sampling.")
     print("  ANCHOR_ID is informational only — every match is shown regardless, with a")
     print("  note on whether ANCHOR_ID also appears in that same record. Different 燿聖")
     print("  tables may key a patient by different identifiers (national ID, IDNO, an")
@@ -22,12 +25,20 @@ if len(sys.argv) < 3:
 search_arg = sys.argv[1]
 term = sys.argv[2]
 anchor = sys.argv[3] if len(sys.argv) > 3 else None
+term_no_lead = term.lstrip("0") or term  # numeric DBF fields drop leading zeros
 
 SEP_CHARS = str.maketrans("", "", "-. ()\t")
 
 
 def strip_seps(s):
     return s.translate(SEP_CHARS)
+
+
+def is_match(v):
+    if not v:
+        return False
+    stripped = strip_seps(v)
+    return term in v or term in stripped or term_no_lead in v or term_no_lead in stripped
 
 
 if os.path.isdir(search_arg):
@@ -65,7 +76,10 @@ for fi, path in enumerate(dbf_files):
                 flen = desc[16]
                 fields.append((name, ftype, flen))
 
-            phoneish_fields = [n for n, t, l in fields if t == "C" and 8 <= l <= 14]
+            phoneish_fields = [
+                n for n, t, l in fields
+                if (t == "C" and 8 <= l <= 14) or (t == "N" and 8 <= l <= 11)
+            ]
             if not phoneish_fields:
                 continue
 
@@ -94,10 +108,7 @@ for fi, path in enumerate(dbf_files):
                         offsets[name] = offset
                     offset += flen
 
-                matching_fields = [
-                    n for n, v in phone_vals.items()
-                    if term in v or term in strip_seps(v)
-                ]
+                matching_fields = [n for n, v in phone_vals.items() if is_match(v)]
                 if not matching_fields:
                     continue
 
