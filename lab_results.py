@@ -36,7 +36,7 @@ MSPT_PANEL_LABELS = {
 
 # New platform started 2026-04-01 (ROC 115/04/01 = raw DATE 'B50401').
 # Old and new platforms store different tests in the same VAR columns.
-_NEW_PLATFORM_DATE = 'B50401'
+_NEW_PLATFORM_DATE = 'B50317'  # actual first date in EXAMPLAT.DBF (March 17, 2026)
 
 OLD_BIO_LABELS: dict[str, str] = {
     'VAR4':  'Glucose (AC)',
