@@ -2,10 +2,13 @@
 Lab results reader for the web API.
 
 Reads blood test results from:
-  - Z:\\Z\\bioc.dbf      (各項檢驗 BIO)
-  - Z:\\Z\\CBCC.DBF      (CBC 血球計數)
-  - Z:\\Z\\PAT_HIST.DBF  (national ID → 6-digit patient code, change-log only)
-  - Z:\\IC\\IC?????.DBF  (IC visit files — fallback for patients not in PAT_HIST)
+  - ZZ_DIR/bioc.dbf      (各項檢驗 BIO)
+  - ZZ_DIR/CBCC.DBF      (CBC 血球計數)
+  - ZZ_DIR/PAT_HIST.DBF  (national ID → 6-digit patient code, change-log only)
+  - IC_DIR/IC?????.DBF   (IC visit files — fallback for patients not in PAT_HIST)
+
+ZZ_DIR and IC_DIR are set in config.py and overridden per-machine in config_local.py
+(on PC1 these were Z:\\ network drive paths; on the doctor's PC they are local paths).
 
 Returns structured JSON-ready dicts for the frontend modal.
 """
@@ -18,8 +21,10 @@ import time
 import unicodedata
 from datetime import date, timedelta
 
-ZZ_DIR = r"Z:\Z"
-IC_DIR = r"Z:\IC"
+import config
+
+ZZ_DIR = config.ZZ_DIR
+IC_DIR = config.IC_DIR_LAB
 
 # Labels (from OLD_BIO_LABELS/NEW_BIO_LABELS below) considered part of the
 # MSPT (代謝症候群) metabolic panel — used to decide whether a recent blood

@@ -7,6 +7,16 @@ PATDB_PATH: str = "mock/Data/S/PATDB.DBF"
 # Path to QLOOK1.DBF (live waiting-room queue written by the HIS).
 QUEUE_PATH: str = "mock/Data/S/QLOOK1.DBF"
 
+# Folder containing bioc.dbf / BIO2C.DBF / CBCC.DBF / PAT_HIST.DBF (血液檢驗).
+# On PC1 this was the Z: network drive's Z subfolder; on the doctor's PC
+# it is a local path — override in config_local.py.
+ZZ_DIR: str = r"Z:\Z"
+
+# Folder containing IC?????.DBF used by lab_results.py for patient-code lookup.
+# Normally the same folder as IC_DATA_PATH but kept separate so lab_results
+# can be configured independently if the folder layout differs.
+IC_DIR_LAB: str = r"Z:\IC"
+
 # Set to True to use hardcoded Python mock data instead of DBF files.
 USE_MOCK_DATA: bool = False
 
