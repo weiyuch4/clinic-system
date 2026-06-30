@@ -118,7 +118,7 @@
 
     /* global patient search (any patient, not just follow-up rows) */
     #global-search-results {
-      position: absolute; top: calc(100% + 8px); left: 0;
+      position: fixed; /* fixed escapes overflow:hidden on #header-search-input-wrap */
       width: 320px; max-width: 90vw;
       background: var(--card);
       border: 1px solid var(--border);
@@ -4568,9 +4568,18 @@
     _globalSearchTimer = setTimeout(() => _searchAllPatients(query), 300);
   }
 
+  function _positionGlobalSearchResults() {
+    const input = document.getElementById("patient-search");
+    const rect = input.getBoundingClientRect();
+    const el = document.getElementById("global-search-results");
+    el.style.top = (rect.bottom + 8) + "px";
+    el.style.left = Math.max(8, Math.min(rect.left, window.innerWidth - 328)) + "px";
+  }
+
   async function _searchAllPatients(query) {
     const el = document.getElementById("global-search-results");
     el.innerHTML = `<div class="gsr-hint">在全部病患資料中搜尋中…</div>`;
+    _positionGlobalSearchResults();
     el.classList.add("open");
     try {
       const patients = await fetch(`/api/patient/search?q=${encodeURIComponent(query)}`).then(r => r.json());
