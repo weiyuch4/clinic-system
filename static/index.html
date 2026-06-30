@@ -116,6 +116,32 @@
     #notice-dropdown-title { font-size: 13px; font-weight: 700; color: #92400e; margin-bottom: 6px; }
     #notice-dropdown-text { font-size: 13px; color: #78350f; white-space: pre-wrap; line-height: 1.6; }
 
+    /* global patient search (any patient, not just follow-up rows) */
+    #global-search-results {
+      position: absolute; top: calc(100% + 8px); left: 0;
+      width: 320px; max-width: 90vw;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+      z-index: 200;
+      display: none;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    #global-search-results.open { display: block; }
+    .gsr-hint { padding: 9px 14px; font-size: 11px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+    .gsr-item {
+      padding: 10px 14px; cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; gap: 2px;
+    }
+    .gsr-item:last-child { border-bottom: none; }
+    .gsr-item:hover { background: var(--bg); }
+    .gsr-name { font-size: 13.5px; font-weight: 700; color: var(--text); }
+    .gsr-meta { font-size: 11.5px; color: var(--text-sub); }
+    .gsr-empty { padding: 16px 14px; font-size: 12.5px; color: var(--text-muted); text-align: center; }
+
     .btn-print {
       height: 34px; padding: 0 14px;
       border: 1px solid var(--border); border-radius: 8px;
@@ -1070,6 +1096,7 @@
           oninput="onPatientSearch(this.value)"
           onkeydown="if(event.key==='Escape'){this.value?clearPatientSearch():closeHeaderSearch();}" />
         <button id="search-clear" title="清除搜尋" onclick="clearPatientSearch()">✕</button>
+        <div id="global-search-results"></div>
       </div>
       <span id="search-count"></span>
     </div>
@@ -4522,12 +4549,88 @@
     countEl.textContent = matchCount > 0 ? `找到 ${matchCount} 筆` : "無符合結果";
     countEl.className = matchCount > 0 ? "" : "no-match";
     countEl.style.display = "";
+
+    // Not in any follow-up list? Fall back to searching every patient on file —
+    // lets you look up anyone (e.g. yourself) even if they've never appeared
+    // in 慢簽/MSPT/B肝 tracking.
+    if (matchCount === 0) {
+      _queueGlobalPatientSearch(rawQuery.trim());
+    } else {
+      _hideGlobalSearchResults();
+    }
   }
+
+  let _globalSearchTimer = null;
+
+  function _queueGlobalPatientSearch(query) {
+    clearTimeout(_globalSearchTimer);
+    if (!query) { _hideGlobalSearchResults(); return; }
+    _globalSearchTimer = setTimeout(() => _searchAllPatients(query), 300);
+  }
+
+  async function _searchAllPatients(query) {
+    const el = document.getElementById("global-search-results");
+    el.innerHTML = `<div class="gsr-hint">在全部病患資料中搜尋中…</div>`;
+    el.classList.add("open");
+    try {
+      const patients = await fetch(`/api/patient/search?q=${encodeURIComponent(query)}`).then(r => r.json());
+      _renderGlobalSearchResults(patients, query);
+    } catch (e) {
+      el.innerHTML = `<div class="gsr-empty">搜尋失敗：${e.message}</div>`;
+    }
+  }
+
+  function _jsAttrEscape(s) {
+    // safe to embed in both an HTML attribute and a single-quoted JS string literal
+    return String(s || "").replace(/&/g, "&amp;").replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/'/g, "\\'");
+  }
+
+  function _formatRawBirth(raw) {
+    raw = (raw || "").trim();
+    if (raw.length === 6 && /^\d+$/.test(raw))
+      return `民國 ${parseInt(raw.slice(0, 2))} 年 ${raw.slice(2, 4)} 月 ${raw.slice(4, 6)} 日`;
+    if (raw.length === 7 && /^\d+$/.test(raw))
+      return `民國 ${parseInt(raw.slice(0, 3))} 年 ${raw.slice(3, 5)} 月 ${raw.slice(5, 7)} 日`;
+    return raw;
+  }
+
+  function _renderGlobalSearchResults(patients, query) {
+    const el = document.getElementById("global-search-results");
+    if (!patients.length) {
+      el.innerHTML = `<div class="gsr-empty">在全部病患資料中也找不到「${escHtml(query)}」</div>`;
+      el.classList.add("open");
+      return;
+    }
+    el.innerHTML = `<div class="gsr-hint">在全部病患資料中找到 ${patients.length} 筆（點擊查看檢驗結果）</div>`
+      + patients.map(p => `
+        <div class="gsr-item" onclick="_openGlobalSearchResult('${_jsAttrEscape(p.nat_id)}', '${_jsAttrEscape(p.name)}')">
+          <span class="gsr-name">${escHtml(p.name || '')}</span>
+          <span class="gsr-meta">${escHtml(p.nat_id || '')} · ${escHtml(_formatRawBirth(p.birth))}</span>
+        </div>`).join('');
+    el.classList.add("open");
+  }
+
+  function _openGlobalSearchResult(natId, name) {
+    _hideGlobalSearchResults();
+    openLabModal(natId, name);
+  }
+
+  function _hideGlobalSearchResults() {
+    document.getElementById("global-search-results").classList.remove("open");
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!e.target.closest("#global-search-results") && !e.target.closest("#patient-search")) {
+      _hideGlobalSearchResults();
+    }
+  });
 
   function clearPatientSearch() {
     document.getElementById("patient-search").value = "";
     document.getElementById("search-clear").style.display = "none";
     document.getElementById("search-count").style.display = "none";
+    _hideGlobalSearchResults();
 
     document.querySelectorAll("tr[data-search]").forEach(tr => {
       tr.style.display = "";
