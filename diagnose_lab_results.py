@@ -45,6 +45,25 @@ for dbf_name in ("bioc.dbf", "BIO2C.DBF"):
         if var41:
             print(f"      VAR41={var41!r}")
 
+print(f"\nStep 2b: EXAMPLAT.DBF rows for PAT_CODE == {code!r}")
+examplat_path = os.path.join(lr.ZZ_DIR, "EXAMPLAT.DBF")
+print(f"  file exists: {os.path.isfile(examplat_path)}")
+if os.path.isfile(examplat_path):
+    all_rows = lr._cached_rows(examplat_path)
+    matching = [r for r in all_rows if r.get("PAT_CODE", "").strip() == code]
+    print(f"  total in file={len(all_rows)}, matching={len(matching)}")
+    if matching:
+        sample_dates = sorted(set(r.get("M_DATE", "").strip() for r in matching), reverse=True)[:10]
+        print(f"  latest dates: {[lr._decode_date(d) for d in sample_dates]}")
+        june = [r for r in matching if r.get("M_DATE", "").strip().startswith("11506")]
+        print(f"  June 2026 records: {len(june)}")
+        if june:
+            print(f"    sample: {june[0].get('E_NAME','')} = {june[0].get('E_RESULT','')} (M_DATE={june[0].get('M_DATE','')})")
+    else:
+        # Maybe PAT_CODE format differs — show a sample of what codes look like in this file
+        sample_codes = sorted(set(r.get("PAT_CODE", "").strip() for r in all_rows))[:10]
+        print(f"  PAT_CODE values in file (sample): {sample_codes}")
+
 print("\nStep 3: what get_lab_results() actually returns")
 result = lr.get_lab_results(national_id)
 print(f"  patient_code={result['patient_code']!r}  error={result['error']!r}")
