@@ -379,6 +379,53 @@ def _read_cbc_records(patient_code: str) -> list[dict]:
     return records
 
 
+# ── EXAMPLAT reader (new lab platform, 2026+) ─────────────────────────────────
+
+def _read_examplat_records(patient_code: str) -> list[dict]:
+    """Read from EXAMPLAT.DBF — the newer lab platform that replaced bioc.dbf
+    from around April 2026.  Schema: one row per test item (not per visit), so
+    we group by date to produce the same {date, items, notes} shape as
+    _read_bio_records().
+
+    Key fields used:
+      PAT_CODE  — 6-digit patient code (same as CODE in bioc.dbf)
+      M_DATE    — 7-char ROC date, e.g. '1150603' → 115/06/03
+      E_NAME    — Chinese test name  (中文名稱)
+      E_RESULT  — result value
+      E_JDG     — H/HH (high) / L/LL (low) / N (normal)
+      E_UNIT    — unit (not currently rendered by frontend, logged for future use)
+    """
+    from collections import defaultdict
+    path = os.path.join(ZZ_DIR, 'EXAMPLAT.DBF')
+    if not os.path.isfile(path):
+        return []
+
+    matching = [r for r in _cached_rows(path) if r.get('PAT_CODE', '').strip() == patient_code]
+    if not matching:
+        return []
+
+    groups: dict[str, list] = defaultdict(list)
+    for row in matching:
+        date_raw = row.get('M_DATE', '').strip() or row.get('E_DATE', '').strip()
+        date_display = _decode_date(date_raw) if date_raw else '???'
+
+        name = row.get('E_NAME', '').strip() or row.get('E_NAME_EN', '').strip()
+        value = row.get('E_RESULT', '').strip()
+        if not name or not value:
+            continue
+
+        jdg = row.get('E_JDG', '').strip().upper()
+        flag = '+' if jdg.startswith('H') else '-' if jdg.startswith('L') else ''
+
+        groups[date_display].append({'label': name, 'value': value, 'flag': flag})
+
+    return [
+        {'date': d, 'items': groups[d], 'notes': ''}
+        for d in sorted(groups.keys(), reverse=True)
+        if groups[d]
+    ]
+
+
 # ── Public API ────────────────────────────────────────────────────────────────
 
 def get_lab_results(national_id: str) -> dict:
@@ -392,12 +439,20 @@ def get_lab_results(national_id: str) -> dict:
             return {'bio': [], 'cbc': [], 'patient_code': None, 'error': None}
 
         bio = _read_bio_records(patient_code, 'bioc.dbf')
-        # Merge BIO2C if it has additional records not already covered
         bio2c = _read_bio_records(patient_code, 'BIO2C.DBF')
         existing_dates = {r['date'] for r in bio}
         for r in bio2c:
             if r['date'] not in existing_dates:
                 bio.append(r)
+
+        # EXAMPLAT.DBF is the new lab platform (active from ~April 2026).
+        # If a date already exists in bioc.dbf we prefer the EXAMPLAT version
+        # (per-item, structured) and drop the old bioc entry for that date.
+        examplat = _read_examplat_records(patient_code)
+        if examplat:
+            examplat_dates = {r['date'] for r in examplat}
+            bio = [r for r in bio if r['date'] not in examplat_dates] + examplat
+
         bio.sort(key=lambda r: r['date'], reverse=True)
 
         cbc = _read_cbc_records(patient_code)
