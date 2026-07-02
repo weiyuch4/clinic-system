@@ -26,7 +26,8 @@ from models import (
     ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest,
     MsptCompleteRequest, MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
-    SendLineNotificationsRequest, ShiftEntry, SubmitRequest, UnexcludeRequest, UndoLineNotificationRequest,
+    SalaryRecordRequest, SendLineNotificationsRequest, ShiftEntry, SubmitRequest,
+    UnexcludeRequest, UndoLineNotificationRequest,
 )
 
 # ── Edit this for your clinic's name ───────────────────────────────────────────
@@ -144,6 +145,36 @@ def delete_bulletin(note_id: int, nurse: str = "") -> None:
         raise
     except Exception:
         logger.exception("delete_bulletin failed for id=%s", note_id)
+        raise HTTPException(status_code=500, detail="刪除失敗")
+
+
+@app.get("/api/admin/salary")
+def get_salary_records(nurse: str, month: str, _: None = Depends(_require_admin)) -> list[dict]:
+    try:
+        return contacts.get_salary_records(nurse, month)
+    except Exception:
+        logger.exception("get_salary_records failed")
+        raise HTTPException(status_code=500, detail="載入失敗")
+
+
+@app.post("/api/admin/salary")
+def save_salary_record(req: SalaryRecordRequest, _: None = Depends(_require_admin)) -> dict:
+    try:
+        return contacts.save_salary_record(
+            req.nurse, req.month, req.attendance, req.performance,
+            req.sat_pay, req.float_bonus, req.ot_pay, req.total, req.ot_entries,
+        )
+    except Exception:
+        logger.exception("save_salary_record failed")
+        raise HTTPException(status_code=500, detail="儲存失敗")
+
+
+@app.delete("/api/admin/salary/{record_id}")
+def delete_salary_record(record_id: int, _: None = Depends(_require_admin)) -> None:
+    try:
+        contacts.delete_salary_record(record_id)
+    except Exception:
+        logger.exception("delete_salary_record failed for id=%s", record_id)
         raise HTTPException(status_code=500, detail="刪除失敗")
 
 

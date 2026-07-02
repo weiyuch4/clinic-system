@@ -237,6 +237,22 @@ _CREATE_BULLETIN_NOTES = """
     )
 """
 
+_CREATE_SALARY_RECORDS = """
+    CREATE TABLE IF NOT EXISTS salary_records (
+        id          INTEGER PRIMARY KEY AUTOINCREMENT,
+        nurse       TEXT NOT NULL,
+        month       TEXT NOT NULL,
+        attendance  INTEGER NOT NULL,
+        performance INTEGER NOT NULL,
+        sat_pay     INTEGER NOT NULL,
+        float_bonus INTEGER NOT NULL,
+        ot_pay      INTEGER NOT NULL,
+        total       INTEGER NOT NULL,
+        ot_entries  TEXT NOT NULL,
+        created_at  TEXT NOT NULL
+    )
+"""
+
 
 @contextmanager
 def _conn() -> Generator[sqlite3.Connection, None, None]:
@@ -270,6 +286,7 @@ def init() -> None:
         conn.execute(_CREATE_NURSES)
         conn.execute(_CREATE_PUBLISHED_WEEKS)
         conn.execute(_CREATE_BULLETIN_NOTES)
+        conn.execute(_CREATE_SALARY_RECORDS)
         # Migrations for existing databases
         for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
             try:
@@ -1338,5 +1355,40 @@ def get_bulletin_note(note_id: int) -> dict | None:
 def delete_bulletin_note(note_id: int) -> None:
     with _conn() as conn:
         conn.execute("DELETE FROM bulletin_notes WHERE id = ?", (note_id,))
+
+
+def save_salary_record(
+    nurse: str, month: str, attendance: int, performance: int,
+    sat_pay: int, float_bonus: int, ot_pay: int, total: int, ot_entries: str,
+) -> dict:
+    created_at = datetime.now().strftime('%Y-%m-%d %H:%M')
+    with _conn() as conn:
+        cur = conn.execute(
+            """INSERT INTO salary_records
+               (nurse, month, attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, created_at)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (nurse, month, attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, created_at),
+        )
+        return {'id': cur.lastrowid, 'nurse': nurse, 'month': month, 'attendance': attendance,
+                'performance': performance, 'sat_pay': sat_pay, 'float_bonus': float_bonus,
+                'ot_pay': ot_pay, 'total': total, 'ot_entries': ot_entries, 'created_at': created_at}
+
+
+def get_salary_records(nurse: str, month: str) -> list[dict]:
+    with _conn() as conn:
+        rows = conn.execute(
+            """SELECT id, nurse, month, attendance, performance, sat_pay, float_bonus,
+                      ot_pay, total, ot_entries, created_at
+               FROM salary_records WHERE nurse = ? AND month = ? ORDER BY id DESC""",
+            (nurse, month),
+        ).fetchall()
+    cols = ('id', 'nurse', 'month', 'attendance', 'performance', 'sat_pay',
+            'float_bonus', 'ot_pay', 'total', 'ot_entries', 'created_at')
+    return [dict(zip(cols, r)) for r in rows]
+
+
+def delete_salary_record(record_id: int) -> None:
+    with _conn() as conn:
+        conn.execute("DELETE FROM salary_records WHERE id = ?", (record_id,))
 
 

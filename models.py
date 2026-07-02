@@ -249,3 +249,15 @@ class PublishWeekRequest(BaseModel):
 class BulletinNoteRequest(BaseModel):
     nurse: str = ""
     content: str
+
+
+class SalaryRecordRequest(BaseModel):
+    nurse: str
+    month: str          # 'YYYY-MM'
+    attendance: int     # 0 or 2000
+    performance: int
+    sat_pay: int
+    float_bonus: int
+    ot_pay: int
+    total: int
+    ot_entries: str     # JSON array of {date, start, end}

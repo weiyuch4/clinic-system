@@ -1132,6 +1132,16 @@ tbody tr:hover td { background: #F7F9FF; }
 .sal-total-label { font-size: 14px; font-weight: 700; color: var(--text-1); }
 .sal-total-amount { font-size: 22px; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; }
 .sal-note { font-size: 11.5px; color: var(--text-3); margin-top: 8px; }
+.sal-hist-row {
+  display: flex; align-items: center; gap: 12px; padding: 13px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.sal-hist-row:last-child { border-bottom: none; }
+.sal-hist-nurse { font-size: 13px; font-weight: 700; color: var(--text-1); min-width: 48px; }
+.sal-hist-month { font-size: 12px; color: var(--text-2); min-width: 58px; }
+.sal-hist-total { font-size: 15px; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; flex: 1; }
+.sal-hist-time { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.sal-hist-breakdown { font-size: 11px; color: var(--text-3); }
 .sal-section-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin: 16px 0 6px; }
 
 .sched-fill-btn {
@@ -1454,7 +1464,22 @@ tbody tr:hover td { background: #F7F9FF; }
           <span class="sal-total-amount" id="sal-grand-total">—</span>
         </div>
         <div class="sal-note" id="sal-hourly-note"></div>
+
+        <!-- 儲存 -->
+        <div style="margin-top:20px;display:flex;justify-content:flex-end">
+          <button class="btn-sm primary" onclick="saveSalaryRecord()" id="sal-save-btn">儲存薪資記錄</button>
+        </div>
       </div>
+    </div>
+
+    <!-- 歷史紀錄 -->
+    <div class="card" style="margin-top:16px" id="sal-history-card" style="display:none">
+      <div class="card-head">
+        <span class="card-title">已儲存的薪資紀錄</span>
+        <span class="card-spacer"></span>
+        <span class="card-meta" id="sal-history-meta"></span>
+      </div>
+      <div id="sal-history-list"></div>
     </div>
   </section>
 
@@ -1519,8 +1544,8 @@ function fmtMD(iso) {
 const DOW_LABELS = ['一', '二', '三', '四', '五', '六'];  // 診所週日不營業，排班表不顯示週日
 let weekStart = mondayOf(today);
 
-async function api(path) {
-  const r = await fetch(path, { credentials: 'include' });
+async function api(path, options = {}) {
+  const r = await fetch(path, { credentials: 'include', ...options });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
@@ -2955,6 +2980,7 @@ function initSalaryTab() {
         opt.value = opt.textContent = n;
         sel.appendChild(opt);
       });
+      loadSalaryHistory();
     }).catch(() => {});
   }
   if (!$('sal-month').value) {
@@ -2962,7 +2988,86 @@ function initSalaryTab() {
     $('sal-month').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
   recalcSalary();
+  loadSalaryHistory();
 }
+
+// reload history whenever nurse or month changes
+document.addEventListener('change', e => {
+  if (e.target.id === 'sal-nurse' || e.target.id === 'sal-month') loadSalaryHistory();
+});
+
+async function saveSalaryRecord() {
+  const nurse = $('sal-nurse').value;
+  const month = $('sal-month').value;
+  if (!nurse) { alert('請先選擇護理師'); return; }
+  if (!month) { alert('請先選擇月份'); return; }
+
+  const btn = $('sal-save-btn');
+  btn.disabled = true; btn.textContent = '儲存中…';
+
+  const grandEl = $('sal-grand-total').textContent;
+  if (!grandEl || grandEl === '—') { alert('請先計算薪資'); btn.disabled = false; btn.textContent = '儲存薪資記錄'; return; }
+
+  try {
+    await api('/api/admin/salary', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nurse, month,
+        attendance: $('sal-attendance-chk').checked ? 2000 : 0,
+        performance: ($('sal-perf-chk').checked ? parseInt($('sal-perf').value) : 0) || 0,
+        sat_pay:     parseInt($('sal-sat-amt').textContent.replace(/,/g,'')) || 0,
+        float_bonus: parseInt($('sal-float-amt').textContent.replace(/,/g,'')) || 0,
+        ot_pay:      parseInt($('sal-ot-total').textContent.replace(/,/g,'')) || 0,
+        total:       parseInt($('sal-grand-total').textContent.replace(/[^0-9]/g,'')) || 0,
+        ot_entries:  JSON.stringify(_salOtRows),
+      }),
+    });
+    loadSalaryHistory();
+  } catch (err) {
+    alert('儲存失敗：' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '儲存薪資記錄';
+  }
+}
+
+async function loadSalaryHistory() {
+  const nurse = $('sal-nurse').value;
+  const month = $('sal-month').value;
+  const card  = $('sal-history-card');
+  if (!nurse || !month) { card.style.display = 'none'; return; }
+  try {
+    const records = await api(`/api/admin/salary?nurse=${encodeURIComponent(nurse)}&month=${encodeURIComponent(month)}`);
+    renderSalaryHistory(records, nurse, month);
+  } catch (_) {}
+}
+
+function renderSalaryHistory(records, nurse, month) {
+  const card = $('sal-history-card');
+  if (!records.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  $('sal-history-meta').textContent = `${nurse} · ${month} · ${records.length} 筆`;
+  $('sal-history-list').innerHTML = records.map(r => `
+    <div class="sal-hist-row">
+      <span class="sal-hist-total">${parseInt(r.total).toLocaleString('zh-TW')} 元</span>
+      <span class="sal-hist-breakdown">
+        底薪 30,500 ＋ 全勤 ${r.attendance} ＋ 執照 2,000 ＋ 周六 ${r.sat_pay} ＋ 浮動 ${r.float_bonus} ＋ 績效 ${r.performance} ＋ 加班 ${r.ot_pay}
+      </span>
+      <span class="sal-hist-time">${r.created_at}</span>
+      <button class="sal-del" onclick="deleteSalaryRecord(${r.id})">×</button>
+    </div>`).join('');
+}
+
+async function deleteSalaryRecord(id) {
+  if (!confirm('確定刪除這筆薪資記錄？')) return;
+  try {
+    await api(`/api/admin/salary/${id}`, { method: 'DELETE', credentials: 'include' });
+    loadSalaryHistory();
+  } catch (err) {
+    alert('刪除失敗：' + err.message);
+  }
+}
+
 
 function addOtRow() {
   // default date to first day of selected month (or today if no month)
