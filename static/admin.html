@@ -1391,7 +1391,7 @@ tbody tr:hover td { background: #F7F9FF; }
           <span class="sal-label">
             周六工時
             <input type="number" id="sal-sat-hours" class="sal-input-sm" min="0" step="0.25" value="0" oninput="recalcSalary()">
-            小時 × 175
+            小時（休息日費率，基準 175/h）
           </span>
           <span class="sal-amount" id="sal-sat-amt">0</span>
         </div>
@@ -2971,13 +2971,16 @@ function renderOtRows() {
 function calcOvertimePay(minutes, type, hourlyRate) {
   const h = minutes / 60;
   if (type === '平日') {
-    const first = Math.min(h, 2);
-    const rest  = Math.max(0, Math.min(h - 2, 2));
-    return first * hourlyRate * (4/3) + rest * hourlyRate * (5/3);
+    // 前2小時 4/3，第3~4小時 5/3
+    const tier1 = Math.min(h, 2);
+    const tier2 = Math.max(0, Math.min(h - 2, 2));
+    return tier1 * hourlyRate * (4/3) + tier2 * hourlyRate * (5/3);
   } else {  // 休息日
-    const first = Math.min(h, 2);
-    const rest  = Math.max(0, Math.min(h - 2, 6));
-    return first * hourlyRate * (4/3) + rest * hourlyRate * (5/3);
+    // 前2小時 4/3，第3~8小時 5/3，第9~12小時 8/3
+    const tier1 = Math.min(h, 2);
+    const tier2 = Math.max(0, Math.min(h - 2, 6));
+    const tier3 = Math.max(0, Math.min(h - 8, 4));
+    return tier1 * hourlyRate * (4/3) + tier2 * hourlyRate * (5/3) + tier3 * hourlyRate * (8/3);
   }
 }
 
@@ -2992,7 +2995,8 @@ function recalcSalary() {
 
   // fixed components
   const attendance = hasAttendance ? SAL_ATTENDANCE : 0;
-  const satPay     = Math.round(satHours * SAL_SAT_RATE);
+  // Saturday = 休息日, so use tiered overtime rates (not flat ×175)
+  const satPay     = Math.round(calcOvertimePay(satHours * 60, '休息日', SAL_SAT_RATE));
   const floatPay   = Math.max(0, SAL_FLOAT_BASE - satPay);
 
   // overtime hourly rate (includes regular fixed components only)
