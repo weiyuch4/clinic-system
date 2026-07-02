@@ -1103,15 +1103,23 @@ tbody tr:hover td { background: #F7F9FF; }
   padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
 }
 .sal-ot-entry:hover { border-color: var(--border-mid); }
-.sal-date-input, .sal-time-input {
+.sal-date-input {
   border: 1px solid var(--border-mid); border-radius: var(--radius-s);
   padding: 6px 8px; font: 600 13px/1 var(--font); background: var(--surface);
-  color: var(--text-1); font-variant-numeric: tabular-nums;
+  color: var(--text-1); min-width: 130px;
 }
-.sal-date-input { min-width: 130px; }
-.sal-time-input { width: 88px; text-align: center; }
-.sal-date-input:focus, .sal-time-input:focus { outline: none; border-color: var(--blue); }
-.sal-time-sep { color: var(--text-3); font-size: 13px; }
+.sal-date-input:focus { outline: none; border-color: var(--blue); }
+/* 24-hour time selects replacing native <input type=time> */
+.sal-time-sel {
+  border: 1px solid var(--border-mid); border-radius: var(--radius-s);
+  padding: 6px 4px; font: 700 14px/1 var(--font); font-variant-numeric: tabular-nums;
+  background: var(--surface); color: var(--text-1); cursor: pointer; text-align: center;
+}
+.sal-time-sel:focus { outline: none; border-color: var(--blue); }
+.sal-time-sel-h { width: 60px; }
+.sal-time-sel-m { width: 54px; }
+.sal-time-colon { font: 800 16px/1 var(--font); color: var(--text-2); padding: 0 1px; user-select: none; }
+.sal-time-sep { color: var(--text-3); font-size: 13px; padding: 0 2px; }
 .sal-ot-tag {
   font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
   white-space: nowrap;
@@ -3019,6 +3027,28 @@ function togglePerfInput() {
   recalcSalary();
 }
 
+function makeTimeSel(i, field, val) {
+  const hv = val ? val.slice(0, 2) : '08';
+  const mv = val ? val.slice(3, 5) : '00';
+  const hOpts = Array.from({length: 24}, (_, h) => {
+    const v = String(h).padStart(2, '0');
+    return `<option value="${v}"${v === hv ? ' selected' : ''}>${v}</option>`;
+  }).join('');
+  const mOpts = ['00', '15', '30', '45'].map(m =>
+    `<option value="${m}"${m === mv ? ' selected' : ''}>${m}</option>`
+  ).join('');
+  return `<select id="sal-ot-${field}-${i}-h" class="sal-time-sel sal-time-sel-h"
+            onchange="updateRowTime(${i},'${field}')">${hOpts}</select><span class="sal-time-colon">:</span><select id="sal-ot-${field}-${i}-m" class="sal-time-sel sal-time-sel-m"
+            onchange="updateRowTime(${i},'${field}')">${mOpts}</select>`;
+}
+
+function updateRowTime(i, field) {
+  const h = document.getElementById(`sal-ot-${field}-${i}-h`).value;
+  const m = document.getElementById(`sal-ot-${field}-${i}-m`).value;
+  _salOtRows[i][field] = `${h}:${m}`;
+  recalcSalary();
+}
+
 function renderOtRows() {
   // Only called when rows are ADDED or REMOVED — never on input change,
   // because re-rendering destroys the native date-picker mid-navigation.
@@ -3026,11 +3056,9 @@ function renderOtRows() {
     <div class="sal-ot-entry">
       <input type="date" class="sal-date-input" value="${r.date}"
         onchange="_salOtRows[${i}].date=this.value;recalcSalary()">
-      <input type="time" class="sal-time-input" value="${r.start}"
-        oninput="_salOtRows[${i}].start=this.value;recalcSalary()">
+      ${makeTimeSel(i, 'start', r.start)}
       <span class="sal-time-sep">—</span>
-      <input type="time" class="sal-time-input" value="${r.end}"
-        oninput="_salOtRows[${i}].end=this.value;recalcSalary()">
+      ${makeTimeSel(i, 'end', r.end)}
       <span class="sal-ot-tag" id="sal-ot-tag-${i}"></span>
       <span style="color:var(--text-2);font-size:12.5px;font-variant-numeric:tabular-nums;flex:1"
             id="sal-ot-result-${i}"></span>
