@@ -169,6 +169,18 @@ def save_salary_record(req: SalaryRecordRequest, _: None = Depends(_require_admi
         raise HTTPException(status_code=500, detail="儲存失敗")
 
 
+@app.put("/api/admin/salary/{record_id}")
+def update_salary_record(record_id: int, req: SalaryRecordRequest, _: None = Depends(_require_admin)) -> None:
+    try:
+        contacts.update_salary_record(
+            record_id, req.attendance, req.performance,
+            req.sat_pay, req.float_bonus, req.ot_pay, req.total, req.ot_entries,
+        )
+    except Exception:
+        logger.exception("update_salary_record failed for id=%s", record_id)
+        raise HTTPException(status_code=500, detail="更新失敗")
+
+
 @app.delete("/api/admin/salary/{record_id}")
 def delete_salary_record(record_id: int, _: None = Depends(_require_admin)) -> None:
     try:

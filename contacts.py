@@ -1387,6 +1387,19 @@ def get_salary_records(nurse: str, month: str) -> list[dict]:
     return [dict(zip(cols, r)) for r in rows]
 
 
+def update_salary_record(
+    record_id: int, attendance: int, performance: int,
+    sat_pay: int, float_bonus: int, ot_pay: int, total: int, ot_entries: str,
+) -> None:
+    updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
+    with _conn() as conn:
+        conn.execute(
+            """UPDATE salary_records SET attendance=?, performance=?, sat_pay=?, float_bonus=?,
+               ot_pay=?, total=?, ot_entries=?, created_at=? WHERE id=?""",
+            (attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, updated_at, record_id),
+        )
+
+
 def delete_salary_record(record_id: int) -> None:
     with _conn() as conn:
         conn.execute("DELETE FROM salary_records WHERE id = ?", (record_id,))
