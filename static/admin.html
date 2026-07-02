@@ -1550,6 +1550,7 @@ document.querySelectorAll('.tab').forEach(btn => {
     btn.classList.add('active');
     activeSection = btn.dataset.section;
     $(activeSection).classList.add('active');
+    localStorage.setItem('admin_tab', activeSection);
     load(activeSection);
   };
 });
@@ -3108,6 +3109,13 @@ window.addEventListener('scroll', () => {
   document.getElementById('back-to-top').classList.toggle('visible', window.scrollY > 300);
 });
 
+const _savedAdminTab = localStorage.getItem('admin_tab');
+if (_savedAdminTab && $(_savedAdminTab)) {
+  document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.section === _savedAdminTab));
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  $(_savedAdminTab).classList.add('active');
+  activeSection = _savedAdminTab;
+}
 refresh();
 </script>
 </body>
