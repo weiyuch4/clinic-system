@@ -1098,19 +1098,22 @@ tbody tr:hover td { background: #F7F9FF; }
 .sal-ot-result { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; min-width: 80px; }
 .sal-del { background: none; border: none; color: var(--text-3); font-size: 15px; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
 .sal-del:hover { color: var(--red); }
-.sal-date-input {
+.sal-ot-entry {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-s);
+  padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.sal-ot-entry:hover { border-color: var(--border-mid); }
+.sal-date-input, .sal-time-input {
   border: 1px solid var(--border-mid); border-radius: var(--radius-s);
-  padding: 5px 8px; font: 13px/1 var(--font); background: var(--surface); color: var(--text-1);
+  padding: 6px 8px; font: 600 13px/1 var(--font); background: var(--surface);
+  color: var(--text-1); font-variant-numeric: tabular-nums;
 }
-.sal-date-input:focus { outline: none; border-color: var(--blue); }
-.sal-time-input {
-  width: 80px; border: 1px solid var(--border-mid); border-radius: var(--radius-s);
-  padding: 5px 6px; font: 13px/1 var(--font); font-variant-numeric: tabular-nums;
-  background: var(--surface); color: var(--text-1); text-align: center;
-}
-.sal-time-input:focus { outline: none; border-color: var(--blue); }
+.sal-date-input { min-width: 130px; }
+.sal-time-input { width: 88px; text-align: center; }
+.sal-date-input:focus, .sal-time-input:focus { outline: none; border-color: var(--blue); }
+.sal-time-sep { color: var(--text-3); font-size: 13px; }
 .sal-ot-tag {
-  font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
   white-space: nowrap;
 }
 .sal-ot-tag.saturday  { background: #EFF6FF; color: var(--blue); }
@@ -1406,8 +1409,13 @@ tbody tr:hover td { background: #F7F9FF; }
         <!-- 不定期獎金 -->
         <div class="sal-section-head">績效獎金</div>
         <div class="sal-row">
-          <span class="sal-label">工作績效不定期獎金</span>
-          <input type="number" id="sal-perf" class="sal-input-lg" min="0" value="0" oninput="recalcSalary()">
+          <span class="sal-label">
+            <input type="checkbox" id="sal-perf-chk" onchange="togglePerfInput()">
+            工作績效不定期獎金
+          </span>
+          <span id="sal-perf-display" class="sal-amount muted">—</span>
+          <input type="number" id="sal-perf" class="sal-input-lg" min="0" value="0"
+            style="display:none" oninput="recalcSalary()">
         </div>
 
         <!-- 加班記錄 (unified) -->
@@ -3003,30 +3011,42 @@ function calcOvertimePay(minutes, type, hourlyRate) {
 
 function fmtNT(n) { return Math.round(n).toLocaleString('zh-TW'); }
 
+function togglePerfInput() {
+  const on = $('sal-perf-chk').checked;
+  $('sal-perf-display').style.display = on ? 'none' : '';
+  $('sal-perf').style.display = on ? '' : 'none';
+  recalcSalary();
+}
+
 function renderOtRows() {
-  $('sal-ot-list').innerHTML = _salOtRows.map((r, i) => {
-    const info = getDayInfo(r.date);
-    const mins = calcMinutes(r.start, r.end);
-    const h    = (mins / 60).toFixed(1);
-    return `<div class="sal-ot-row" style="gap:6px;flex-wrap:wrap">
+  // Only called when rows are ADDED or REMOVED — never on input change,
+  // because re-rendering destroys the native date-picker mid-navigation.
+  $('sal-ot-list').innerHTML = _salOtRows.map((r, i) => `
+    <div class="sal-ot-entry">
       <input type="date" class="sal-date-input" value="${r.date}"
-        oninput="_salOtRows[${i}].date=this.value;renderOtRows();recalcSalary()">
+        onchange="_salOtRows[${i}].date=this.value;recalcSalary()">
       <input type="time" class="sal-time-input" value="${r.start}"
-        oninput="_salOtRows[${i}].start=this.value;renderOtRows();recalcSalary()">
-      <span style="color:var(--text-3);font-size:13px">—</span>
+        oninput="_salOtRows[${i}].start=this.value;recalcSalary()">
+      <span class="sal-time-sep">—</span>
       <input type="time" class="sal-time-input" value="${r.end}"
-        oninput="_salOtRows[${i}].end=this.value;renderOtRows();recalcSalary()">
-      ${info.label ? `<span class="sal-ot-tag ${info.cls}">${info.label}${info.isSaturday ? '（周六）' : info.cls==='sunday' ? '（周日）' : ''}</span>` : ''}
-      <span class="sal-ot-result" style="color:var(--text-2);font-size:12px" id="sal-ot-result-${i}">${mins > 0 ? `${h}h` : ''}</span>
+        oninput="_salOtRows[${i}].end=this.value;recalcSalary()">
+      <span class="sal-ot-tag" id="sal-ot-tag-${i}"></span>
+      <span style="color:var(--text-2);font-size:12.5px;font-variant-numeric:tabular-nums;flex:1"
+            id="sal-ot-result-${i}"></span>
       <button class="sal-del" onclick="removeOtRow(${i})">×</button>
-    </div>`;
-  }).join('');
+    </div>`).join('');
+  recalcSalary();
 }
 
 function recalcSalary() {
-  renderOtRows();  // keep rows in sync with state
+  // NOTE: does NOT call renderOtRows() — that would destroy date-pickers.
+  // Instead, update only the tag/result spans by id.
   const hasAttendance = $('sal-attendance-chk').checked;
-  const perf = parseInt($('sal-perf').value) || 0;
+  const perfOn = $('sal-perf-chk').checked;
+  const perf   = perfOn ? (parseInt($('sal-perf').value) || 0) : 0;
+  if ($('sal-perf-display')) {
+    $('sal-perf-display').textContent = perfOn ? fmtNT(parseInt($('sal-perf').value) || 0) : '—';
+  }
 
   const attendance  = hasAttendance ? SAL_ATTENDANCE : 0;
   const monthlyBase = SAL_BASE + SAL_LICENSE + attendance;
@@ -3039,14 +3059,19 @@ function recalcSalary() {
     if (mins <= 0) return;
     let pay;
     if (info.isSaturday) {
-      pay = calcOvertimePay(mins, '休息日', SAL_SAT_RATE);  // Saturday uses fixed 175/h base
+      pay = calcOvertimePay(mins, '休息日', SAL_SAT_RATE);
       satPay += pay;
     } else {
       pay = calcOvertimePay(mins, info.isRestDay ? '休息日' : '平日', hourlyRate);
       otPay += pay;
     }
-    const el = document.getElementById(`sal-ot-result-${i}`);
-    if (el) el.textContent = `${(mins/60).toFixed(1)}h → ${fmtNT(pay)} 元`;
+    const tagEl = document.getElementById(`sal-ot-tag-${i}`);
+    if (tagEl) {
+      tagEl.textContent = info.label + (info.isSaturday ? '（周六）' : info.cls === 'sunday' ? '（周日）' : '');
+      tagEl.className = `sal-ot-tag ${info.cls}`;
+    }
+    const resEl = document.getElementById(`sal-ot-result-${i}`);
+    if (resEl) resEl.textContent = mins > 0 ? `${(mins/60).toFixed(1)}h → ${fmtNT(Math.round(pay))} 元` : '';
   });
   satPay = Math.round(satPay);
   otPay  = Math.round(otPay);
