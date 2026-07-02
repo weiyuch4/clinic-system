@@ -1060,6 +1060,51 @@ tbody tr:hover td { background: #F7F9FF; }
 .cov-legend { display: flex; gap: 14px; flex-wrap: wrap; padding: 10px 4px 0; font-size: 11px; color: var(--text-2); }
 .cov-legend-item { display: flex; align-items: center; gap: 5px; }
 .cov-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+
+/* ── 薪資計算 ─────────────────────────────────────────────────────────────── */
+.sal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+.sal-select {
+  border: 1px solid var(--border-mid); border-radius: var(--radius-s);
+  padding: 6px 10px; font: 600 13px/1 var(--font); background: var(--surface);
+  color: var(--text-1); cursor: pointer;
+}
+.sal-month { width: 110px; }
+.sal-body { padding: 20px 24px; }
+.sal-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.sal-row:last-child { border-bottom: none; }
+.sal-label { font-size: 13.5px; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
+.sal-label strong { color: var(--text-1); }
+.sal-amount { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-1); min-width: 80px; text-align: right; }
+.sal-amount.muted { color: var(--text-3); font-weight: 400; font-size: 13px; }
+.sal-input-sm {
+  width: 72px; border: 1px solid var(--border-mid); border-radius: var(--radius-s);
+  padding: 5px 8px; font-size: 13px; font-variant-numeric: tabular-nums;
+  font-family: var(--font); text-align: right;
+}
+.sal-input-sm:focus { outline: none; border-color: var(--blue); }
+.sal-input-lg {
+  width: 130px; border: 1px solid var(--border-mid); border-radius: var(--radius-s);
+  padding: 5px 8px; font-size: 13px; font-variant-numeric: tabular-nums;
+  font-family: var(--font); text-align: right;
+}
+.sal-input-lg:focus { outline: none; border-color: var(--blue); }
+.sal-ot-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.sal-ot-row { display: flex; align-items: center; gap: 8px; }
+.sal-ot-select {
+  border: 1px solid var(--border-mid); border-radius: var(--radius-s);
+  padding: 5px 8px; font: 600 12.5px/1 var(--font); background: var(--surface);
+  color: var(--text-1); cursor: pointer;
+}
+.sal-ot-result { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; min-width: 80px; }
+.sal-del { background: none; border: none; color: var(--text-3); font-size: 15px; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
+.sal-del:hover { color: var(--red); }
+.sal-divider { border: none; border-top: 2px solid var(--text-1); margin: 18px 0 12px; }
+.sal-total-row { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0; }
+.sal-total-label { font-size: 14px; font-weight: 700; color: var(--text-1); }
+.sal-total-amount { font-size: 22px; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; }
+.sal-note { font-size: 11.5px; color: var(--text-3); margin-top: 8px; }
+.sal-section-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin: 16px 0 6px; }
+
 .sched-fill-btn {
   margin-left: 4px;
   background: none;
@@ -1146,6 +1191,7 @@ tbody tr:hover td { background: #F7F9FF; }
   <button class="tab"        data-section="bonus">不定期獎金</button>
   <button class="tab"        data-section="linenotify">LINE 通知</button>
   <button class="tab"        data-section="schedule">排班表</button>
+  <button class="tab"        data-section="salary">薪資計算</button>
 </div>
 
 <main>
@@ -1304,6 +1350,88 @@ tbody tr:hover td { background: #F7F9FF; }
       <span class="sched-legend-swatch"></span> 含清潔時段（點擊時段查看詳細時間）
     </div>
     <div id="sched-grid"></div>
+  </section>
+
+  <!-- ── 薪資計算 ── -->
+  <section id="salary" class="section">
+    <div class="sal-toolbar">
+      <input type="month" id="sal-month" class="sal-select sal-month">
+      <select id="sal-nurse" class="sal-select">
+        <option value="">選擇護理師</option>
+      </select>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">薪資明細</span>
+        <span class="card-spacer"></span>
+        <button class="btn-sm" onclick="window.print()">列印</button>
+      </div>
+      <div class="sal-body">
+
+        <!-- 固定項目 -->
+        <div class="sal-row">
+          <span class="sal-label">底薪</span>
+          <span class="sal-amount" id="sal-base">30,500</span>
+        </div>
+        <div class="sal-row">
+          <span class="sal-label">
+            <input type="checkbox" id="sal-attendance-chk" checked onchange="recalcSalary()">
+            全勤獎金
+          </span>
+          <span class="sal-amount" id="sal-attendance-amt">2,000</span>
+        </div>
+        <div class="sal-row">
+          <span class="sal-label">執照費</span>
+          <span class="sal-amount">2,000</span>
+        </div>
+
+        <!-- 周六 + 浮動 -->
+        <div class="sal-section-head">周六與浮動獎金</div>
+        <div class="sal-row">
+          <span class="sal-label">
+            周六工時
+            <input type="number" id="sal-sat-hours" class="sal-input-sm" min="0" step="0.25" value="0" oninput="recalcSalary()">
+            小時 × 175
+          </span>
+          <span class="sal-amount" id="sal-sat-amt">0</span>
+        </div>
+        <div class="sal-row">
+          <span class="sal-label">浮動獎金（8,000 − 周六加班費）</span>
+          <span class="sal-amount" id="sal-float-amt">8,000</span>
+        </div>
+
+        <!-- 不定期獎金 -->
+        <div class="sal-section-head">績效獎金</div>
+        <div class="sal-row">
+          <span class="sal-label">工作績效不定期獎金</span>
+          <input type="number" id="sal-perf" class="sal-input-lg" min="0" value="0" oninput="recalcSalary()">
+        </div>
+
+        <!-- 加班費 -->
+        <div class="sal-section-head">
+          加班費
+          <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addOtRow()">＋ 新增加班</button>
+        </div>
+        <div class="sal-row" style="flex-direction:column;align-items:flex-start;gap:0">
+          <div class="sal-ot-list" id="sal-ot-list"></div>
+          <div style="align-self:flex-end;margin-top:8px">
+            <span class="sal-label" style="justify-content:flex-end">加班費小計</span>
+          </div>
+        </div>
+        <div class="sal-row">
+          <span class="sal-label">加班費合計</span>
+          <span class="sal-amount" id="sal-ot-total">0</span>
+        </div>
+
+        <!-- 合計 -->
+        <hr class="sal-divider">
+        <div class="sal-total-row">
+          <span class="sal-total-label">本月薪資合計</span>
+          <span class="sal-total-amount" id="sal-grand-total">—</span>
+        </div>
+        <div class="sal-note" id="sal-hourly-note"></div>
+      </div>
+    </div>
   </section>
 
 </main>
@@ -2782,6 +2910,117 @@ async function copyLastWeek() {
   }
 }
 
+// ── 薪資計算 ──────────────────────────────────────────────────────────────────
+
+const SAL_BASE       = 30500;
+const SAL_LICENSE    = 2000;
+const SAL_ATTENDANCE = 2000;
+const SAL_FLOAT_BASE = 8000;
+const SAL_SAT_RATE   = 175;   // (42000/30)/8
+
+let _salOtRows = [];  // [{type:'平日'|'休息日', minutes:N}]
+
+function initSalaryTab() {
+  // populate nurse selector once
+  const sel = $('sal-nurse');
+  if (sel.options.length <= 1) {
+    api('/api/nurses').then(names => {
+      names.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = n;
+        sel.appendChild(opt);
+      });
+    }).catch(() => {});
+  }
+  // default month to current
+  if (!$('sal-month').value) {
+    const now = new Date();
+    $('sal-month').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  }
+  recalcSalary();
+}
+
+function addOtRow() {
+  _salOtRows.push({type: '平日', minutes: 60});
+  renderOtRows();
+  recalcSalary();
+}
+
+function removeOtRow(i) {
+  _salOtRows.splice(i, 1);
+  renderOtRows();
+  recalcSalary();
+}
+
+function renderOtRows() {
+  const list = $('sal-ot-list');
+  list.innerHTML = _salOtRows.map((r, i) => `
+    <div class="sal-ot-row">
+      <select class="sal-ot-select" onchange="_salOtRows[${i}].type=this.value;recalcSalary()">
+        <option${r.type==='平日'?' selected':''}>平日</option>
+        <option${r.type==='休息日'?' selected':''}>休息日</option>
+      </select>
+      <input type="number" class="sal-input-sm" style="width:62px" min="1" value="${r.minutes}"
+        oninput="_salOtRows[${i}].minutes=Math.max(0,parseInt(this.value)||0);recalcSalary()">
+      <span style="font-size:12px;color:var(--text-2)">分鐘</span>
+      <span class="sal-ot-result" id="sal-ot-result-${i}"></span>
+      <button class="sal-del" onclick="removeOtRow(${i})">×</button>
+    </div>`).join('');
+}
+
+function calcOvertimePay(minutes, type, hourlyRate) {
+  const h = minutes / 60;
+  if (type === '平日') {
+    const first = Math.min(h, 2);
+    const rest  = Math.max(0, Math.min(h - 2, 2));
+    return first * hourlyRate * (4/3) + rest * hourlyRate * (5/3);
+  } else {  // 休息日
+    const first = Math.min(h, 2);
+    const rest  = Math.max(0, Math.min(h - 2, 6));
+    return first * hourlyRate * (4/3) + rest * hourlyRate * (5/3);
+  }
+}
+
+function fmtNT(n) {
+  return Math.round(n).toLocaleString('zh-TW');
+}
+
+function recalcSalary() {
+  const hasAttendance = $('sal-attendance-chk').checked;
+  const satHours      = parseFloat($('sal-sat-hours').value) || 0;
+  const perf          = parseInt($('sal-perf').value) || 0;
+
+  // fixed components
+  const attendance = hasAttendance ? SAL_ATTENDANCE : 0;
+  const satPay     = Math.round(satHours * SAL_SAT_RATE);
+  const floatPay   = Math.max(0, SAL_FLOAT_BASE - satPay);
+
+  // overtime hourly rate (includes regular fixed components only)
+  const monthlyBase = SAL_BASE + SAL_LICENSE + attendance;
+  const hourlyRate  = monthlyBase / 30 / 8;
+
+  // overtime entries
+  let otTotal = 0;
+  _salOtRows.forEach((r, i) => {
+    const pay = calcOvertimePay(r.minutes, r.type, hourlyRate);
+    otTotal += pay;
+    const el = document.getElementById(`sal-ot-result-${i}`);
+    if (el) el.textContent = `≈ ${fmtNT(pay)} 元`;
+  });
+  otTotal = Math.round(otTotal);
+
+  const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otTotal;
+
+  $('sal-attendance-amt').textContent = hasAttendance ? '2,000' : '—';
+  $('sal-attendance-amt').className   = 'sal-amount' + (hasAttendance ? '' : ' muted');
+  $('sal-sat-amt').textContent        = fmtNT(satPay);
+  $('sal-float-amt').textContent      = fmtNT(floatPay);
+  $('sal-ot-total').textContent       = fmtNT(otTotal);
+  $('sal-grand-total').textContent    = fmtNT(grand) + ' 元';
+  $('sal-hourly-note').textContent    =
+    `平日每小時工資額：${hourlyRate.toFixed(2)} 元（月薪基準 ${fmtNT(monthlyBase)} ÷ 240）`;
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 function load(section) {
   if (section === 'nurses')    loadNurses();
@@ -2790,6 +3029,7 @@ function load(section) {
   else if (section === 'bonus')     loadBonus();
   else if (section === 'linenotify') loadLineLog();
   else if (section === 'schedule')   loadSchedule();
+  else if (section === 'salary')     initSalaryTab();
 }
 
 function refresh() {
