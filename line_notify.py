@@ -72,8 +72,11 @@ TAG_ENTRY_SELECTOR = 'div.rounded-lg.border-gray-300.bg-white > div.inline-flex'
 # refuses with "resolved to 2 elements" rather than guessing which to click.
 PICKER_OPTION_SELECTOR = 'div.flex.flex-wrap.gap-2.text-xs > div.cursor-pointer'
 
-# Nurses already use Edge daily, so drive that instead of installing Chrome.
-_EDGE_CANDIDATES = [
+_BROWSER_CANDIDATES = [
+    # Chrome
+    r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+    r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+    # Edge fallback
     r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
     r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
 ]
@@ -85,13 +88,14 @@ def to_roc_slash_date(d: date) -> str:
 
 
 def _edge_executable_path() -> str:
-    for c in _EDGE_CANDIDATES:
+    for c in _BROWSER_CANDIDATES:
         if Path(c).exists():
             return c
-    found = shutil.which("msedge")
-    if found:
-        return found
-    raise RuntimeError("Could not find msedge.exe — set its path in _EDGE_CANDIDATES in line_notify.py")
+    for name in ("chrome", "google-chrome", "msedge"):
+        found = shutil.which(name)
+        if found:
+            return found
+    raise RuntimeError("Could not find Chrome or Edge — add its path to _BROWSER_CANDIDATES in line_notify.py")
 
 
 def _is_browser_alive() -> bool:
