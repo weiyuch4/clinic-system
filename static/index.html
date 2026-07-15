@@ -1806,8 +1806,8 @@
       document.getElementById("notice-dropdown-text").textContent = text;
       const btn = document.getElementById("btn-notice");
       btn.style.display = "";
+      // Banner never auto-shows; dot/amber only on genuinely new notices.
       const dismissed = sessionStorage.getItem("noticeDismissed") === text;
-      document.getElementById("notice-bar").classList.toggle("visible", !dismissed);
       document.getElementById("notice-dot").style.display = dismissed ? "none" : "";
       btn.classList.toggle("has-notice", !dismissed);
     } catch {}
