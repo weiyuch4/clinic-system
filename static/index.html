@@ -1854,7 +1854,7 @@
   // so nurses see it in context and know to call instead.
   function lineUnlinkedTag(e) {
     if (!e.line_unlinked) return '';
-    return `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:700;background:#fef2f2;color:#b91c1c;white-space:nowrap" title="LINE未連結，請以簡訊聯絡">LINE未連結 · 簡訊<button onclick="event.stopPropagation();clearLineUnlinked(event,${JSON.stringify(e.patient.chart_number)})" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:11px;padding:0 0 0 2px;line-height:1" title="移除標記">×</button></span>`;
+    return `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:700;background:#fef2f2;color:#b91c1c;white-space:nowrap" title="LINE未連結，請以簡訊聯絡">LINE未連結 · 簡訊<button onclick="event.stopPropagation();clearLineUnlinked(${JSON.stringify(e.patient.chart_number)})" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:11px;padding:0 0 0 2px;line-height:1" title="移除標記">×</button></span>`;
   }
 
   // Set when the applicable LINE template was already sent to this patient
@@ -2066,15 +2066,13 @@
     return tr;
   }
 
-  async function clearLineUnlinked(event, chartNumber) {
-    const btn = event.currentTarget;
-    btn.disabled = true;
+  async function clearLineUnlinked(chartNumber) {
+    if (!confirm('確定移除「LINE未連結」標記？')) return;
     try {
       await apiFetch(`/api/line-unlinked/${encodeURIComponent(chartNumber)}`, { method: 'DELETE' });
       loadReport();
     } catch (err) {
       alert('撤銷失敗：' + err.message);
-      btn.disabled = false;
     }
   }
 
