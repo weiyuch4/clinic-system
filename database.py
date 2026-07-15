@@ -148,6 +148,17 @@ def warmup_cache() -> None:
         get_daily_report(date.today())
     except Exception:
         pass
+    # Pre-warm PATDB phone index and VFP6_P mobile index so the first user
+    # request doesn't block on the 39K-record PATDB read + 180K-record VFP6_P scan.
+    try:
+        _load_patdb()
+        _get_patdb_phone_index()
+    except Exception:
+        pass
+    try:
+        _get_vfp6p_mobile_index()
+    except Exception:
+        pass
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -1063,6 +1074,56 @@ def _read_patdb_with_pos() -> list[tuple[int, dict]]:
     return results
 
 
+def _scan_vfp6p_p1(path: str) -> dict[int, str]:
+    """Fast scan of VFP6_P: returns {code_int: mobile} for TYPE=P1 only.
+    Reads every record but only fully decodes the TYPE field first — non-P1
+    records (the majority of the ~180K rows) skip CODE/DESC decoding entirely,
+    making this ~4-5× faster than a full _parse_dbf call."""
+    result: dict[int, str] = {}
+    with open(path, 'rb') as f:
+        hdr = f.read(32)
+        num_records = struct.unpack_from('<I', hdr, 4)[0]
+        header_size = struct.unpack_from('<H', hdr, 8)[0]
+        record_size = struct.unpack_from('<H', hdr, 10)[0]
+
+        fields: list[tuple[str, int, int]] = []  # (name, byte-offset-in-record, length)
+        f.seek(32)
+        off = 1  # byte 0 is the deletion flag
+        while True:
+            fd = f.read(32)
+            if not fd or fd[0] == 0x0D:
+                break
+            name = fd[:11].rstrip(b'\x00').decode('ascii', errors='replace').strip()
+            flen = fd[16]
+            fields.append((name, off, flen))
+            off += flen
+
+        type_off = type_len = code_off = code_len = desc_off = desc_len = 0
+        for name, foff, flen in fields:
+            if name == 'TYPE': type_off, type_len = foff, flen
+            elif name == 'CODE': code_off, code_len = foff, flen
+            elif name == 'DESC': desc_off, desc_len = foff, flen
+
+        if not (type_len and code_len and desc_len):
+            return result
+
+        f.seek(header_size)
+        for _ in range(num_records):
+            raw = f.read(record_size)
+            if not raw or raw[0] == 0x2A:  # deleted
+                continue
+            if raw[type_off:type_off + type_len].rstrip(b' ') != b'P1':
+                continue  # skip non-P1 records without decoding CODE/DESC
+            try:
+                code = int(raw[code_off:code_off + code_len].decode('ascii').strip())
+                desc = raw[desc_off:desc_off + desc_len].decode('big5', errors='replace').strip()
+                if code and desc:
+                    result[code] = desc
+            except Exception:
+                pass
+    return result
+
+
 _vfp6p_mobile_index: dict[str, str] | None = None
 
 
@@ -1077,14 +1138,8 @@ def _get_vfp6p_mobile_index() -> dict[str, str]:
         _vfp6p_mobile_index = {}
         return _vfp6p_mobile_index
 
-    # Load VFP6_P P1 records: code_int → mobile
-    code_to_mobile: dict[int, str] = {}
-    for row in _parse_dbf(vfp6p_path):
-        if row.get('TYPE') == 'P1':
-            try:
-                code_to_mobile[int(row['CODE'])] = row.get('DESC', '').strip()
-            except (ValueError, KeyError):
-                pass
+    # Load VFP6_P P1 records: code_int → mobile (fast scan, skips non-P1 decoding)
+    code_to_mobile = _scan_vfp6p_p1(vfp6p_path)
 
     # Join with PATDB by 1-based position → national ID
     _vfp6p_mobile_index = {}
