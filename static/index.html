@@ -1853,9 +1853,10 @@
   // to Alleypin — surfaced inline next to their name (not a separate list)
   // so nurses see it in context and know to call instead.
   function lineUnlinkedTag(e) {
-    return e.line_unlinked
-      ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#fef2f2;color:#b91c1c;white-space:nowrap" title="此病患的LINE帳號尚未連接Alleypin，自動發送不會送達，請改用電話聯絡">LINE未連接</span>`
-      : '';
+    if (e.line_unlinked) {
+      return `<span style="display:inline-flex;align-items:center;gap:4px;margin-left:6px;padding:1px 6px;border-radius:10px;font-size:10px;font-weight:700;background:#fef2f2;color:#b91c1c;white-space:nowrap" title="LINE未連結，請以簡訊聯絡">LINE未連結 · 簡訊<button onclick="event.stopPropagation();clearLineUnlinked(event,${JSON.stringify(e.patient.chart_number)})" style="background:none;border:none;color:#b91c1c;cursor:pointer;font-size:11px;padding:0 0 0 2px;line-height:1" title="移除標記">×</button></span>`;
+    }
+    return `<button onclick="event.stopPropagation();markLineUnlinked(event,${JSON.stringify(e.patient.chart_number)},${JSON.stringify(e.patient.name)})" style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:600;background:none;border:1px solid #e5e7eb;color:var(--text-3);cursor:pointer;white-space:nowrap" title="標記為LINE未連結，提醒以簡訊聯絡">LINE未連結?</button>`;
   }
 
   // Set when the applicable LINE template was already sent to this patient
@@ -1872,7 +1873,7 @@
   // system at all (distinct from line_unlinked — found but not LINE-linked).
   function alleypinNotFoundTag(e) {
     return e.alleypin_not_found
-      ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#fef2f2;color:#b91c1c;white-space:nowrap" title="Alleypin查無此病患，自動發送無法進行，請改用電話聯絡">查無此人</span>`
+      ? `<span style="display:inline-block;margin-left:6px;padding:1px 7px;border-radius:10px;font-size:10px;font-weight:700;background:#fef2f2;color:#b91c1c;white-space:nowrap" title="Alleypin查無此病患，請以簡訊聯絡">查無此人 · 簡訊</span>`
       : '';
   }
 
@@ -2065,6 +2066,31 @@
     }
 
     return tr;
+  }
+
+  async function markLineUnlinked(event, chartNumber, name) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    try {
+      await apiFetch('/api/line-unlinked', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chart_number: chartNumber, name, nurse: activeNurse() || '' }) });
+      loadReport();
+    } catch (err) {
+      alert('標記失敗：' + err.message);
+      btn.disabled = false;
+    }
+  }
+
+  async function clearLineUnlinked(event, chartNumber) {
+    const btn = event.currentTarget;
+    btn.disabled = true;
+    try {
+      await apiFetch(`/api/line-unlinked/${encodeURIComponent(chartNumber)}`, { method: 'DELETE' });
+      loadReport();
+    } catch (err) {
+      alert('撤銷失敗：' + err.message);
+      btn.disabled = false;
+    }
   }
 
   async function markContacted(btn, key, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId) {

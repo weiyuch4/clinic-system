@@ -673,6 +673,28 @@ def unmark_manual_pickup(req: ChartNumberRequest) -> None:
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
 
 
+class LineUnlinkedRequest(BaseModel):
+    chart_number: str
+    name: str
+    nurse: str = ""
+
+@app.post("/api/line-unlinked")
+def mark_line_unlinked(req: LineUnlinkedRequest) -> None:
+    try:
+        contacts.flag_line_unlinked(req.chart_number, req.name, req.nurse)
+    except Exception:
+        logger.exception("flag_line_unlinked failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="標記失敗，請稍後再試")
+
+@app.delete("/api/line-unlinked/{chart_number}")
+def clear_line_unlinked(chart_number: str) -> None:
+    try:
+        contacts.clear_line_unlinked(chart_number)
+    except Exception:
+        logger.exception("clear_line_unlinked failed for %s", chart_number)
+        raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
+
+
 _line_batch_state: dict = {
     "running": False, "category": None, "dry_run": False,
     "total": 0, "results": [], "error": None,
