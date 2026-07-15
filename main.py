@@ -407,7 +407,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
                     "call_required": key in call_required_keys,
                     "line_unlinked": e.patient.chart_number in line_unlinked_charts,
                     "alleypin_not_found": e.patient.chart_number in alleypin_not_found_charts,
-                    "phone": database.get_phone_by_chart_number(e.patient.chart_number),
+                    "phone":  database.get_phone_by_chart_number(e.patient.chart_number),
+                    "mobile": database.get_mobile_by_chart_number(e.patient.chart_number),
                 })
                 template = _pick_line_template(updated)
                 sent_at = line_recently_sent_map.get((e.patient.chart_number, template)) if template else None

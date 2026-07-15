@@ -30,7 +30,8 @@ class FollowupEntry(BaseModel):
     contacted_at: date | None = None         # set only on already-contacted entries
     contacted_time: str | None = None        # HH:MM when contact was recorded
     nurse: str = ""                          # who recorded this action (print history only)
-    phone: str = ""                          # from PATDB's TEL field, for manual phone/text contact
+    phone: str = ""                          # from PATDB's TEL field (landline)
+    mobile: str = ""                         # from VFP6_P TYPE=P1 (手機)
 
 
 class MsptSubmittableEntry(BaseModel):

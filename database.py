@@ -1022,9 +1022,83 @@ def _get_patdb_phone_index() -> dict[str, str]:
 
 
 def get_phone_by_chart_number(chart_number: str) -> str:
-    """Look up a patient's phone number from PATDB by national ID. Returns
-    '' if not on file."""
+    """Look up a patient's TEL (landline) from PATDB by national ID."""
     return _get_patdb_phone_index().get(chart_number, '')
+
+
+def _read_patdb_with_pos() -> list[tuple[int, dict]]:
+    """Read PATDB returning (1-based record position, row) for each non-deleted record.
+    Position counts all records including deleted ones, matching VFP6_P.CODE."""
+    if not os.path.exists(PATDB_PATH):
+        return []
+    results = []
+    with open(PATDB_PATH, 'rb') as f:
+        hdr = f.read(32)
+        num_records = struct.unpack_from('<I', hdr, 4)[0]
+        header_size = struct.unpack_from('<H', hdr, 8)[0]
+        record_size = struct.unpack_from('<H', hdr, 10)[0]
+        fields: list[tuple[str, int]] = []
+        f.seek(32)
+        while True:
+            fd = f.read(32)
+            if not fd or fd[0] == 0x0D:
+                break
+            name = fd[:11].rstrip(b'\x00').decode('ascii', errors='replace').strip()
+            fields.append((name, fd[16]))
+        f.seek(header_size)
+        for pos in range(1, num_records + 1):
+            raw = f.read(record_size)
+            if not raw or raw[0] == 0x2A:
+                continue
+            row: dict[str, str] = {}
+            offset = 1
+            for name, flen in fields:
+                val = raw[offset:offset + flen]
+                try:
+                    row[name] = val.decode('big5').strip()
+                except Exception:
+                    row[name] = val.decode('latin-1').strip()
+                offset += flen
+            results.append((pos, row))
+    return results
+
+
+_vfp6p_mobile_index: dict[str, str] | None = None
+
+
+def _get_vfp6p_mobile_index() -> dict[str, str]:
+    """Returns dict: national ID → 手機 (mobile), joined via VFP6_P TYPE=P1."""
+    global _vfp6p_mobile_index
+    if _vfp6p_mobile_index is not None:
+        return _vfp6p_mobile_index
+    import config as _cfg
+    vfp6p_path = getattr(_cfg, 'VFP6P_PATH', '')
+    if not vfp6p_path or not os.path.exists(vfp6p_path):
+        _vfp6p_mobile_index = {}
+        return _vfp6p_mobile_index
+
+    # Load VFP6_P P1 records: code_int → mobile
+    code_to_mobile: dict[int, str] = {}
+    for row in _parse_dbf(vfp6p_path):
+        if row.get('TYPE') == 'P1':
+            try:
+                code_to_mobile[int(row['CODE'])] = row.get('DESC', '').strip()
+            except (ValueError, KeyError):
+                pass
+
+    # Join with PATDB by 1-based position → national ID
+    _vfp6p_mobile_index = {}
+    for pos, row in _read_patdb_with_pos():
+        mobile = code_to_mobile.get(pos, '')
+        nat_id = row.get('ID', '').strip()
+        if nat_id and mobile:
+            _vfp6p_mobile_index[nat_id] = mobile
+    return _vfp6p_mobile_index
+
+
+def get_mobile_by_chart_number(chart_number: str) -> str:
+    """Look up a patient's 手機 (mobile) from VFP6_P by national ID."""
+    return _get_vfp6p_mobile_index().get(chart_number, '')
 
 
 def _allergy_by_name(name: str) -> list[str] | None:

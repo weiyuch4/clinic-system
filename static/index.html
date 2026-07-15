@@ -1880,8 +1880,11 @@
   // patient manually (e.g. one of the tags above) doesn't have to look it
   // up separately.
   function phoneCell(e) {
-    return e.phone
-      ? `<div style="font-size:11px;color:var(--text-muted)">${e.phone}</div>`
+    const parts = [];
+    if (e.phone)  parts.push(e.phone);
+    if (e.mobile) parts.push(`<span style="color:var(--blue)">${e.mobile}</span>`);
+    return parts.length
+      ? `<div style="font-size:11px;color:var(--text-muted)">${parts.join(' · ')}</div>`
       : '';
   }
 
