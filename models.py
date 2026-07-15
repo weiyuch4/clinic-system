@@ -138,6 +138,12 @@ class ChartNumberRequest(BaseModel):
     chart_number: str
 
 
+class LineUnlinkedRequest(BaseModel):
+    chart_number: str
+    name: str
+    nurse: str = ""
+
+
 class ContactRequest(BaseModel):
     chart_number: str
     category: Literal["慢簽", "代謝症候群", "B肝"]

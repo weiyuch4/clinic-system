@@ -23,7 +23,7 @@ import lab_report
 import lab_results
 from models import (
     BulletinNoteRequest, ChartNumberRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest, DailyReport,
-    ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, ManualOnHoldRequest, ManualPickupRequest,
+    ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, LineUnlinkedRequest, ManualOnHoldRequest, ManualPickupRequest,
     MsptCompleteRequest, MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
     SalaryRecordRequest, SendLineNotificationsRequest, ShiftEntry, SubmitRequest,
@@ -672,11 +672,6 @@ def unmark_manual_pickup(req: ChartNumberRequest) -> None:
         logger.exception("unmark_manual_pickup failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
 
-
-class LineUnlinkedRequest(BaseModel):
-    chart_number: str
-    name: str
-    nurse: str = ""
 
 @app.post("/api/line-unlinked")
 def mark_line_unlinked(req: LineUnlinkedRequest) -> None:
