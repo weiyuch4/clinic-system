@@ -1146,6 +1146,11 @@ tbody tr:hover td { background: #F7F9FF; }
 .sal-hist-time { font-size: 11px; color: var(--text-3); }
 .sal-hist-actions { display: flex; gap: 6px; align-items: center; }
 .sal-section-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin: 16px 0 6px; }
+.sal-body.mode-part .sal-full-only { display: none !important; }
+.sal-part-ot-chk { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
+.sal-part-ot-chk input { cursor: pointer; width: 14px; height: 14px; }
+.sal-part-rate-note { font-size: 12px; color: var(--text-3); padding: 10px 0 4px; display: none; }
+.sal-body.mode-part .sal-part-rate-note { display: block; }
 
 .sched-fill-btn {
   margin-left: 4px;
@@ -1401,6 +1406,10 @@ tbody tr:hover td { background: #F7F9FF; }
       <select id="sal-nurse" class="sal-select">
         <option value="">選擇護理師</option>
       </select>
+      <div class="seg-toggle" id="sal-mode-toggle">
+        <button class="seg-btn active" data-mode="full">全職</button>
+        <button class="seg-btn" data-mode="part">兼職</button>
+      </div>
     </div>
     <div class="card">
       <div class="card-head">
@@ -1411,25 +1420,25 @@ tbody tr:hover td { background: #F7F9FF; }
       <div class="sal-body">
 
         <!-- 固定項目 -->
-        <div class="sal-row">
+        <div class="sal-row sal-full-only">
           <span class="sal-label">底薪</span>
           <span class="sal-amount" id="sal-base">30,500</span>
         </div>
-        <div class="sal-row">
+        <div class="sal-row sal-full-only">
           <span class="sal-label">
             <input type="checkbox" id="sal-attendance-chk" checked onchange="recalcSalary()">
             全勤獎金
           </span>
           <span class="sal-amount" id="sal-attendance-amt">2,000</span>
         </div>
-        <div class="sal-row">
+        <div class="sal-row sal-full-only">
           <span class="sal-label">執照費</span>
           <span class="sal-amount">2,000</span>
         </div>
 
         <!-- 不定期獎金 -->
-        <div class="sal-section-head">績效獎金</div>
-        <div class="sal-row">
+        <div class="sal-section-head sal-full-only">績效獎金</div>
+        <div class="sal-row sal-full-only">
           <span class="sal-label">
             <input type="checkbox" id="sal-perf-chk" onchange="togglePerfInput()">
             工作績效不定期獎金
@@ -1438,6 +1447,7 @@ tbody tr:hover td { background: #F7F9FF; }
           <input type="number" id="sal-perf" class="sal-input-lg" min="0" value="0"
             style="display:none" oninput="recalcSalary()">
         </div>
+        <div class="sal-part-rate-note">兼職時薪：<strong>250 元/h</strong>（一般）；<strong>335 元/h</strong>（加班，250 × 1.34）</div>
 
         <!-- 加班記錄 (unified) -->
         <div class="sal-section-head" style="margin-top:18px">
@@ -1447,16 +1457,16 @@ tbody tr:hover td { background: #F7F9FF; }
         <div class="sal-ot-list" id="sal-ot-list" style="margin-bottom:12px"></div>
 
         <!-- 自動計算小計 -->
-        <div class="sal-row">
+        <div class="sal-row sal-full-only">
           <span class="sal-label">周六加班費</span>
           <span class="sal-amount" id="sal-sat-amt">0</span>
         </div>
-        <div class="sal-row">
+        <div class="sal-row sal-full-only">
           <span class="sal-label">浮動獎金</span>
           <span class="sal-amount" id="sal-float-amt">8,000</span>
         </div>
         <div class="sal-row">
-          <span class="sal-label">一般加班費</span>
+          <span class="sal-label" id="sal-ot-label">一般加班費</span>
           <span class="sal-amount" id="sal-ot-total">0</span>
         </div>
 
@@ -2467,6 +2477,10 @@ document.querySelectorAll('#sched-view-toggle .seg-btn').forEach(btn => {
   };
 });
 
+document.querySelectorAll('#sal-mode-toggle .seg-btn').forEach(btn => {
+  btn.onclick = () => setSalMode(btn.dataset.mode);
+});
+
 let weekPublished = false;
 
 async function loadSchedule() {
@@ -2972,11 +2986,25 @@ async function copyLastWeek() {
 const SAL_BASE       = 30500;
 const SAL_LICENSE    = 2000;
 const SAL_ATTENDANCE = 2000;
-const SAL_FLOAT_BASE = 8000;
+const SAL_FLOAT_BASE = 7500;
 const SAL_SAT_RATE   = 175;   // (42000/30)/8 — Saturday overtime base rate
 
-// each entry: {date:'YYYY-MM-DD', start:'HH:MM', end:'HH:MM'}
+// full: {date:'YYYY-MM-DD', start:'HH:MM', end:'HH:MM'}
+// part: same + isOt:bool
 let _salOtRows = [];
+let _salMode = 'full';  // 'full' or 'part'
+
+function setSalMode(mode) {
+  _salMode = mode;
+  document.querySelectorAll('#sal-mode-toggle .seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.mode === mode);
+  });
+  const body = document.querySelector('#salary .sal-body');
+  if (body) body.classList.toggle('mode-part', mode === 'part');
+  const otLabel = $('sal-ot-label');
+  if (otLabel) otLabel.textContent = mode === 'part' ? '工時薪資' : '一般加班費';
+  renderOtRows();
+}
 
 function initSalaryTab() {
   const sel = $('sal-nurse');
@@ -3022,16 +3050,18 @@ function newSalaryRecord() {
 }
 
 function _currentSalaryPayload() {
+  const isPart = _salMode === 'part';
+  const total  = parseInt($('sal-grand-total').textContent.replace(/[^0-9]/g, '')) || 0;
   return {
     nurse: $('sal-nurse').value,
     month: $('sal-month').value,
-    attendance: $('sal-attendance-chk').checked ? 2000 : 0,
-    performance: ($('sal-perf-chk').checked ? parseInt($('sal-perf').value) : 0) || 0,
-    sat_pay:     parseInt($('sal-sat-amt').textContent.replace(/,/g, '')) || 0,
-    float_bonus: parseInt($('sal-float-amt').textContent.replace(/,/g, '')) || 0,
-    ot_pay:      parseInt($('sal-ot-total').textContent.replace(/,/g, '')) || 0,
-    total:       parseInt($('sal-grand-total').textContent.replace(/[^0-9]/g, '')) || 0,
-    ot_entries:  JSON.stringify(_salOtRows),
+    attendance:  isPart ? 0 : ($('sal-attendance-chk').checked ? 2000 : 0),
+    performance: isPart ? 0 : (($('sal-perf-chk').checked ? parseInt($('sal-perf').value) : 0) || 0),
+    sat_pay:     isPart ? 0 : (parseInt($('sal-sat-amt').textContent.replace(/,/g, '')) || 0),
+    float_bonus: isPart ? 0 : (parseInt($('sal-float-amt').textContent.replace(/,/g, '')) || 0),
+    ot_pay:      isPart ? total : (parseInt($('sal-ot-total').textContent.replace(/,/g, '')) || 0),
+    total,
+    ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows}),
   };
 }
 
@@ -3072,8 +3102,17 @@ async function saveSalaryRecord() {
 }
 
 function loadSalaryRecord(record) {
-  // restore overtime entries from JSON
-  try { _salOtRows = JSON.parse(record.ot_entries || '[]'); } catch (_) { _salOtRows = []; }
+  // restore mode and overtime entries from JSON
+  try {
+    const parsed = JSON.parse(record.ot_entries || '[]');
+    if (Array.isArray(parsed)) {
+      _salOtRows = parsed;
+      setSalMode('full');
+    } else {
+      _salOtRows = parsed.rows || [];
+      setSalMode(parsed.mode || 'full');
+    }
+  } catch (_) { _salOtRows = []; setSalMode('full'); }
 
   // restore attendance checkbox
   $('sal-attendance-chk').checked = record.attendance > 0;
@@ -3090,7 +3129,6 @@ function loadSalaryRecord(record) {
     $('sal-perf-display').style.display = '';
   }
 
-  renderOtRows();  // rebuilds the overtime entries list from _salOtRows
   setEditingRecord(record.id);
 }
 
@@ -3110,20 +3148,25 @@ function renderSalaryHistory(records, nurse, month) {
   if (!records.length) { card.style.display = 'none'; return; }
   card.style.display = '';
   $('sal-history-meta').textContent = `${nurse} · ${month} · ${records.length} 筆`;
-  $('sal-history-list').innerHTML = records.map(r => `
+  $('sal-history-list').innerHTML = records.map(r => {
+    let recMode = 'full';
+    try { const p = JSON.parse(r.ot_entries || '[]'); if (!Array.isArray(p)) recMode = p.mode || 'full'; } catch (_) {}
+    const breakdown = recMode === 'part'
+      ? `兼職工時薪資 ${r.ot_pay}`
+      : `底薪 30,500 ＋ 全勤 ${r.attendance} ＋ 執照 2,000 ＋ 周六 ${r.sat_pay} ＋ 浮動 ${r.float_bonus} ＋ 績效 ${r.performance} ＋ 加班 ${r.ot_pay}`;
+    return `
     <div class="sal-hist-row${_salEditingId === r.id ? ' selected' : ''}"
          onclick="selectSalHistRow(this, ${JSON.stringify(r).replace(/"/g, '&quot;')})">
       <span class="sal-hist-total">${parseInt(r.total).toLocaleString('zh-TW')} 元</span>
       <div class="sal-hist-detail">
-        <span class="sal-hist-breakdown">
-          底薪 30,500 ＋ 全勤 ${r.attendance} ＋ 執照 2,000 ＋ 周六 ${r.sat_pay} ＋ 浮動 ${r.float_bonus} ＋ 績效 ${r.performance} ＋ 加班 ${r.ot_pay}
-        </span>
+        <span class="sal-hist-breakdown">${breakdown}</span>
         <span class="sal-hist-time">${r.created_at}</span>
       </div>
       <div class="sal-hist-actions">
         <button class="sal-del" onclick="event.stopPropagation();deleteSalaryRecord(${r.id})">×</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 function selectSalHistRow(el, record) {
@@ -3150,7 +3193,7 @@ function addOtRow() {
   // default date to first day of selected month (or today if no month)
   const monthVal = $('sal-month').value;
   const defaultDate = monthVal ? monthVal + '-01' : new Date().toISOString().slice(0, 10);
-  _salOtRows.push({date: defaultDate, start: '18:00', end: '20:00'});
+  _salOtRows.push({date: defaultDate, start: '18:00', end: '20:00', isOt: false});
   renderOtRows();
   recalcSalary();
 }
@@ -3189,18 +3232,18 @@ function calcMinutes(start, end) {
 function calcOvertimePay(minutes, type, hourlyRate) {
   const h = minutes / 60;
   if (type === '平日') {
-    // 前2h: 4/3；第3~4h: 5/3
-    return Math.min(h, 2) * hourlyRate * (4/3)
-         + Math.max(0, Math.min(h - 2, 2)) * hourlyRate * (5/3);
-  } else {  // 休息日
-    // 前2h: 4/3；第3~8h: 5/3；第9~12h: 8/3
-    return Math.min(h, 2) * hourlyRate * (4/3)
-         + Math.max(0, Math.min(h - 2, 6)) * hourlyRate * (5/3)
-         + Math.max(0, Math.min(h - 8, 4)) * hourlyRate * (8/3);
+    // 前2h: ×1.34；第3~4h: ×1.67
+    return Math.min(h, 2) * hourlyRate * 1.34
+         + Math.max(0, Math.min(h - 2, 2)) * hourlyRate * 1.67;
+  } else {  // 休息日 — 勞基法 §24 rounded-up rates
+    // 前2h: ×1.34；第3~8h: ×1.67；第9~12h: ×2.67
+    return Math.min(h, 2) * hourlyRate * 1.34
+         + Math.max(0, Math.min(h - 2, 6)) * hourlyRate * 1.67
+         + Math.max(0, Math.min(h - 8, 4)) * hourlyRate * 2.67;
   }
 }
 
-function fmtNT(n) { return Math.round(n).toLocaleString('zh-TW'); }
+function fmtNT(n) { return Math.ceil(n).toLocaleString('zh-TW'); }
 
 function togglePerfInput() {
   const on = $('sal-perf-chk').checked;
@@ -3234,6 +3277,7 @@ function updateRowTime(i, field) {
 function renderOtRows() {
   // Only called when rows are ADDED or REMOVED — never on input change,
   // because re-rendering destroys the native date-picker mid-navigation.
+  const isPart = _salMode === 'part';
   $('sal-ot-list').innerHTML = _salOtRows.map((r, i) => `
     <div class="sal-ot-entry">
       <input type="date" class="sal-date-input" value="${r.date}"
@@ -3241,7 +3285,10 @@ function renderOtRows() {
       ${makeTimeSel(i, 'start', r.start)}
       <span class="sal-time-sep">—</span>
       ${makeTimeSel(i, 'end', r.end)}
-      <span class="sal-ot-tag" id="sal-ot-tag-${i}"></span>
+      ${isPart
+        ? `<label class="sal-part-ot-chk"><input type="checkbox" id="sal-ot-isot-${i}"${r.isOt ? ' checked' : ''}
+             onchange="_salOtRows[${i}].isOt=this.checked;recalcSalary()"> 加班</label>`
+        : `<span class="sal-ot-tag" id="sal-ot-tag-${i}"></span>`}
       <span style="color:var(--text-2);font-size:12.5px;font-variant-numeric:tabular-nums;flex:1"
             id="sal-ot-result-${i}"></span>
       <button class="sal-del" onclick="removeOtRow(${i})">×</button>
@@ -3252,6 +3299,28 @@ function renderOtRows() {
 function recalcSalary() {
   // NOTE: does NOT call renderOtRows() — that would destroy date-pickers.
   // Instead, update only the tag/result spans by id.
+
+  if (_salMode === 'part') {
+    const PART_RATE    = 250;
+    const PART_OT_RATE = 250 * 1.34;
+    let partPay = 0;
+    _salOtRows.forEach((r, i) => {
+      const mins = calcMinutes(r.start, r.end);
+      const resEl = document.getElementById(`sal-ot-result-${i}`);
+      if (mins <= 0) { if (resEl) resEl.textContent = ''; return; }
+      const h = mins / 60;
+      const rate = r.isOt ? PART_OT_RATE : PART_RATE;
+      const pay  = h * rate;
+      partPay += pay;
+      if (resEl) resEl.textContent = `${h.toFixed(1)}h × ${fmtNT(rate)} 元/h → ${fmtNT(Math.ceil(pay))} 元`;
+    });
+    partPay = Math.ceil(partPay);
+    $('sal-ot-total').textContent    = fmtNT(partPay);
+    $('sal-grand-total').textContent = fmtNT(partPay) + ' 元';
+    $('sal-hourly-note').textContent = '兼職時薪：250 元/h（一般）；335 元/h（加班，250 × 1.34）';
+    return;
+  }
+
   const hasAttendance = $('sal-attendance-chk').checked;
   const perfOn = $('sal-perf-chk').checked;
   const perf   = perfOn ? (parseInt($('sal-perf').value) || 0) : 0;
@@ -3260,32 +3329,73 @@ function recalcSalary() {
   }
 
   const attendance  = hasAttendance ? SAL_ATTENDANCE : 0;
-  const monthlyBase = SAL_BASE + SAL_LICENSE + attendance;
-  const hourlyRate  = monthlyBase / 30 / 8;
+
+  // Group entries by date, sort each group by start time, accumulate hours
+  // so that two entries on the same day share the correct tier position.
+  const byDate = {};
+  _salOtRows.forEach((r, i) => {
+    if (!byDate[r.date]) byDate[r.date] = [];
+    byDate[r.date].push({r, i});
+  });
 
   let satPay = 0, otPay = 0;
-  _salOtRows.forEach((r, i) => {
-    const info = getDayInfo(r.date);
-    const mins = calcMinutes(r.start, r.end);
-    if (mins <= 0) return;
-    let pay;
-    if (info.isSaturday) {
-      pay = calcOvertimePay(mins, '休息日', SAL_SAT_RATE);
-      satPay += pay;
-    } else {
-      pay = calcOvertimePay(mins, info.isRestDay ? '休息日' : '平日', hourlyRate);
-      otPay += pay;
-    }
-    const tagEl = document.getElementById(`sal-ot-tag-${i}`);
-    if (tagEl) {
-      tagEl.textContent = info.label + (info.isSaturday ? '（周六）' : info.cls === 'sunday' ? '（周日）' : '');
-      tagEl.className = `sal-ot-tag ${info.cls}`;
-    }
-    const resEl = document.getElementById(`sal-ot-result-${i}`);
-    if (resEl) resEl.textContent = mins > 0 ? `${(mins/60).toFixed(1)}h → ${fmtNT(Math.round(pay))} 元` : '';
-  });
-  satPay = Math.round(satPay);
-  otPay  = Math.round(otPay);
+  for (const group of Object.values(byDate)) {
+    group.sort((a, b) => a.r.start.localeCompare(b.r.start));
+    const info = getDayInfo(group[0].r.date);
+    const isSat  = info.isSaturday;
+    const rate   = SAL_SAT_RATE;  // 42,000 ÷ 240 = 175 元/h for all overtime
+    const tiers  = (isSat || info.isRestDay)
+      ? [{limit: 2, mult: 1.34}, {limit: 8, mult: 1.67}, {limit: 12, mult: 2.67}]
+      : [{limit: 2, mult: 1.34}, {limit: 4, mult: 1.67}];
+
+    const SAT_SAT_LIMIT = 4; // first 4h of Saturday → 周六加班費; beyond → 一般加班費
+
+    let cumH = 0;
+    group.forEach(({r, i}) => {
+      const mins = calcMinutes(r.start, r.end);
+      const tagEl = document.getElementById(`sal-ot-tag-${i}`);
+      const resEl = document.getElementById(`sal-ot-result-${i}`);
+      if (tagEl) {
+        tagEl.textContent = info.label + (isSat ? '（周六）' : info.cls === 'sunday' ? '（周日）' : '');
+        tagEl.className = `sal-ot-tag ${info.cls}`;
+      }
+      if (mins <= 0) { if (resEl) resEl.textContent = ''; return; }
+
+      const h = mins / 60;
+      let entrySatPay = 0, entryOtPay = 0, remaining = h, pos = cumH;
+
+      const allTiers = [...tiers, {limit: Infinity, mult: tiers[tiers.length - 1].mult}];
+      for (const {limit, mult} of allTiers) {
+        if (remaining <= 0 || pos >= limit) continue;
+        const used = Math.min(remaining, limit - pos);
+        if (isSat) {
+          // split at SAT_SAT_LIMIT: before → 周六加班費, after → 一般加班費
+          const inSat = Math.max(0, Math.min(used, SAT_SAT_LIMIT - pos));
+          const inOt  = used - inSat;
+          entrySatPay += inSat * rate * mult;
+          entryOtPay  += inOt  * rate * mult;
+        } else {
+          entryOtPay += used * rate * mult;
+        }
+        remaining -= used;
+        pos += used;
+      }
+      cumH += h;
+
+      const ceilSat = Math.ceil(entrySatPay);
+      const ceilOt  = Math.ceil(entryOtPay);
+      satPay += ceilSat;
+      otPay  += ceilOt;
+      const totalPay = ceilSat + ceilOt;
+      if (resEl) {
+        const note = isSat && entryOtPay > 0
+          ? ` （周六 ${fmtNT(Math.ceil(entrySatPay))} ＋ 一般 ${fmtNT(Math.ceil(entryOtPay))}）`
+          : '';
+        resEl.textContent = `${(mins/60).toFixed(1)}h → ${fmtNT(Math.ceil(totalPay))} 元${note}`;
+      }
+    });
+  }
+  // satPay and otPay are already integer sums of per-entry ceiled values
   const floatPay = Math.max(0, SAL_FLOAT_BASE - satPay);
   const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otPay;
 
@@ -3295,8 +3405,7 @@ function recalcSalary() {
   $('sal-float-amt').textContent      = fmtNT(floatPay);
   $('sal-ot-total').textContent       = fmtNT(otPay);
   $('sal-grand-total').textContent    = fmtNT(grand) + ' 元';
-  $('sal-hourly-note').textContent    =
-    `平日每小時工資額：${hourlyRate.toFixed(2)} 元（月薪基準 ${fmtNT(monthlyBase)} ÷ 240）；周六基準 175 元/h（42,000 ÷ 240）`;
+  $('sal-hourly-note').textContent    = '加班基準時薪：175 元/h（42,000 ÷ 240）';
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────

@@ -17,6 +17,11 @@ ZZ_DIR: str = r"Z:\Z"
 # can be configured independently if the folder layout differs.
 IC_DIR_LAB: str = r"Z:\IC"
 
+# UV_APP.DBF — stores manually-entered patient 手機 (mobile) numbers.
+# One record per patient appointment/contact; MOBILE field (10 chars) keyed by PAT_IDNO.
+# On PC1 this was Z:\Z\UV_APP.DBF; on the doctor's PC override in config_local.py.
+UV_APP_PATH: str = r"Z:\Z\UV_APP.DBF"
+
 # Set to True to use hardcoded Python mock data instead of DBF files.
 USE_MOCK_DATA: bool = False
 
