@@ -3,6 +3,7 @@ import glob
 import gzip
 import os
 import pickle
+import re
 import struct
 
 import lab_results
@@ -1208,6 +1209,82 @@ def search_patients(q: str, limit: int = 20) -> list[dict]:
             if len(results) >= limit:
                 break
     return results
+
+
+# ── Blood draw tracking ───────────────────────────────────────────────────────
+
+# NHI chapters whose codes represent tests sent to an external lab:
+#   08 = 尿液  09 = 血液/生化  12 = 微生物  14 = 病理  25/28 = 其他檢查  30 = 過敏原
+_LAB_ORDER_RE = re.compile(r'^(08|09|12|14|25|28|30)\d+C$')
+
+
+def _is_lab_order(code: str) -> bool:
+    return bool(_LAB_ORDER_RE.match(code))
+
+
+def get_blood_draw_patients(as_of: date, lookback_days: int = 5) -> list[dict]:
+    """Scan IC files for the last lookback_days days and return patients who had
+    external lab orders (NHI chapters 08/09/12/14/25/28/30), grouped by draw date,
+    most recent first. Returns [] when USE_MOCK_DATA is True."""
+    if USE_MOCK_DATA:
+        return []
+
+    result = []
+    for delta in range(1, lookback_days + 1):
+        draw_date = as_of - timedelta(days=delta)
+        roc_year  = draw_date.year - 1911
+        target_roc = f"{roc_year:03d}{draw_date.month:02d}{draw_date.day:02d}"
+        ic_stem    = f"{roc_year:03d}{draw_date.month:02d}"
+
+        ic_main = os.path.join(IC_DATA_PATH, f"IC{ic_stem}.DBF")
+        ic_p    = ic_main[:-4] + 'P.DBF'
+
+        if not os.path.exists(ic_main) or not os.path.exists(ic_p):
+            continue
+
+        # Visits on draw_date: CODE_F → {name, nat_id}
+        visits: dict[str, dict] = {}
+        for r in _parse_dbf_cached(ic_main):
+            if r.get('DATE', '').strip() != target_roc:
+                continue
+            cf     = r.get('CODE_F', '').strip()
+            nat_id = r.get('ID',     '').strip()
+            name   = r.get('NAME',   '').strip()
+            if cf and nat_id and name:
+                visits[cf] = {'name': name, 'nat_id': nat_id}
+
+        if not visits:
+            continue
+
+        # Lab codes per CODE_F
+        cf_codes: dict[str, list[str]] = {}
+        for r in _parse_dbf_cached(ic_p):
+            cf   = r.get('CODE_F',  '').strip()
+            drug = r.get('DRUG_NO', '').strip()
+            if cf in visits and _is_lab_order(drug):
+                cf_codes.setdefault(cf, []).append(drug)
+
+        # Merge multiple visits on same day for the same patient
+        by_nat_id: dict[str, dict] = {}
+        for cf, info in visits.items():
+            codes = cf_codes.get(cf)
+            if not codes:
+                continue
+            nat_id = info['nat_id']
+            if nat_id in by_nat_id:
+                by_nat_id[nat_id]['draw_codes'].extend(codes)
+            else:
+                by_nat_id[nat_id] = {'name': info['name'], 'nat_id': nat_id, 'draw_codes': list(codes)}
+
+        patients = [
+            {**info, 'is_allergy': all(c.startswith('30') for c in info['draw_codes'])}
+            for info in sorted(by_nat_id.values(), key=lambda p: p['name'])
+        ]
+
+        if patients:
+            result.append({'date': draw_date.isoformat(), 'patients': patients})
+
+    return result
 
 
 # ── Mock data ─────────────────────────────────────────────────────────────────

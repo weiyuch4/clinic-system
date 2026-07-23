@@ -917,6 +917,25 @@ async def undo_line_notification(log_id: int, req: UndoLineNotificationRequest, 
     return result
 
 
+@app.get("/api/blood-pending")
+def get_blood_pending() -> list[dict]:
+    """Patients with external lab orders in the last 5 days, with result status.
+    Returns [{date, patients: [{name, nat_id, draw_codes, is_allergy,
+    results_back, results_date}]}], most recent day first."""
+    try:
+        days = database.get_blood_draw_patients(date.today())
+        for day in days:
+            draw_date = date.fromisoformat(day['date'])
+            for p in day['patients']:
+                found, result_date = lab_results.has_results_since(p['nat_id'], draw_date)
+                p['results_back'] = found
+                p['results_date'] = result_date
+        return days
+    except Exception:
+        logger.exception("get_blood_pending failed")
+        raise HTTPException(status_code=500, detail="檢驗追蹤載入失敗")
+
+
 @app.get("/api/notice")
 def get_notice() -> dict:
     try:

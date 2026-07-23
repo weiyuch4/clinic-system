@@ -474,6 +474,53 @@ def _parse_slash_date(s: str) -> date | None:
         return None
 
 
+def has_results_since(national_id: str, since: date) -> tuple[bool, str | None]:
+    """Check whether any lab result for this patient was uploaded on or after `since`.
+    Checks EXAMPLAT.DBF first (new platform, direct ID_NO lookup), then falls back
+    to bioc.dbf / CBCC.DBF (old platform, requires patient-code lookup).
+    Returns (found, display_date_string) — display_date is the earliest matching result date."""
+    since_display = f"{since.year - 1911:03d}/{since.month:02d}/{since.day:02d}"
+
+    # 1. EXAMPLAT (new platform) — M_DATE is a 7-digit ROC string
+    examplat_path = os.path.join(ZZ_DIR, 'EXAMPLAT.DBF')
+    if os.path.isfile(examplat_path):
+        earliest: str | None = None
+        for row in _cached_rows(examplat_path):
+            if row.get('ID_NO', '').strip() != national_id:
+                continue
+            m_raw = (row.get('M_DATE', '') or row.get('E_DATE', '')).strip()
+            m_display = _decode_date(m_raw) if m_raw else ''
+            if m_display and m_display >= since_display:
+                if earliest is None or m_display < earliest:
+                    earliest = m_display
+        if earliest:
+            return True, earliest
+
+    # 2. bioc.dbf / BIO2C.DBF / CBCC.DBF (old platform)
+    patient_code = _find_patient_code(national_id)
+    if patient_code:
+        for dbf_name in ('bioc.dbf', 'BIO2C.DBF'):
+            path = os.path.join(ZZ_DIR, dbf_name)
+            if not os.path.isfile(path):
+                continue
+            for row in _cached_rows(path):
+                if row.get('CODE', '').strip() != patient_code:
+                    continue
+                d = _bio_display_date(row)
+                if d and d >= since_display:
+                    return True, d
+        cbc_path = os.path.join(ZZ_DIR, 'CBCC.DBF')
+        if os.path.isfile(cbc_path):
+            for row in _cached_rows(cbc_path):
+                if row.get('CODE', '').strip() != patient_code:
+                    continue
+                d = _decode_date(row.get('DATE', ''))
+                if d and d >= since_display:
+                    return True, d
+
+    return False, None
+
+
 def has_recent_metabolic_panel(national_id: str, as_of: date, window_days: int = 70) -> bool:
     """Return True if this patient has a BIO record within window_days before
     as_of that includes at least one MSPT metabolic-panel marker
