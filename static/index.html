@@ -393,9 +393,11 @@
     .card--chronic .workflow-hint { background: #eff6ff; }
     .card--mspt    .workflow-hint { background: #ecfdf5; }
     .card--hep     .workflow-hint { background: #f5f3ff; }
+    .card--lab     .workflow-hint { background: #ecfeff; }
     .card--chronic .workflow-hint svg { color: var(--blue); }
     .card--mspt    .workflow-hint svg { color: var(--green); }
     .card--hep     .workflow-hint svg { color: #7c3aed; }
+    .card--lab     .workflow-hint svg { color: #0891b2; }
 
     .count-badge {
       font-size: 11px;
@@ -1697,16 +1699,17 @@
 </div>
 
 <div class="tab-panel" id="tab-panel-lab">
-  <div class="card">
+  <div class="card card--lab">
     <div class="card-top" style="background:#0891b2"></div>
     <div class="card-header">
       <h2>檢驗追蹤</h2>
       <button class="btn-add-manual-onhold" onclick="loadLabPending()">重新整理</button>
     </div>
-    <div style="padding:2px 0 12px">
-      <span style="font-size:12px;color:var(--text-muted)">近 5 天送檢病患的報告狀態。結果通常 2–3 天回傳，逾期請聯絡檢驗所。</span>
+    <div class="workflow-hint">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+      <span>近 5 天送檢病患的報告狀態。結果通常 2–3 天回傳；逾期仍未回傳請聯絡檢驗所。</span>
     </div>
-    <div id="lab-pending-body"><div class="lab-empty">載入中…</div></div>
+    <div id="lab-pending-body" style="padding:16px 20px"><div class="lab-empty">載入中…</div></div>
   </div>
 </div>
 
