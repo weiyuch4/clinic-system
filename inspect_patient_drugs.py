@@ -17,7 +17,7 @@ sys.stdout.reconfigure(encoding="utf-8")
 
 IC_DIR     = r"E:\ic"
 query      = sys.argv[1] if len(sys.argv) > 1 else ""
-lookback_m = int(sys.argv[2]) if len(sys.argv) > 2 else 18
+lookback_m = int(sys.argv[2]) if len(sys.argv) > 2 else 3
 
 if not query:
     print("Usage: python inspect_patient_drugs.py <national-ID or name>")
@@ -100,38 +100,36 @@ for stem in stems:
 
 if not patient_visits:
     print(f"Patient not found in any IC file for the past {lookback_m} months.")
-    print("Check the ID/name spelling or extend the lookback: python inspect_patient_drugs.py <ID> 36")
+    print("Check the ID/name spelling or extend the lookback: python inspect_patient_drugs.py <ID> 6")
     sys.exit(0)
 
-# Pick one visit to show patient identity
-sample = next(iter(patient_visits.values()))
-print(f"Found patient: {sample['name']}  {sample['nat_id']}")
-print(f"Visits found : {len(patient_visits)}  (CODE_F values)\n")
+# Pick only the latest visit
+latest_cf, latest_visit = max(patient_visits.items(), key=lambda x: x[1]["date"])
+print(f"Found patient: {latest_visit['name']}  {latest_visit['nat_id']}")
+print(f"Latest visit : {latest_visit['date']}  (CODE_F {latest_cf})\n")
 
-# ── Read P files and show all fields ─────────────────────────────────────────
+# ── Read P file for latest visit only ────────────────────────────────────────
 
-all_p_rows   = []          # accumulate for summary
+all_p_rows   = []
 p_field_names: list[str] = []
 
-for cf, visit in sorted(patient_visits.items(), key=lambda x: x[1]["date"]):
-    p_path = visit["ic_path"][:-4] + "P.DBF"
-    if not os.path.exists(p_path):
-        continue
-    field_names, p_rows = read_dbf(p_path)
-    if not p_field_names and field_names:
-        p_field_names = field_names
+p_path = latest_visit["ic_path"][:-4] + "P.DBF"
+if not os.path.exists(p_path):
+    print(f"P file not found: {p_path}")
+    sys.exit(0)
 
-    matching = [r for r in p_rows if r.get("CODE_F", "").strip() == cf]
-    if not matching:
-        continue
+field_names, p_rows = read_dbf(p_path)
+p_field_names = field_names
+matching = [r for r in p_rows if r.get("CODE_F", "").strip() == latest_cf]
 
-    roc_date = visit["date"]
-    print(f"── {roc_date}  (CODE_F {cf}) ──────────────────────────")
-    for r in matching:
-        # Print every non-empty field
-        parts = [f"{k}={v!r}" for k, v in r.items() if v and k != "CODE_F"]
-        print("  " + "  |  ".join(parts) if parts else "  (empty row)")
-    all_p_rows.extend(matching)
+if not matching:
+    print("No P-file records found for this visit.")
+    sys.exit(0)
+
+for r in matching:
+    parts = [f"{k}={v!r}" for k, v in r.items() if v and k != "CODE_F"]
+    print("  " + "  |  ".join(parts) if parts else "  (empty row)")
+all_p_rows = matching
 
 # ── Summary: all unique DRUG_NO values seen ──────────────────────────────────
 
