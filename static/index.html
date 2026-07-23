@@ -413,6 +413,11 @@
     .tab-btn.hep-tab.active { color: #7c3aed; border-bottom-color: #7c3aed; }
     .card--hep .card-top { background: #7c3aed; }
 
+    /* ── CKD tab ── */
+    #tab-btn-ckd .count-badge { background: #d97706; }
+    .tab-btn.ckd-tab.active { color: #d97706; border-bottom-color: #d97706; }
+    .card--ckd .card-top { background: #d97706; }
+
     /* ── 檢驗追蹤 tab ── */
     #tab-btn-lab .count-badge { background: #0891b2; }
     .tab-btn.lab-tab.active { color: #0891b2; border-bottom-color: #0891b2; }
@@ -1222,6 +1227,9 @@
   <button class="tab-btn hep-tab" id="tab-btn-hep" onclick="switchTab('hep')">
     B/C型肝炎追蹤 <span class="count-badge zero" id="hep-badge">0</span>
   </button>
+  <button class="tab-btn ckd-tab" id="tab-btn-ckd" onclick="switchTab('ckd')">
+    慢性腎臟病追蹤 <span class="count-badge zero" id="ckd-badge">0</span>
+  </button>
   <button class="tab-btn lab-tab" id="tab-btn-lab" onclick="switchTab('lab')">
     檢驗追蹤 <span class="count-badge zero" id="lab-badge">0</span>
   </button>
@@ -1592,6 +1600,95 @@
           <th>病患</th><th>出生日期</th><th>排除原因</th><th>排除日期</th><th></th>
         </tr></thead>
         <tbody id="hep-excluded-rows"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="tab-panel" id="tab-panel-ckd">
+  <div class="card card--ckd">
+    <div class="card-top"></div>
+    <div class="card-header">
+      <h2>慢性腎臟病追蹤</h2>
+    </div>
+    <div class="workflow-hint">
+      <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14zm0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16z"/><path d="M8.93 6.588l-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533L8.93 6.588zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0z"/></svg>
+      <span>病患距上次 CKD 追蹤超過 161 天時出現於此。聯絡後點選「已通知」；7 天內未回診自動移至「已二次通知」再次提醒。</span>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('ckd-pending-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron open">›</i> 待聯絡</span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body open" id="ckd-pending-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>下個階段</th><th>上次CKD日期</th><th>狀態</th><th></th>
+        </tr></thead>
+        <tbody id="ckd-body"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('ckd-contacted-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已聯絡未回診 <span id="ckd-contacted-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="ckd-contacted-body">
+      <table><tbody id="ckd-contacted-rows"></tbody></table>
+    </div>
+    <div class="collapse-toggle" onclick="toggleSection('ckd-called-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已二次通知 <span id="ckd-called-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="ckd-called-body">
+      <table><tbody id="ckd-called-rows"></tbody></table>
+    </div>
+    <div class="collapse-toggle inactive" onclick="toggleSection('ckd-inactive-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 長期未回診 <span id="ckd-inactive-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="ckd-inactive-body">
+      <div style="font-size:12px;color:#92400e;padding:8px 16px 4px;background:#fffbeb">超過一年未回診，需確認是否仍在本院就醫。</div>
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>上次階段</th><th>上次CKD日期</th><th>距今</th><th></th>
+        </tr></thead>
+        <tbody id="ckd-inactive-rows"></tbody>
+      </table>
+    </div>
+    <div class="collapse-toggle onhold-section" onclick="toggleSection('ckd-onhold-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 暫緩 <span id="ckd-onhold-count">0</span></span>
+      <button class="btn-add-manual-onhold" onclick="event.stopPropagation();openManualOnHoldModal('慢性腎臟病')">+ 手動新增</button>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="ckd-onhold-body">
+      <div style="font-size:12px;color:#92400e;padding:8px 16px 4px;background:#fffbeb">待確認或處理的病患。點擊「撤銷暫緩」使其回到待聯絡清單。</div>
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>下個階段</th><th>備註</th><th></th>
+        </tr></thead>
+        <tbody id="ckd-onhold-rows"></tbody>
+      </table>
+    </div>
+    <div class="archive-divider">
+      <div class="archive-divider-line"></div>
+      <span class="archive-divider-label">歸檔紀錄</span>
+      <div class="archive-divider-line"></div>
+    </div>
+    <div class="collapse-toggle archive" onclick="toggleSection('ckd-excluded-body', this)">
+      <div class="collapse-line"></div>
+      <span class="collapse-label"><i class="chevron">›</i> 已排除 <span id="ckd-excluded-count">0</span></span>
+      <div class="collapse-line"></div>
+    </div>
+    <div class="collapse-body" id="ckd-excluded-body">
+      <table>
+        <thead><tr>
+          <th>病患</th><th>出生日期</th><th>排除原因</th><th>排除日期</th><th></th>
+        </tr></thead>
+        <tbody id="ckd-excluded-rows"></tbody>
       </table>
     </div>
   </div>
@@ -2466,6 +2563,14 @@
     renderMsptManualRows(data.mspt_manual || []);
     renderExcludedRows(data.excluded || []);
 
+    // 慢性腎臟病
+    renderFollowups("ckd-body", "ckd-badge", "ckd-contacted-rows", "ckd-contacted-count", "ckd-called-rows", "ckd-called-count",
+      data.ckd_followups || []);
+    renderDoneRows("ckd-contacted-rows", "ckd-contacted-count", (data.contacted || []).filter(e => e.category === "慢性腎臟病"), "done");
+    renderDoneRows("ckd-called-rows",    "ckd-called-count",    (data.called    || []).filter(e => e.category === "慢性腎臟病"), "done-final");
+    renderCkdInactiveRows(data.ckd_inactive || []);
+    // on_hold and excluded are handled by the shared renderOnHoldRows / renderExcludedRows calls below
+
     // B/C型肝炎
     renderHepFollowups(data.hep_followups || []);
     renderHepContactedRows(data.contacted.filter(e => e.category === "B肝"));
@@ -2757,6 +2862,55 @@
       tr.querySelector("[data-act='exclude']").addEventListener("click", () => {
         dropdown.classList.remove("open");
         openExcludeModal(e, "mspt-inactive-rows", "mspt-inactive-count");
+      });
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderCkdInactiveRows(entries) {
+    const tbody = document.getElementById("ckd-inactive-rows");
+    const count = document.getElementById("ckd-inactive-count");
+    tbody.innerHTML = "";
+    count.textContent = entries.length;
+    entries.forEach(e => {
+      followupStore.set(followupKey(e), e);
+      const lastVisit = e.last_visit_date ? fmt(e.last_visit_date) : "—";
+      const daysSince = e.last_visit_date
+        ? Math.floor((new Date(todayIso) - new Date(e.last_visit_date)) / 86400000)
+        : null;
+      const daysSinceStr = daysSince !== null ? `${daysSince} 天` : "—";
+      const tr = document.createElement("tr");
+      tr.dataset.key = followupKey(e);
+      tr.dataset.search = patientSearchStr(e.patient);
+      tr.innerHTML = `
+        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td class="mono dob-copy">${fmt(e.patient.birth_date)}</td>
+        <td>${e.last_stage || "—"}</td>
+        <td class="mono">${lastVisit}</td>
+        <td style="color:var(--text-muted)">${daysSinceStr}</td>
+        <td>
+          <div class="more-actions-wrapper">
+            <button class="btn-more" title="更多操作">•••</button>
+            <div class="dropdown-menu">
+              <button class="dropdown-item" data-act="onhold">暫緩…</button>
+              <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
+            </div>
+          </div>
+        </td>`;
+      const moreBtn = tr.querySelector(".btn-more");
+      const dropdown = tr.querySelector(".dropdown-menu");
+      moreBtn.addEventListener("click", ev => {
+        ev.stopPropagation();
+        document.querySelectorAll(".dropdown-menu.open").forEach(d => { if (d !== dropdown) d.classList.remove("open"); });
+        dropdown.classList.toggle("open");
+      });
+      tr.querySelector("[data-act='onhold']").addEventListener("click", () => {
+        dropdown.classList.remove("open");
+        openOnHoldModal(e, "ckd-inactive-body", "ckd-inactive-count");
+      });
+      tr.querySelector("[data-act='exclude']").addEventListener("click", () => {
+        dropdown.classList.remove("open");
+        openExcludeModal(e, "ckd-inactive-rows", "ckd-inactive-count");
       });
       tbody.appendChild(tr);
     });
@@ -3480,13 +3634,16 @@
     const chronicTbody = document.getElementById("chronic-onhold-rows");
     const msptTbody = document.getElementById("mspt-onhold-rows");
     const hepTbody  = document.getElementById("hep-onhold-rows");
+    const ckdTbody  = document.getElementById("ckd-onhold-rows");
     chronicTbody.innerHTML = "";
     msptTbody.innerHTML = "";
     hepTbody.innerHTML  = "";
+    ckdTbody.innerHTML  = "";
     entries.forEach(e => {
       let tbody;
       if (e.category === "慢簽") tbody = chronicTbody;
       else if (e.category === "B肝") tbody = hepTbody;
+      else if (e.category === "慢性腎臟病") tbody = ckdTbody;
       else tbody = msptTbody;
       const entry = e.is_manual ? null : e.patient ? {
         patient: e.patient, category: e.category, due_date: e.due_date,
@@ -3500,7 +3657,8 @@
     updateCountLabel("chronic-onhold-count", "chronic-onhold-rows");
     updateCountLabel("mspt-onhold-count", "mspt-onhold-rows");
     updateCountLabel("hep-onhold-count", "hep-onhold-rows");
-    ["chronic-onhold", "mspt-onhold", "hep-onhold"].forEach(prefix => {
+    updateCountLabel("ckd-onhold-count", "ckd-onhold-rows");
+    ["chronic-onhold", "mspt-onhold", "hep-onhold", "ckd-onhold"].forEach(prefix => {
       const tbody = document.getElementById(prefix + "-rows");
       if (tbody.querySelectorAll("tr").length > 0) {
         const body = document.getElementById(prefix + "-body");
@@ -3680,8 +3838,9 @@
     const excKey = `${entry.patient.chart_number}|${entry.category}`;
     const isMspt = entry.category === "代謝症候群";
     const isHep  = entry.category === "B肝";
-    const tbodyId = isMspt ? "mspt-excluded-rows" : isHep ? "hep-excluded-rows" : "chronic-excluded-rows";
-    const countId = isMspt ? "mspt-excluded-count" : isHep ? "hep-excluded-count" : "chronic-excluded-count";
+    const isCkd  = entry.category === "慢性腎臟病";
+    const tbodyId = isMspt ? "mspt-excluded-rows" : isHep ? "hep-excluded-rows" : isCkd ? "ckd-excluded-rows" : "chronic-excluded-rows";
+    const countId = isMspt ? "mspt-excluded-count" : isHep ? "hep-excluded-count" : isCkd ? "ckd-excluded-count" : "chronic-excluded-count";
     const tbody = document.getElementById(tbodyId);
     const tr = document.createElement("tr");
     tr.className = isAuto ? "excluded-auto-row" : "excluded-row";
@@ -3696,7 +3855,7 @@
     const undoCell = isAuto
       ? `<span style="font-size:11px;color:var(--text-muted)">—</span>`
       : `<button class="btn-undo">復原</button>`;
-    if (isMspt) {
+    if (isMspt || isCkd) {
       const stageCell = entry.mspt_stage ? stageTag(entry.mspt_stage) : "—";
       tr.innerHTML = `
         <td><div class="patient-name"><span class="name-link" onclick="openLabModal('${entry.patient.chart_number}','${entry.patient.name}')">${entry.patient.name}</span></div><div class="chart-number">${entry.patient.chart_number}</div></td>
@@ -3730,6 +3889,7 @@
     const [chartNumber, category] = excKey.split("|");
     const isMspt = category === "代謝症候群";
     const isHep  = category === "B肝";
+    const isCkd  = category === "慢性腎臟病";
     try {
       await apiFetch("/api/excluded", {
         method: "DELETE",
@@ -3739,14 +3899,16 @@
       const tr = btn.closest("tr");
       const entry = excludedEntryStore.get(excKey);
       fadeRemove(tr, () => {
-        const tbodyId = isMspt ? "mspt-excluded-rows" : isHep ? "hep-excluded-rows" : "chronic-excluded-rows";
-        const countId = isMspt ? "mspt-excluded-count" : isHep ? "hep-excluded-count" : "chronic-excluded-count";
+        const tbodyId = isMspt ? "mspt-excluded-rows" : isHep ? "hep-excluded-rows" : isCkd ? "ckd-excluded-rows" : "chronic-excluded-rows";
+        const countId = isMspt ? "mspt-excluded-count" : isHep ? "hep-excluded-count" : isCkd ? "ckd-excluded-count" : "chronic-excluded-count";
         updateBadge(countId, document.getElementById(tbodyId).querySelectorAll("tr[data-exc-key]").length);
         if (entry) {
           if (isMspt) {
             restoreFollowupRow(entry, "mspt-body", "mspt-badge", "mspt-contacted-rows", "mspt-contacted-count", "mspt-called-rows", "mspt-called-count");
           } else if (isHep) {
             restoreFollowupRow(entry, "hep-body", "hep-badge", "hep-contacted-rows", "hep-contacted-count", "hep-called-rows", "hep-called-count");
+          } else if (isCkd) {
+            restoreFollowupRow(entry, "ckd-body", "ckd-badge", "ckd-contacted-rows", "ckd-contacted-count", "ckd-called-rows", "ckd-called-count");
           } else {
             restoreFollowupRow(entry, "chronic-body", "chronic-badge", "chronic-contacted-rows", "chronic-contacted-count", "chronic-called-rows", "chronic-called-count");
           }
@@ -3912,9 +4074,11 @@
     document.getElementById("mspt-excluded-rows").innerHTML = "";
     document.getElementById("chronic-excluded-rows").innerHTML = "";
     document.getElementById("hep-excluded-rows").innerHTML = "";
+    document.getElementById("ckd-excluded-rows").innerHTML = "";
     updateBadge("mspt-excluded-count", 0);
     updateBadge("chronic-excluded-count", 0);
     updateBadge("hep-excluded-count", 0);
+    updateBadge("ckd-excluded-count", 0);
     entries.forEach(exc => {
       const fakeEntry = {
         patient: exc.patient,
@@ -4038,7 +4202,7 @@
   loadNurseSchedule();
   loadBulletin();
   const _savedTab = localStorage.getItem('clinic_tab');
-  if (_savedTab && ['chronic', 'mspt', 'hep', 'lab', 'directory', 'schedule'].includes(_savedTab)) switchTab(_savedTab);
+  if (_savedTab && ['chronic', 'mspt', 'hep', 'ckd', 'lab', 'directory', 'schedule'].includes(_savedTab)) switchTab(_savedTab);
 
   // ── Refresh ──
 

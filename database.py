@@ -23,6 +23,24 @@ MAX_CHRONIC_OVERDUE_DAYS = 60   # days after which a 慢簽 patient drops off th
 MSPT_REOPEN_DAYS         = 365  # overdue beyond this → restart from 收案
 
 # NHI procedure codes for 代謝症候群 tracking (DRUG_NO field in P files).
+_CKD_CODE_MAP: dict[str, str] = {
+    'P4301C':  '收案',
+    'P4302C':  '追1',
+    'P43022C': '追2',
+}
+
+CKD_STAGE_NEXT: dict[str, str] = {
+    '收案': '追1',
+    '追1':  '追2',
+    '追2':  '追2',   # repeats until further notice
+}
+
+CKD_FOLLOWUP_DAYS      = 161
+_CKD_REOPEN_DAYS       = 365
+_CKD_MAX_INACTIVE_DAYS = 2 * 365
+_CKD_LONG_INACTIVE     = 180
+
+
 _MSPT_CODE_MAP: dict[str, str] = {
     'P7501C':  '收案',
     'P7502C':  '追1',
@@ -168,6 +186,7 @@ def get_daily_report(as_of: date) -> DailyReport:
     if USE_MOCK_DATA:
         return _mock_report(as_of)
     mspt_followups, mspt_inactive = _query_mspt_followups(as_of)
+    ckd_followups,  ckd_inactive  = _query_ckd_followups(as_of)
     # Computed once and shared — _query_hep_followups and _query_hep_returned both
     # need it, and it alone accounts for most of a cold report's runtime (it parses
     # every IC file in the clinic's history looking for hep visits).
@@ -183,6 +202,8 @@ def get_daily_report(as_of: date) -> DailyReport:
         hep_followups=hep_followups,
         hep_inactive=hep_inactive,
         hep_returned=_query_hep_returned(as_of, hep_patient_info),
+        ckd_followups=ckd_followups,
+        ckd_inactive=ckd_inactive,
     )
 
 
@@ -612,6 +633,113 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
 
     return (
         sorted(results, key=lambda e: e.days_overdue, reverse=True),
+        sorted(inactive, key=lambda e: e.last_visit_date or date.min),
+    )
+
+
+# ── CKD (慢性腎臟病) tracking ────────────────────────────────────────────────
+
+def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
+    """Return (active_followups, inactive_patients) for CKD tracking.
+    Stage history is detected from P-file DRUG_NO codes in _CKD_CODE_MAP.
+    Inter-stage gap: CKD_FOLLOWUP_DAYS (161 days).
+    After _CKD_REOPEN_DAYS overdue → needs 收案 restart.
+    """
+    since = as_of - timedelta(days=_CKD_MAX_INACTIVE_DAYS)
+
+    patient_info:  dict[str, dict]       = {}
+    stage_history: dict[str, list[dict]] = {}
+
+    for ic_path in _ic_files_since(since):
+        month_cf_to_id:  dict[str, str]  = {}
+        month_cf_dates:  dict[str, date] = {}
+        try:
+            for r in _parse_dbf_cached(ic_path):
+                v_date = _roc_to_date(r.get('DATE', ''))
+                if not v_date or v_date > as_of:
+                    continue
+                cf     = r.get('CODE_F', '').strip()
+                nat_id = r.get('ID',     '').strip()
+                if not cf or not nat_id:
+                    continue
+                month_cf_to_id[cf] = nat_id
+                month_cf_dates[cf] = v_date
+                name  = r.get('NAME',  '').strip()
+                birth = _roc_to_date(r.get('BIRTH', ''))
+                if name and birth:
+                    prev = patient_info.get(nat_id)
+                    if prev is None or v_date > prev['latest_date']:
+                        patient_info[nat_id] = {'name': name, 'birth': birth, 'latest_date': v_date}
+        except Exception:
+            pass
+
+        p_path = ic_path[:-4] + 'P.DBF'
+        if not os.path.exists(p_path):
+            continue
+        try:
+            for r in _parse_dbf_cached(p_path):
+                cf     = r.get('CODE_F', '').strip()
+                nat_id = month_cf_to_id.get(cf)
+                if not nat_id:
+                    continue
+                stage  = _CKD_CODE_MAP.get(r.get('DRUG_NO', '').strip())
+                v_date = month_cf_dates.get(cf)
+                if not stage or not v_date or v_date > as_of:
+                    continue
+                stage_history.setdefault(nat_id, []).append({'stage': stage, 'date': v_date})
+        except Exception:
+            pass
+
+    results: list[FollowupEntry] = []
+    inactive: list[FollowupEntry] = []
+
+    for nat_id, history in stage_history.items():
+        info = patient_info.get(nat_id)
+        if not info:
+            continue
+
+        history.sort(key=lambda x: x['date'])
+        last_stage    = history[-1]['stage']
+        last_date     = history[-1]['date']
+        days_inactive = (as_of - last_date).days
+
+        if days_inactive > _CKD_MAX_INACTIVE_DAYS:
+            continue
+
+        next_stage   = CKD_STAGE_NEXT.get(last_stage)
+        if next_stage is None:
+            continue
+
+        due_date     = last_date + timedelta(days=CKD_FOLLOWUP_DAYS)
+        days_overdue = (as_of - due_date).days
+        if days_overdue < 0:
+            continue
+
+        entry = FollowupEntry(
+            patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
+            disease_name='慢性腎臟病',
+            due_date=due_date,
+            days_overdue=days_overdue,
+            category='慢性腎臟病',
+            last_visit_date=last_date,
+            last_stage=last_stage,
+            mspt_stage=next_stage,
+        )
+
+        if days_overdue > _CKD_REOPEN_DAYS:
+            entry = entry.model_copy(update={
+                'mspt_stage':    '收案',
+                'contact_reason': '需重新收案',
+            })
+            if (as_of - info['latest_date']).days > _CKD_LONG_INACTIVE:
+                inactive.append(entry)
+            else:
+                results.append(entry)
+        else:
+            results.append(entry)
+
+    return (
+        sorted(results,  key=lambda e: e.days_overdue, reverse=True),
         sorted(inactive, key=lambda e: e.last_visit_date or date.min),
     )
 

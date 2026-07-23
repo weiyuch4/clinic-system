@@ -530,6 +530,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
             chronic_manual_pickups=contacts.get_manual_pickup_entries(),
             on_hold=contacts.get_on_hold_entries(),
             mspt_manual=contacts.get_mspt_manual_entries(),
+            ckd_followups=filter_followups(report.ckd_followups),
+            ckd_inactive=filter_followups(report.ckd_inactive),
         )
     except HTTPException:
         raise

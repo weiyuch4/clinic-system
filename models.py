@@ -16,7 +16,7 @@ class FollowupEntry(BaseModel):
     disease_name: str
     due_date: date
     days_overdue: int
-    category: Literal["慢簽", "代謝症候群", "B肝"]
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
     mspt_stage: MsptStage | None = None      # MSPT entries only — the NEXT stage due
     needs_blood_test: bool | None = None     # MSPT entries only — whether mspt_stage needs a fresh blood draw
     last_stage: str | None = None            # stage completed at last_visit_date (str to support hep values)
@@ -49,7 +49,7 @@ class MsptWaitingEntry(BaseModel):
 
 class ExcludedEntry(BaseModel):
     patient: Patient
-    category: Literal["慢簽", "代謝症候群", "B肝"]
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
     mspt_stage: MsptStage | None = None
     due_date: date | None = None
     last_visit_date: date | None = None
@@ -74,7 +74,7 @@ class ManualPickupEntry(BaseModel):
 class OnHoldEntry(BaseModel):
     hold_id: int
     patient: Patient | None = None             # None for manual entries
-    category: Literal["慢簽", "代謝症候群", "B肝"] | None = None
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"] | None = None
     due_date: date | None = None
     days_overdue: int | None = None
     mspt_stage: MsptStage | None = None
@@ -120,6 +120,8 @@ class DailyReport(BaseModel):
     on_hold: list[OnHoldEntry] = []
     mspt_manual: list[MsptManualEntry] = []
     hep_returned_completed: list[FollowupEntry] = []  # archived 完成B肝 (VPN entered) records
+    ckd_followups: list[FollowupEntry] = []
+    ckd_inactive: list[FollowupEntry] = []
 
 
 class NurseEntryRequest(BaseModel):
@@ -146,7 +148,7 @@ class LineUnlinkedRequest(BaseModel):
 
 class ContactRequest(BaseModel):
     chart_number: str
-    category: Literal["慢簽", "代謝症候群", "B肝"]
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
     due_date: date
 
 
@@ -159,7 +161,7 @@ class ExcludeRequest(BaseModel):
 
 class UnexcludeRequest(BaseModel):
     chart_number: str
-    category: Literal["慢簽", "代謝症候群", "B肝"]
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
 
 
 class MsptCompleteRequest(BaseModel):
@@ -174,7 +176,7 @@ class HepReturnedCompleteRequest(BaseModel):
 
 
 class SendLineNotificationsRequest(BaseModel):
-    category: Literal["慢簽", "代謝症候群", "B肝"]
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
     nurse: str = ""
     dry_run: bool = False
     chart_numbers: list[str] | None = None  # restrict to specific patients (e.g. for a test send)
@@ -209,7 +211,7 @@ class ManualOnHoldRequest(BaseModel):
     name: str
     note: str
     nurse: str = ""
-    category: Literal["慢簽", "代謝症候群", "B肝"] | None = None
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"] | None = None
 
 
 class OnHoldRemoveRequest(BaseModel):
