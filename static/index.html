@@ -421,28 +421,30 @@
     /* ── 檢驗追蹤 tab ── */
     #tab-btn-lab .count-badge { background: #0891b2; }
     .tab-btn.lab-tab.active { color: #0891b2; border-bottom-color: #0891b2; }
-    .lab-day-group { margin-bottom: 24px; }
+    .lab-day-group { margin-bottom: 28px; }
     .lab-day-header {
-      display: flex; align-items: baseline; gap: 10px;
-      padding-bottom: 6px; border-bottom: 1px solid var(--border);
-      margin-bottom: 10px;
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 12px; background: #f0f9ff;
+      border-radius: 6px; margin-bottom: 8px;
     }
-    .lab-day-date { font-size: 14px; font-weight: 700; color: var(--text); }
-    .lab-day-label { font-size: 12px; color: var(--text-muted); }
-    .lab-day-pending { font-size: 12px; font-weight: 600; color: #b45309; margin-left: auto; }
-    .lab-row {
-      display: flex; align-items: center; gap: 12px;
-      padding: 7px 0; border-bottom: 1px solid var(--bg-alt);
-      font-size: 13px;
+    .lab-day-date { font-size: 13px; font-weight: 700; color: #0c4a6e; }
+    .lab-day-label { font-size: 12px; color: #0369a1; }
+    .lab-day-badge {
+      margin-left: auto; font-size: 11px; font-weight: 700;
+      padding: 2px 9px; border-radius: 10px; white-space: nowrap;
     }
-    .lab-row:last-child { border-bottom: none; }
-    .lab-name { width: 90px; font-weight: 600; flex-shrink: 0; }
-    .lab-codes { flex: 1; color: var(--text-muted); font-size: 11px; font-family: monospace; }
-    .lab-status { flex-shrink: 0; font-size: 12px; font-weight: 600; white-space: nowrap; }
-    .lab-status.ok      { color: #16a34a; }
-    .lab-status.waiting { color: var(--text-muted); }
-    .lab-status.warn    { color: #b45309; }
-    .lab-status.urgent  { color: #dc2626; }
+    .lab-day-badge.has-pending { background: #fef3c7; color: #92400e; }
+    .lab-day-badge.all-ok      { background: #dcfce7; color: #166534; }
+    .lab-pill {
+      display: inline-block; padding: 2px 9px; border-radius: 10px;
+      font-size: 11px; font-weight: 700; white-space: nowrap;
+    }
+    .lab-pill.ok      { background: #dcfce7; color: #166534; }
+    .lab-pill.waiting { background: #f3f4f6; color: #6b7280; }
+    .lab-pill.warn    { background: #fef3c7; color: #92400e; }
+    .lab-pill.urgent  { background: #fee2e2; color: #991b1b; }
+    .lab-tr-warn  td  { background: #fffbeb; }
+    .lab-tr-urgent td { background: #fff5f5; }
     .lab-empty { color: var(--text-muted); font-size: 13px; padding: 20px 0; text-align: center; }
 
     /* ── Table ── */
@@ -1701,8 +1703,8 @@
       <h2>檢驗追蹤</h2>
       <button class="btn-add-manual-onhold" onclick="loadLabPending()">重新整理</button>
     </div>
-    <div style="padding:4px 0 8px">
-      <span style="font-size:12px;color:var(--text-muted)">顯示近 5 天有送檢病患的報告狀態。結果通常 2–3 天內回傳；若超過 3 天仍未回傳請聯絡檢驗所。</span>
+    <div style="padding:2px 0 12px">
+      <span style="font-size:12px;color:var(--text-muted)">近 5 天送檢病患的報告狀態。結果通常 2–3 天回傳，逾期請聯絡檢驗所。</span>
     </div>
     <div id="lab-pending-body"><div class="lab-empty">載入中…</div></div>
   </div>
@@ -4246,55 +4248,58 @@
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const PRIORITY = { urgent: 0, warn: 1, waiting: 2, ok: 3 };
     let urgentTotal = 0;
+
     const html = days.map(day => {
       const drawDate = new Date(day.date + 'T00:00:00');
       const daysElapsed = Math.round((today - drawDate) / 86400000);
-      const dateLabel = daysElapsed === 1 ? '昨天' : daysElapsed === 2 ? '前天' : `${daysElapsed} 天前`;
+      const dateLabel = daysElapsed === 0 ? '今天' : daysElapsed === 1 ? '昨天' : daysElapsed === 2 ? '前天' : `${daysElapsed} 天前`;
 
-      const pendingCount = day.patients.filter(p => !p.results_back).length;
-      if (daysElapsed >= 2) urgentTotal += day.patients.filter(p => !p.results_back && !p.is_allergy).length;
-
-      const pendingHtml = pendingCount
-        ? `<span class="lab-day-pending">${pendingCount} 人等待中</span>` : '';
-
-      const rows = day.patients.map(p => {
-        let statusClass, statusText;
+      const classified = day.patients.map(p => {
+        let cls, text;
         if (p.results_back) {
-          statusClass = 'ok';
-          statusText  = `✓ 結果已回（${p.results_date}）`;
+          cls = 'ok'; text = `已回傳${p.results_date ? ' ' + p.results_date : ''}`;
         } else if (p.is_allergy) {
-          statusClass = 'waiting';
-          statusText  = '⏳ 等待中（過敏原）';
+          cls = 'waiting'; text = '等待中（過敏原）';
         } else if (daysElapsed >= 3) {
-          statusClass = 'urgent';
-          statusText  = `⚠ 等待中（${daysElapsed} 天）`;
+          cls = 'urgent'; text = `逾期 ${daysElapsed} 天`;
         } else if (daysElapsed >= 2) {
-          statusClass = 'warn';
-          statusText  = `⏳ 等待中（${daysElapsed} 天）`;
+          cls = 'warn'; text = `${daysElapsed} 天`;
         } else {
-          statusClass = 'waiting';
-          statusText  = '⏳ 等待中';
+          cls = 'waiting'; text = '等待中';
         }
-        const codes = p.draw_codes.join('  ');
-        return `<div class="lab-row">
-          <span class="lab-name">${p.name}</span>
-          <span class="lab-codes">${codes}</span>
-          <span class="lab-status ${statusClass}">${statusText}</span>
-        </div>`;
-      }).join('');
+        return { ...p, cls, text };
+      });
 
-      // Gregorian date display
-      const [y, m, d] = day.date.split('-');
-      const dateStr = `${y}/${m}/${d}`;
+      if (daysElapsed >= 2)
+        urgentTotal += classified.filter(p => p.cls === 'urgent' || p.cls === 'warn').length;
+
+      classified.sort((a, b) => (PRIORITY[a.cls] ?? 9) - (PRIORITY[b.cls] ?? 9));
+
+      const pendingCount = classified.filter(p => !p.results_back).length;
+      const badgeClass = pendingCount === 0 ? 'all-ok' : 'has-pending';
+      const badgeText  = pendingCount === 0 ? '全部已回傳' : `${pendingCount} 人待回傳`;
+
+      const [, m, d] = day.date.split('-');
+      const dateStr = `${parseInt(m)}/${parseInt(d)}`;
+
+      const rows = classified.map(p => {
+        const trClass = p.cls === 'urgent' ? 'lab-tr-urgent' : p.cls === 'warn' ? 'lab-tr-warn' : '';
+        return `<tr class="${trClass}">
+          <td style="font-weight:600">${p.name}</td>
+          <td class="mono" style="color:var(--text-muted);font-size:11px">${p.nat_id}</td>
+          <td><span class="lab-pill ${p.cls}">${p.text}</span></td>
+        </tr>`;
+      }).join('');
 
       return `<div class="lab-day-group">
         <div class="lab-day-header">
           <span class="lab-day-date">${dateStr}</span>
           <span class="lab-day-label">${dateLabel}</span>
-          ${pendingHtml}
+          <span class="lab-day-badge ${badgeClass}">${badgeText}</span>
         </div>
-        ${rows}
+        <table><tbody>${rows}</tbody></table>
       </div>`;
     }).join('');
 
