@@ -1143,7 +1143,7 @@
     </button>
   </div>
   <div style="position:relative;display:inline-block" onclick="event.stopPropagation()">
-    <button class="btn-print" id="btn-notice" onclick="toggleNotice()" title="公告訊息" style="display:none;position:relative">
+    <button class="btn-print" id="btn-notice" onclick="toggleNotice()" title="公告訊息" style="position:relative">
       <svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 16a2 2 0 0 0 2-2H6a2 2 0 0 0 2 2zm.995-14.901a1 1 0 1 0-1.99 0A5.002 5.002 0 0 0 3 6c0 1.098-.5 6-2 7h14c-1.5-1-2-5.902-2-7 0-2.158-1.342-4.087-3.005-4.901z"/></svg>
       公告
       <span id="notice-dot" style="position:absolute;top:4px;right:4px;width:7px;height:7px;background:#f59e0b;border-radius:50%;display:none"></span>
@@ -1946,16 +1946,16 @@
   async function loadNotice() {
     try {
       const { text } = await (await fetch("/api/notice")).json();
-      if (!text) return;
-      _noticeText = text;
-      document.getElementById("notice-text").textContent = text;
-      document.getElementById("notice-dropdown-text").textContent = text;
-      const btn = document.getElementById("btn-notice");
-      btn.style.display = "";
-      // Banner never auto-shows; dot/amber only on genuinely new notices.
-      const dismissed = sessionStorage.getItem("noticeDismissed") === text;
-      document.getElementById("notice-dot").style.display = dismissed ? "none" : "";
-      btn.classList.toggle("has-notice", !dismissed);
+      _noticeText = text || "";
+      const displayText = text || "目前無公告";
+      document.getElementById("notice-text").textContent = displayText;
+      document.getElementById("notice-dropdown-text").textContent = displayText;
+      if (text) {
+        // Banner never auto-shows; dot/amber only on genuinely new notices.
+        const dismissed = sessionStorage.getItem("noticeDismissed") === text;
+        document.getElementById("notice-dot").style.display = dismissed ? "none" : "";
+        document.getElementById("btn-notice").classList.toggle("has-notice", !dismissed);
+      }
     } catch {}
   }
 
