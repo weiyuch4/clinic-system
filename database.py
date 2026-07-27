@@ -1343,7 +1343,7 @@ def search_patients(q: str, limit: int = 20) -> list[dict]:
 
 # NHI chapters whose codes represent tests sent to an external lab:
 #   08 = 尿液  09 = 血液/生化  12 = 微生物  14 = 病理  25/28 = 其他檢查  30 = 過敏原
-_LAB_ORDER_RE = re.compile(r'^(08|09|12|14|25|28|30)\d+C$')
+_LAB_ORDER_RE = re.compile(r'^(08|09|12|25|28|30)\d+C$')
 
 
 def _is_lab_order(code: str) -> bool:
