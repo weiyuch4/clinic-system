@@ -27,6 +27,9 @@ _CKD_CODE_MAP: dict[str, str] = {
     'P4301C':  '收案',
     'P4302C':  '追1',
     'P43022C': '追2',
+    'Q4301C':  '收案',
+    'Q4302C':  '追1',
+    'Q43022C': '追2',
 }
 
 CKD_STAGE_NEXT: dict[str, str] = {
