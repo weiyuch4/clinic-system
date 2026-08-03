@@ -749,7 +749,7 @@ def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
 
 # ── B/C Hepatitis (B/C型肝炎) tracking ───────────────────────────────────────
 
-HEP_FOLLOWUP_DAYS    = 161   # 追蹤間隔
+HEP_FOLLOWUP_DAYS    = 180   # 追蹤間隔 (NHI spec: 6 months, max 2x/year)
 HEP_CLOSE_DAYS       = 365   # 超過此天數無追蹤 → 結案
 HEP_REOPEN_DAYS      = 365   # 結案後再等此天數 → 可再收案 (total 730 days since last visit)
 HEP_RETURN_WINDOW_DAYS = 14  # 回診後此天數內視為「待輸入VPN」(抽血報告約3個工作日)
