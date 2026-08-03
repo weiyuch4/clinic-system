@@ -1601,14 +1601,12 @@ document.querySelectorAll('.tab').forEach(btn => {
     activeSection = btn.dataset.section;
     $(activeSection).classList.add('active');
     localStorage.setItem('admin_tab', activeSection);
+    if (activeSection === 'schedule') {
+      $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
+    }
     load(activeSection);
   };
 });
-
-// ── Schedule: load whenever the section becomes visible ───────────────────────
-new MutationObserver(() => {
-  if ($('schedule').classList.contains('active')) loadSchedule();
-}).observe($('schedule'), { attributes: true, attributeFilter: ['class'] });
 
 // ── Nurse constants ───────────────────────────────────────────────────────────
 const COLS = [
