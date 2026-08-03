@@ -4228,6 +4228,7 @@
     document.getElementById('tab-btn-' + tab).classList.add('active');
     document.getElementById('tab-panel-' + tab).classList.add('active');
     localStorage.setItem('clinic_tab', tab);
+    if (tab === 'schedule') loadNurseSchedule();
   }
 
   // ── 檢驗追蹤 ──
