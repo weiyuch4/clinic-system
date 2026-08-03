@@ -3435,7 +3435,10 @@ if (_savedAdminTab && $(_savedAdminTab)) {
   $(_savedAdminTab).classList.add('active');
   activeSection = _savedAdminTab;
 }
+// Always initialize the schedule week label synchronously so it never shows "—"
+$('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
 refresh();
+if (activeSection === 'schedule') loadSchedule();
 </script>
 </body>
 </html>
