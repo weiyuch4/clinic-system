@@ -1104,6 +1104,20 @@ def add_clinic_contact(req: ClinicContactRequest) -> dict:
         raise HTTPException(status_code=500, detail="新增失敗")
 
 
+@app.put("/api/directory/{contact_id}")
+def update_clinic_contact(contact_id: int, req: ClinicContactRequest) -> None:
+    if not req.name.strip():
+        raise HTTPException(status_code=400, detail="名稱不可空白")
+    try:
+        if not directory.update_contact(contact_id, req.name.strip(), req.category.strip(), req.phone.strip(), req.note.strip()):
+            raise HTTPException(status_code=404, detail="找不到此聯絡人")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("update_clinic_contact failed for id=%s", contact_id)
+        raise HTTPException(status_code=500, detail="更新失敗")
+
+
 @app.delete("/api/directory/{contact_id}")
 def delete_clinic_contact(contact_id: int) -> None:
     try:

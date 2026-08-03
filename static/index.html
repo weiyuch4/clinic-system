@@ -1725,7 +1725,9 @@
     <div style="overflow-x:auto">
       <table>
         <thead><tr>
-          <th>類別</th><th>名稱</th><th>電話</th><th>備註</th><th></th>
+          <th class="sortable" onclick="sortDirectory('category', this)">類別</th>
+          <th class="sortable" onclick="sortDirectory('name', this)">名稱</th>
+          <th>電話</th><th>備註</th><th></th>
         </tr></thead>
         <tbody id="directory-rows"></tbody>
       </table>
@@ -1773,12 +1775,12 @@
 
 <div class="modal-overlay" id="add-contact-modal" onclick="maybeCloseAddContactModal(event)">
   <div class="modal-box" style="max-width:380px">
-    <h3>新增聯絡資訊</h3>
+    <h3 id="contact-modal-title">新增聯絡資訊</h3>
     <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">名稱</label>
-    <input type="text" id="contact-name-input" placeholder="例：OO健保局"
+    <input type="text" id="contact-name-input" placeholder="例：醫事檢驗所"
       style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:12px" />
     <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">類別</label>
-    <input type="text" id="contact-category-input" placeholder="例：健保局／廠商"
+    <input type="text" id="contact-category-input" placeholder="例：檢驗所／廠商"
       style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;margin-bottom:12px" />
     <label style="font-size:13px;font-weight:600;display:block;margin-bottom:6px">電話</label>
     <input type="text" id="contact-phone-input" placeholder="例：02-1234-5678"
@@ -4315,14 +4317,32 @@
 
   // ── 聯絡資訊 ──
 
+  let _directoryRows = [];
+  let _dirSortCol = 'category';
+  let _dirSortDir = 1;
+
   async function loadDirectory() {
     try {
-      const rows = await (await apiFetch('/api/directory')).json();
-      renderDirectory(rows);
+      _directoryRows = await (await apiFetch('/api/directory')).json();
+      renderDirectory(_directoryRows);
     } catch (err) {
       document.getElementById('directory-rows').innerHTML =
         `<tr><td colspan="5" style="color:#e53e3e">載入失敗：${err.message}</td></tr>`;
     }
+  }
+
+  function sortDirectory(col, thEl) {
+    if (_dirSortCol === col) { _dirSortDir *= -1; } else { _dirSortCol = col; _dirSortDir = 1; }
+    thEl.closest('thead').querySelectorAll('th.sortable').forEach(th => {
+      th.textContent = th.textContent.replace(/ ▲| ▼/, '');
+    });
+    thEl.textContent += _dirSortDir === 1 ? ' ▲' : ' ▼';
+    const sorted = [..._directoryRows].sort((a, b) => {
+      const av = (a[col] || '').toLowerCase();
+      const bv = (b[col] || '').toLowerCase();
+      return av < bv ? -_dirSortDir : av > bv ? _dirSortDir : 0;
+    });
+    renderDirectory(sorted);
   }
 
   function renderDirectory(rows) {
@@ -4331,15 +4351,22 @@
       tbody.innerHTML = `<tr><td colspan="5" style="color:var(--text-muted)">尚無聯絡資訊</td></tr>`;
       return;
     }
-    tbody.innerHTML = rows.map(r => `
-      <tr>
+    tbody.innerHTML = '';
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
         <td>${r.category || ''}</td>
         <td>${r.name}</td>
         <td>${r.phone || ''}</td>
         <td>${r.note || ''}</td>
-        <td><button class="btn-add-manual-onhold" style="margin:0;border-color:#e53e3e;color:#e53e3e" onclick="deleteContact(${r.id}, this)">刪除</button></td>
-      </tr>
-    `).join('');
+        <td style="white-space:nowrap;display:flex;gap:6px">
+          <button class="btn-add-manual-onhold" style="margin:0">編輯</button>
+          <button class="btn-add-manual-onhold" style="margin:0;border-color:#e53e3e;color:#e53e3e">刪除</button>
+        </td>`;
+      tr.querySelector('button:first-child').onclick = () => openEditContactModal(r);
+      tr.querySelector('button:last-child').onclick  = function() { deleteContact(r.id, this); };
+      tbody.appendChild(tr);
+    });
   }
 
   // ── 排班表（唯讀） ──
@@ -4582,11 +4609,28 @@
     }
   }
 
+  let _editContactId = null;
+
   function openAddContactModal() {
+    _editContactId = null;
+    document.getElementById('contact-modal-title').textContent = '新增聯絡資訊';
+    document.getElementById('contact-add-confirm-btn').textContent = '新增';
     document.getElementById('contact-name-input').value = '';
     document.getElementById('contact-category-input').value = '';
     document.getElementById('contact-phone-input').value = '';
     document.getElementById('contact-note-input').value = '';
+    document.getElementById('contact-add-error').textContent = '';
+    document.getElementById('add-contact-modal').style.display = 'flex';
+  }
+
+  function openEditContactModal(contact) {
+    _editContactId = contact.id;
+    document.getElementById('contact-modal-title').textContent = '編輯聯絡資訊';
+    document.getElementById('contact-add-confirm-btn').textContent = '儲存';
+    document.getElementById('contact-name-input').value = contact.name || '';
+    document.getElementById('contact-category-input').value = contact.category || '';
+    document.getElementById('contact-phone-input').value = contact.phone || '';
+    document.getElementById('contact-note-input').value = contact.note || '';
     document.getElementById('contact-add-error').textContent = '';
     document.getElementById('add-contact-modal').style.display = 'flex';
   }
@@ -4602,28 +4646,32 @@
   async function submitAddContact() {
     const name = document.getElementById('contact-name-input').value.trim();
     const errEl = document.getElementById('contact-add-error');
-    if (!name) {
-      errEl.textContent = '請輸入名稱';
-      return;
-    }
+    if (!name) { errEl.textContent = '請輸入名稱'; return; }
     const btn = document.getElementById('contact-add-confirm-btn');
     btn.disabled = true;
+    const payload = {
+      name,
+      category: document.getElementById('contact-category-input').value.trim(),
+      phone: document.getElementById('contact-phone-input').value.trim(),
+      note: document.getElementById('contact-note-input').value.trim(),
+      nurse: activeNurse(),
+    };
     try {
-      await apiFetch('/api/directory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name,
-          category: document.getElementById('contact-category-input').value.trim(),
-          phone: document.getElementById('contact-phone-input').value.trim(),
-          note: document.getElementById('contact-note-input').value.trim(),
-          nurse: activeNurse(),
-        }),
-      });
+      if (_editContactId !== null) {
+        await apiFetch(`/api/directory/${_editContactId}`, {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      } else {
+        await apiFetch('/api/directory', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+      }
       closeAddContactModal();
       loadDirectory();
     } catch (err) {
-      errEl.textContent = '新增失敗：' + err.message;
+      errEl.textContent = (_editContactId !== null ? '更新失敗：' : '新增失敗：') + err.message;
     } finally {
       btn.disabled = false;
     }

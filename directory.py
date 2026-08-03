@@ -62,6 +62,15 @@ def add_contact(name: str, category: str, phone: str, note: str, nurse: str = ''
         return cur.lastrowid
 
 
+def update_contact(contact_id: int, name: str, category: str, phone: str, note: str) -> bool:
+    with _conn() as conn:
+        cur = conn.execute(
+            "UPDATE clinic_contacts SET name=?, category=?, phone=?, note=? WHERE id=?",
+            (name, category, phone, note, contact_id),
+        )
+        return cur.rowcount > 0
+
+
 def delete_contact(contact_id: int) -> bool:
     with _conn() as conn:
         cur = conn.execute("DELETE FROM clinic_contacts WHERE id = ?", (contact_id,))
