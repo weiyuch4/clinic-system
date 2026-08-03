@@ -754,14 +754,15 @@ HEP_CLOSE_DAYS       = 365   # 超過此天數無追蹤 → 結案
 HEP_REOPEN_DAYS      = 365   # 結案後再等此天數 → 可再收案 (total 730 days since last visit)
 HEP_RETURN_WINDOW_DAYS = 14  # 回診後此天數內視為「待輸入VPN」(抽血報告約3個工作日)
 
-# NHI order code for the BC肝追蹤6M panel (confirmed against real visit data).
+# NHI order codes for BC肝追蹤 (confirmed against real visit data).
 # A visit's hep ICD code alone isn't enough — most hep-coded visits just carry
 # the diagnosis forward as a standing comorbidity (e.g. routine diabetes visit
 # for a patient who happens to also have hep B/C). Only ~0.45% of hep-ICD-coded
-# visits have hep as the PRIMARY diagnosis, so we additionally require this
-# panel to actually be ordered that visit before counting it as a real
+# visits have hep as the PRIMARY diagnosis, so we additionally require one of
+# these panel codes to be ordered that visit before counting it as a real
 # B/C型肝炎追蹤 follow-up.
-HEP_PANEL_DRUG_NO = 'P4202C'
+# P4202C = 收案, P4201C = 追蹤
+HEP_PANEL_CODES = {'P4202C', 'P4201C'}
 
 # ICD-9/ICD-10 codes for B and C hepatitis (dot-stripped, prefix-matched).
 _HEP_B_PREFIXES = (
@@ -801,8 +802,8 @@ def _hep_type(r: dict) -> str | None:
     return None
 
 
-def _p_file_drug_cfs(p_path: str, drug_no: str) -> set[str]:
-    """Return the set of CODE_F values in a P file that have a record with this DRUG_NO.
+def _p_file_drug_cfs(p_path: str, drug_nos: set[str]) -> set[str]:
+    """Return the set of CODE_F values in a P file that have a record matching any of drug_nos.
 
     Built in a single pass per P file rather than scanning per-visit, since a
     main IC file can carry dozens of hep-ICD-coded visits that all need checking
@@ -814,7 +815,7 @@ def _p_file_drug_cfs(p_path: str, drug_no: str) -> set[str]:
         return {
             r.get('CODE_F', '').strip()
             for r in _parse_dbf_cached(p_path)
-            if r.get('DRUG_NO', '').strip() == drug_no and r.get('CODE_F', '').strip()
+            if r.get('DRUG_NO', '').strip() in drug_nos and r.get('CODE_F', '').strip()
         }
     except Exception:
         return set()
@@ -838,7 +839,7 @@ def _scan_hep_patient_info(as_of: date) -> dict[str, dict]:
 
     for ic_path in _ic_main_files():
         p_path = ic_path[:-4] + 'P.DBF'
-        panel_cfs = _p_file_drug_cfs(p_path, HEP_PANEL_DRUG_NO)
+        panel_cfs = _p_file_drug_cfs(p_path, HEP_PANEL_CODES)
         try:
             for r in _parse_dbf_cached(ic_path):
                 if r.get('H_TYPE', '') not in ('01西醫', 'AE連續'):
@@ -1002,7 +1003,7 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
 
     for ic_path in _ic_files_since(since):
         p_path = ic_path[:-4] + 'P.DBF'
-        panel_cfs = _p_file_drug_cfs(p_path, HEP_PANEL_DRUG_NO) if category == 'B肝' else None
+        panel_cfs = _p_file_drug_cfs(p_path, HEP_PANEL_CODES) if category == 'B肝' else None
         try:
             for r in _parse_dbf_cached(ic_path):
                 h = r.get('H_TYPE', '')
