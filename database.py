@@ -145,27 +145,35 @@ def _parse_dbf_cached(path: str) -> list[dict]:
 
 
 def warmup_cache() -> None:
-    """Pre-warm in-process caches in a background thread at server startup.
+    import time
+    t0 = time.time()
 
-    IC DBF files are now cached per-file on disk (mtime-checked). Each file
-    loads from its own small pickle in ~1 ms, so there is no monolithic blob
-    to load or save — get_daily_report() below populates _dbf_cache lazily as
-    each file is accessed for the first time this session.
-    """
     rescan_blood_draw_files()
+    print(f"[warmup] rescan_blood_draw_files: {time.time()-t0:.1f}s", flush=True)
+
+    t1 = time.time()
     try:
         get_daily_report(date.today())
     except Exception:
         pass
+    print(f"[warmup] get_daily_report: {time.time()-t1:.1f}s", flush=True)
+
+    t2 = time.time()
     try:
         _load_patdb()
         _get_patdb_phone_index()
     except Exception:
         pass
+    print(f"[warmup] patdb: {time.time()-t2:.1f}s", flush=True)
+
+    t3 = time.time()
     try:
         _get_vfp6p_mobile_index()
     except Exception:
         pass
+    print(f"[warmup] vfp6p: {time.time()-t3:.1f}s", flush=True)
+
+    print(f"[warmup] TOTAL: {time.time()-t0:.1f}s", flush=True)
 
 
 # ── Public API ────────────────────────────────────────────────────────────────
@@ -173,23 +181,31 @@ def warmup_cache() -> None:
 def get_daily_report(as_of: date) -> DailyReport:
     if USE_MOCK_DATA:
         return _mock_report(as_of)
+    import time as _t
+    _t0 = _t.time()
     mspt_followups, mspt_inactive = _query_mspt_followups(as_of)
+    print(f"[report] mspt: {_t.time()-_t0:.1f}s", flush=True)
+    _t1 = _t.time()
     ckd_followups,  ckd_inactive  = _query_ckd_followups(as_of)
-    # Computed once and shared — _query_hep_followups and _query_hep_returned both
-    # need it, and it alone accounts for most of a cold report's runtime (it parses
-    # every IC file in the clinic's history looking for hep visits).
+    print(f"[report] ckd: {_t.time()-_t1:.1f}s", flush=True)
+    _t2 = _t.time()
     hep_patient_info = _scan_hep_patient_info(as_of)
+    print(f"[report] hep_scan: {_t.time()-_t2:.1f}s", flush=True)
     hep_followups, hep_inactive = _query_hep_followups(as_of, hep_patient_info)
+    _t3 = _t.time()
+    chronic = _query_chronic_prescriptions(as_of)
+    print(f"[report] chronic: {_t.time()-_t3:.1f}s", flush=True)
+    hep_ret = _query_hep_returned(as_of, hep_patient_info)
     return DailyReport(
         report_date=as_of,
-        chronic_prescriptions=_query_chronic_prescriptions(as_of),
+        chronic_prescriptions=chronic,
         mspt_followups=mspt_followups,
         mspt_inactive=mspt_inactive,
         mspt_submittable=[],
         mspt_waiting=[],
         hep_followups=hep_followups,
         hep_inactive=hep_inactive,
-        hep_returned=_query_hep_returned(as_of, hep_patient_info),
+        hep_returned=hep_ret,
         ckd_followups=ckd_followups,
         ckd_inactive=ckd_inactive,
     )
