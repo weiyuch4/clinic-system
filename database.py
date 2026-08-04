@@ -89,6 +89,9 @@ _dbf_cache: dict[str, list[dict]] = {}
 
 _DISK_CACHE_PATH = "dbf_cache.pkl.gz"
 _DISK_CACHE_MAX_AGE_DAYS = 7  # force a full rebuild once the last one is this old
+# All queries look back at most 2 years (MSPT/CKD MAX_INACTIVE_DAYS = 730 days).
+# Files older than this are never read, so caching them just bloats the pickle.
+_CACHE_WINDOW_DAYS = 2 * 365 + 60
 
 
 def _current_roc_month() -> str:
@@ -116,13 +119,13 @@ def _load_disk_cache() -> dict | None:
 
 
 def _save_disk_cache(built_at: str) -> None:
-    """Persist the current _dbf_cache under the given built_at date. Callers
-    pass either today's date (a full rebuild just happened) or the previous
-    built_at (just filling gaps) — see warmup_cache(). Written to a temp
-    file + os.replace so a crash mid-write can't leave a corrupt cache file."""
+    """Persist the current _dbf_cache under the given built_at date. Written to
+    a temp file + os.replace so a crash mid-write can't leave a corrupt file.
+    Uses compresslevel=1 (fastest) — speed matters more than ratio here since
+    the file is loaded on every server start."""
     tmp = _DISK_CACHE_PATH + '.tmp'
     try:
-        with gzip.open(tmp, 'wb') as f:
+        with gzip.open(tmp, 'wb', compresslevel=1) as f:
             pickle.dump({'built_at': built_at, 'data': _dbf_cache}, f)
         os.replace(tmp, _DISK_CACHE_PATH)
     except Exception:
@@ -152,10 +155,24 @@ def warmup_cache() -> None:
         _dbf_cache.clear()
         built_at = date.today().isoformat()
     else:
-        _dbf_cache.update(saved['data'])
+        # Only pull in entries within the query window — the saved dict may
+        # contain years of old IC files that no query will ever touch, which
+        # would make the pickle load and the subsequent re-save very slow.
+        window_since = date.today() - timedelta(days=_CACHE_WINDOW_DAYS)
+        window_paths = set()
+        for p in _ic_files_since(window_since):
+            window_paths.add(p)
+            window_paths.add(p[:-4] + 'P.DBF')
+            h = _h_file_path(p)
+            if h:
+                window_paths.add(h)
+        _dbf_cache.update({k: v for k, v in saved['data'].items() if k in window_paths})
         built_at = saved['built_at']
 
-    for path in _ic_main_files():
+    # Only cache IC files within the query window — there is no reason to parse
+    # (or store in the pickle) files that no query will ever read.
+    window_since = date.today() - timedelta(days=_CACHE_WINDOW_DAYS)
+    for path in _ic_files_since(window_since):
         try:
             _parse_dbf_cached(path)
             p = path[:-4] + 'P.DBF'
@@ -166,6 +183,10 @@ def warmup_cache() -> None:
                 _parse_dbf_cached(h)
         except Exception:
             pass
+
+    # Always re-read the recent blood-draw window from disk so any corrections
+    # made in the billing software are picked up on each server start.
+    rescan_blood_draw_files()
 
     _save_disk_cache(built_at)  # always — persists gap-fills even on a non-stale restart
     try:
@@ -1451,17 +1472,27 @@ def dismiss_blood_patient(nat_id: str, draw_date: str, name: str, reason: str) -
 
 
 def rescan_blood_draw_files(lookback_days: int = 5) -> None:
-    """Evict cached DBF entries for the blood-draw lookback window so the next
-    call reads fresh from disk. Past-month files use the memory cache; current
-    month is always read fresh already."""
+    """Evict cached DBF entries for the blood-draw lookback window and re-read
+    them from disk. Called by warmup_cache() at every server start so billing
+    corrections are always reflected. Does not persist to disk — warmup_cache()
+    calls _save_disk_cache() immediately after."""
     today = date.today()
+    months_seen: set[str] = set()
     for delta in range(1, lookback_days + 1):
         draw_date = today - timedelta(days=delta)
         roc_year = draw_date.year - 1911
         ic_stem = f"{roc_year:03d}{draw_date.month:02d}"
+        if ic_stem in months_seen:
+            continue
+        months_seen.add(ic_stem)
         for suffix in ('', 'P', 'H'):
             path = os.path.join(IC_DATA_PATH, f"IC{ic_stem}{suffix}.DBF")
             _dbf_cache.pop(path, None)
+            if os.path.exists(path):
+                try:
+                    _dbf_cache[path] = _parse_dbf(path)
+                except Exception:
+                    pass
 
 
 # ── Mock data ─────────────────────────────────────────────────────────────────

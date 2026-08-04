@@ -4319,7 +4319,6 @@
   async function loadLabPending() {
     const body = document.getElementById('lab-pending-body');
     body.innerHTML = '<div class="lab-empty">載入中…</div>';
-    try { await apiFetch('/api/blood-pending/rescan', {method: 'POST'}); } catch (_) {}
     let days;
     try {
       days = await (await apiFetch('/api/blood-pending')).json();

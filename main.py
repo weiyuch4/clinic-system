@@ -938,13 +938,6 @@ def get_blood_pending() -> list[dict]:
         raise HTTPException(status_code=500, detail="檢驗追蹤載入失敗")
 
 
-@app.post("/api/blood-pending/rescan")
-def rescan_blood_pending():
-    """Evict in-memory DBF cache for the 5-day lookback window so the next
-    /api/blood-pending call reads fresh from disk."""
-    database.rescan_blood_draw_files()
-    return {"ok": True}
-
 
 @app.post("/api/blood-dismiss")
 def post_blood_dismiss(req: BloodDismissRequest):
