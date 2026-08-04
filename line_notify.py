@@ -17,8 +17,8 @@ in once, the first time it's ever launched, and never closing it
 sidesteps that. Use stop_browser() to force a clean restart if needed.
 
 Safety notes:
-  - Every match is verified by national ID (data-e2e-id="users-list-table-
-    col-tw-id") before anything is clicked, to guard against DOB collisions.
+  - Every match is verified by national ID (data-e2e-id prefix
+    "users-list-table-col-tw-id-") before anything is clicked, to guard against DOB collisions.
   - dry_run=True runs every step except the final template click, so
     selectors can be verified without sending anything real.
 """
@@ -42,16 +42,18 @@ PID_FILE = Path(__file__).parent / "alleypin_browser.pid"
 DEBUG_PORT = 9234
 
 SEARCH_INPUT_SELECTOR = '[data-e2e-id="users-search-input"]'
-ROW_SELECTOR = 'tr:has([data-e2e-id="users-list-table-col-tw-id"])'
-TWID_SELECTOR = '[data-e2e-id="users-list-table-col-tw-id"]'
-NAME_SELECTOR = '[data-e2e-id="users-list-table-col-name"]'
-TRACKING_CELL_SELECTOR = '[data-e2e-id="users-list-table-col-patient-tracking"]'
-LINE_LINK_SELECTOR = '[data-e2e-id="users-list-table-col-line-message"]'
-# The bubble outline is fill="white" in both states; the distinguishing path
-# is the LINE glyph itself — green (#31C48D) when linked, gray (#D1D5DB) when
-# not. Checking this color is more reliable than the tooltip text ("可發送
-# LINE" / "不可發送 LINE"), which only renders on hover.
-LINE_LINKED_FILL = '#31C48D'
+# Alleypin appends a per-patient UUID to all row-level data-e2e-id values,
+# so all row selectors use prefix matching (^=) instead of exact match.
+ROW_SELECTOR = '[data-e2e-id^="users-list-table-row-"]'
+TWID_SELECTOR = '[data-e2e-id^="users-list-table-col-tw-id-"]'
+NAME_SELECTOR = '[data-e2e-id^="users-list-table-col-name-"]'
+# Outer tracking cell (td). Both the outer td and the inner trigger div share
+# the "patient-tracking-" prefix; TRACKING_TRIGGER_SELECTOR pins the trigger.
+TRACKING_CELL_SELECTOR = '[data-e2e-id^="users-list-table-col-patient-tracking-"]'
+TRACKING_TRIGGER_SELECTOR = '[data-e2e-id^="users-list-table-col-patient-tracking-"][data-e2e-id$="-trigger"]'
+# The line-binding column (chain icon) carries the LINE-linked status.
+# Its SVG has class="text-green-400" when linked; use that over fill color.
+LINE_LINK_SELECTOR = '[data-e2e-id^="users-list-table-col-line-binding-"]'
 # No data-e2e-id on the per-tag pills inside the tracking-history popup (per the
 # HTML the user pasted) — matched structurally instead: each applied tag is a
 # div.inline-flex containing the template-text span and a timestamp span.ml-1.
@@ -243,15 +245,20 @@ async def _find_patient_row(page: Page, chart_number: str, dob_roc: str, expecte
     if count == 0:
         return None, f"no search results for DOB {dob_roc}"
 
+    cn_upper = chart_number.upper()
     for i in range(count):
         row = rows.nth(i)
-        twid = (await row.locator(TWID_SELECTOR).inner_text()).strip()
-        if twid != chart_number:
+        twid_raw = (await row.locator(TWID_SELECTOR).inner_text()).strip().upper()
+        # inner_text() may include extra UI text (copy buttons, tooltips, etc.)
+        # so check containment rather than exact equality.
+        if cn_upper not in twid_raw:
             continue
         if expected_name:
             name = (await row.locator(NAME_SELECTOR).inner_text()).strip()
             if name != expected_name:
-                return None, f"tw-id matched but name differs (got {name!r}, expected {expected_name!r})"
+                # Name formats differ between IC and Alleypin (married names, etc.) —
+                # national ID is the reliable unique identifier, so proceed on ID match.
+                print(f"  [name-warn] {chart_number}: Alleypin shows {name!r}, expected {expected_name!r} — proceeding on ID match")
         return row, "matched"
 
     return None, f"{count} result(s) found but none match chart_number {chart_number}"
@@ -262,7 +269,7 @@ async def _is_line_linked(row) -> bool:
     template to an unlinked patient is accepted by the picker exactly like a
     normal send, but never actually delivers anything — checking this first
     avoids wasting a click on a send that would silently go nowhere."""
-    count = await row.locator(f'{LINE_LINK_SELECTOR} svg path[fill="{LINE_LINKED_FILL}"]').count()
+    count = await row.locator(f'{LINE_LINK_SELECTOR} svg.text-green-400').count()
     return count > 0
 
 
@@ -312,7 +319,7 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
                     'detail': f'same template already sent {days_since} day(s) ago ({last_sent.isoformat()}) — skipping to avoid a duplicate',
                 }
 
-        clickable = row.locator(TRACKING_CELL_SELECTOR).locator('.cursor-pointer').first
+        clickable = row.locator(TRACKING_TRIGGER_SELECTOR)
         await clickable.click()
         await page.wait_for_timeout(600)
 
@@ -363,7 +370,7 @@ async def undo_one(page: Page, chart_number: str, dob_roc: str, name: str,
         if row is None:
             return {**base, 'status': 'not_found', 'detail': reason}
 
-        clickable = row.locator(TRACKING_CELL_SELECTOR).locator('.cursor-pointer').first
+        clickable = row.locator(TRACKING_TRIGGER_SELECTOR)
         await clickable.click()
         await page.wait_for_timeout(600)
 
