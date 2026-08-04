@@ -1,10 +1,12 @@
 from datetime import date, timedelta
 import glob
 import gzip
+import json
 import os
 import pickle
 import re
 import struct
+from pathlib import Path
 
 import lab_results
 from config import IC_DATA_PATH, METABOLIC_FOLLOWUP_DAYS, PATDB_PATH, QUEUE_PATH, USE_MOCK_DATA
@@ -1361,6 +1363,7 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5) -> list[dict]:
     if USE_MOCK_DATA:
         return []
 
+    dismissed = {(d['nat_id'], d['draw_date']) for d in _load_blood_dismissed()}
     result = []
     for delta in range(1, lookback_days + 1):
         draw_date = as_of - timedelta(days=delta)
@@ -1411,12 +1414,54 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5) -> list[dict]:
         patients = [
             {**info, 'is_allergy': all(c.startswith('30') for c in info['draw_codes'])}
             for info in sorted(by_nat_id.values(), key=lambda p: p['name'])
+            if (info['nat_id'], draw_date.isoformat()) not in dismissed
         ]
 
         if patients:
             result.append({'date': draw_date.isoformat(), 'patients': patients})
 
     return result
+
+
+_BLOOD_DISMISSED_FILE = Path(__file__).parent / "blood_dismissed.json"
+
+
+def _load_blood_dismissed() -> list[dict]:
+    if _BLOOD_DISMISSED_FILE.exists():
+        try:
+            return json.loads(_BLOOD_DISMISSED_FILE.read_text(encoding='utf-8'))
+        except Exception:
+            return []
+    return []
+
+
+def dismiss_blood_patient(nat_id: str, draw_date: str, name: str, reason: str) -> None:
+    dismissed = _load_blood_dismissed()
+    dismissed = [d for d in dismissed if not (d['nat_id'] == nat_id and d['draw_date'] == draw_date)]
+    dismissed.append({
+        'nat_id': nat_id,
+        'draw_date': draw_date,
+        'name': name,
+        'reason': reason,
+        'dismissed_at': date.today().isoformat(),
+    })
+    _BLOOD_DISMISSED_FILE.write_text(
+        json.dumps(dismissed, ensure_ascii=False, indent=2), encoding='utf-8'
+    )
+
+
+def rescan_blood_draw_files(lookback_days: int = 5) -> None:
+    """Evict cached DBF entries for the blood-draw lookback window so the next
+    call reads fresh from disk. Past-month files use the memory cache; current
+    month is always read fresh already."""
+    today = date.today()
+    for delta in range(1, lookback_days + 1):
+        draw_date = today - timedelta(days=delta)
+        roc_year = draw_date.year - 1911
+        ic_stem = f"{roc_year:03d}{draw_date.month:02d}"
+        for suffix in ('', 'P', 'H'):
+            path = os.path.join(IC_DATA_PATH, f"IC{ic_stem}{suffix}.DBF")
+            _dbf_cache.pop(path, None)
 
 
 # ── Mock data ─────────────────────────────────────────────────────────────────

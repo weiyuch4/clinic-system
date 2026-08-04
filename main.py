@@ -22,7 +22,7 @@ import directory
 import lab_report
 import lab_results
 from models import (
-    BulletinNoteRequest, ChartNumberRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest, DailyReport,
+    BloodDismissRequest, BulletinNoteRequest, ChartNumberRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest, DailyReport,
     ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, LineUnlinkedRequest, ManualOnHoldRequest, ManualPickupRequest,
     MsptCompleteRequest, MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
@@ -936,6 +936,25 @@ def get_blood_pending() -> list[dict]:
     except Exception:
         logger.exception("get_blood_pending failed")
         raise HTTPException(status_code=500, detail="檢驗追蹤載入失敗")
+
+
+@app.post("/api/blood-pending/rescan")
+def rescan_blood_pending():
+    """Evict in-memory DBF cache for the 5-day lookback window so the next
+    /api/blood-pending call reads fresh from disk."""
+    database.rescan_blood_draw_files()
+    return {"ok": True}
+
+
+@app.post("/api/blood-dismiss")
+def post_blood_dismiss(req: BloodDismissRequest):
+    """Manually remove a patient from the 檢驗追蹤 list for a specific draw date."""
+    try:
+        database.dismiss_blood_patient(req.nat_id, req.draw_date, req.name, req.reason)
+        return {"ok": True}
+    except Exception:
+        logger.exception("blood-dismiss failed")
+        raise HTTPException(status_code=500, detail="移除失敗")
 
 
 @app.get("/api/notice")

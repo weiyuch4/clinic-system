@@ -448,6 +448,11 @@
     .lab-tr-warn  td  { background: #fffbeb; }
     .lab-tr-urgent td { background: #fff5f5; }
     .lab-empty { color: var(--text-muted); font-size: 13px; padding: 20px 0; text-align: center; }
+    .btn-lab-dismiss {
+      font-size: 11px; color: var(--text-muted); background: none; border: 1px solid var(--border);
+      border-radius: 5px; padding: 2px 8px; cursor: pointer;
+    }
+    .btn-lab-dismiss:hover { color: #e53e3e; border-color: #e53e3e; }
 
     /* ── Table ── */
     table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -1935,6 +1940,25 @@
     <div class="modal-footer">
       <button class="btn-modal-cancel" onclick="closeExcludeModal()">取消</button>
       <button class="btn-modal-confirm" id="btn-modal-confirm" disabled onclick="confirmExclude()">確認排除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Blood dismiss modal -->
+<div class="modal-overlay" id="blood-dismiss-modal" onclick="if(event.target===this)closeBloodDismissModal()">
+  <div class="modal-box">
+    <h3>移除送檢紀錄</h3>
+    <p class="modal-subtitle" id="blood-dismiss-desc"></p>
+    <div class="reason-chips" id="blood-dismiss-chips">
+      <button class="reason-chip" onclick="selectBloodDismissReason(this,'醫師錯誤輸入，已更正')">醫師錯誤輸入</button>
+      <button class="reason-chip" onclick="selectBloodDismissReason(this,'病患拒絕抽血')">病患拒絕抽血</button>
+      <button class="reason-chip" onclick="selectBloodDismissReason(this,'已在他院完成')">已在他院完成</button>
+    </div>
+    <div class="modal-note-label" style="margin-top:8px">備註（選填）</div>
+    <textarea class="modal-note" id="blood-dismiss-note" placeholder="選填備註"></textarea>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeBloodDismissModal()">取消</button>
+      <button class="btn-modal-submit" id="blood-dismiss-submit" onclick="submitBloodDismiss()" disabled>確認移除</button>
     </div>
   </div>
 </div>
@@ -4295,6 +4319,7 @@
   async function loadLabPending() {
     const body = document.getElementById('lab-pending-body');
     body.innerHTML = '<div class="lab-empty">載入中…</div>';
+    try { await apiFetch('/api/blood-pending/rescan', {method: 'POST'}); } catch (_) {}
     let days;
     try {
       days = await (await apiFetch('/api/blood-pending')).json();
@@ -4352,9 +4377,12 @@
       const rows = classified.map(p => {
         const trClass = p.cls === 'urgent' ? 'lab-tr-urgent' : p.cls === 'warn' ? 'lab-tr-warn' : '';
         return `<tr class="${trClass}">
-          <td style="font-weight:600">${p.name}</td>
-          <td class="mono" style="color:var(--text-muted);font-size:11px">${p.nat_id}</td>
+          <td>
+            <div class="patient-name"><span class="name-link" onclick="openLabModal('${p.nat_id}','${p.name}')">${p.name}</span></div>
+            <div class="chart-number">${p.nat_id}</div>
+          </td>
           <td><span class="lab-pill ${p.cls}">${p.text}</span></td>
+          <td style="text-align:right"><button class="btn-lab-dismiss" onclick="openBloodDismissModal('${p.nat_id}','${p.name}','${day.date}',this.closest('tr'))">移除</button></td>
         </tr>`;
       }).join('');
 
@@ -5275,6 +5303,46 @@
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') document.getElementById('lab-overlay').classList.remove('open');
   });
+
+  // ── Blood dismiss modal ──
+  let _bdNatId = '', _bdName = '', _bdDate = '', _bdRow = null, _bdReason = '';
+
+  function openBloodDismissModal(natId, name, drawDate, rowEl) {
+    _bdNatId = natId; _bdName = name; _bdDate = drawDate; _bdRow = rowEl;
+    _bdReason = '';
+    document.getElementById('blood-dismiss-desc').textContent = `${name}（${natId}）的 ${drawDate} 送檢紀錄將從清單中移除`;
+    document.querySelectorAll('#blood-dismiss-chips .reason-chip').forEach(c => c.classList.remove('selected'));
+    document.getElementById('blood-dismiss-note').value = '';
+    document.getElementById('blood-dismiss-submit').disabled = true;
+    document.getElementById('blood-dismiss-modal').classList.add('open');
+  }
+
+  function closeBloodDismissModal() {
+    document.getElementById('blood-dismiss-modal').classList.remove('open');
+  }
+
+  function selectBloodDismissReason(chip, reason) {
+    document.querySelectorAll('#blood-dismiss-chips .reason-chip').forEach(c => c.classList.remove('selected'));
+    chip.classList.add('selected');
+    _bdReason = reason;
+    document.getElementById('blood-dismiss-submit').disabled = false;
+  }
+
+  async function submitBloodDismiss() {
+    const note = document.getElementById('blood-dismiss-note').value.trim();
+    const reason = note ? `${_bdReason}｜${note}` : _bdReason;
+    try {
+      await apiFetch('/api/blood-dismiss', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({nat_id: _bdNatId, draw_date: _bdDate, name: _bdName, reason}),
+      });
+      closeBloodDismissModal();
+      if (_bdRow) _bdRow.remove();
+    } catch (err) {
+      alert('移除失敗：' + err.message);
+    }
+  }
 </script>
 
 <button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂端">

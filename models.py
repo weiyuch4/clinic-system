@@ -270,3 +270,10 @@ class SalaryRecordRequest(BaseModel):
     ot_pay: int
     total: int
     ot_entries: str     # JSON array of {date, start, end}
+
+
+class BloodDismissRequest(BaseModel):
+    nat_id: str
+    draw_date: str      # 'YYYY-MM-DD'
+    name: str
+    reason: str
