@@ -229,6 +229,11 @@ def get_daily_report(as_of: date) -> DailyReport:
     if USE_MOCK_DATA:
         return _mock_report(as_of)
 
+    # Refresh IC dir mtimes on every call so that when a patient's IC card is
+    # processed (updating the current-month DBF mtime), the fingerprint changes
+    # and the stale cached report is invalidated.
+    _load_ic_dir_mtimes()
+
     # Fingerprint covers MSPT's 730-day window (the widest query window used).
     since_730 = as_of - timedelta(days=2 * 365)
     fp = _ic_fingerprint(since_730)
