@@ -483,6 +483,18 @@ async def run_batch(targets: list[dict], dry_run: bool, on_result=None) -> list[
             if on_result:
                 on_result(result)
 
+        # The commit for each patient relies on the next patient's search
+        # filling the input and pressing Enter. The last patient has no
+        # subsequent search, so do a dummy submit to finalise its commit.
+        try:
+            search = page.locator(SEARCH_INPUT_SELECTOR)
+            await search.click()
+            await search.fill("")
+            await search.press("Enter")
+            await page.wait_for_timeout(1500)
+        except Exception:
+            pass
+
     return results
 
 
@@ -501,4 +513,12 @@ async def run_undo(target: dict, dry_run: bool) -> dict:
             target['template'], dry_run,
         )
         print(f"  [undo:{result['status']}] {result['chart_number']} {result.get('name', '')}: {result['detail']}")
+        try:
+            search = page.locator(SEARCH_INPUT_SELECTOR)
+            await search.click()
+            await search.fill("")
+            await search.press("Enter")
+            await page.wait_for_timeout(1500)
+        except Exception:
+            pass
         return result
