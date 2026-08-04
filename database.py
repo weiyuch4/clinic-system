@@ -1,6 +1,5 @@
 from datetime import date, timedelta
 import glob
-import gzip
 import json
 import os
 import pickle
@@ -83,15 +82,14 @@ def mspt_needs_blood_test(mspt_stage: str, nat_id: str, as_of: date) -> bool:
 
 # ── DBF cache ─────────────────────────────────────────────────────────────────
 
-# IC files are historical — once a month ends the file never changes — so caching is safe.
-# The current month's file is always re-read to pick up intra-month updates.
+# In-memory cache for the current server process. Populated lazily by
+# _parse_dbf_cached() and cleared for specific files by rescan_blood_draw_files().
 _dbf_cache: dict[str, list[dict]] = {}
 
-_DISK_CACHE_PATH = "dbf_cache.pkl.gz"
-_DISK_CACHE_MAX_AGE_DAYS = 7  # force a full rebuild once the last one is this old
-# All queries look back at most 2 years (MSPT/CKD MAX_INACTIVE_DAYS = 730 days).
-# Files older than this are never read, so caching them just bloats the pickle.
-_CACHE_WINDOW_DAYS = 2 * 365 + 60
+# Per-file disk cache: one small pickle per DBF, keyed by the file's mtime.
+# No monolithic blob — each file is loaded independently in milliseconds.
+# Analogous to how build tools (make, webpack) cache per source file.
+_PERFILE_CACHE_DIR = Path("dbf_cache")
 
 # Incremental hep scan cache — stores which past IC months have already been
 # scanned for hep visits and the merged patient dict. Past months are frozen
@@ -105,101 +103,60 @@ def _current_roc_month() -> str:
 
 
 def _parse_dbf_cached(path: str) -> list[dict]:
+    """Return parsed records for a DBF file.
+
+    Current month: always reads from disk (file is still being written).
+    Past months: checks the per-file disk cache first. If the file's mtime
+    matches the cached mtime the stored records are returned in ~1 ms.
+    On a mismatch (file changed on disk) the file is re-parsed and the
+    per-file cache is updated. Results are also kept in _dbf_cache for
+    instant in-process reuse within the same server session.
+    """
     if _current_roc_month() in os.path.basename(path).upper():
         return _parse_dbf(path)
-    if path not in _dbf_cache:
-        _dbf_cache[path] = _parse_dbf(path)
-    return _dbf_cache[path]
+    if path in _dbf_cache:
+        return _dbf_cache[path]
 
+    stem = os.path.splitext(os.path.basename(path))[0]  # e.g. 'IC11506', 'IC11506P'
+    cache_file = _PERFILE_CACHE_DIR / f"{stem}.pkl"
 
-def _load_disk_cache() -> dict | None:
-    """Load the persisted {'built_at', 'data'} blob if the file is readable.
-    Returns None on any failure (missing or corrupt) — treated the same as
-    "no cache yet" by warmup_cache()."""
     try:
-        with gzip.open(_DISK_CACHE_PATH, 'rb') as f:
-            return pickle.load(f)
-    except Exception:
-        return None
-
-
-def _save_disk_cache(built_at: str) -> None:
-    """Persist the current _dbf_cache under the given built_at date. Written to
-    a temp file + os.replace so a crash mid-write can't leave a corrupt file.
-    Uses compresslevel=1 (fastest) — speed matters more than ratio here since
-    the file is loaded on every server start."""
-    tmp = _DISK_CACHE_PATH + '.tmp'
-    try:
-        with gzip.open(tmp, 'wb', compresslevel=1) as f:
-            pickle.dump({'built_at': built_at, 'data': _dbf_cache}, f)
-        os.replace(tmp, _DISK_CACHE_PATH)
+        mtime = os.path.getmtime(path)
+        if cache_file.exists():
+            with open(cache_file, 'rb') as f:
+                cached = pickle.load(f)
+            if cached.get('mtime') == mtime:
+                _dbf_cache[path] = cached['records']
+                return _dbf_cache[path]
     except Exception:
         pass
 
+    records = _parse_dbf(path)
+    _dbf_cache[path] = records
+    try:
+        _PERFILE_CACHE_DIR.mkdir(exist_ok=True)
+        tmp = str(cache_file) + '.tmp'
+        with open(tmp, 'wb') as f:
+            pickle.dump({'mtime': mtime, 'records': records}, f)
+        os.replace(tmp, str(cache_file))
+    except Exception:
+        pass
+    return records
+
 
 def warmup_cache() -> None:
-    """Pre-load all IC (and P and H) files into the cache, then run today's
-    report once so dependent caches (lab_results' patient-code lookups and
-    BIO/CBC file reads, used by MSPT blood-test checks) are warm too. Call in
-    a background thread at server startup so the first real user request
-    doesn't pay the full parse cost.
+    """Pre-warm in-process caches in a background thread at server startup.
 
-    Closed months are persisted to disk so a restart doesn't re-pay the full
-    parse cost — PC1 restarts unpredictably, possibly several times a day,
-    so staleness is judged by elapsed time since the last deliberate full
-    rebuild (built_at), not by restart count: built_at is only advanced when
-    a rebuild actually happens, so a restart 5 minutes after the last one is
-    just as fast as one a week later is slow, regardless of how many
-    restarts happened in between."""
-    saved = _load_disk_cache()
-    is_stale = (
-        saved is None
-        or (date.today() - date.fromisoformat(saved['built_at'])).days >= _DISK_CACHE_MAX_AGE_DAYS
-    )
-    if is_stale:
-        _dbf_cache.clear()
-        built_at = date.today().isoformat()
-    else:
-        # Only pull in entries within the query window — the saved dict may
-        # contain years of old IC files that no query will ever touch, which
-        # would make the pickle load and the subsequent re-save very slow.
-        window_since = date.today() - timedelta(days=_CACHE_WINDOW_DAYS)
-        window_paths = set()
-        for p in _ic_files_since(window_since):
-            window_paths.add(p)
-            window_paths.add(p[:-4] + 'P.DBF')
-            h = _h_file_path(p)
-            if h:
-                window_paths.add(h)
-        _dbf_cache.update({k: v for k, v in saved['data'].items() if k in window_paths})
-        built_at = saved['built_at']
-
-    # Only cache IC files within the query window — there is no reason to parse
-    # (or store in the pickle) files that no query will ever read.
-    window_since = date.today() - timedelta(days=_CACHE_WINDOW_DAYS)
-    for path in _ic_files_since(window_since):
-        try:
-            _parse_dbf_cached(path)
-            p = path[:-4] + 'P.DBF'
-            if os.path.exists(p):
-                _parse_dbf_cached(p)
-            h = _h_file_path(path)
-            if os.path.exists(h):
-                _parse_dbf_cached(h)
-        except Exception:
-            pass
-
-    # Always re-read the recent blood-draw window from disk so any corrections
-    # made in the billing software are picked up on each server start.
+    IC DBF files are now cached per-file on disk (mtime-checked). Each file
+    loads from its own small pickle in ~1 ms, so there is no monolithic blob
+    to load or save — get_daily_report() below populates _dbf_cache lazily as
+    each file is accessed for the first time this session.
+    """
     rescan_blood_draw_files()
-
-    _save_disk_cache(built_at)  # always — persists gap-fills even on a non-stale restart
     try:
         get_daily_report(date.today())
     except Exception:
         pass
-    # Pre-warm PATDB phone index and VFP6_P mobile index so the first user
-    # request doesn't block on the 39K-record PATDB read + 180K-record VFP6_P scan.
     try:
         _load_patdb()
         _get_patdb_phone_index()
@@ -1538,10 +1495,10 @@ def dismiss_blood_patient(nat_id: str, draw_date: str, name: str, reason: str) -
 
 
 def rescan_blood_draw_files(lookback_days: int = 5) -> None:
-    """Evict cached DBF entries for the blood-draw lookback window and re-read
-    them from disk. Called by warmup_cache() at every server start so billing
-    corrections are always reflected. Does not persist to disk — warmup_cache()
-    calls _save_disk_cache() immediately after."""
+    """Clear in-memory entries for the recent blood-draw window.
+
+    On next access _parse_dbf_cached() checks each file's mtime against its
+    per-file disk cache and re-parses from disk if the doctor corrected it."""
     today = date.today()
     months_seen: set[str] = set()
     for delta in range(1, lookback_days + 1):
@@ -1554,11 +1511,6 @@ def rescan_blood_draw_files(lookback_days: int = 5) -> None:
         for suffix in ('', 'P', 'H'):
             path = os.path.join(IC_DATA_PATH, f"IC{ic_stem}{suffix}.DBF")
             _dbf_cache.pop(path, None)
-            if os.path.exists(path):
-                try:
-                    _dbf_cache[path] = _parse_dbf(path)
-                except Exception:
-                    pass
 
 
 # ── Mock data ─────────────────────────────────────────────────────────────────
