@@ -126,11 +126,16 @@ def _parse_dbf_cached(path: str) -> list[dict]:
         if cache_file.exists():
             with open(cache_file, 'rb') as f:
                 cached = pickle.load(f)
-            if cached.get('mtime') == mtime:
+            cached_mtime = cached.get('mtime')
+            if cached_mtime == mtime:
                 _dbf_cache[path] = cached['records']
                 return _dbf_cache[path]
-    except Exception:
-        pass
+            else:
+                print(f"[cache] MISMATCH {stem}: stored={cached_mtime} current={mtime}", flush=True)
+        else:
+            print(f"[cache] NO PKL {stem}", flush=True)
+    except Exception as e:
+        print(f"[cache] ERROR {stem}: {e}", flush=True)
 
     records = _parse_dbf(path)
     _dbf_cache[path] = records
