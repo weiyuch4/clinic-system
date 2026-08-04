@@ -93,6 +93,11 @@ _DISK_CACHE_MAX_AGE_DAYS = 7  # force a full rebuild once the last one is this o
 # Files older than this are never read, so caching them just bloats the pickle.
 _CACHE_WINDOW_DAYS = 2 * 365 + 60
 
+# Incremental hep scan cache — stores which past IC months have already been
+# scanned for hep visits and the merged patient dict. Past months are frozen
+# once closed, so each one is scanned exactly once and never again.
+_HEP_CACHE_PATH = "hep_patient_cache.json"
+
 
 def _current_roc_month() -> str:
     d = date.today()
@@ -844,34 +849,85 @@ def _p_file_drug_cfs(p_path: str, drug_nos: set[str]) -> set[str]:
         return set()
 
 
+def _load_hep_cache() -> tuple[set[str], dict[str, dict]]:
+    """Load (scanned_months, patients) from hep_patient_cache.json.
+    Dates are returned as date objects ready for use. Returns empty structures
+    on any read/parse failure so a missing or corrupt file triggers a full rescan."""
+    try:
+        with open(_HEP_CACHE_PATH, encoding='utf-8') as f:
+            raw = json.load(f)
+        patients: dict[str, dict] = {}
+        for nat_id, p in raw.get('patients', {}).items():
+            patients[nat_id] = {
+                'name':        p['name'],
+                'birth':       date.fromisoformat(p['birth']) if p.get('birth') else None,
+                'last_visit':  date.fromisoformat(p['last_visit']),
+                'first_visit': date.fromisoformat(p['first_visit']),
+                'hep_type':    p['hep_type'],
+            }
+        return set(raw.get('scanned_months', [])), patients
+    except Exception:
+        return set(), {}
+
+
+def _save_hep_cache(scanned: set[str], patients: dict[str, dict]) -> None:
+    tmp = _HEP_CACHE_PATH + '.tmp'
+    try:
+        raw_patients = {
+            nat_id: {
+                'name':        p['name'],
+                'birth':       p['birth'].isoformat() if p.get('birth') else None,
+                'last_visit':  p['last_visit'].isoformat(),
+                'first_visit': p['first_visit'].isoformat(),
+                'hep_type':    p['hep_type'],
+            }
+            for nat_id, p in patients.items()
+        }
+        with open(tmp, 'w', encoding='utf-8') as f:
+            json.dump({'scanned_months': sorted(scanned), 'patients': raw_patients},
+                      f, ensure_ascii=False)
+        os.replace(tmp, _HEP_CACHE_PATH)
+    except Exception:
+        pass
+
+
 def _scan_hep_patient_info(as_of: date) -> dict[str, dict]:
-    """Scan ALL IC files for hepatitis-coded visits (01西醫/AE連續 with a hep
-    B/C ICD code AND the BC肝追蹤6M panel order, HEP_PANEL_DRUG_NO, actually
-    billed that visit) and return {nat_id: {name, birth, last_visit, first_visit, hep_type}}.
+    """Return {nat_id: {name, birth, last_visit, first_visit, hep_type}} for all
+    hepatitis B/C patients found in IC files.
 
-    The ICD code alone isn't a reliable signal a hep follow-up actually happened
-    (see HEP_PANEL_DRUG_NO comment) — requiring the panel order filters out
-    visits where hep is just a carried-forward comorbidity.
+    Uses an incremental cache (hep_patient_cache.json): past IC months are frozen
+    once closed, so each one is scanned exactly once and the result persisted.
+    On a warm restart only the current open month is re-read — typically < 1 second
+    instead of minutes. The first cold run (no cache file) scans everything and
+    writes the cache; every subsequent run only adds the current month's delta.
 
-    Scans ALL IC files (not a fixed window) because hepatitis patients may not have
-    visited for years yet still need 結案/再收案 tracking. Shared by both the
-    overdue/inactive query and the recently-returned query below, so both stay
-    in sync on what counts as a hep visit.
+    Deletion: if hep_patient_cache.json is deleted, the next startup does a full
+    rescan. No other action is needed — the cache is fully derived from IC files.
     """
-    patient_info: dict[str, dict] = {}
+    scanned, patients = _load_hep_cache()
+    current_month = _current_roc_month()
+    changed = False
 
     for ic_path in _ic_main_files():
+        stem = os.path.basename(ic_path)[2:-4]  # e.g. '11507'
+        is_current = (stem == current_month)
+        if stem in scanned and not is_current:
+            continue  # past month already processed — skip entirely
+
         p_path = ic_path[:-4] + 'P.DBF'
         panel_cfs = _p_file_drug_cfs(p_path, HEP_PANEL_CODES)
         try:
-            for r in _parse_dbf_cached(ic_path):
+            # Current month: always read fresh from disk (still being written).
+            # Past unscanned months: use cache if available, else read from disk.
+            records = _parse_dbf(ic_path) if is_current else _parse_dbf_cached(ic_path)
+            for r in records:
                 if r.get('H_TYPE', '') not in ('01西醫', 'AE連續'):
                     continue
                 hep = _hep_type(r)
                 if not hep:
                     continue
                 if r.get('CODE_F', '').strip() not in panel_cfs:
-                    continue  # hep ICD present but the panel wasn't actually ordered
+                    continue
                 nat_id = r.get('ID', '').strip()
                 if not nat_id:
                     continue
@@ -881,32 +937,42 @@ def _scan_hep_patient_info(as_of: date) -> dict[str, dict]:
                 name  = r.get('NAME', '').strip()
                 birth = _roc_to_date(r.get('BIRTH', ''))
 
-                if nat_id not in patient_info:
-                    patient_info[nat_id] = {
-                        'name':       name or '',
-                        'birth':      birth,
-                        'last_visit': v_date,
+                if nat_id not in patients:
+                    patients[nat_id] = {
+                        'name':        name or '',
+                        'birth':       birth,
+                        'last_visit':  v_date,
                         'first_visit': v_date,
-                        'hep_type':   hep,
+                        'hep_type':    hep,
                     }
+                    changed = True
                 else:
-                    p = patient_info[nat_id]
+                    p = patients[nat_id]
+                    updated = False
                     if v_date > p['last_visit']:
                         p['last_visit'] = v_date
-                        # Always use the most recent visit's name — handles family members
-                        # sharing an IC card (被保險人) and name typo corrections over time.
-                        if name:
-                            p['name'] = name
-                        if birth:
-                            p['birth'] = birth
+                        if name:  p['name']  = name
+                        if birth: p['birth'] = birth
+                        updated = True
                     if v_date < p['first_visit']:
                         p['first_visit'] = v_date
+                        updated = True
                     if hep != p['hep_type'] and p['hep_type'] != 'BC':
                         p['hep_type'] = 'BC'
+                        updated = True
+                    if updated:
+                        changed = True
         except Exception:
             pass
 
-    return patient_info
+        if not is_current:
+            scanned.add(stem)
+            changed = True
+
+    if changed:
+        _save_hep_cache(scanned, patients)
+
+    return patients
 
 
 def _hep_disease_name(hep_type: str) -> str:
