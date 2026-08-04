@@ -284,22 +284,19 @@ async def _find_patient_row(page: Page, chart_number: str, dob_roc: str, expecte
         return None, f"no search results for DOB {dob_roc}"
 
     cn_upper = chart_number.upper()
-    for i in range(count):
-        row = rows.nth(i)
-        twid_raw = (await row.locator(TWID_SELECTOR).inner_text()).strip().upper()
-        # inner_text() may include extra UI text (copy buttons, tooltips, etc.)
-        # so check containment rather than exact equality.
-        if cn_upper not in twid_raw:
-            continue
-        if expected_name:
-            name = (await row.locator(NAME_SELECTOR).inner_text()).strip()
-            if name != expected_name:
-                # Name formats differ between IC and Alleypin (married names, etc.) —
-                # national ID is the reliable unique identifier, so proceed on ID match.
-                print(f"  [name-warn] {chart_number}: Alleypin shows {name!r}, expected {expected_name!r} — proceeding on ID match")
-        return row, "matched"
+    # Use filter(has=...) to let Playwright resolve in one browser round-trip
+    # instead of looping with a separate inner_text() call per row.
+    matching = rows.filter(has=page.locator(TWID_SELECTOR, has_text=cn_upper))
+    match_count = await matching.count()
+    if match_count == 0:
+        return None, f"{count} result(s) found but none match chart_number {chart_number}"
 
-    return None, f"{count} result(s) found but none match chart_number {chart_number}"
+    row = matching.first
+    if expected_name:
+        name = (await row.locator(NAME_SELECTOR).inner_text()).strip()
+        if name != expected_name:
+            print(f"  [name-warn] {chart_number}: Alleypin shows {name!r}, expected {expected_name!r} — proceeding on ID match")
+    return row, "matched"
 
 
 async def _is_line_linked(row) -> bool:
@@ -364,7 +361,6 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
         print(f"  [open_picker] {chart_number}")
         clickable = row.locator(TRACKING_TRIGGER_SELECTOR)
         await clickable.click()
-        await page.wait_for_timeout(1000)  # wait for popup animation to settle
 
         # Scoped to the picker's own list (div.cursor-pointer items inside the
         # text-xs results container), not just "any cursor-pointer ancestor of
@@ -374,7 +370,9 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
         # Playwright's strict mode to refuse with "resolved to 2 elements".
         container = page.locator(PICKER_OPTION_SELECTOR).filter(has_text=template_text)
         try:
-            await container.first.wait_for(timeout=4000)
+            # 5000ms covers both the popup animation and template render time;
+            # returns as soon as the element is visible — no fixed pre-wait needed.
+            await container.first.wait_for(timeout=5000)
         except PWTimeoutError:
             await page.keyboard.press("Escape")
             return {**base, 'status': 'template_not_found', 'detail': f'picker opened but template {template_text!r} not found'}
@@ -393,11 +391,16 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
         pre_highlighted = "border-gray-900" in inner_cls
         print(f"  [picker_state] {chart_number} pre_highlighted={pre_highlighted}")
 
+        # Scroll the template option into view within the picker's own scrollable
+        # container before clicking — Playwright's click() scrolls within the
+        # page window but not within a custom overflow div.
+        await container.first.scroll_into_view_if_needed()
         await container.first.click()
         await page.wait_for_timeout(400)
 
         if pre_highlighted:
             print(f"  [re-select] {chart_number} was pre-highlighted — clicking again to re-select")
+            await container.first.scroll_into_view_if_needed()
             await container.first.click()
             await page.wait_for_timeout(400)
 

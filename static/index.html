@@ -2130,8 +2130,35 @@
       </td>
     `;
 
+    // CKD card — must come before the !mspt_stage check because the backend
+    // sets mspt_stage='收案' on overdue CKD entries to signal a restart,
+    // which would otherwise incorrectly keep the MSPT-style row.
+    if (e.category === "慢性腎臟病") {
+      const ckdNext = e.mspt_stage || {'收案': '追1', '追1': '追2'}[e.last_stage] || '—';
+      const lastCkdCell = e.last_visit_date
+        ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}<span class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</span>`
+        : `<span style="color:var(--text-muted)">—</span>`;
+      tr.innerHTML = `
+        <td><div class="patient-name">${e.patient.name}${lineUnlinkedTag(e)}${alleypinNotFoundTag(e)}${recentlySentTag(e)}</div><div class="chart-number">${e.patient.chart_number}</div>${phoneCell(e)}</td>
+        <td class="mono dob-copy">${fmt(e.patient.birth_date)}</td>
+        <td style="font-size:13px;color:var(--text-sub)">${ckdNext}</td>
+        <td>${lastCkdCell}</td>
+        <td>${statusPill(e.days_overdue)}</td>
+        <td>
+          <div class="action-cell">
+            ${actionBtn}
+            <div class="more-actions-wrapper">
+              <button class="btn-more" title="更多操作">•••</button>
+              <div class="dropdown-menu">
+                <button class="dropdown-item" data-act="onhold">暫緩…</button>
+                <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
+              </div>
+            </div>
+          </div>
+        </td>
+      `;
     // chronic card: rebuild as 7-column row with pickup date and expiry date
-    if (!e.mspt_stage) {
+    } else if (!e.mspt_stage) {
       const pickupCell = e.last_visit_date
         ? `<span class="mono" style="color:var(--text-sub)">${fmt(e.last_visit_date)}</span>`
         : `<span style="color:var(--text-muted)">—</span>`;
@@ -2164,8 +2191,9 @@
       ? markCalled(btn, key, pendingBodyId, pendingBadgeId, calledRowsId, calledCountId)
       : markContacted(btn, key, pendingBodyId, pendingBadgeId, contactedRowsId, contactedCountId);
 
-    // MSPT: wire complete button
-    if (e.mspt_stage) {
+    // MSPT: wire complete button (CKD restart entries also have mspt_stage set
+    // but their row has no .btn-complete, so guard by category)
+    if (e.mspt_stage && e.category === "代謝症候群") {
       tr.querySelector(".btn-complete").onclick = (ev) => doMarkMsptCompleted(ev.currentTarget);
     }
     // Both chronic and MSPT: wire ••• dropdown
