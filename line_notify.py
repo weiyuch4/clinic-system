@@ -303,11 +303,15 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
     the named template for one patient. Returns a result dict with 'status'."""
     base = {'chart_number': chart_number, 'name': name}
     try:
+        print(f"  [search] {chart_number} {name} DOB={dob_roc}")
         row, reason = await _find_patient_row(page, chart_number, dob_roc, name)
         if row is None:
             return {**base, 'status': 'not_found', 'detail': reason}
+        print(f"  [found] {chart_number}")
 
-        if not await _is_line_linked(row):
+        linked = await _is_line_linked(row)
+        print(f"  [line_linked={linked}] {chart_number}")
+        if not linked:
             return {**base, 'status': 'line_not_linked', 'detail': 'patient has not linked LINE to Alleypin — would not be delivered'}
 
         last_sent = await _last_sent_at(row, template_text)
@@ -319,9 +323,10 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
                     'detail': f'same template already sent {days_since} day(s) ago ({last_sent.isoformat()}) — skipping to avoid a duplicate',
                 }
 
+        print(f"  [open_picker] {chart_number}")
         clickable = row.locator(TRACKING_TRIGGER_SELECTOR)
         await clickable.click()
-        await page.wait_for_timeout(600)
+        await page.wait_for_timeout(1000)  # wait for popup animation to settle
 
         # Scoped to the picker's own list (div.cursor-pointer items inside the
         # text-xs results container), not just "any cursor-pointer ancestor of
@@ -331,22 +336,30 @@ async def send_one(page: Page, chart_number: str, dob_roc: str, name: str,
         # Playwright's strict mode to refuse with "resolved to 2 elements".
         container = page.locator(PICKER_OPTION_SELECTOR).filter(has_text=template_text)
         try:
-            await container.first.wait_for(timeout=3000)
+            await container.first.wait_for(timeout=4000)
         except PWTimeoutError:
             await page.keyboard.press("Escape")
-            return {**base, 'status': 'template_not_found', 'detail': f'template {template_text!r} not found in modal'}
+            return {**base, 'status': 'template_not_found', 'detail': f'picker opened but template {template_text!r} not found'}
+
+        print(f"  [template_found] {chart_number} → {template_text!r}")
 
         if dry_run:
             await page.keyboard.press("Escape")
             return {**base, 'status': 'dry_run_ok', 'detail': f'would click {template_text!r}'}
 
         await container.first.click()
-        await page.wait_for_timeout(300)
+        await page.wait_for_timeout(600)
         # Clicking the template only selects it — clicking outside the modal
         # afterward is what actually commits/persists it (matches the manual
         # workflow). Without this, the tag appears briefly then reverts.
         await page.locator(SEARCH_INPUT_SELECTOR).click()
-        await page.wait_for_timeout(800)
+        await page.wait_for_timeout(1000)
+
+        # Verify the tag actually appears in the tracking cell after committing.
+        sent_at = await _last_sent_at(row, template_text)
+        if sent_at is None:
+            return {**base, 'status': 'send_unconfirmed', 'detail': f'clicked {template_text!r} but tag did not appear in tracking cell — may not have committed'}
+        print(f"  [confirmed] {chart_number} tag visible, sent_at={sent_at}")
         return {**base, 'status': 'sent', 'detail': f'clicked {template_text!r}'}
 
     except Exception as e:
@@ -415,6 +428,7 @@ async def run_batch(targets: list[dict], dry_run: bool, on_result=None) -> list[
         page = await _get_page(p)
         await _navigate_if_needed(page)
         await _ensure_logged_in(page)
+        await page.bring_to_front()
 
         for t in targets:
             dob_roc = t.get('dob_roc') or to_roc_slash_date(t['dob'])
@@ -434,6 +448,7 @@ async def run_undo(target: dict, dry_run: bool) -> dict:
         page = await _get_page(p)
         await _navigate_if_needed(page)
         await _ensure_logged_in(page)
+        await page.bring_to_front()
 
         dob_roc = target.get('dob_roc') or to_roc_slash_date(target['dob'])
         result = await undo_one(
