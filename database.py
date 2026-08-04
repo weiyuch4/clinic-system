@@ -236,11 +236,17 @@ def get_daily_report(as_of: date) -> DailyReport:
     # Fast path: if IC files unchanged since last run, return the cached report.
     # The base report contains only IC-derived data (no contacts.db), so it is
     # safe to cache — contacts are merged in main.py after this call.
+    # Allow ±1 day as_of mismatch: the clinic frontend sometimes sends yesterday's
+    # date due to a UTC vs local-time difference before 8 AM; the follow-up data
+    # is identical when the IC fingerprint matches.
     try:
         raw = json.loads(_BASE_REPORT_CACHE_PATH.read_text(encoding='utf-8'))
-        if raw.get('as_of') == as_of.isoformat() and raw.get('fingerprint') == fp:
-            print("[report] cache hit — skipping IC parse", flush=True)
-            return DailyReport.model_validate(raw['report'])
+        cached_as_of_str = raw.get('as_of', '')
+        if raw.get('fingerprint') == fp and cached_as_of_str:
+            day_diff = abs((as_of - date.fromisoformat(cached_as_of_str)).days)
+            if day_diff <= 1:
+                print("[report] cache hit — skipping IC parse", flush=True)
+                return DailyReport.model_validate(raw['report'])
     except Exception:
         pass
 
