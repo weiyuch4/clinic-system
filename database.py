@@ -2,7 +2,6 @@ from datetime import date, timedelta
 import glob
 import json
 import os
-import pickle
 import re
 import struct
 from pathlib import Path
@@ -86,10 +85,10 @@ def mspt_needs_blood_test(mspt_stage: str, nat_id: str, as_of: date) -> bool:
 # _parse_dbf_cached() and cleared for specific files by rescan_blood_draw_files().
 _dbf_cache: dict[str, list[dict]] = {}
 
-# Per-file disk cache: one small pickle per DBF, keyed by the file's mtime.
+# Per-file disk cache: one small JSON file per DBF, keyed by the file's mtime.
 # No monolithic blob — each file is loaded independently in milliseconds.
 # Analogous to how build tools (make, webpack) cache per source file.
-_PERFILE_CACHE_DIR = Path(__file__).parent / "dbf_cache"
+_PERFILE_CACHE_DIR = Path(os.environ.get('LOCALAPPDATA', Path.home())) / "clinic-dbf-cache"
 _cache_stats: dict[str, int] = {'hits': 0, 'no_pkl': 0, 'mismatch': 0, 'errors': 0}
 
 # Incremental hep scan cache — stores which past IC months have already been
@@ -119,14 +118,14 @@ def _parse_dbf_cached(path: str) -> list[dict]:
         return _dbf_cache[path]
 
     stem = os.path.splitext(os.path.basename(path))[0]  # e.g. 'IC11506', 'IC11506P'
-    cache_file = _PERFILE_CACHE_DIR / f"{stem}.pkl"
+    cache_file = _PERFILE_CACHE_DIR / f"{stem}.json"
     mtime = None
 
     try:
         mtime = os.path.getmtime(path)
         if cache_file.exists():
-            with open(cache_file, 'rb') as f:
-                cached = pickle.load(f)
+            with open(cache_file, 'r', encoding='utf-8') as f:
+                cached = json.load(f)
             cached_mtime = cached.get('mtime')
             if cached_mtime == mtime:
                 _cache_stats['hits'] += 1
@@ -147,8 +146,8 @@ def _parse_dbf_cached(path: str) -> list[dict]:
         try:
             _PERFILE_CACHE_DIR.mkdir(exist_ok=True)
             tmp = str(cache_file) + '.tmp'
-            with open(tmp, 'wb') as f:
-                pickle.dump({'mtime': mtime, 'records': records}, f)
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump({'mtime': mtime, 'records': records}, f, ensure_ascii=False)
             os.replace(tmp, str(cache_file))
         except Exception as e:
             print(f"[cache] save failed {stem}: {e}", flush=True)
