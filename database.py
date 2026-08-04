@@ -96,6 +96,42 @@ _cache_stats: dict[str, int] = {'hits': 0, 'no_pkl': 0, 'mismatch': 0, 'errors':
 # once closed, so each one is scanned exactly once and never again.
 _HEP_CACHE_PATH = "hep_patient_cache.json"
 
+# Base report cache: stores the full DailyReport JSON for today, keyed by a
+# fingerprint of all IC/P file mtimes. If no IC file changed since last run,
+# the entire 35-second parse is skipped and the report loads in milliseconds.
+_BASE_REPORT_CACHE_PATH = Path(__file__).parent / "base_report_cache.json"
+
+# Populated once per server start by _load_ic_dir_mtimes() via a single
+# os.scandir() call — much faster than 50 individual os.path.getmtime() calls.
+_ic_dir_mtimes: dict[str, float] = {}
+
+
+def _load_ic_dir_mtimes() -> None:
+    """Batch-read all file mtimes from the IC data directory in one scandir call."""
+    _ic_dir_mtimes.clear()
+    try:
+        with os.scandir(IC_DATA_PATH) as it:
+            for e in it:
+                if e.is_file(follow_symlinks=False):
+                    _ic_dir_mtimes[e.path.lower()] = e.stat().st_mtime
+    except Exception:
+        pass
+
+
+def _ic_fingerprint(since: date) -> dict[str, float]:
+    """Return {path_lower: mtime} for all IC/P files in the query window."""
+    if not _ic_dir_mtimes:
+        _load_ic_dir_mtimes()
+    result: dict[str, float] = {}
+    for ic_path in _ic_files_since(since):
+        k = ic_path.lower()
+        if k in _ic_dir_mtimes:
+            result[k] = _ic_dir_mtimes[k]
+        pk = (ic_path[:-4] + 'P.DBF').lower()
+        if pk in _ic_dir_mtimes:
+            result[pk] = _ic_dir_mtimes[pk]
+    return result
+
 
 def _current_roc_month() -> str:
     d = date.today()
@@ -158,6 +194,7 @@ def warmup_cache() -> None:
     import time
     t0 = time.time()
 
+    _load_ic_dir_mtimes()
     rescan_blood_draw_files()
     print(f"[warmup] rescan_blood_draw_files: {time.time()-t0:.1f}s", flush=True)
 
@@ -191,6 +228,23 @@ def warmup_cache() -> None:
 def get_daily_report(as_of: date) -> DailyReport:
     if USE_MOCK_DATA:
         return _mock_report(as_of)
+
+    # Fingerprint covers MSPT's 730-day window (the widest query window used).
+    since_730 = as_of - timedelta(days=2 * 365)
+    fp = _ic_fingerprint(since_730)
+
+    # Fast path: if IC files unchanged since last run, return the cached report.
+    # The base report contains only IC-derived data (no contacts.db), so it is
+    # safe to cache — contacts are merged in main.py after this call.
+    try:
+        raw = json.loads(_BASE_REPORT_CACHE_PATH.read_text(encoding='utf-8'))
+        if raw.get('as_of') == as_of.isoformat() and raw.get('fingerprint') == fp:
+            print("[report] cache hit — skipping IC parse", flush=True)
+            return DailyReport.model_validate(raw['report'])
+    except Exception:
+        pass
+
+    # Slow path: parse IC files and build the report from scratch.
     import time as _t
     _t0 = _t.time()
     mspt_followups, mspt_inactive = _query_mspt_followups(as_of)
@@ -206,7 +260,7 @@ def get_daily_report(as_of: date) -> DailyReport:
     chronic = _query_chronic_prescriptions(as_of)
     print(f"[report] chronic: {_t.time()-_t3:.1f}s", flush=True)
     hep_ret = _query_hep_returned(as_of, hep_patient_info)
-    return DailyReport(
+    report = DailyReport(
         report_date=as_of,
         chronic_prescriptions=chronic,
         mspt_followups=mspt_followups,
@@ -219,6 +273,21 @@ def get_daily_report(as_of: date) -> DailyReport:
         ckd_followups=ckd_followups,
         ckd_inactive=ckd_inactive,
     )
+
+    # Persist the report so the next start skips the slow parse.
+    try:
+        _BASE_REPORT_CACHE_PATH.write_text(
+            json.dumps(
+                {'as_of': as_of.isoformat(), 'fingerprint': fp,
+                 'report': json.loads(report.model_dump_json())},
+                ensure_ascii=False,
+            ),
+            encoding='utf-8',
+        )
+    except Exception:
+        pass
+
+    return report
 
 
 # ── DBF utilities ─────────────────────────────────────────────────────────────
