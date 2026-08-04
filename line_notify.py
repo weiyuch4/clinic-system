@@ -209,6 +209,44 @@ async def stop_browser() -> bool:
     return True
 
 
+def _bring_browser_to_front() -> None:
+    """Raise the automation browser's OS window using Win32 SetForegroundWindow.
+    page.bring_to_front() only activates the CDP tab — it does not raise the
+    window on Windows due to focus-stealing prevention."""
+    try:
+        import ctypes
+        # Our launcher PID rarely owns the visible window; search child msedge
+        # processes. Fall back to any msedge/chrome with a window if no PID file.
+        launcher_pid = PID_FILE.read_text().strip() if PID_FILE.exists() else ""
+        if launcher_pid:
+            ps_cmd = (
+                f"$root={launcher_pid};"
+                "Get-CimInstance Win32_Process -Filter \"name='msedge.exe'\" |"
+                " Where-Object { $_.ProcessId -eq $root -or $_.ParentProcessId -eq $root } |"
+                " ForEach-Object { Get-Process -Id $_.ProcessId -EA SilentlyContinue } |"
+                " Where-Object { $_.MainWindowHandle -ne 0 } |"
+                " Select-Object -ExpandProperty MainWindowHandle -First 1"
+            )
+        else:
+            ps_cmd = (
+                "Get-Process msedge,chrome -EA SilentlyContinue |"
+                " Where-Object { $_.MainWindowHandle -ne 0 } |"
+                " Select-Object -ExpandProperty MainWindowHandle -First 1"
+            )
+        result = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps_cmd],
+            capture_output=True, text=True, timeout=8,
+        )
+        hwnd_str = result.stdout.strip()
+        if hwnd_str and hwnd_str.isdigit() and int(hwnd_str) != 0:
+            hwnd = int(hwnd_str)
+            user32 = ctypes.windll.user32
+            user32.ShowWindow(hwnd, 9)       # SW_RESTORE — un-minimise if needed
+            user32.SetForegroundWindow(hwnd)
+    except Exception:
+        pass
+
+
 async def _navigate_if_needed(page: Page):
     """Re-navigate to the Alleypin URL if the page somehow ended up elsewhere."""
     if config.ALLEYPIN_URL not in page.url:
@@ -428,7 +466,7 @@ async def run_batch(targets: list[dict], dry_run: bool, on_result=None) -> list[
         page = await _get_page(p)
         await _navigate_if_needed(page)
         await _ensure_logged_in(page)
-        await page.bring_to_front()
+        _bring_browser_to_front()
 
         for t in targets:
             dob_roc = t.get('dob_roc') or to_roc_slash_date(t['dob'])
@@ -448,7 +486,7 @@ async def run_undo(target: dict, dry_run: bool) -> dict:
         page = await _get_page(p)
         await _navigate_if_needed(page)
         await _ensure_logged_in(page)
-        await page.bring_to_front()
+        _bring_browser_to_front()
 
         dob_roc = target.get('dob_roc') or to_roc_slash_date(target['dob'])
         result = await undo_one(

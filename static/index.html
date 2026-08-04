@@ -2289,6 +2289,22 @@
     } else if (e.category === "B肝") {
       tr = buildHepDoneRow(e, (ev) =>
         undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId));
+    } else if (e.category === "慢性腎臟病") {
+      followupStore.set(key, e);
+      tr = document.createElement("tr");
+      tr.className = "done";
+      tr.dataset.key = key;
+      tr.dataset.search = patientSearchStr(e.patient);
+      tr.innerHTML = `
+        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td class="mono dob-copy">${fmt(e.patient.birth_date)}</td>
+        <td>—</td>
+        <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
+        <td>${statusPill(e.days_overdue)}</td>
+        <td><button class="btn-undo">撤銷</button></td>
+      `;
+      tr.querySelector(".btn-undo").onclick = (ev) =>
+        undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId);
     } else {
       followupStore.set(key, e);
       tr = document.createElement("tr");
@@ -2321,6 +2337,21 @@
     } else if (e.category === "B肝") {
       tr = buildHepDoneRow(e, (ev) => undoCalled(ev.currentTarget, key, calledRowsId, calledCountId));
       tr.className = "done-final";
+    } else if (e.category === "慢性腎臟病") {
+      followupStore.set(key, e);
+      tr = document.createElement("tr");
+      tr.className = "done-final";
+      tr.dataset.key = key;
+      tr.dataset.search = patientSearchStr(e.patient);
+      tr.innerHTML = `
+        <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
+        <td class="mono dob-copy">${fmt(e.patient.birth_date)}</td>
+        <td>—</td>
+        <td>${e.last_visit_date ? `${e.last_stage ? `<div style="font-size:0.78em;color:var(--text-muted);margin-bottom:1px">${e.last_stage}</div>` : ""}${fmt(e.last_visit_date)}` : "—"}</td>
+        <td>${statusPill(e.days_overdue)}</td>
+        <td><button class="btn-undo">撤銷</button></td>
+      `;
+      tr.querySelector(".btn-undo").onclick = (ev) => undoCalled(ev.currentTarget, key, calledRowsId, calledCountId);
     } else {
       followupStore.set(key, e);
       tr = document.createElement("tr");
