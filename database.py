@@ -89,7 +89,7 @@ _dbf_cache: dict[str, list[dict]] = {}
 # Per-file disk cache: one small pickle per DBF, keyed by the file's mtime.
 # No monolithic blob — each file is loaded independently in milliseconds.
 # Analogous to how build tools (make, webpack) cache per source file.
-_PERFILE_CACHE_DIR = Path("dbf_cache")
+_PERFILE_CACHE_DIR = Path(__file__).parent / "dbf_cache"
 
 # Incremental hep scan cache — stores which past IC months have already been
 # scanned for hep visits and the merged patient dict. Past months are frozen
@@ -119,6 +119,7 @@ def _parse_dbf_cached(path: str) -> list[dict]:
 
     stem = os.path.splitext(os.path.basename(path))[0]  # e.g. 'IC11506', 'IC11506P'
     cache_file = _PERFILE_CACHE_DIR / f"{stem}.pkl"
+    mtime = None
 
     try:
         mtime = os.path.getmtime(path)
@@ -133,14 +134,16 @@ def _parse_dbf_cached(path: str) -> list[dict]:
 
     records = _parse_dbf(path)
     _dbf_cache[path] = records
-    try:
-        _PERFILE_CACHE_DIR.mkdir(exist_ok=True)
-        tmp = str(cache_file) + '.tmp'
-        with open(tmp, 'wb') as f:
-            pickle.dump({'mtime': mtime, 'records': records}, f)
-        os.replace(tmp, str(cache_file))
-    except Exception:
-        pass
+    if mtime is not None:
+        try:
+            _PERFILE_CACHE_DIR.mkdir(exist_ok=True)
+            tmp = str(cache_file) + '.tmp'
+            with open(tmp, 'wb') as f:
+                pickle.dump({'mtime': mtime, 'records': records}, f)
+            os.replace(tmp, str(cache_file))
+            print(f"[cache] saved {stem}.pkl", flush=True)
+        except Exception as e:
+            print(f"[cache] save failed for {stem}: {e}", flush=True)
     return records
 
 
