@@ -90,6 +90,7 @@ _dbf_cache: dict[str, list[dict]] = {}
 # No monolithic blob — each file is loaded independently in milliseconds.
 # Analogous to how build tools (make, webpack) cache per source file.
 _PERFILE_CACHE_DIR = Path(__file__).parent / "dbf_cache"
+_cache_stats: dict[str, int] = {'hits': 0, 'no_pkl': 0, 'mismatch': 0, 'errors': 0}
 
 # Incremental hep scan cache — stores which past IC months have already been
 # scanned for hep visits and the merged patient dict. Past months are frozen
@@ -128,13 +129,16 @@ def _parse_dbf_cached(path: str) -> list[dict]:
                 cached = pickle.load(f)
             cached_mtime = cached.get('mtime')
             if cached_mtime == mtime:
+                _cache_stats['hits'] += 1
                 _dbf_cache[path] = cached['records']
                 return _dbf_cache[path]
             else:
+                _cache_stats['mismatch'] += 1
                 print(f"[cache] MISMATCH {stem}: stored={cached_mtime} current={mtime}", flush=True)
         else:
-            print(f"[cache] NO PKL {stem}", flush=True)
+            _cache_stats['no_pkl'] += 1
     except Exception as e:
+        _cache_stats['errors'] += 1
         print(f"[cache] ERROR {stem}: {e}", flush=True)
 
     records = _parse_dbf(path)
@@ -146,9 +150,8 @@ def _parse_dbf_cached(path: str) -> list[dict]:
             with open(tmp, 'wb') as f:
                 pickle.dump({'mtime': mtime, 'records': records}, f)
             os.replace(tmp, str(cache_file))
-            print(f"[cache] saved {stem}.pkl", flush=True)
         except Exception as e:
-            print(f"[cache] save failed for {stem}: {e}", flush=True)
+            print(f"[cache] save failed {stem}: {e}", flush=True)
     return records
 
 
@@ -164,7 +167,7 @@ def warmup_cache() -> None:
         get_daily_report(date.today())
     except Exception:
         pass
-    print(f"[warmup] get_daily_report: {time.time()-t1:.1f}s", flush=True)
+    print(f"[warmup] get_daily_report: {time.time()-t1:.1f}s  cache={_cache_stats}", flush=True)
 
     t2 = time.time()
     try:
