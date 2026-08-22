@@ -1,5 +1,10 @@
 # Database — must never be committed; lives only on the clinic PC
 contacts.db
+auth.db
+contacts_pre_*.db
+
+# JWT secret key — generated on first run, must never be committed
+auth_secret.key
 backups/
 
 # Persisted DBF parse cache (see database.py warmup_cache) — large, local, rebuildable
@@ -25,6 +30,10 @@ __pycache__/
 *.pyo
 .venv/
 venv/
+
+# Patient/report caches — large, local, rebuildable
+base_report_cache.json
+hep_patient_cache.json
 
 # Temp files
 tmp_*.txt

@@ -19,7 +19,8 @@ _CREATE_CLINIC_CONTACTS = """
         phone      TEXT DEFAULT '',
         note       TEXT DEFAULT '',
         created_at TEXT NOT NULL,
-        nurse      TEXT DEFAULT ''
+        nurse      TEXT DEFAULT '',
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 

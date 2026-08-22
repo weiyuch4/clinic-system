@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>登入 — 診所追蹤系統</title>
+<style>
+:root {
+  --bg:          #F0EFED;
+  --card:        #FFFFFF;
+  --border:      #E5E7EB;
+  --text:        #111827;
+  --sub:         #4B5563;
+  --muted:       #596172;
+  --accent:      #b5d7f5;
+  --accent-h:    #8fc5f0;
+  --accent-a:    #74b3e8;
+  --focus-ring:  rgba(181,215,245,.3);
+  --err-bg:      #FEF2F2;
+  --err-text:    #991B1B;
+  --err-border:  #FCA5A5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:         #18191b;
+    --card:       #242527;
+    --border:     #35373b;
+    --text:       #f0f0ef;
+    --sub:        #9ca3af;
+    --muted:      #6b7280;
+    --accent:     #1d4a7a;
+    --accent-h:   #255d99;
+    --accent-a:   #1a3f68;
+    --focus-ring: rgba(29,74,122,.4);
+    --err-bg:     #2c1515;
+    --err-text:   #fca5a5;
+    --err-border: #7f1d1d;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:         #18191b;
+  --card:       #242527;
+  --border:     #35373b;
+  --text:       #f0f0ef;
+  --sub:        #9ca3af;
+  --muted:      #6b7280;
+  --accent:     #1d4a7a;
+  --accent-h:   #255d99;
+  --accent-a:   #1a3f68;
+  --focus-ring: rgba(29,74,122,.4);
+  --err-bg:     #2c1515;
+  --err-text:   #fca5a5;
+  --err-border: #7f1d1d;
+}
+:root[data-theme="light"] {
+  --bg:         #F0EFED;
+  --card:       #FFFFFF;
+  --border:     #E5E7EB;
+  --text:       #111827;
+  --sub:        #4B5563;
+  --muted:      #596172;
+  --accent:     #b5d7f5;
+  --accent-h:   #8fc5f0;
+  --accent-a:   #74b3e8;
+  --focus-ring: rgba(181,215,245,.3);
+  --err-bg:     #FEF2F2;
+  --err-text:   #991B1B;
+  --err-border: #FCA5A5;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang TC', 'Noto Sans TC', sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 40px 36px 36px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: 0 1px 4px rgba(0,0,0,.05), 0 6px 20px rgba(0,0,0,.07);
+}
+
+.eyebrow {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+h1 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 30px;
+  line-height: 1.3;
+  text-wrap: balance;
+}
+
+.field { margin-bottom: 16px; }
+
+label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--sub);
+  margin-bottom: 5px;
+}
+
+input[type="text"],
+input[type="password"] {
+  display: block;
+  width: 100%;
+  padding: 9px 12px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 15px;
+  font-family: inherit;
+  color: var(--text);
+  background: var(--bg);
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input[type="text"]:focus,
+input[type="password"]:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.btn {
+  display: block;
+  width: 100%;
+  padding: 11px;
+  margin-top: 24px;
+  background: var(--accent);
+  color: #111827;
+  border: none;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background .15s;
+  letter-spacing: .01em;
+}
+.btn:hover:not(:disabled) { background: var(--accent-h); }
+.btn:active:not(:disabled) { background: var(--accent-a); }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .btn { color: #e0f0ff; }
+}
+:root[data-theme="dark"] .btn { color: #e0f0ff; }
+
+.error {
+  display: none;
+  background: var(--err-bg);
+  color: var(--err-text);
+  border: 1px solid var(--err-border);
+  border-radius: 7px;
+  padding: 9px 12px;
+  font-size: 13.5px;
+  margin-top: 14px;
+  line-height: 1.45;
+}
+.error.show { display: block; }
+</style>
+</head>
+<body>
+<div class="card">
+  <p class="eyebrow">魏宏杰診所</p>
+  <h1>診所追蹤系統</h1>
+  <form id="form" autocomplete="on" novalidate>
+    <div class="field">
+      <label for="u">帳號</label>
+      <input type="text" id="u" name="username"
+             autocomplete="username" autocapitalize="none"
+             spellcheck="false" required>
+    </div>
+    <div class="field">
+      <label for="p">密碼</label>
+      <input type="password" id="p" name="password"
+             autocomplete="current-password" required>
+    </div>
+    <button type="submit" class="btn" id="btn">登入</button>
+    <div class="error" id="err"></div>
+  </form>
+</div>
+
+<script>
+(function () {
+  // Match the saved theme before any render
+  var t = localStorage.getItem('theme') || '';
+  if (t) document.documentElement.setAttribute('data-theme', t);
+
+  // Already logged in → skip to destination
+  var stored = localStorage.getItem('clinic_token');
+  if (stored) {
+    try {
+      var pl = JSON.parse(atob(stored.split('.')[1]));
+      if (pl.exp * 1000 > Date.now()) {
+        var nx = new URLSearchParams(location.search).get('next') || '/';
+        if (!nx.startsWith('/') || nx.startsWith('//')) nx = '/';
+        location.href = nx;
+        return;
+      }
+    } catch (e) {}
+    localStorage.removeItem('clinic_token');
+  }
+
+  var form = document.getElementById('form');
+  var btn  = document.getElementById('btn');
+  var err  = document.getElementById('err');
+
+  function setError(msg) { err.textContent = msg; err.classList.add('show'); }
+  function clearError()  { err.classList.remove('show'); }
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    clearError();
+    var username = document.getElementById('u').value.trim();
+    var password = document.getElementById('p').value;
+    if (!username || !password) { setError('請填寫帳號和密碼'); return; }
+
+    btn.disabled = true;
+    btn.textContent = '登入中…';
+
+    fetch('/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: username, password: password }),
+      credentials: 'include',
+    })
+      .then(function (r) {
+        return r.json().then(function (d) { return { ok: r.ok, d: d }; });
+      })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.d.detail || '登入失敗，請再試一次');
+        localStorage.setItem('clinic_token', res.d.access_token);
+        var nx = new URLSearchParams(location.search).get('next') || '/';
+        if (!nx.startsWith('/') || nx.startsWith('//')) nx = '/';
+        if (res.d.must_change_password) {
+          location.href = '/change-password?next=' + encodeURIComponent(nx);
+        } else {
+          location.href = nx;
+        }
+      })
+      .catch(function (e) {
+        setError(e.message);
+        btn.disabled = false;
+        btn.textContent = '登入';
+      });
+  });
+
+  document.getElementById('u').focus();
+})();
+</script>
+</body>
+</html>

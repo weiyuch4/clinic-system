@@ -1,19 +1,18 @@
 import asyncio
-import hashlib
 import logging
 import os
-import secrets
+import re as _re
 import threading
 from datetime import date, timedelta
 
 import tempfile
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, UploadFile, File
-from fastapi.responses import FileResponse, RedirectResponse, Response
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile, File
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+import auth
 import backup
 import config
 import contacts
@@ -22,11 +21,13 @@ import directory
 import lab_report
 import lab_results
 from models import (
-    BloodDismissRequest, BulletinNoteRequest, ChartNumberRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest, DailyReport,
-    ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, LineUnlinkedRequest, ManualOnHoldRequest, ManualPickupRequest,
+    BloodDismissRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
+    CreateUserRequest, DailyReport,
+    ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
+    ManualOnHoldRequest, ManualPickupRequest,
     MsptCompleteRequest, MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
-    SalaryRecordRequest, SendLineNotificationsRequest, ShiftEntry, SubmitRequest,
+    RenameUserRequest, ResetPasswordRequest, SalaryRecordRequest, SendLineNotificationsRequest, ShiftEntry, SubmitRequest,
     UnexcludeRequest, UndoLineNotificationRequest,
 )
 
@@ -35,28 +36,9 @@ CLINIC_NAME = "魏宏杰診所"
 # ───────────────────────────────────────────────────────────────────────────────
 
 # ── Edit this list to match your clinic's nurse names ──────────────────────────
-NURSE_NAMES: list[str] = ["媛淩", "巧潔", "辰優", "惠茗"]
+NURSE_NAMES: list[str] = ["媛淩", "巧潔", "巧菱", "惠茗"]
 # ───────────────────────────────────────────────────────────────────────────────
 
-# ── Admin stats page credentials ───────────────────────────────────────────────
-# To change the password, run in terminal:
-#   python -c "import hashlib; print(hashlib.sha256(b'your-new-password').hexdigest())"
-# Then replace ADMIN_PASS_HASH with the output.
-ADMIN_USER      = "admin"
-ADMIN_PASS_HASH = "fbfdc9472dbe28e802c388914610c16634c383183836bcdf36b7aca819c80768"
-# ───────────────────────────────────────────────────────────────────────────────
-
-_security = HTTPBasic()
-
-def _require_admin(credentials: HTTPBasicCredentials = Depends(_security)) -> None:
-    input_hash = hashlib.sha256(credentials.password.encode()).hexdigest()
-    ok = (
-        secrets.compare_digest(credentials.username.encode(), ADMIN_USER.encode()) and
-        secrets.compare_digest(input_hash, ADMIN_PASS_HASH)
-    )
-    if not ok:
-        raise HTTPException(status_code=401, detail="認證失敗",
-                            headers={"WWW-Authenticate": "Basic"})
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -67,6 +49,7 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+auth.init()
 contacts.init()
 directory.init()
 lab_report.init()
@@ -76,6 +59,195 @@ threading.Thread(target=database.warmup_cache, daemon=True).start()
 if not contacts.get_nurses():  # first run on this DB — seed from the hardcoded defaults above
     for _name in NURSE_NAMES:
         contacts.add_nurse(_name)
+
+
+# ── API auth middleware ─────────────────────────────────────────────────────────
+# All /api/* routes require a valid JWT.  Static files, page routes, and the
+# /auth/* endpoints themselves are public.  Nurse identity inside the session
+# still comes from request body fields (Option B shared-session model).
+@app.middleware("http")
+async def require_auth_for_api(request: Request, call_next):
+    if request.url.path.startswith("/api/"):
+        token = request.headers.get("Authorization", "")
+        if token.startswith("Bearer "):
+            token = token[7:]
+        if not token:
+            return JSONResponse({"detail": "請先登入"}, status_code=401)
+        try:
+            auth.decode_access_token(token)
+        except Exception:
+            return JSONResponse({"detail": "憑證無效或已過期，請重新登入"}, status_code=401)
+    return await call_next(request)
+
+
+_REFRESH_COOKIE = "refresh_token"
+_COOKIE_MAX_AGE = auth.REFRESH_TOKEN_DAYS * 86400
+
+
+@app.post("/auth/login", response_model=LoginResponse)
+def login(body: LoginRequest) -> JSONResponse:
+    # Single-tenant: clinic_id is always 1 for now.
+    # When multi-tenant, resolve clinic_id from body.clinic_slug here.
+    CLINIC_ID = 1
+    user = auth.get_user_by_username(CLINIC_ID, body.username)
+    if not user or not auth.verify_password(body.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="帳號或密碼錯誤")
+    access_token  = auth.create_access_token(
+        user_id=user["id"], clinic_id=user["clinic_id"],
+        role=user["role"], display_name=user["display_name"],
+    )
+    refresh_token = auth.create_refresh_token(user["id"])
+    response = JSONResponse(LoginResponse(
+        access_token=access_token,
+        display_name=user["display_name"],
+        role=user["role"],
+        must_change_password=bool(user["must_change_password"]),
+    ).model_dump())
+    response.set_cookie(
+        key=_REFRESH_COOKIE, value=refresh_token,
+        max_age=_COOKIE_MAX_AGE, httponly=True,
+        samesite="strict", secure=False,  # set secure=True once on HTTPS
+    )
+    return response
+
+
+@app.post("/auth/refresh")
+def refresh_token(request: Request) -> JSONResponse:
+    old_raw = request.cookies.get(_REFRESH_COOKIE)
+    if not old_raw:
+        raise HTTPException(status_code=401, detail="Session 已過期，請重新登入")
+    new_raw, user_id = auth.rotate_refresh_token(old_raw)
+    user = auth.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=401, detail="帳號不存在")
+    access_token = auth.create_access_token(
+        user_id=user["id"], clinic_id=user["clinic_id"],
+        role=user["role"], display_name=user["display_name"],
+    )
+    response = JSONResponse({"access_token": access_token, "token_type": "bearer"})
+    response.set_cookie(
+        key=_REFRESH_COOKIE, value=new_raw,
+        max_age=_COOKIE_MAX_AGE, httponly=True,
+        samesite="strict", secure=False,
+    )
+    return response
+
+
+@app.post("/auth/logout")
+def logout(request: Request) -> JSONResponse:
+    raw = request.cookies.get(_REFRESH_COOKIE)
+    if raw:
+        auth.delete_refresh_token(raw)
+    response = JSONResponse({"ok": True})
+    response.delete_cookie(_REFRESH_COOKIE)
+    return response
+
+
+@app.patch("/api/auth/change-password")
+def change_password(body: ChangePasswordRequest,
+                    user: auth.CurrentUser = Depends(auth.get_current_user)):
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密碼至少需要 6 個字元")
+    try:
+        auth.change_own_password(user.user_id, user.clinic_id, body.old_password, body.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    return {"ok": True}
+
+
+@app.get("/change-password")
+def change_password_page() -> Response:
+    try:
+        content = open("static/change-password.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=503, detail="無法載入頁面")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
+@app.get("/nurse-mgmt")
+def nurse_mgmt_page() -> Response:
+    try:
+        content = open("static/nurse-mgmt.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=503, detail="無法載入頁面")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
+@app.get("/api/admin/users")
+def admin_list_users(admin: auth.CurrentUser = Depends(auth.require_admin)):
+    rows = auth.get_all_users_including_inactive(admin.clinic_id)
+    return [dict(r) for r in rows]
+
+
+@app.post("/api/admin/users", status_code=201)
+def admin_create_user(body: CreateUserRequest,
+                      admin: auth.CurrentUser = Depends(auth.require_admin)):
+    if body.role not in ("admin", "nurse"):
+        raise HTTPException(status_code=400, detail="role 必須是 admin 或 nurse")
+    if len(body.initial_password) < 6:
+        raise HTTPException(status_code=400, detail="密碼至少需要 6 個字元")
+    existing = auth.get_user_by_username(admin.clinic_id, body.username)
+    if existing:
+        raise HTTPException(status_code=409, detail="此帳號名稱已存在")
+    user_id = auth.create_user(
+        clinic_id=admin.clinic_id,
+        username=body.username,
+        display_name=body.display_name,
+        role=body.role,
+        password=body.initial_password,
+        created_by=admin.user_id,
+    )
+    return {"id": user_id, "username": body.username, "display_name": body.display_name}
+
+
+@app.patch("/api/admin/users/{user_id}/password")
+def admin_reset_password(user_id: int, body: ResetPasswordRequest,
+                         admin: auth.CurrentUser = Depends(auth.require_admin)):
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="密碼至少需要 6 個字元")
+    auth.update_password(user_id, admin.clinic_id, body.new_password)
+    return {"ok": True}
+
+
+@app.patch("/api/admin/users/{user_id}/username")
+def admin_rename_user(user_id: int, body: RenameUserRequest,
+                      admin: auth.CurrentUser = Depends(auth.require_admin)):
+    new_username = body.new_username.strip()
+    if not new_username:
+        raise HTTPException(status_code=400, detail="帳號不能為空")
+    try:
+        auth.update_username(user_id, admin.clinic_id, new_username)
+    except ValueError as e:
+        raise HTTPException(status_code=409, detail=str(e))
+    return {"ok": True}
+
+
+@app.delete("/api/admin/users/{user_id}")
+def admin_deactivate_user(user_id: int,
+                          admin: auth.CurrentUser = Depends(auth.require_admin)):
+    if user_id == admin.user_id:
+        raise HTTPException(status_code=400, detail="無法停用自己的帳號")
+    auth.deactivate_user(user_id, admin.clinic_id)
+    return {"ok": True}
+
+
+@app.post("/api/admin/users/{user_id}/reactivate")
+def admin_reactivate_user(user_id: int,
+                          admin: auth.CurrentUser = Depends(auth.require_admin)):
+    auth.reactivate_user(user_id, admin.clinic_id)
+    return {"ok": True}
+
+
+@app.get("/login")
+def login_page() -> Response:
+    try:
+        content = open("static/login.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=503, detail="無法載入登入頁面")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
 
 
 @app.get("/")
@@ -94,6 +266,28 @@ def doctor_page() -> Response:
         content = open("static/doctor.html", "rb").read()
     except OSError:
         raise HTTPException(status_code=503, detail="無法載入介面檔案")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
+@app.get("/new")
+def new_dashboard() -> Response:
+    try:
+        content = open("static/dashboard.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=503, detail="無法載入介面檔案")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
+@app.get("/new/{page}")
+def new_page(page: str) -> Response:
+    if not _re.fullmatch(r"[a-z0-9_-]{1,40}", page):
+        raise HTTPException(status_code=404, detail="頁面不存在")
+    try:
+        content = open(f"static/{page}.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=404, detail="頁面不存在")
     return Response(content=content, media_type="text/html",
                     headers={"Cache-Control": "no-store"})
 
@@ -149,7 +343,7 @@ def delete_bulletin(note_id: int, nurse: str = "") -> None:
 
 
 @app.get("/api/admin/salary")
-def get_salary_records(nurse: str, month: str, _: None = Depends(_require_admin)) -> list[dict]:
+def get_salary_records(nurse: str, month: str, _: auth.CurrentUser = Depends(auth.require_admin)) -> list[dict]:
     try:
         return contacts.get_salary_records(nurse, month)
     except Exception:
@@ -158,7 +352,7 @@ def get_salary_records(nurse: str, month: str, _: None = Depends(_require_admin)
 
 
 @app.post("/api/admin/salary")
-def save_salary_record(req: SalaryRecordRequest, _: None = Depends(_require_admin)) -> dict:
+def save_salary_record(req: SalaryRecordRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     try:
         return contacts.save_salary_record(
             req.nurse, req.month, req.attendance, req.performance,
@@ -170,7 +364,7 @@ def save_salary_record(req: SalaryRecordRequest, _: None = Depends(_require_admi
 
 
 @app.put("/api/admin/salary/{record_id}")
-def update_salary_record(record_id: int, req: SalaryRecordRequest, _: None = Depends(_require_admin)) -> None:
+def update_salary_record(record_id: int, req: SalaryRecordRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
         contacts.update_salary_record(
             record_id, req.attendance, req.performance,
@@ -182,7 +376,7 @@ def update_salary_record(record_id: int, req: SalaryRecordRequest, _: None = Dep
 
 
 @app.delete("/api/admin/salary/{record_id}")
-def delete_salary_record(record_id: int, _: None = Depends(_require_admin)) -> None:
+def delete_salary_record(record_id: int, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
         contacts.delete_salary_record(record_id)
     except Exception:
@@ -191,7 +385,7 @@ def delete_salary_record(record_id: int, _: None = Depends(_require_admin)) -> N
 
 
 @app.post("/api/admin/nurses")
-def add_nurse(req: NurseNameRequest, _: None = Depends(_require_admin)) -> None:
+def add_nurse(req: NurseNameRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     name = req.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="姓名不可空白")
@@ -206,7 +400,7 @@ def add_nurse(req: NurseNameRequest, _: None = Depends(_require_admin)) -> None:
 
 
 @app.put("/api/admin/nurses/{name}")
-def rename_nurse(name: str, req: NurseNameRequest, _: None = Depends(_require_admin)) -> None:
+def rename_nurse(name: str, req: NurseNameRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     new_name = req.name.strip()
     if not new_name:
         raise HTTPException(status_code=400, detail="姓名不可空白")
@@ -221,7 +415,7 @@ def rename_nurse(name: str, req: NurseNameRequest, _: None = Depends(_require_ad
 
 
 @app.delete("/api/admin/nurses/{name}")
-def remove_nurse(name: str, _: None = Depends(_require_admin)) -> None:
+def remove_nurse(name: str, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
         contacts.remove_nurse(name)
     except Exception:
@@ -230,7 +424,7 @@ def remove_nurse(name: str, _: None = Depends(_require_admin)) -> None:
 
 
 @app.get("/admin")
-def admin_page(_: None = Depends(_require_admin)) -> Response:
+def admin_page() -> Response:
     try:
         content = open("static/admin.html", "rb").read()
     except OSError:
@@ -245,7 +439,7 @@ def admin_stats_redirect() -> RedirectResponse:  # kept for old bookmarks
 
 
 @app.get("/api/admin/stats")
-def admin_stats_json(month: str | None = None, _: None = Depends(_require_admin)) -> dict:
+def admin_stats_json(month: str | None = None, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     if not month:
         month = date.today().strftime("%Y-%m")
     try:
@@ -256,7 +450,7 @@ def admin_stats_json(month: str | None = None, _: None = Depends(_require_admin)
 
 
 @app.get("/api/admin/doctors")
-def admin_doctors_json(month: str | None = None, _: None = Depends(_require_admin)) -> dict:
+def admin_doctors_json(month: str | None = None, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     if not month:
         month = date.today().strftime("%Y-%m")
     try:
@@ -267,7 +461,7 @@ def admin_doctors_json(month: str | None = None, _: None = Depends(_require_admi
 
 
 @app.get("/api/admin/shifts")
-def get_shifts(week_start: date, _: None = Depends(_require_admin)) -> list[ShiftEntry]:
+def get_shifts(week_start: date, _: auth.CurrentUser = Depends(auth.require_admin)) -> list[ShiftEntry]:
     try:
         return contacts.get_shifts_for_week(week_start.isoformat())
     except Exception:
@@ -276,7 +470,7 @@ def get_shifts(week_start: date, _: None = Depends(_require_admin)) -> list[Shif
 
 
 @app.post("/api/admin/shifts")
-def set_shift(req: ShiftEntry, _: None = Depends(_require_admin)) -> None:
+def set_shift(req: ShiftEntry, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
         contacts.set_shift(
             req.nurse, req.shift_date.isoformat(), req.slot, req.start_time, req.end_time,
@@ -288,7 +482,7 @@ def set_shift(req: ShiftEntry, _: None = Depends(_require_admin)) -> None:
 
 
 @app.post("/api/admin/shifts/copy-week")
-def copy_week(req: CopyWeekRequest, _: None = Depends(_require_admin)) -> None:
+def copy_week(req: CopyWeekRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
         contacts.copy_week(req.from_week_start.isoformat(), req.to_week_start.isoformat())
     except Exception:
@@ -297,12 +491,12 @@ def copy_week(req: CopyWeekRequest, _: None = Depends(_require_admin)) -> None:
 
 
 @app.get("/api/admin/shifts/publish-status")
-def get_publish_status(week_start: date, _: None = Depends(_require_admin)) -> dict:
+def get_publish_status(week_start: date, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     return {"published": contacts.is_week_published(week_start.isoformat())}
 
 
 @app.post("/api/admin/shifts/publish")
-def publish_week(req: PublishWeekRequest, _: None = Depends(_require_admin)) -> None:
+def publish_week(req: PublishWeekRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
         contacts.publish_week(req.week_start.isoformat())
     except Exception:
@@ -311,7 +505,7 @@ def publish_week(req: PublishWeekRequest, _: None = Depends(_require_admin)) -> 
 
 
 @app.post("/api/admin/shifts/unpublish")
-def unpublish_week(req: PublishWeekRequest, _: None = Depends(_require_admin)) -> None:
+def unpublish_week(req: PublishWeekRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
         contacts.unpublish_week(req.week_start.isoformat())
     except Exception:
@@ -883,12 +1077,12 @@ async def cancel_line_notifications() -> dict:
 
 
 @app.get("/api/admin/line-notification-log")
-def get_line_notification_log(_: None = Depends(_require_admin)) -> list:
+def get_line_notification_log(_: auth.CurrentUser = Depends(auth.require_admin)) -> list:
     return contacts.get_line_notification_log()
 
 
 @app.post("/api/admin/line-notification-log/{log_id}/undo")
-async def undo_line_notification(log_id: int, req: UndoLineNotificationRequest, _: None = Depends(_require_admin)) -> dict:
+async def undo_line_notification(log_id: int, req: UndoLineNotificationRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     entry = contacts.get_line_notification_log_entry(log_id)
     if entry is None:
         raise HTTPException(status_code=404, detail="找不到此記錄")
@@ -1040,7 +1234,7 @@ def get_lab_results(national_id: str) -> dict:
 @app.post("/api/admin/lab-report")
 async def upload_lab_report(
     file: UploadFile = File(...),
-    _: None = Depends(_require_admin),
+    _: auth.CurrentUser = Depends(auth.require_admin),
 ) -> dict:
     if not file.filename.lower().endswith('.xlsx'):
         raise HTTPException(status_code=400, detail="請上傳 .xlsx 檔案")
@@ -1061,7 +1255,7 @@ async def upload_lab_report(
 
 
 @app.get("/api/admin/lab-reports")
-def list_lab_reports(_: None = Depends(_require_admin)) -> list:
+def list_lab_reports(_: auth.CurrentUser = Depends(auth.require_admin)) -> list:
     try:
         return lab_report.list_reports()
     except Exception:
@@ -1070,7 +1264,7 @@ def list_lab_reports(_: None = Depends(_require_admin)) -> list:
 
 
 @app.get("/api/admin/lab-report/{report_id}")
-def get_lab_report(report_id: int, _: None = Depends(_require_admin)) -> dict:
+def get_lab_report(report_id: int, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     try:
         data = lab_report.get_report(report_id)
         if data is None:
@@ -1084,7 +1278,7 @@ def get_lab_report(report_id: int, _: None = Depends(_require_admin)) -> dict:
 
 
 @app.delete("/api/admin/lab-report/{report_id}")
-def delete_lab_report(report_id: int, _: None = Depends(_require_admin)) -> None:
+def delete_lab_report(report_id: int, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
         if not lab_report.delete_report(report_id):
             raise HTTPException(status_code=404, detail="找不到此報告")

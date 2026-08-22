@@ -24,6 +24,7 @@ _CREATE_CONTACTS = """
         attempt         INTEGER NOT NULL,
         contacted_at    TEXT NOT NULL,
         contacted_time  TEXT,
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (chart_number, category, due_date)
     )
 """
@@ -37,6 +38,7 @@ _CREATE_SUBMITTED = """
         blood_report_date     TEXT NOT NULL,
         days_since_last_stage INTEGER NOT NULL,
         submitted_at          TEXT NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (chart_number, mspt_stage)
     )
 """
@@ -54,6 +56,7 @@ _CREATE_EXCLUDED = """
         reason          TEXT NOT NULL,
         note            TEXT DEFAULT '',
         excluded_at     TEXT NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (chart_number, category)
     )
 """
@@ -65,7 +68,8 @@ _CREATE_MANUAL_PICKUPS = """
         birth_date   TEXT NOT NULL,
         pickup_date  TEXT NOT NULL,
         ps_days      INTEGER NOT NULL,
-        recorded_at  TEXT NOT NULL
+        recorded_at  TEXT NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
@@ -82,6 +86,7 @@ _CREATE_MSPT_COMPLETED = """
         days_overdue    INTEGER NOT NULL,
         completed_at    TEXT NOT NULL,
         completed_time  TEXT,
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (chart_number, mspt_stage, due_date)
     )
 """
@@ -102,7 +107,8 @@ _CREATE_ON_HOLD = """
         note            TEXT NOT NULL,
         held_at         TEXT NOT NULL,
         nurse           TEXT DEFAULT '',
-        is_manual       INTEGER DEFAULT 0
+        is_manual       INTEGER DEFAULT 0,
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
@@ -114,7 +120,8 @@ _CREATE_MSPT_MANUAL = """
         mspt_stage      TEXT NOT NULL,
         completed_date  TEXT NOT NULL,
         nurse           TEXT DEFAULT '',
-        marked_at       TEXT NOT NULL
+        marked_at       TEXT NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
@@ -132,6 +139,7 @@ _CREATE_MSPT_CHECKEDIN = """
         checkedin_at    TEXT NOT NULL,
         checkedin_time  TEXT,
         nurse           TEXT DEFAULT '',
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (chart_number, mspt_stage, due_date)
     )
 """
@@ -147,6 +155,7 @@ _CREATE_HEP_RETURNED_COMPLETED = """
         completed_at    TEXT NOT NULL,
         completed_time  TEXT,
         nurse           TEXT DEFAULT '',
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (chart_number, last_visit_date)
     )
 """
@@ -167,7 +176,8 @@ _CREATE_LINE_NOTIFICATION_LOG = """
         sent_at      TEXT NOT NULL,
         sent_time    TEXT,
         undone_at    TEXT,
-        undone_by    TEXT
+        undone_by    TEXT,
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
@@ -177,7 +187,8 @@ _CREATE_LINE_UNLINKED = """
         chart_number TEXT NOT NULL PRIMARY KEY,
         name         TEXT NOT NULL,
         flagged_at   TEXT NOT NULL,
-        nurse        TEXT DEFAULT ''
+        nurse        TEXT DEFAULT '',
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
@@ -188,6 +199,7 @@ _CREATE_LINE_RECENTLY_SENT = """
         name         TEXT NOT NULL,
         last_sent_at TEXT NOT NULL,
         nurse        TEXT DEFAULT '',
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (chart_number, template)
     )
 """
@@ -197,7 +209,8 @@ _CREATE_ALLEYPIN_NOT_FOUND = """
         chart_number TEXT NOT NULL PRIMARY KEY,
         name         TEXT NOT NULL,
         flagged_at   TEXT NOT NULL,
-        nurse        TEXT DEFAULT ''
+        nurse        TEXT DEFAULT '',
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
@@ -210,6 +223,7 @@ _CREATE_SHIFTS = """
         end_time      TEXT,
         clean_start   TEXT,
         clean_end     TEXT,
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
         PRIMARY KEY (nurse, shift_date, slot)
     )
 """
@@ -218,13 +232,15 @@ _CREATE_NURSES = """
     CREATE TABLE IF NOT EXISTS nurses (
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
         name       TEXT NOT NULL UNIQUE,
-        sort_order INTEGER NOT NULL DEFAULT 0
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
 _CREATE_PUBLISHED_WEEKS = """
     CREATE TABLE IF NOT EXISTS published_weeks (
-        week_start TEXT NOT NULL PRIMARY KEY
+        week_start TEXT NOT NULL PRIMARY KEY,
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
@@ -233,7 +249,8 @@ _CREATE_BULLETIN_NOTES = """
         id         INTEGER PRIMARY KEY AUTOINCREMENT,
         nurse      TEXT NOT NULL,
         content    TEXT NOT NULL,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
@@ -249,7 +266,8 @@ _CREATE_SALARY_RECORDS = """
         ot_pay      INTEGER NOT NULL,
         total       INTEGER NOT NULL,
         ot_entries  TEXT NOT NULL,
-        created_at  TEXT NOT NULL
+        created_at  TEXT NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
@@ -308,6 +326,20 @@ def init() -> None:
                 conn.execute(f"ALTER TABLE shifts ADD COLUMN {col}")
             except sqlite3.OperationalError:
                 pass
+        # Multi-tenant migration: add clinic_id to all tables (idempotent)
+        _all_tables = [
+            "alleypin_not_found", "bulletin_notes", "clinic_contacts", "contacts",
+            "excluded", "hep_returned_completed", "lab_reports", "line_notification_log",
+            "line_recently_sent", "line_unlinked", "manual_pickups", "mspt_checkedin",
+            "mspt_completed", "mspt_manual", "nurses", "on_hold", "published_weeks",
+            "salary_records", "shifts", "submitted",
+        ]
+        for tbl in _all_tables:
+            try:
+                conn.execute(f"ALTER TABLE {tbl} ADD COLUMN clinic_id INTEGER NOT NULL DEFAULT 1")
+                conn.execute(f"UPDATE {tbl} SET clinic_id = 1 WHERE clinic_id IS NULL")
+            except sqlite3.OperationalError:
+                pass  # column already exists
 
 
 def _followup_to_row(entry: FollowupEntry, attempt: int, nurse: str = "") -> tuple:
