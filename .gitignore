@@ -26,6 +26,10 @@ __pycache__/
 .venv/
 venv/
 
+# Patient/report caches — large, local, rebuildable
+base_report_cache.json
+hep_patient_cache.json
+
 # Temp files
 tmp_*.txt
 *.tmp

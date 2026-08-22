@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>聯絡資訊 — 診所追蹤系統</title>
+<link rel="stylesheet" href="/static/_layout.css?v=24">
+<style>
+.dir-toolbar{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.di{flex:1;border:1.5px solid var(--border);border-radius:9px;padding:8px 13px;font-size:13.5px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;max-width:260px}
+.di:focus{border-color:#b5d7f5}
+.cat-filter{border:1.5px solid var(--border);border-radius:9px;padding:8px 11px;font-size:13px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;cursor:pointer}
+.cat-filter:focus{border-color:#b5d7f5}
+.dir-wrap{flex:1;overflow-y:auto}
+.dir-table-wrap{overflow-x:auto}
+.dtable{width:100%;border-collapse:collapse;font-size:13.5px}
+.dtable th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);padding:9px 14px;border-bottom:1.5px solid var(--border);white-space:nowrap}
+.dtable td{padding:12px 14px;border-bottom:1px solid var(--border);color:var(--sub);vertical-align:middle}
+.dtable tr:last-child td{border-bottom:none}
+.dtable td.dn{color:var(--text);font-weight:600}
+.dtable td.dp{font-family:monospace;font-size:13px;letter-spacing:.05em;color:var(--text)}
+.dtable td.dnote{max-width:200px;word-break:break-word}
+.d-cat{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--border);color:var(--sub)}
+.d-action{display:flex;gap:5px;justify-content:flex-end}
+.d-empty{text-align:center;padding:40px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar"></aside>
+  <div class="main">
+    <div id="topbar"></div>
+    <div class="ct">
+
+      <div class="err-bar" id="error-bar" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="error-msg"></span>
+      </div>
+
+      <div class="ph">
+        <div><h1>聯絡資訊</h1><p>診所外部聯絡人電話簿</p></div>
+        <div class="phb">
+          <button class="bp" id="btn-add">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            新增聯絡人
+          </button>
+        </div>
+      </div>
+
+      <div class="dir-toolbar">
+        <input class="di" type="text" id="dir-search" placeholder="搜尋姓名或電話…">
+        <select class="cat-filter" id="cat-filter">
+          <option value="">全部類別</option>
+        </select>
+      </div>
+
+      <div class="dir-wrap">
+        <div class="card dir-table-wrap">
+          <table class="dtable">
+            <thead>
+              <tr>
+                <th>姓名</th>
+                <th>類別</th>
+                <th>電話</th>
+                <th>備註</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="dir-tbody">
+              <tr><td colspan="5" class="d-empty">載入中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- add/edit modal -->
+<div class="modal-overlay" id="modal-contact">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-contact-title">新增聯絡人</div>
+    <input type="hidden" id="modal-contact-id">
+    <div class="modal-field">
+      <label class="modal-label">姓名 *</label>
+      <input class="modal-input" type="text" id="modal-name" placeholder="例：王醫師">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">類別</label>
+      <input class="modal-input" type="text" id="modal-category" placeholder="例：衛生局、醫院、藥廠">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">電話</label>
+      <input class="modal-input" type="tel" id="modal-phone" placeholder="例：02-1234-5678">
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">備註</label>
+      <textarea class="modal-input" id="modal-note" rows="2" placeholder="說明或備注…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-contact')">取消</button>
+      <button class="act-btn act-primary" id="btn-save">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- delete confirm modal -->
+<div class="modal-overlay" id="modal-delete">
+  <div class="modal-box">
+    <div class="modal-title">確認刪除</div>
+    <div class="modal-sub" id="modal-delete-sub">確認要刪除此聯絡人？</div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-delete')">取消</button>
+      <button class="act-btn act-danger" id="btn-delete-confirm">刪除</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/_layout.js?v=24"></script>
+<script>
+(function () {
+  'use strict';
+  var L = Layout;
+  var _all = [];
+  var _deleteId = null;
+  var _query = '', _catFilter = '';
+
+  function load() {
+    L.hideError();
+    L.apiFetch('/api/directory').then(function (data) {
+      _all = data;
+      // populate category filter
+      var cats = {};
+      data.forEach(function (r) { if (r.category) cats[r.category] = 1; });
+      var sel = document.getElementById('cat-filter');
+      var cur = sel.value;
+      sel.innerHTML = '<option value="">全部類別</option>' +
+        Object.keys(cats).sort().map(function (c) {
+          return '<option value="' + L.escHtml(c) + '"' + (c === cur ? ' selected' : '') + '>' + L.escHtml(c) + '</option>';
+        }).join('');
+      render();
+      L.updateLastUpdated();
+    }).catch(function (e) {
+      L.showError('資料載入失敗 — ' + (e.message || ''));
+    });
+  }
+
+  function render() {
+    var q = _query.toLowerCase();
+    var filtered = _all.filter(function (r) {
+      var matchQ = !q || (r.name && r.name.toLowerCase().includes(q)) || (r.phone && r.phone.includes(q));
+      var matchC = !_catFilter || r.category === _catFilter;
+      return matchQ && matchC;
+    });
+    var tbody = document.getElementById('dir-tbody');
+    if (!filtered.length) {
+      tbody.innerHTML = '<tr><td colspan="5" class="d-empty">' + (_all.length ? '沒有符合條件的記錄' : '尚無聯絡資訊') + '</td></tr>';
+      return;
+    }
+    tbody.innerHTML = filtered.map(function (r) {
+      return '<tr>' +
+        '<td class="dn">' + L.escHtml(r.name) + '</td>' +
+        '<td>' + (r.category ? '<span class="d-cat">' + L.escHtml(r.category) + '</span>' : '—') + '</td>' +
+        '<td class="dp">' + (r.phone ? L.escHtml(r.phone) : '—') + '</td>' +
+        '<td class="dnote">' + L.escHtml(r.note || '') + '</td>' +
+        '<td><div class="d-action">' +
+          '<button class="act-btn" data-edit="' + r.id + '">編輯</button>' +
+          '<button class="act-btn act-danger" data-del="' + r.id + '">刪除</button>' +
+        '</div></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  document.getElementById('dir-search').addEventListener('input', function (e) {
+    _query = e.target.value.trim(); render();
+  });
+  document.getElementById('cat-filter').addEventListener('change', function (e) {
+    _catFilter = e.target.value; render();
+  });
+
+  // table clicks
+  document.getElementById('dir-tbody').addEventListener('click', function (ev) {
+    var editBtn = ev.target.closest('[data-edit]');
+    var delBtn  = ev.target.closest('[data-del]');
+    if (editBtn) {
+      var id = parseInt(editBtn.dataset.edit);
+      var rec = _all.find(function (r) { return r.id === id; });
+      if (!rec) return;
+      document.getElementById('modal-contact-title').textContent = '編輯聯絡人';
+      document.getElementById('modal-contact-id').value = id;
+      document.getElementById('modal-name').value     = rec.name || '';
+      document.getElementById('modal-category').value = rec.category || '';
+      document.getElementById('modal-phone').value    = rec.phone || '';
+      document.getElementById('modal-note').value     = rec.note || '';
+      L.showModal('modal-contact');
+    } else if (delBtn) {
+      var id2 = parseInt(delBtn.dataset.del);
+      var rec2 = _all.find(function (r) { return r.id === id2; });
+      _deleteId = id2;
+      document.getElementById('modal-delete-sub').textContent =
+        '確認要刪除「' + (rec2 ? rec2.name : '') + '」？此操作無法復原。';
+      L.showModal('modal-delete');
+    }
+  });
+
+  // add button
+  document.getElementById('btn-add').addEventListener('click', function () {
+    document.getElementById('modal-contact-title').textContent = '新增聯絡人';
+    document.getElementById('modal-contact-id').value = '';
+    document.getElementById('modal-name').value = '';
+    document.getElementById('modal-category').value = '';
+    document.getElementById('modal-phone').value = '';
+    document.getElementById('modal-note').value = '';
+    L.showModal('modal-contact');
+  });
+
+  // save
+  document.getElementById('btn-save').addEventListener('click', function () {
+    var name = document.getElementById('modal-name').value.trim();
+    if (!name) { L.showToast('姓名不可空白', 'error'); return; }
+    var id = document.getElementById('modal-contact-id').value;
+    var body = {
+      name: name,
+      category: document.getElementById('modal-category').value.trim(),
+      phone:    document.getElementById('modal-phone').value.trim(),
+      note:     document.getElementById('modal-note').value.trim(),
+      nurse:    L.getNurse(),
+    };
+    var url    = id ? '/api/directory/' + id : '/api/directory';
+    var method = id ? 'PUT' : 'POST';
+    L.hideModal('modal-contact');
+    L.apiAction(method, url, body)
+      .then(function () { L.showToast(id ? '已更新' : '已新增'); load(); })
+      .catch(function (e) { L.showToast('儲存失敗：' + (e.message || ''), 'error'); });
+  });
+
+  // delete confirm
+  document.getElementById('btn-delete-confirm').addEventListener('click', function () {
+    if (!_deleteId) return;
+    L.hideModal('modal-delete');
+    L.apiAction('DELETE', '/api/directory/' + _deleteId, null)
+      .then(function () { L.showToast('已刪除'); _deleteId = null; load(); })
+      .catch(function (e) { L.showToast('刪除失敗：' + (e.message || ''), 'error'); });
+  });
+
+  Layout.init({ activePage: 'directory', onRefresh: load });
+  load();
+})();
+</script>
+</body>
+</html>

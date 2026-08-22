@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>排班表 — 診所追蹤系統</title>
+<link rel="stylesheet" href="/static/_layout.css?v=24">
+<style>
+.week-nav{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.week-label{font-size:14px;font-weight:600;color:var(--text);flex:1;text-align:center}
+.wn-btn{width:34px;height:34px;border-radius:9px;border:1.5px solid var(--border);background:transparent;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.wn-btn:hover{border-color:var(--sub);color:var(--text)}
+.wn-today{padding:6px 14px;border-radius:100px;border:1.5px solid var(--border);background:transparent;font-size:13px;font-weight:500;color:var(--sub);cursor:pointer}
+.wn-today:hover{border-color:var(--sub);color:var(--text)}
+.sched-grid{display:grid;grid-template-columns:100px repeat(7,1fr);border-radius:var(--r);overflow:hidden;border:1px solid var(--border);background:var(--card);box-shadow:var(--shadow);flex-shrink:0}
+.sg-cell{padding:10px 8px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);font-size:13px}
+.sg-cell:nth-child(7n){border-right:none}
+.sg-hdr{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);text-transform:uppercase;background:var(--bg);text-align:center}
+.sg-lbl{font-size:12px;font-weight:600;color:var(--sub);background:var(--bg);display:flex;align-items:center;padding-left:14px}
+.sg-day{text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
+.sg-date{font-size:11px;color:var(--muted);margin-bottom:4px}
+.sg-name{font-size:13px;color:var(--text);font-weight:500}
+.sg-today .sg-date{color:#4B5563;font-weight:700}
+.sg-today-dot{width:5px;height:5px;border-radius:50%;background:#4B5563;display:inline-block;margin-bottom:2px}
+.sg-today{background:var(--g0) !important}
+.sg-empty{color:var(--border);font-size:11px}
+.unpub-banner{background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r);padding:30px;text-align:center;color:var(--muted);font-size:13px}
+.last-row .sg-cell{border-bottom:none}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar"></aside>
+  <div class="main">
+    <div id="topbar"></div>
+    <div class="ct">
+
+      <div class="err-bar" id="error-bar" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="error-msg"></span>
+      </div>
+
+      <div class="ph">
+        <div><h1>排班表</h1><p id="page-date">本週護理師班表</p></div>
+      </div>
+
+      <div class="week-nav">
+        <button class="wn-btn" id="btn-prev" title="上週">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <span class="week-label" id="week-label">本週</span>
+        <button class="wn-btn" id="btn-next" title="下週">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+        <button class="wn-today" id="btn-this-week">本週</button>
+      </div>
+
+      <div id="sched-area">
+        <div style="text-align:center;padding:40px;color:var(--muted)">載入中…</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="/static/_layout.js?v=24"></script>
+<script>
+(function () {
+  'use strict';
+  var L = Layout;
+  var _mondayStr = L.getMondayStr();
+  var TODAY = L.localDateStr();
+  var DOW = ['一','二','三','四','五','六','日'];
+  var SLOTS = [
+    { key: 'morning',   label: '早診' },
+    { key: 'afternoon', label: '下午診' },
+    { key: 'evening',   label: '晚診' },
+  ];
+
+  function weekDates(mon) {
+    var dates = [];
+    for (var i = 0; i < 7; i++) dates.push(L.addDays(mon, i));
+    return dates;
+  }
+
+  function setWeekLabel(mon) {
+    var sun = L.addDays(mon, 6);
+    document.getElementById('week-label').textContent = mon.slice(0, 7).replace('-', '/') + ' 週（' + mon.slice(5) + ' – ' + sun.slice(5) + '）';
+  }
+
+  function load() {
+    L.hideError();
+    setWeekLabel(_mondayStr);
+    var dates = weekDates(_mondayStr);
+    fetch('/api/schedule?week_start=' + _mondayStr).then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function (data) {
+      L.updateLastUpdated();
+      var area = document.getElementById('sched-area');
+      if (!data.published) {
+        area.innerHTML = '<div class="unpub-banner">本週班表尚未發布</div>';
+        return;
+      }
+      // index shifts: {date: {slot: [nurse, ...]}}
+      var idx = {};
+      (data.shifts || []).forEach(function (s) {
+        if (!idx[s.shift_date]) idx[s.shift_date] = {};
+        if (!idx[s.shift_date][s.slot]) idx[s.shift_date][s.slot] = [];
+        idx[s.shift_date][s.slot].push(s.nurse);
+      });
+
+      // header row: empty corner + 7 day headers
+      var hdr = '<div class="sg-cell sg-hdr"></div>';
+      dates.forEach(function (d, i) {
+        var isToday = d === TODAY;
+        hdr += '<div class="sg-cell sg-hdr' + (isToday ? ' sg-today' : '') + '">' +
+          (isToday ? '<div class="sg-today-dot"></div>' : '') +
+          DOW[i] + '<br><span class="sg-date">' + d.slice(5) + '</span>' +
+        '</div>';
+      });
+
+      // slot rows
+      var rows = SLOTS.map(function (slot, si) {
+        var isLast = si === SLOTS.length - 1;
+        var cells = '<div class="sg-cell sg-lbl' + (isLast ? ' last-row' : '') + '">' + L.escHtml(slot.label) + '</div>';
+        dates.forEach(function (d) {
+          var isToday = d === TODAY;
+          var nurses = (idx[d] && idx[d][slot.key]) || [];
+          cells += '<div class="sg-cell sg-day' + (isToday ? ' sg-today' : '') + (isLast ? ' last-row' : '') + '">' +
+            (nurses.length
+              ? nurses.map(function (n) { return '<div class="sg-name">' + L.escHtml(n) + '</div>'; }).join('')
+              : '<span class="sg-empty">—</span>') +
+          '</div>';
+        });
+        return cells;
+      }).join('');
+
+      area.innerHTML = '<div class="sched-grid">' + hdr + rows + '</div>';
+    }).catch(function (e) {
+      L.showError('班表載入失敗 — ' + (e.message || ''));
+    });
+  }
+
+  document.getElementById('btn-prev').addEventListener('click', function () {
+    _mondayStr = L.addDays(_mondayStr, -7); load();
+  });
+  document.getElementById('btn-next').addEventListener('click', function () {
+    _mondayStr = L.addDays(_mondayStr, 7); load();
+  });
+  document.getElementById('btn-this-week').addEventListener('click', function () {
+    _mondayStr = L.getMondayStr(); load();
+  });
+
+  Layout.init({ activePage: 'schedule', onRefresh: load });
+  load();
+})();
+</script>
+</body>
+</html>

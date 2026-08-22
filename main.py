@@ -98,6 +98,30 @@ def doctor_page() -> Response:
                     headers={"Cache-Control": "no-store"})
 
 
+@app.get("/new")
+def new_dashboard() -> Response:
+    try:
+        content = open("static/dashboard.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=503, detail="無法載入介面檔案")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
+import re as _re
+
+@app.get("/new/{page}")
+def new_page(page: str) -> Response:
+    if not _re.fullmatch(r"[a-z0-9_-]{1,40}", page):
+        raise HTTPException(status_code=404, detail="頁面不存在")
+    try:
+        content = open(f"static/{page}.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=404, detail="頁面不存在")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
 @app.get("/api/queue")
 def get_queue() -> list[dict]:
     return database.get_queue()

@@ -1,0 +1,155 @@
+﻿<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>檢驗追蹤 — 診所追蹤系統</title>
+<link rel="stylesheet" href="/static/_layout.css?v=9">
+<style>
+.lab-group{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;flex-shrink:0}
+.lab-ghead{display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid var(--border)}
+.lab-gdate{font-size:14px;font-weight:700;color:var(--text)}
+.lab-gcount{font-size:11px;background:var(--border);color:var(--muted);border-radius:10px;padding:2px 8px;font-weight:600}
+.lab-row{display:flex;align-items:center;gap:12px;padding:11px 17px;border-bottom:1px solid var(--border)}
+.lab-row:last-child{border-bottom:none}
+.lab-name{font-size:14px;font-weight:600;color:var(--text);min-width:60px}
+.lab-codes{font-size:12px;color:var(--sub);flex:1;flex-wrap:wrap;display:flex;gap:5px}
+.lab-code-chip{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 7px;font-size:11.5px;color:var(--sub)}
+.lab-status{margin-left:auto;flex-shrink:0}
+.lab-back{font-size:12px;color:#059669;font-weight:600;display:flex;align-items:center;gap:4px}
+.lab-back svg{flex-shrink:0}
+.lab-pending{font-size:12px;color:#D97706;font-weight:600;display:flex;align-items:center;gap:4px}
+.lab-dismiss{margin-left:8px;font-size:11px;color:var(--muted);border:1.5px solid var(--border);border-radius:100px;padding:3px 9px;cursor:pointer;background:transparent;flex-shrink:0}
+.lab-dismiss:hover{color:var(--text);border-color:var(--sub)}
+.scroll-area{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
+.allergy-chip{background:#FFE4E6;color:#9F1239;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar"></aside>
+  <div class="main">
+    <div id="topbar"></div>
+    <div class="ct">
+
+      <div class="err-bar" id="error-bar" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="error-msg"></span>
+      </div>
+
+      <div class="ph">
+        <div><h1>檢驗追蹤</h1><p id="page-date">外送抽血結果追蹤（近5日）</p></div>
+      </div>
+
+      <div class="scroll-area" id="lab-list">
+        <div style="text-align:center;padding:30px;color:var(--muted)">載入中…</div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- dismiss modal -->
+<div class="modal-overlay" id="modal-dismiss">
+  <div class="modal-box">
+    <div class="modal-title">移除追蹤記錄</div>
+    <div class="modal-sub" id="modal-dismiss-sub">確認要從今日追蹤清單移除此筆記錄？</div>
+    <div class="modal-field">
+      <label class="modal-label">原因（選填）</label>
+      <textarea class="modal-input" id="modal-dismiss-reason" rows="2" placeholder="例：改至大醫院抽血"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-dismiss')">取消</button>
+      <button class="act-btn act-danger" id="btn-dismiss-confirm">確認移除</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/_layout.js?v=9"></script>
+<script>
+(function () {
+  'use strict';
+  var L = Layout;
+  var _dismissTarget = null;
+
+  function load() {
+    L.hideError();
+    fetch('/api/blood-pending').then(function (r) {
+      if (!r.ok) throw new Error(r.status);
+      return r.json();
+    }).then(function (days) {
+      L.updateLastUpdated();
+      var container = document.getElementById('lab-list');
+      if (!days.length) {
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">近期無外送抽血記錄</div>';
+        document.getElementById('page-date').textContent = '近5日無外送抽血';
+        return;
+      }
+      var pending = 0;
+      days.forEach(function (d) {
+        (d.patients || []).forEach(function (p) { if (!p.results_back) pending++; });
+      });
+      document.getElementById('page-date').textContent = '待確認結果：' + pending + ' 件';
+
+      container.innerHTML = days.map(function (day) {
+        var pts = (day.patients || []);
+        if (!pts.length) return '';
+        return '<div class="lab-group">' +
+          '<div class="lab-ghead">' +
+            '<span class="lab-gdate">抽血日：' + L.escHtml(day.date) + '</span>' +
+            '<span class="lab-gcount">' + pts.length + ' 人</span>' +
+          '</div>' +
+          pts.map(function (p) {
+            var codes = (p.draw_codes || '').split(',').map(function (c) { return c.trim(); }).filter(Boolean);
+            var codeHtml = codes.map(function (c) {
+              return '<span class="lab-code-chip">' + L.escHtml(c) + '</span>';
+            }).join('');
+            var allergyHtml = p.is_allergy ? '<span class="allergy-chip">過敏</span>' : '';
+            var statusHtml = p.results_back
+              ? '<div class="lab-back"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已出報告</div>'
+              : '<div class="lab-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>待出報告</div>';
+            return '<div class="lab-row">' +
+              '<span class="lab-name">' + L.escHtml(p.name) + '</span>' +
+              allergyHtml +
+              '<div class="lab-codes">' + codeHtml + '</div>' +
+              '<div class="lab-status">' + statusHtml + '</div>' +
+              (p.results_back ? '' :
+                '<button class="lab-dismiss" data-natid="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '" data-name="' + L.escHtml(p.name) + '">移除</button>') +
+            '</div>';
+          }).join('') +
+        '</div>';
+      }).join('');
+    }).catch(function (e) {
+      L.showError('檢驗資料載入失敗 — ' + (e.message || ''));
+    });
+  }
+
+  document.getElementById('lab-list').addEventListener('click', function (ev) {
+    var btn = ev.target.closest('.lab-dismiss');
+    if (!btn) return;
+    _dismissTarget = { nat_id: btn.dataset.natid, draw_date: btn.dataset.date, name: btn.dataset.name };
+    document.getElementById('modal-dismiss-sub').textContent =
+      '移除 ' + _dismissTarget.name + '（' + _dismissTarget.draw_date + '）的追蹤記錄？';
+    document.getElementById('modal-dismiss-reason').value = '';
+    L.showModal('modal-dismiss');
+  });
+
+  document.getElementById('btn-dismiss-confirm').addEventListener('click', function () {
+    if (!_dismissTarget) return;
+    var reason = document.getElementById('modal-dismiss-reason').value.trim();
+    L.hideModal('modal-dismiss');
+    L.apiAction('POST', '/api/blood-dismiss', {
+      nat_id: _dismissTarget.nat_id,
+      draw_date: _dismissTarget.draw_date,
+      name: _dismissTarget.name,
+      reason: reason || '手動移除',
+    }).then(function () { L.showToast('已移除追蹤記錄'); load(); })
+      .catch(function (e) { L.showToast('移除失敗：' + (e.message || ''), 'error'); });
+  });
+
+  Layout.init({ activePage: 'lab', onRefresh: load });
+  load();
+})();
+</script>
+</body>
+</html>
