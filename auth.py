@@ -198,6 +198,23 @@ def update_password(user_id: int, clinic_id: int, new_password: str) -> None:
         )
 
 
+def change_own_password(user_id: int, clinic_id: int, old_password: str, new_password: str) -> None:
+    if len(new_password) < 6:
+        raise ValueError("新密碼至少需要 6 個字元")
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT password_hash FROM users WHERE id = ? AND clinic_id = ? AND is_active = 1",
+            (user_id, clinic_id)
+        ).fetchone()
+        if not row or not verify_password(old_password, row["password_hash"]):
+            raise ValueError("目前密碼不正確")
+        pw_hash = hash_password(new_password)
+        conn.execute(
+            "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ? AND clinic_id = ?",
+            (pw_hash, user_id, clinic_id)
+        )
+
+
 def update_username(user_id: int, clinic_id: int, new_username: str) -> None:
     with _conn() as conn:
         existing = conn.execute(

@@ -1,9 +1,7 @@
 import asyncio
-import bcrypt
 import logging
 import os
 import re as _re
-import secrets
 import threading
 from datetime import date, timedelta
 
@@ -12,7 +10,6 @@ import tempfile
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
 
 import auth
@@ -24,7 +21,7 @@ import directory
 import lab_report
 import lab_results
 from models import (
-    BloodDismissRequest, BulletinNoteRequest, ChartNumberRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
+    BloodDismissRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
     CreateUserRequest, DailyReport,
     ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
     ManualOnHoldRequest, ManualPickupRequest,
@@ -42,22 +39,6 @@ CLINIC_NAME = "魏宏杰診所"
 NURSE_NAMES: list[str] = ["媛淩", "巧潔", "巧菱", "惠茗"]
 # ───────────────────────────────────────────────────────────────────────────────
 
-# ── Admin stats page credentials ───────────────────────────────────────────────
-# To change the password, run in terminal:
-#   python -c "import bcrypt; print(bcrypt.hashpw(b'your-new-password', bcrypt.gensalt(12)).decode())"
-# Then replace ADMIN_PASS_HASH with the output.
-ADMIN_USER      = "admin"
-ADMIN_PASS_HASH = "$2b$12$JQwlcR/tKi0HTm6Hh9dW1OQCBWxZsuEDzgqonaMzBBCPammy/3kX."
-# ───────────────────────────────────────────────────────────────────────────────
-
-_security = HTTPBasic()
-
-def _require_admin(credentials: HTTPBasicCredentials = Depends(_security)) -> None:
-    username_ok = secrets.compare_digest(credentials.username.encode(), ADMIN_USER.encode())
-    password_ok = username_ok and bcrypt.checkpw(credentials.password.encode(), ADMIN_PASS_HASH.encode())
-    if not password_ok:
-        raise HTTPException(status_code=401, detail="認證失敗",
-                            headers={"WWW-Authenticate": "Basic"})
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -160,6 +141,28 @@ def logout(request: Request) -> JSONResponse:
     response = JSONResponse({"ok": True})
     response.delete_cookie(_REFRESH_COOKIE)
     return response
+
+
+@app.patch("/api/auth/change-password")
+def change_password(body: ChangePasswordRequest,
+                    user: auth.CurrentUser = Depends(auth.get_current_user)):
+    if len(body.new_password) < 6:
+        raise HTTPException(status_code=400, detail="新密碼至少需要 6 個字元")
+    try:
+        auth.change_own_password(user.user_id, user.clinic_id, body.old_password, body.new_password)
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=str(e))
+    return {"ok": True}
+
+
+@app.get("/change-password")
+def change_password_page() -> Response:
+    try:
+        content = open("static/change-password.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=503, detail="無法載入頁面")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
 
 
 @app.get("/nurse-mgmt")

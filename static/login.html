@@ -255,7 +255,11 @@ input[type="password"]:focus {
         localStorage.setItem('clinic_token', res.d.access_token);
         var nx = new URLSearchParams(location.search).get('next') || '/';
         if (!nx.startsWith('/') || nx.startsWith('//')) nx = '/';
-        location.href = nx;
+        if (res.d.must_change_password) {
+          location.href = '/change-password?next=' + encodeURIComponent(nx);
+        } else {
+          location.href = nx;
+        }
       })
       .catch(function (e) {
         setError(e.message);
