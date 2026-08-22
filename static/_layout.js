@@ -7,6 +7,12 @@
   var _theme = localStorage.getItem('theme') || '';
   if (_theme) document.documentElement.setAttribute('data-theme', _theme);
 
+  // Auth guard — redirect to login if no token
+  var _token = localStorage.getItem('clinic_token');
+  if (!_token && location.pathname !== '/login') {
+    location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
+  }
+
   // ── SVG icon library ────────────────────────────────
   var ICONS = {
     home:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>',
@@ -74,8 +80,24 @@
     return localDateStr(d);
   }
 
+  function _authHeaders(extra) {
+    var t = localStorage.getItem('clinic_token');
+    var h = Object.assign({}, extra || {});
+    if (t) h['Authorization'] = 'Bearer ' + t;
+    return h;
+  }
+
+  function _handle401(r, url) {
+    if (r.status === 401) {
+      localStorage.removeItem('clinic_token');
+      location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
+    }
+    return r;
+  }
+
   function apiFetch(url) {
-    return fetch(url).then(function (r) {
+    return fetch(url, { headers: _authHeaders() }).then(function (r) {
+      _handle401(r, url);
       if (!r.ok) throw new Error(r.status);
       return r.json();
     });
@@ -85,9 +107,10 @@
   function apiAction(method, url, body) {
     return fetch(url, {
       method: method,
-      headers: body ? { 'Content-Type': 'application/json' } : {},
+      headers: _authHeaders(body ? { 'Content-Type': 'application/json' } : {}),
       body:    body ? JSON.stringify(body) : undefined,
     }).then(function (r) {
+      _handle401(r, url);
       if (!r.ok) return r.json().then(function (e) {
         throw new Error(e.detail || ('HTTP ' + r.status));
       });
@@ -515,8 +538,7 @@
   }
 
   function loadShiftSidebar() {
-    fetch('/api/schedule?week_start=' + getMondayStr())
-      .then(function (r) { return r.ok ? r.json() : { published: false, shifts: [] }; })
+    apiFetch('/api/schedule?week_start=' + getMondayStr())
       .then(function (data) { _scheduleData = data; _renderNurseShift(); })
       .catch(function () { _scheduleData = null; _renderNurseShift(); });
   }

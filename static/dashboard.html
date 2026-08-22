@@ -195,7 +195,7 @@
   </div><!-- end main -->
 </div><!-- end app -->
 
-<script src="/static/_layout.js?v=24"></script>
+<script src="/static/_layout.js?v=25"></script>
 <script>
 (function () {
   'use strict';
@@ -363,7 +363,7 @@
     var today = D();
     Promise.all([
       L.apiFetch('/api/report?report_date='+today),
-      fetch('/api/blood-pending').then(function(r){return r.ok?r.json():[];}).catch(function(){return [];}),
+      L.apiFetch('/api/blood-pending').catch(function(){return [];}),
       fetchWeekHistory(),
     ]).then(function(res){
       var report=res[0], bloodData=res[1], week=res[2];

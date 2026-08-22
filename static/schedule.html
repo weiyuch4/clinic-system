@@ -63,7 +63,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=24"></script>
+<script src="/static/_layout.js?v=25"></script>
 <script>
 (function () {
   'use strict';
@@ -92,10 +92,7 @@
     L.hideError();
     setWeekLabel(_mondayStr);
     var dates = weekDates(_mondayStr);
-    fetch('/api/schedule?week_start=' + _mondayStr).then(function (r) {
-      if (!r.ok) throw new Error(r.status);
-      return r.json();
-    }).then(function (data) {
+    L.apiFetch('/api/schedule?week_start=' + _mondayStr).then(function (data) {
       L.updateLastUpdated();
       var area = document.getElementById('sched-area');
       if (!data.published) {

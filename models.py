@@ -277,3 +277,31 @@ class BloodDismissRequest(BaseModel):
     draw_date: str      # 'YYYY-MM-DD'
     name: str
     reason: str
+
+
+class LoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class LoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    display_name: str
+    role: str
+    must_change_password: bool = False
+
+
+class CreateUserRequest(BaseModel):
+    username: str
+    display_name: str
+    role: str = "nurse"
+    initial_password: str
+
+
+class ResetPasswordRequest(BaseModel):
+    new_password: str
+
+
+class RenameUserRequest(BaseModel):
+    new_username: str

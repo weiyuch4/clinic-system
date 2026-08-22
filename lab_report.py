@@ -26,7 +26,8 @@ _CREATE_LAB_REPORTS = """
         clinic_code  TEXT,
         stats_json   TEXT NOT NULL,
         file_path    TEXT NOT NULL,
-        uploaded_at  TEXT NOT NULL
+        uploaded_at  TEXT NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1
     )
 """
 
