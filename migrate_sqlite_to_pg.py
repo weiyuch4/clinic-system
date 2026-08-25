@@ -36,5 +36,18 @@ print("Migrating contacts.db...")
 migrate_file("contacts.db", pg)
 print("Migrating auth.db...")
 migrate_file("auth.db", pg)
+print("Resetting sequences...")
+serial_tables = [
+    'refresh_tokens', 'users', 'on_hold', 'nurses', 'bulletin_notes',
+    'salary_records', 'line_notification_log', 'clinic_contacts', 'lab_reports', 'clinics',
+]
+with pg.cursor() as cur:
+    for t in serial_tables:
+        cur.execute(f"SELECT MAX(id) FROM {t}")
+        row = cur.fetchone()
+        max_id = row[0] if row and row[0] is not None else 0
+        cur.execute(f"SELECT setval(pg_get_serial_sequence('{t}', 'id'), %s)", (max(max_id, 1),))
+        print(f"  {t}: sequence -> {max(max_id, 1)}")
+pg.commit()
 pg.close()
 print("Done.")
