@@ -11,7 +11,7 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 def migrate_file(sqlite_path: str, pg_conn) -> None:
     sq = sqlite3.connect(sqlite_path)
     sq.row_factory = sqlite3.Row
-    tables = sq.execute("SELECT name FROM sqlite_master WHERE type='table'").fetchall()
+    tables = sq.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").fetchall()
     for (tname,) in tables:
         rows = sq.execute(f"SELECT * FROM {tname}").fetchall()
         if not rows:
