@@ -4,13 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>慢性腎臟病 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=24">
+<link rel="stylesheet" href="/static/_layout.css?v=25">
 <style>
 .search-row{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .si{flex:1;border:1.5px solid var(--border);border-radius:9px;padding:8px 13px;font-size:13.5px;background:var(--bg);color:var(--text);outline:none;font-family:inherit}
 .si:focus{border-color:#b5d7f5}
 .sr-count{font-size:12.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0}
 .list-area{flex:1;overflow-y:auto}
+.modal-error{display:none;color:#991b1b;font-size:12.5px;margin-top:8px;background:#fef2f2;border-radius:6px;padding:7px 10px}
+.modal-error.show{display:block}
 </style>
 </head>
 <body>
@@ -67,6 +69,7 @@
       <label class="modal-label">備註（選填）</label>
       <textarea class="modal-input" id="modal-contact-note" rows="2" placeholder="例：預約下週回診"></textarea>
     </div>
+    <div class="modal-error" id="contact-error"></div>
     <div class="modal-footer">
       <button class="act-btn" onclick="Layout.hideModal('modal-contact')">取消</button>
       <button class="act-btn act-primary" id="btn-contact-confirm">確認送出</button>
@@ -82,6 +85,7 @@
       <label class="modal-label">備註</label>
       <textarea class="modal-input" id="modal-hold-note" rows="2" placeholder="例：已轉大醫院追蹤"></textarea>
     </div>
+    <div class="modal-error" id="hold-error"></div>
     <div class="modal-footer">
       <button class="act-btn" onclick="Layout.hideModal('modal-hold')">取消</button>
       <button class="act-btn act-warn" id="btn-hold-confirm">設定暫緩</button>
@@ -206,41 +210,55 @@
       document.getElementById('modal-contact-title').textContent = '聯絡 ' + entry.patient.name;
       document.getElementById('modal-contact-sub').textContent = '病歷號 #' + entry.patient.chart_number + ' · 逾期 ' + (entry.days_overdue||0) + ' 天';
       document.getElementById('modal-contact-note').value = '';
+      document.getElementById('contact-error').classList.remove('show');
       L.showModal('modal-contact');
     } else if (action === 'hold') {
       var entry2 = _pendingMap[_actionChart] || _inactiveMap[_actionChart]; if (!entry2) return;
       document.getElementById('modal-hold-sub').textContent = entry2.patient.name + ' #' + entry2.patient.chart_number;
       document.getElementById('modal-hold-note').value = '';
+      document.getElementById('hold-error').classList.remove('show');
       L.showModal('modal-hold');
     } else if (action === 'undo-contact') {
       var ce = _contactedMap[_actionChart]; if (!ce) return;
+      btn.disabled = true;
       L.apiAction('DELETE', '/api/contacted', { chart_number: ce.patient.chart_number, category: ce.category, due_date: ce.due_date })
         .then(function () { L.showToast('已撤銷聯絡記錄'); load(); })
-        .catch(function (e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); });
+        .catch(function (e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); })
+        .finally(function () { btn.disabled = false; });
     } else if (action === 'undo-hold') {
       var he = _holdMap[_actionChart]; if (!he) return;
+      btn.disabled = true;
       L.apiAction('DELETE', '/api/on-hold', { hold_id: he.hold_id })
         .then(function () { L.showToast('已解除暫緩'); load(); })
-        .catch(function (e) { L.showToast('解除失敗：' + (e.message||''), 'error'); });
+        .catch(function (e) { L.showToast('解除失敗：' + (e.message||''), 'error'); })
+        .finally(function () { btn.disabled = false; });
     }
   });
 
   document.getElementById('btn-contact-confirm').addEventListener('click', function () {
     var entry = _pendingMap[_actionChart] || _inactiveMap[_actionChart]; if (!entry) return;
     var url = document.getElementById('modal-contact-type').value === 'called' ? '/api/called' : '/api/contacted';
-    L.hideModal('modal-contact');
+    var confirmBtn = this;
+    var errEl = document.getElementById('contact-error');
+    errEl.classList.remove('show');
+    confirmBtn.disabled = true;
     L.apiAction('POST', url, { entry: entry, nurse: L.getNurse() })
-      .then(function () { L.showToast('聯絡記錄已儲存'); load(); })
-      .catch(function (e) { L.showToast('儲存失敗：' + (e.message||''), 'error'); });
+      .then(function () { L.hideModal('modal-contact'); L.showToast('聯絡記錄已儲存'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .finally(function () { confirmBtn.disabled = false; });
   });
 
   document.getElementById('btn-hold-confirm').addEventListener('click', function () {
     var entry = _pendingMap[_actionChart] || _inactiveMap[_actionChart]; if (!entry) return;
     var note = document.getElementById('modal-hold-note').value.trim() || '暫緩';
-    L.hideModal('modal-hold');
+    var confirmBtn = this;
+    var errEl = document.getElementById('hold-error');
+    errEl.classList.remove('show');
+    confirmBtn.disabled = true;
     L.apiAction('POST', '/api/on-hold', { entry: entry, note: note, nurse: L.getNurse() })
-      .then(function () { L.showToast('已設定暫緩'); load(); })
-      .catch(function (e) { L.showToast('設定失敗：' + (e.message||''), 'error'); });
+      .then(function () { L.hideModal('modal-hold'); L.showToast('已設定暫緩'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .finally(function () { confirmBtn.disabled = false; });
   });
 
   Layout.init({ activePage: 'ckd', onRefresh: load });

@@ -153,7 +153,8 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .filter-tab{padding:6px 13px;border-radius:7px;border:none;background:transparent;color:var(--sub);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .12s,color .12s;white-space:nowrap}
 .filter-tab:hover{color:var(--text)}
 .filter-tab.on{background:#b5d7f5;color:#111827;font-weight:600}
-.tc-count{font-size:10px;font-weight:700;background:var(--card);border-radius:10px;padding:1px 6px;color:var(--sub)}
+.tc-count{font-size:10px;font-weight:700;background:var(--border);border-radius:10px;padding:1px 6px;color:var(--muted)}
+.filter-tab.on .tc-count{background:rgba(255,255,255,.35);color:#111827}
 
 /* â”€â”€ patient card (list pages) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .p-list{display:flex;flex-direction:column;gap:6px}

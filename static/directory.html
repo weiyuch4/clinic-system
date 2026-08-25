@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>聯絡資訊 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=24">
+<link rel="stylesheet" href="/static/_layout.css?v=25">
 <style>
 .dir-toolbar{display:flex;align-items:center;gap:10px;flex-shrink:0}
 .di{flex:1;border:1.5px solid var(--border);border-radius:9px;padding:8px 13px;font-size:13.5px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;max-width:260px}
@@ -23,6 +23,8 @@
 .d-cat{font-size:11px;padding:2px 8px;border-radius:6px;background:var(--bg);border:1px solid var(--border);color:var(--sub)}
 .d-action{display:flex;gap:5px;justify-content:flex-end}
 .d-empty{text-align:center;padding:40px;color:var(--muted)}
+.modal-error{display:none;color:#991b1b;font-size:12.5px;margin-top:8px;background:#fef2f2;border-radius:6px;padding:7px 10px}
+.modal-error.show{display:block}
 </style>
 </head>
 <body>
@@ -41,7 +43,7 @@
         <div><h1>聯絡資訊</h1><p>診所外部聯絡人電話簿</p></div>
         <div class="phb">
           <button class="bp" id="btn-add">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             新增聯絡人
           </button>
         </div>
@@ -98,6 +100,7 @@
       <label class="modal-label">備註</label>
       <textarea class="modal-input" id="modal-note" rows="2" placeholder="說明或備注…"></textarea>
     </div>
+    <div class="modal-error" id="dir-error"></div>
     <div class="modal-footer">
       <button class="act-btn" onclick="Layout.hideModal('modal-contact')">取消</button>
       <button class="act-btn act-primary" id="btn-save">儲存</button>
@@ -193,6 +196,7 @@
       document.getElementById('modal-category').value = rec.category || '';
       document.getElementById('modal-phone').value    = rec.phone || '';
       document.getElementById('modal-note').value     = rec.note || '';
+      document.getElementById('dir-error').classList.remove('show');
       L.showModal('modal-contact');
     } else if (delBtn) {
       var id2 = parseInt(delBtn.dataset.del);
@@ -212,13 +216,19 @@
     document.getElementById('modal-category').value = '';
     document.getElementById('modal-phone').value = '';
     document.getElementById('modal-note').value = '';
+    document.getElementById('dir-error').classList.remove('show');
     L.showModal('modal-contact');
   });
 
   // save
   document.getElementById('btn-save').addEventListener('click', function () {
     var name = document.getElementById('modal-name').value.trim();
-    if (!name) { L.showToast('姓名不可空白', 'error'); return; }
+    if (!name) {
+      var errEl = document.getElementById('dir-error');
+      errEl.textContent = '姓名不可空白';
+      errEl.classList.add('show');
+      return;
+    }
     var id = document.getElementById('modal-contact-id').value;
     var body = {
       name: name,

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>排班表 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=24">
+<link rel="stylesheet" href="/static/_layout.css?v=25">
 <style>
 .week-nav{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .week-label{font-size:14px;font-weight:600;color:var(--text);flex:1;text-align:center}
@@ -20,12 +20,12 @@
 .sg-day{text-align:center;display:flex;flex-direction:column;align-items:center;gap:2px}
 .sg-date{font-size:11px;color:var(--muted);margin-bottom:4px}
 .sg-name{font-size:13px;color:var(--text);font-weight:500}
-.sg-today .sg-date{color:#4B5563;font-weight:700}
-.sg-today-dot{width:5px;height:5px;border-radius:50%;background:#4B5563;display:inline-block;margin-bottom:2px}
+.sg-today .sg-date{color:var(--sub);font-weight:700}
+.sg-today-dot{width:5px;height:5px;border-radius:50%;background:var(--sub);display:inline-block;margin-bottom:2px}
 .sg-today{background:var(--g0) !important}
 .sg-empty{color:var(--border);font-size:11px}
 .unpub-banner{background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r);padding:30px;text-align:center;color:var(--muted);font-size:13px}
-.last-row .sg-cell{border-bottom:none}
+.sg-cell.last-row{border-bottom:none}
 </style>
 </head>
 <body>
@@ -85,7 +85,14 @@
 
   function setWeekLabel(mon) {
     var sun = L.addDays(mon, 6);
-    document.getElementById('week-label').textContent = mon.slice(0, 7).replace('-', '/') + ' 週（' + mon.slice(5) + ' – ' + sun.slice(5) + '）';
+    var monYear = mon.slice(0, 4), sunYear = sun.slice(0, 4);
+    var range;
+    if (monYear !== sunYear) {
+      range = monYear + '/' + mon.slice(5) + ' – ' + sunYear + '/' + sun.slice(5);
+    } else {
+      range = mon.slice(5) + ' – ' + sun.slice(5);
+    }
+    document.getElementById('week-label').textContent = monYear + '/' + mon.slice(5, 7) + ' 週（' + range + '）';
   }
 
   function load() {

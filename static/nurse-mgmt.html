@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>帳號管理 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=24">
+<link rel="stylesheet" href="/static/_layout.css?v=25">
 <style>
 .nm-toolbar{display:flex;align-items:center;gap:10px}
 .nm-table-wrap{overflow-x:auto;flex:1}
@@ -97,7 +97,7 @@
         </div>
         <div class="form-field">
           <label>初始密碼</label>
-          <input type="text" id="f-pass" placeholder="至少 6 個字元" autocomplete="new-password">
+          <input type="password" id="f-pass" placeholder="至少 6 個字元" autocomplete="new-password">
           <span class="form-note">護理師首次登入時須更改密碼</span>
         </div>
       </div>
@@ -134,7 +134,7 @@
     <div class="modal-sub" id="reset-sub"></div>
     <div style="margin-top:12px" class="form-field">
       <label>新密碼</label>
-      <input type="text" id="f-new-pass" placeholder="至少 6 個字元" autocomplete="new-password">
+      <input type="password" id="f-new-pass" placeholder="至少 6 個字元" autocomplete="new-password">
       <span class="form-note">護理師下次登入後可自行更改</span>
     </div>
     <div class="modal-error" id="reset-error"></div>
@@ -216,11 +216,11 @@
         : '<span class="nm-status active">使用中</span>';
       var actions = '';
       if (!inactive) {
-        actions += '<button class="act-btn" onclick="openRename(' + u.id + ',\'' + L.escHtml(u.display_name) + '\',\'' + L.escHtml(u.username) + '\')">改帳號</button>';
-        actions += '<button class="act-btn act-warn" onclick="openReset(' + u.id + ',\'' + L.escHtml(u.display_name) + '\')">重設密碼</button>';
-        actions += '<button class="act-btn act-danger" onclick="openDeact(' + u.id + ',\'' + L.escHtml(u.display_name) + '\')">停用</button>';
+        actions += '<button class="act-btn nm-rename" data-id="' + u.id + '" data-name="' + L.escHtml(u.display_name) + '" data-username="' + L.escHtml(u.username) + '">改帳號</button>';
+        actions += '<button class="act-btn act-warn nm-reset" data-id="' + u.id + '" data-name="' + L.escHtml(u.display_name) + '">重設密碼</button>';
+        actions += '<button class="act-btn act-danger nm-deact" data-id="' + u.id + '" data-name="' + L.escHtml(u.display_name) + '">停用</button>';
       } else {
-        actions += '<button class="act-btn" onclick="doReactivate(' + u.id + ')">重新啟用</button>';
+        actions += '<button class="act-btn nm-react" data-id="' + u.id + '">重新啟用</button>';
       }
       return '<tr' + trCls + '>'
         + '<td class="nm-name">' + L.escHtml(u.display_name) + '</td>'
@@ -264,15 +264,27 @@
       });
   });
 
+  document.getElementById('nm-body').addEventListener('click', function (e) {
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    var id = parseInt(btn.dataset.id);
+    var name = btn.dataset.name || '';
+    var username = btn.dataset.username || '';
+    if (btn.classList.contains('nm-rename')) openRename(id, name, username);
+    else if (btn.classList.contains('nm-reset')) openReset(id, name);
+    else if (btn.classList.contains('nm-deact')) openDeact(id, name);
+    else if (btn.classList.contains('nm-react')) doReactivate(id);
+  });
+
   // ── Rename username ─────────────────────────────────────────────────────────
-  window.openRename = function (id, name, currentUsername) {
+  function openRename(id, name, currentUsername) {
     _selectedId = id;
     document.getElementById('rename-sub').textContent = '為「' + name + '」修改登入帳號（目前：' + currentUsername + '）';
     document.getElementById('f-new-username').value = currentUsername;
     document.getElementById('rename-error').classList.remove('show');
     L.showModal('modal-rename');
     setTimeout(function () { document.getElementById('f-new-username').focus(); }, 80);
-  };
+  }
 
   document.getElementById('btn-rename-confirm').addEventListener('click', function () {
     var username = document.getElementById('f-new-username').value.trim();
@@ -286,14 +298,14 @@
   });
 
   // ── Reset password ──────────────────────────────────────────────────────────
-  window.openReset = function (id, name) {
+  function openReset(id, name) {
     _selectedId = id;
     document.getElementById('reset-sub').textContent = '為「' + name + '」設定新密碼';
     document.getElementById('f-new-pass').value = '';
     document.getElementById('reset-error').classList.remove('show');
     L.showModal('modal-reset');
     setTimeout(function () { document.getElementById('f-new-pass').focus(); }, 80);
-  };
+  }
 
   document.getElementById('btn-reset-confirm').addEventListener('click', function () {
     var pass  = document.getElementById('f-new-pass').value;
@@ -307,24 +319,24 @@
   });
 
   // ── Deactivate ──────────────────────────────────────────────────────────────
-  window.openDeact = function (id, name) {
+  function openDeact(id, name) {
     _selectedId = id;
     document.getElementById('deact-sub').textContent = '停用後「' + name + '」將無法登入，可隨時重新啟用。';
     L.showModal('modal-deact');
-  };
+  }
 
   document.getElementById('btn-deact-confirm').addEventListener('click', function () {
     L.apiAction('DELETE', '/api/admin/users/' + _selectedId)
       .then(function () { L.hideModal('modal-deact'); loadUsers(); })
-      .catch(function (e) { alert(e.message || '操作失敗'); });
+      .catch(function (e) { L.showToast(e.message || '操作失敗', 'error'); });
   });
 
   // ── Reactivate ──────────────────────────────────────────────────────────────
-  window.doReactivate = function (id) {
+  function doReactivate(id) {
     L.apiAction('POST', '/api/admin/users/' + id + '/reactivate')
       .then(function () { loadUsers(); })
-      .catch(function (e) { alert(e.message || '操作失敗'); });
-  };
+      .catch(function (e) { L.showToast(e.message || '操作失敗', 'error'); });
+  }
 })();
 </script>
 </body>
