@@ -17,6 +17,7 @@ import backup
 import config
 import contacts
 import database
+import db
 import directory
 import lab_report
 import lab_results
@@ -48,6 +49,11 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+try:
+    db.init_pool()
+except RuntimeError as e:
+    logger.warning(f"PostgreSQL pool not initialized: {e}. Set DATABASE_URL to enable database access.")
 
 auth.init()
 contacts.init()

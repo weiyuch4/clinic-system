@@ -38,3 +38,6 @@ hep_patient_cache.json
 # Temp files
 tmp_*.txt
 *.tmp
+
+# Environment variables (contains DB credentials)
+.env

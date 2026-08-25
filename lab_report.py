@@ -6,20 +6,18 @@ import json
 import os
 import re
 import shutil
-import sqlite3
 from collections import Counter, defaultdict
-from contextlib import contextmanager
 from datetime import datetime
-from typing import Generator
 
 import openpyxl
 
-DB_PATH      = "contacts.db"
+from db import _conn
+
 REPORTS_DIR  = "lab_reports"
 
 _CREATE_LAB_REPORTS = """
     CREATE TABLE IF NOT EXISTS lab_reports (
-        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        id           SERIAL PRIMARY KEY,
         filename     TEXT NOT NULL,
         period       TEXT NOT NULL,
         clinic_name  TEXT,
@@ -27,28 +25,16 @@ _CREATE_LAB_REPORTS = """
         stats_json   TEXT NOT NULL,
         file_path    TEXT NOT NULL,
         uploaded_at  TEXT NOT NULL,
-        clinic_id       INTEGER NOT NULL DEFAULT 1
+        clinic_id    INTEGER NOT NULL DEFAULT 1
     )
 """
-
-
-@contextmanager
-def _conn() -> Generator[sqlite3.Connection, None, None]:
-    conn = sqlite3.connect(DB_PATH)
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
 
 
 def init() -> None:
     os.makedirs(REPORTS_DIR, exist_ok=True)
     with _conn() as conn:
-        conn.execute(_CREATE_LAB_REPORTS)
+        with conn.cursor() as cur:
+            cur.execute(_CREATE_LAB_REPORTS)
 
 
 # ── Parsing ───────────────────────────────────────────────────────────────────
@@ -163,56 +149,66 @@ def save_report(tmp_path: str, original_filename: str) -> int:
     shutil.copy2(tmp_path, dest)
 
     with _conn() as conn:
-        cur = conn.execute(
-            """INSERT INTO lab_reports
-               (filename, period, clinic_name, clinic_code, stats_json, file_path, uploaded_at)
-               VALUES (?,?,?,?,?,?,?)""",
-            (
-                original_filename,
-                period,
-                stated.get('院所名稱'),
-                stated.get('院所代號'),
-                json.dumps(stats, ensure_ascii=False),
-                dest,
-                datetime.now().isoformat(timespec='seconds'),
-            ),
-        )
-        return cur.lastrowid
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO lab_reports
+                   (filename, period, clinic_name, clinic_code, stats_json, file_path, uploaded_at)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s)
+                   RETURNING id""",
+                (
+                    original_filename,
+                    period,
+                    stated.get('院所名稱'),
+                    stated.get('院所代號'),
+                    json.dumps(stats, ensure_ascii=False),
+                    dest,
+                    datetime.now().isoformat(timespec='seconds'),
+                ),
+            )
+            return cur.fetchone()["id"]
 
 
 def list_reports() -> list[dict]:
     with _conn() as conn:
-        rows = conn.execute(
-            "SELECT id, filename, period, clinic_name, uploaded_at FROM lab_reports ORDER BY id DESC"
-        ).fetchall()
-    return [{'id': r[0], 'filename': r[1], 'period': r[2],
-             'clinic_name': r[3], 'uploaded_at': r[4]} for r in rows]
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, filename, period, clinic_name, uploaded_at FROM lab_reports ORDER BY id DESC"
+            )
+            return [
+                {'id': r["id"], 'filename': r["filename"], 'period': r["period"],
+                 'clinic_name': r["clinic_name"], 'uploaded_at': r["uploaded_at"]}
+                for r in cur.fetchall()
+            ]
 
 
 def get_report(report_id: int) -> dict | None:
     with _conn() as conn:
-        row = conn.execute(
-            "SELECT id, filename, period, clinic_name, uploaded_at, stats_json FROM lab_reports WHERE id=?",
-            (report_id,),
-        ).fetchone()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, filename, period, clinic_name, uploaded_at, stats_json FROM lab_reports WHERE id=%s",
+                (report_id,),
+            )
+            row = cur.fetchone()
     if not row:
         return None
     return {
-        'id': row[0], 'filename': row[1], 'period': row[2],
-        'clinic_name': row[3], 'uploaded_at': row[4],
-        **json.loads(row[5]),
+        'id': row["id"], 'filename': row["filename"], 'period': row["period"],
+        'clinic_name': row["clinic_name"], 'uploaded_at': row["uploaded_at"],
+        **json.loads(row["stats_json"]),
     }
 
 
 def delete_report(report_id: int) -> bool:
     with _conn() as conn:
-        row = conn.execute("SELECT file_path FROM lab_reports WHERE id=?", (report_id,)).fetchone()
-        if not row:
-            return False
-        conn.execute("DELETE FROM lab_reports WHERE id=?", (report_id,))
+        with conn.cursor() as cur:
+            cur.execute("SELECT file_path FROM lab_reports WHERE id=%s", (report_id,))
+            row = cur.fetchone()
+            if not row:
+                return False
+            cur.execute("DELETE FROM lab_reports WHERE id=%s", (report_id,))
+            file_path = row["file_path"]
     try:
-        os.remove(row[0])
+        os.remove(file_path)
     except OSError:
         pass
     return True
-

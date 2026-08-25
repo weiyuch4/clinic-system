@@ -1,7 +1,7 @@
 """
 Authentication module — JWT + bcrypt, single-tenant now, multi-tenant ready.
 
-Tables live in auth.db (separate from contacts.db for clean separation).
+Tables managed in PostgreSQL (shared pool from db.py).
 All tokens are validated before any patient data is returned.
 
 JWT flow:
@@ -12,15 +12,15 @@ JWT flow:
 
 import os
 import secrets
-import sqlite3
-from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
-from typing import Generator, Optional
+from typing import Optional
 
 import bcrypt
 from fastapi import Cookie, Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
+
+from db import _conn
 
 # ── Secret key ─────────────────────────────────────────────────────────────────
 # Generated once on first run and saved to auth_secret.key (gitignored).
@@ -44,20 +44,19 @@ ACCESS_TOKEN_MINUTES  = int(os.environ.get("AUTH_ACCESS_TOKEN_MINUTES", "480")) 
 REFRESH_TOKEN_DAYS    = int(os.environ.get("AUTH_REFRESH_TOKEN_DAYS", "30"))  # 30d = monthly re-login
 
 # ── Database ────────────────────────────────────────────────────────────────────
-AUTH_DB_PATH = "auth.db"
 
 _CREATE_CLINICS = """
     CREATE TABLE IF NOT EXISTS clinics (
-        id         INTEGER PRIMARY KEY,
+        id         SERIAL PRIMARY KEY,
         slug       TEXT    NOT NULL UNIQUE,
         name       TEXT    NOT NULL,
-        created_at TEXT    NOT NULL DEFAULT (datetime('now'))
+        created_at TEXT    NOT NULL DEFAULT NOW()::text
     )
 """
 
 _CREATE_USERS = """
     CREATE TABLE IF NOT EXISTS users (
-        id                   INTEGER PRIMARY KEY,
+        id                   SERIAL PRIMARY KEY,
         clinic_id            INTEGER NOT NULL REFERENCES clinics(id),
         username             TEXT    NOT NULL,
         display_name         TEXT    NOT NULL,
@@ -65,7 +64,7 @@ _CREATE_USERS = """
         password_hash        TEXT    NOT NULL,
         is_active            INTEGER NOT NULL DEFAULT 1,
         must_change_password INTEGER NOT NULL DEFAULT 0,
-        created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+        created_at           TEXT    NOT NULL DEFAULT NOW()::text,
         created_by           INTEGER REFERENCES users(id),
         UNIQUE (clinic_id, username)
     )
@@ -73,45 +72,33 @@ _CREATE_USERS = """
 
 _CREATE_REFRESH_TOKENS = """
     CREATE TABLE IF NOT EXISTS refresh_tokens (
-        id           INTEGER PRIMARY KEY,
+        id           SERIAL PRIMARY KEY,
         user_id      INTEGER NOT NULL REFERENCES users(id),
         token_hash   TEXT    NOT NULL UNIQUE,
         expires_at   TEXT    NOT NULL,
-        created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+        created_at   TEXT    NOT NULL DEFAULT NOW()::text,
         last_used_at TEXT
     )
 """
 
 
-@contextmanager
-def _conn() -> Generator[sqlite3.Connection, None, None]:
-    conn = sqlite3.connect(AUTH_DB_PATH)
-    conn.row_factory = sqlite3.Row
-    try:
-        yield conn
-        conn.commit()
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-
-
 def init() -> None:
     with _conn() as conn:
-        conn.execute(_CREATE_CLINICS)
-        conn.execute(_CREATE_USERS)
-        conn.execute(_CREATE_REFRESH_TOKENS)
+        with conn.cursor() as cur:
+            cur.execute(_CREATE_CLINICS)
+            cur.execute(_CREATE_USERS)
+            cur.execute(_CREATE_REFRESH_TOKENS)
 
 
 # ── Bootstrap ───────────────────────────────────────────────────────────────────
 
 def has_any_users(clinic_id: int = 1) -> bool:
     with _conn() as conn:
-        row = conn.execute(
-            "SELECT COUNT(*) FROM users WHERE clinic_id = ?", (clinic_id,)
-        ).fetchone()
-        return row[0] > 0
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT COUNT(*) AS cnt FROM users WHERE clinic_id = %s", (clinic_id,)
+            )
+            return cur.fetchone()["cnt"] > 0
 
 
 def bootstrap_clinic(clinic_slug: str, clinic_name: str,
@@ -119,25 +106,28 @@ def bootstrap_clinic(clinic_slug: str, clinic_name: str,
                      nurse_names: list[str], nurse_password: str) -> None:
     """Create clinic_id=1, admin account, and nurse accounts on first run."""
     with _conn() as conn:
-        conn.execute(
-            "INSERT OR IGNORE INTO clinics (id, slug, name) VALUES (1, ?, ?)",
-            (clinic_slug, clinic_name)
-        )
-        admin_hash = hash_password(admin_password)
-        conn.execute(
-            """INSERT OR IGNORE INTO users
-               (clinic_id, username, display_name, role, password_hash, must_change_password)
-               VALUES (1, ?, ?, 'admin', ?, 0)""",
-            (admin_username, admin_username, admin_hash)
-        )
-        nurse_hash = hash_password(nurse_password)
-        for name in nurse_names:
-            conn.execute(
-                """INSERT OR IGNORE INTO users
-                   (clinic_id, username, display_name, role, password_hash, must_change_password)
-                   VALUES (1, ?, ?, 'nurse', ?, 1)""",
-                (name, name, nurse_hash)
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO clinics (id, slug, name) VALUES (1, %s, %s) ON CONFLICT DO NOTHING",
+                (clinic_slug, clinic_name)
             )
+            admin_hash = hash_password(admin_password)
+            cur.execute(
+                """INSERT INTO users
+                   (clinic_id, username, display_name, role, password_hash, must_change_password)
+                   VALUES (1, %s, %s, 'admin', %s, 0)
+                   ON CONFLICT DO NOTHING""",
+                (admin_username, admin_username, admin_hash)
+            )
+            nurse_hash = hash_password(nurse_password)
+            for name in nurse_names:
+                cur.execute(
+                    """INSERT INTO users
+                       (clinic_id, username, display_name, role, password_hash, must_change_password)
+                       VALUES (1, %s, %s, 'nurse', %s, 1)
+                       ON CONFLICT DO NOTHING""",
+                    (name, name, nurse_hash)
+                )
 
 
 # ── Password helpers ────────────────────────────────────────────────────────────
@@ -152,109 +142,127 @@ def verify_password(plain: str, hashed: str) -> bool:
 
 # ── User lookup ─────────────────────────────────────────────────────────────────
 
-def get_user_by_username(clinic_id: int, username: str) -> Optional[sqlite3.Row]:
+def get_user_by_username(clinic_id: int, username: str) -> Optional[dict]:
     with _conn() as conn:
-        return conn.execute(
-            "SELECT * FROM users WHERE clinic_id = ? AND username = ? AND is_active = 1",
-            (clinic_id, username)
-        ).fetchone()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM users WHERE clinic_id = %s AND username = %s AND is_active = 1",
+                (clinic_id, username)
+            )
+            row = cur.fetchone()
+    return dict(row) if row is not None else None
 
 
-def get_user_by_id(user_id: int) -> Optional[sqlite3.Row]:
+def get_user_by_id(user_id: int) -> Optional[dict]:
     with _conn() as conn:
-        return conn.execute(
-            "SELECT * FROM users WHERE id = ? AND is_active = 1", (user_id,)
-        ).fetchone()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT * FROM users WHERE id = %s AND is_active = 1", (user_id,)
+            )
+            row = cur.fetchone()
+    return dict(row) if row is not None else None
 
 
 def list_users(clinic_id: int) -> list:
     with _conn() as conn:
-        return conn.execute(
-            """SELECT id, username, display_name, role, is_active, must_change_password, created_at
-               FROM users WHERE clinic_id = ? ORDER BY role DESC, display_name""",
-            (clinic_id,)
-        ).fetchall()
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT id, username, display_name, role, is_active, must_change_password, created_at
+                   FROM users WHERE clinic_id = %s ORDER BY role DESC, display_name""",
+                (clinic_id,)
+            )
+            return [dict(r) for r in cur.fetchall()]
 
 
 def create_user(clinic_id: int, username: str, display_name: str,
                 role: str, password: str, created_by: int) -> int:
     pw_hash = hash_password(password)
     with _conn() as conn:
-        cursor = conn.execute(
-            """INSERT INTO users
-               (clinic_id, username, display_name, role, password_hash, must_change_password, created_by)
-               VALUES (?, ?, ?, ?, ?, 1, ?)""",
-            (clinic_id, username, display_name, role, pw_hash, created_by)
-        )
-        return cursor.lastrowid
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO users
+                   (clinic_id, username, display_name, role, password_hash, must_change_password, created_by)
+                   VALUES (%s, %s, %s, %s, %s, 1, %s)
+                   RETURNING id""",
+                (clinic_id, username, display_name, role, pw_hash, created_by)
+            )
+            return cur.fetchone()["id"]
 
 
 def update_password(user_id: int, clinic_id: int, new_password: str) -> None:
     pw_hash = hash_password(new_password)
     with _conn() as conn:
-        conn.execute(
-            "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ? AND clinic_id = ?",
-            (pw_hash, user_id, clinic_id)
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET password_hash = %s, must_change_password = 0 WHERE id = %s AND clinic_id = %s",
+                (pw_hash, user_id, clinic_id)
+            )
 
 
 def change_own_password(user_id: int, clinic_id: int, old_password: str, new_password: str) -> None:
     if len(new_password) < 6:
         raise ValueError("新密碼至少需要 6 個字元")
     with _conn() as conn:
-        row = conn.execute(
-            "SELECT password_hash FROM users WHERE id = ? AND clinic_id = ? AND is_active = 1",
-            (user_id, clinic_id)
-        ).fetchone()
-        if not row or not verify_password(old_password, row["password_hash"]):
-            raise ValueError("目前密碼不正確")
-        pw_hash = hash_password(new_password)
-        conn.execute(
-            "UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ? AND clinic_id = ?",
-            (pw_hash, user_id, clinic_id)
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT password_hash FROM users WHERE id = %s AND clinic_id = %s AND is_active = 1",
+                (user_id, clinic_id)
+            )
+            row = cur.fetchone()
+            if not row or not verify_password(old_password, row["password_hash"]):
+                raise ValueError("目前密碼不正確")
+            pw_hash = hash_password(new_password)
+            cur.execute(
+                "UPDATE users SET password_hash = %s, must_change_password = 0 WHERE id = %s AND clinic_id = %s",
+                (pw_hash, user_id, clinic_id)
+            )
 
 
 def update_username(user_id: int, clinic_id: int, new_username: str) -> None:
     with _conn() as conn:
-        existing = conn.execute(
-            "SELECT id FROM users WHERE username = ? AND clinic_id = ? AND id != ?",
-            (new_username, clinic_id, user_id)
-        ).fetchone()
-        if existing:
-            raise ValueError("帳號名稱已被使用")
-        conn.execute(
-            "UPDATE users SET username = ? WHERE id = ? AND clinic_id = ?",
-            (new_username, user_id, clinic_id)
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id FROM users WHERE username = %s AND clinic_id = %s AND id != %s",
+                (new_username, clinic_id, user_id)
+            )
+            if cur.fetchone():
+                raise ValueError("帳號名稱已被使用")
+            cur.execute(
+                "UPDATE users SET username = %s WHERE id = %s AND clinic_id = %s",
+                (new_username, user_id, clinic_id)
+            )
 
 
 def deactivate_user(user_id: int, clinic_id: int) -> None:
     with _conn() as conn:
-        conn.execute(
-            "UPDATE users SET is_active = 0 WHERE id = ? AND clinic_id = ?",
-            (user_id, clinic_id)
-        )
-        conn.execute(
-            "DELETE FROM refresh_tokens WHERE user_id = ?", (user_id,)
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET is_active = 0 WHERE id = %s AND clinic_id = %s",
+                (user_id, clinic_id)
+            )
+            cur.execute(
+                "DELETE FROM refresh_tokens WHERE user_id = %s", (user_id,)
+            )
 
 
 def reactivate_user(user_id: int, clinic_id: int) -> None:
     with _conn() as conn:
-        conn.execute(
-            "UPDATE users SET is_active = 1 WHERE id = ? AND clinic_id = ?",
-            (user_id, clinic_id)
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE users SET is_active = 1 WHERE id = %s AND clinic_id = %s",
+                (user_id, clinic_id)
+            )
 
 
 def get_all_users_including_inactive(clinic_id: int) -> list:
     with _conn() as conn:
-        return conn.execute(
-            """SELECT id, username, display_name, role, is_active, must_change_password, created_at
-               FROM users WHERE clinic_id = ? ORDER BY role DESC, display_name""",
-            (clinic_id,)
-        ).fetchall()
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT id, username, display_name, role, is_active, must_change_password, created_at
+                   FROM users WHERE clinic_id = %s ORDER BY role DESC, display_name""",
+                (clinic_id,)
+            )
+            return [dict(r) for r in cur.fetchall()]
 
 
 # ── JWT tokens ──────────────────────────────────────────────────────────────────
@@ -283,10 +291,11 @@ def create_refresh_token(user_id: int) -> str:
     token_hash = _hash_refresh_token(raw)
     expires_at = (datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_DAYS)).isoformat()
     with _conn() as conn:
-        conn.execute(
-            "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
-            (user_id, token_hash, expires_at)
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (%s, %s, %s)",
+                (user_id, token_hash, expires_at)
+            )
     return raw
 
 
@@ -294,34 +303,38 @@ def rotate_refresh_token(old_raw: str) -> tuple[str, int]:
     """Validate old token, delete it, issue a new one. Returns (new_raw, user_id)."""
     old_hash = _hash_refresh_token(old_raw)
     with _conn() as conn:
-        row = conn.execute(
-            "SELECT id, user_id, expires_at FROM refresh_tokens WHERE token_hash = ?",
-            (old_hash,)
-        ).fetchone()
-        if not row:
-            raise HTTPException(status_code=401, detail="Session 已過期，請重新登入")
-        expires_at = datetime.fromisoformat(row["expires_at"])
-        if expires_at < datetime.now(timezone.utc):
-            conn.execute("DELETE FROM refresh_tokens WHERE id = ?", (row["id"],))
-            raise HTTPException(status_code=401, detail="Session 已過期，請重新登入")
-        conn.execute("DELETE FROM refresh_tokens WHERE id = ?", (row["id"],))
-        user_id = row["user_id"]
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, user_id, expires_at FROM refresh_tokens WHERE token_hash = %s",
+                (old_hash,)
+            )
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=401, detail="Session 已過期，請重新登入")
+            expires_at = datetime.fromisoformat(row["expires_at"])
+            if expires_at < datetime.now(timezone.utc):
+                cur.execute("DELETE FROM refresh_tokens WHERE id = %s", (row["id"],))
+                raise HTTPException(status_code=401, detail="Session 已過期，請重新登入")
+            cur.execute("DELETE FROM refresh_tokens WHERE id = %s", (row["id"],))
+            user_id = row["user_id"]
 
     new_raw = secrets.token_hex(32)
     new_hash = _hash_refresh_token(new_raw)
     new_expires = (datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_DAYS)).isoformat()
     with _conn() as conn:
-        conn.execute(
-            "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (?, ?, ?)",
-            (user_id, new_hash, new_expires)
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (%s, %s, %s)",
+                (user_id, new_hash, new_expires)
+            )
     return new_raw, user_id
 
 
 def delete_refresh_token(raw: str) -> None:
     token_hash = _hash_refresh_token(raw)
     with _conn() as conn:
-        conn.execute("DELETE FROM refresh_tokens WHERE token_hash = ?", (token_hash,))
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM refresh_tokens WHERE token_hash = %s", (token_hash,))
 
 
 def _hash_refresh_token(raw: str) -> str:
@@ -330,10 +343,12 @@ def _hash_refresh_token(raw: str) -> str:
 
 
 def purge_expired_refresh_tokens() -> None:
+    now_str = datetime.now(timezone.utc).isoformat()
     with _conn() as conn:
-        conn.execute(
-            "DELETE FROM refresh_tokens WHERE expires_at < datetime('now')"
-        )
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM refresh_tokens WHERE expires_at < %s", (now_str,)
+            )
 
 
 # ── FastAPI dependencies ────────────────────────────────────────────────────────
