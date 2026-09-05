@@ -7,8 +7,11 @@ from datetime import date, timedelta
 
 import tempfile
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile, File
+from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -17,6 +20,7 @@ import backup
 import config
 import contacts
 import database
+import db
 import directory
 import lab_report
 import lab_results
@@ -48,6 +52,11 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+try:
+    db.init_pool()
+except RuntimeError as e:
+    logger.warning(f"PostgreSQL pool not initialized: {e}. Set DATABASE_URL to enable database access.")
 
 auth.init()
 contacts.init()
@@ -305,6 +314,18 @@ def patient_search(q: str = "") -> list[dict]:
 @app.get("/api/nurses")
 def get_nurses() -> list[str]:
     return contacts.get_nurses()
+
+
+@app.get("/api/history")
+def get_history(q: str = Query(..., min_length=1)):
+    if not q.strip():
+        raise HTTPException(status_code=422, detail="請輸入搜尋字詞")
+    try:
+        events = contacts.get_contact_history(q.strip())
+        return {"events": events}
+    except Exception:
+        logger.exception("get_history failed")
+        raise HTTPException(status_code=500, detail="查詢失敗，請稍後再試")
 
 
 @app.get("/api/bulletin")
