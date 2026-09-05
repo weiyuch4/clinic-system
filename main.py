@@ -55,7 +55,7 @@ app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 try:
-    db.init_pool(minconn=2, maxconn=30)
+    db.init_pool(minconn=22, maxconn=30)
 except RuntimeError as e:
     logger.warning(f"PostgreSQL pool not initialized: {e}. Set DATABASE_URL to enable database access.")
 
