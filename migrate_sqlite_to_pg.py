@@ -5,7 +5,7 @@ Reads DATABASE_URL from environment or .env file automatically.
 """
 import os, sqlite3
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 import psycopg2
 import psycopg2.extras
 

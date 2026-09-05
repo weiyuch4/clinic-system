@@ -9,7 +9,7 @@ from datetime import date, timedelta
 import tempfile
 
 from dotenv import load_dotenv
-load_dotenv()
+load_dotenv(override=True)
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile, File
