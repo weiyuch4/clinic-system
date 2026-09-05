@@ -220,7 +220,16 @@
         clearBtn.addEventListener('click', function () {
           _setNurse('');
           renderOpts();
+          _updateChangePinBtn();
           closeDd();
+        });
+      }
+
+      var changePinBtn = document.getElementById('nurse-change-pin');
+      if (changePinBtn) {
+        changePinBtn.addEventListener('click', function () {
+          closeDd();
+          _openChangePinModal(_nurse);
         });
       }
     }).catch(function () {
@@ -247,6 +256,11 @@
   }
 
   // ── Nurse identity helpers ───────────────────────────
+  function _updateChangePinBtn() {
+    var btn = document.getElementById('nurse-change-pin');
+    if (btn) btn.style.display = _nurse ? '' : 'none';
+  }
+
   function _setNurse(name) {
     _nurse = name;
     if (name) { localStorage.setItem('nurse', name); }
@@ -254,6 +268,51 @@
     _updateAvatar(name);
     _updateNurseLbl(name);
     _renderNurseShift();
+    _updateChangePinBtn();
+  }
+
+  function _openChangePinModal(name) {
+    var modal = document.getElementById('change-pin-modal');
+    var lbl   = document.getElementById('change-pin-name');
+    var inp1  = document.getElementById('change-pin-old');
+    var inp2  = document.getElementById('change-pin-new');
+    var err   = document.getElementById('change-pin-err');
+    if (!modal) return;
+    if (lbl)  lbl.textContent = name + '：更改 PIN';
+    if (inp1) inp1.value = '';
+    if (inp2) inp2.value = '';
+    if (err)  { err.textContent = ''; err.style.display = 'none'; }
+    modal.style.display = 'flex';
+    setTimeout(function () { if (inp1) inp1.focus(); }, 50);
+  }
+
+  function _closeChangePinModal() {
+    var modal = document.getElementById('change-pin-modal');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function _submitChangePinModal() {
+    var inp1 = document.getElementById('change-pin-old');
+    var inp2 = document.getElementById('change-pin-new');
+    var err  = document.getElementById('change-pin-err');
+    var btn  = document.getElementById('change-pin-submit');
+    var oldPin = inp1 ? inp1.value.trim() : '';
+    var newPin = inp2 ? inp2.value.trim() : '';
+    if (!oldPin || !newPin) return;
+    if (!/^\d{4}$/.test(newPin)) {
+      if (err) { err.textContent = '新 PIN 必須是 4 位數字'; err.style.display = ''; }
+      return;
+    }
+    if (btn) btn.disabled = true;
+    apiAction('POST', '/api/auth/nurse-pin/change', { name: _nurse, old_pin: oldPin, new_pin: newPin })
+      .then(function () {
+        _closeChangePinModal();
+        showToast('PIN 已更新');
+      })
+      .catch(function (e) {
+        if (err) { err.textContent = e.message || '更改失敗'; err.style.display = ''; }
+      })
+      .finally(function () { if (btn) btn.disabled = false; });
   }
 
   function _openPinModal(name, onSuccess) {
@@ -348,6 +407,7 @@
             '<div class="nurse-dd-hd">值班護理師</div>' +
             '<div class="nurse-opts" id="nurse-opts"></div>' +
             '<div class="nurse-dd-sep"></div>' +
+            '<button class="nurse-change-pin" id="nurse-change-pin" type="button" style="display:none">更改我的 PIN</button>' +
             '<button class="nurse-clear" id="nurse-clear" type="button">清除選擇</button>' +
           '</div>' +
         '</div>' +
@@ -689,6 +749,36 @@
       if (e.key === 'Enter') _submitPin();
       if (e.key === 'Escape') _closePinModal();
     });
+
+    // Change-PIN modal (self-service)
+    if (!document.getElementById('change-pin-modal')) {
+      var div2 = document.createElement('div');
+      div2.innerHTML =
+        '<div id="change-pin-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center">' +
+          '<div style="background:var(--card);border-radius:var(--r);padding:28px 28px 22px;min-width:290px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px">' +
+            '<div style="font-size:15px;font-weight:700;color:var(--text)" id="change-pin-name">更改 PIN</div>' +
+            '<input id="change-pin-old" type="password" inputmode="numeric" maxlength="4" placeholder="目前 PIN" autocomplete="off" ' +
+              'style="border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:20px;letter-spacing:6px;text-align:center;width:100%;background:var(--bg);color:var(--text);box-sizing:border-box">' +
+            '<input id="change-pin-new" type="password" inputmode="numeric" maxlength="4" placeholder="新 PIN（4 位數字）" autocomplete="off" ' +
+              'style="border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:20px;letter-spacing:6px;text-align:center;width:100%;background:var(--bg);color:var(--text);box-sizing:border-box">' +
+            '<div id="change-pin-err" style="display:none;color:#dc2626;font-size:12px;text-align:center"></div>' +
+            '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+              '<button onclick="Layout._closeChangePinModal()" style="padding:7px 16px;border-radius:var(--r);border:1.5px solid var(--border);background:transparent;cursor:pointer;color:var(--sub);font-size:13px">取消</button>' +
+              '<button id="change-pin-submit" onclick="Layout._submitChangePinModal()" style="padding:7px 18px;border-radius:var(--r);border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600">更改 PIN</button>' +
+            '</div>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(div2.firstChild);
+      document.getElementById('change-pin-old').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') document.getElementById('change-pin-new').focus();
+        if (e.key === 'Escape') _closeChangePinModal();
+      });
+      document.getElementById('change-pin-new').addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') _submitChangePinModal();
+        if (e.key === 'Escape') _closeChangePinModal();
+      });
+    }
+    _updateChangePinBtn();
   }
 
   // ── Public init ──────────────────────────────────────
@@ -732,8 +822,10 @@
     catChip:           catChip,
     dayBadge:          dayBadge,
     getNurse:          getNurse,
-    _closePinModal:    _closePinModal,
-    _submitPin:        _submitPin,
+    _closePinModal:        _closePinModal,
+    _submitPin:            _submitPin,
+    _closeChangePinModal:  _closeChangePinModal,
+    _submitChangePinModal: _submitChangePinModal,
     escHtml:           escHtml,
     localDateStr:      localDateStr,
     getMondayStr:      getMondayStr,

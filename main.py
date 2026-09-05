@@ -517,6 +517,33 @@ def verify_nurse_pin(body: dict, _: auth.CurrentUser = Depends(auth.get_current_
     return {"ok": True, "name": name}
 
 
+@app.post("/api/auth/nurse-pin/change")
+def change_nurse_pin(body: dict, _: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    name    = str(body.get("name",    "")).strip()
+    old_pin = str(body.get("old_pin", "")).strip()
+    new_pin = str(body.get("new_pin", "")).strip()
+    if not name or not old_pin or not new_pin:
+        raise HTTPException(status_code=422, detail="請填寫所有欄位")
+
+    now = _time.time()
+    recent = [t for t in _pin_failures.get(name, []) if now - t < _PIN_LOCKOUT_SECONDS]
+    _pin_failures[name] = recent
+    if len(recent) >= _PIN_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="嘗試次數過多，請 5 分鐘後再試")
+
+    if not contacts.verify_nurse_pin(name, old_pin):
+        _pin_failures.setdefault(name, []).append(now)
+        raise HTTPException(status_code=401, detail="目前 PIN 不正確")
+
+    try:
+        contacts.set_nurse_pin(name, new_pin)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+
+    _pin_failures.pop(name, None)
+    return {"ok": True}
+
+
 @app.get("/admin")
 def admin_page() -> Response:
     try:
