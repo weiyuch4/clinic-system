@@ -300,6 +300,7 @@ def init() -> None:
                 cur.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS nurse TEXT DEFAULT ''")
             for col in ("clean_start TEXT", "clean_end TEXT"):
                 cur.execute(f"ALTER TABLE shifts ADD COLUMN IF NOT EXISTS {col}")
+            cur.execute("ALTER TABLE nurses ADD COLUMN IF NOT EXISTS pin_hash TEXT")
             # Multi-tenant migration: add clinic_id to all tables (idempotent)
             _all_tables = [
                 "alleypin_not_found", "bulletin_notes", "clinic_contacts", "contacts",
@@ -1399,6 +1400,42 @@ def get_nurses() -> list[str]:
         with conn.cursor() as cur:
             cur.execute("SELECT name FROM nurses ORDER BY sort_order, id")
             return [r["name"] for r in cur.fetchall()]
+
+
+def get_nurses_with_pin_status() -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT name, (pin_hash IS NOT NULL) AS has_pin FROM nurses ORDER BY sort_order, id"
+            )
+            return [{"name": r["name"], "has_pin": bool(r["has_pin"])} for r in cur.fetchall()]
+
+
+def set_nurse_pin(name: str, pin: str) -> None:
+    import bcrypt
+    if not pin.isdigit() or len(pin) != 4:
+        raise ValueError("PIN 必須是 4 位數字")
+    pin_hash = bcrypt.hashpw(pin.encode(), bcrypt.gensalt(10)).decode()
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE nurses SET pin_hash = %s WHERE name = %s", (pin_hash, name))
+
+
+def clear_nurse_pin(name: str) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE nurses SET pin_hash = NULL WHERE name = %s", (name,))
+
+
+def verify_nurse_pin(name: str, pin: str) -> bool:
+    import bcrypt
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT pin_hash FROM nurses WHERE name = %s", (name,))
+            row = cur.fetchone()
+    if not row or not row["pin_hash"]:
+        return False
+    return bcrypt.checkpw(pin.encode(), row["pin_hash"].encode())
 
 
 def add_nurse(name: str) -> bool:

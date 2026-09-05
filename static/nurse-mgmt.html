@@ -68,6 +68,17 @@
         </table>
       </div>
 
+      <!-- PIN management section -->
+      <div class="ph" style="margin-top:12px">
+        <div><h1 style="font-size:18px">護理師 PIN 設定</h1><p>每位護理師需設定 4 位數 PIN，切換身份時使用</p></div>
+      </div>
+      <div class="nm-table-wrap">
+        <table class="nmtable" id="pin-table">
+          <thead><tr><th>護理師</th><th>PIN 狀態</th><th></th></tr></thead>
+          <tbody id="pin-body"><tr><td colspan="3" class="nm-empty">載入中…</td></tr></tbody>
+        </table>
+      </div>
+
     </div>
   </div>
 </div>
@@ -141,6 +152,26 @@
     <div class="modal-footer">
       <button class="act-btn" onclick="Layout.hideModal('modal-reset')">取消</button>
       <button class="act-btn act-primary" id="btn-reset-confirm">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- set PIN modal -->
+<div class="modal-overlay" id="modal-set-pin">
+  <div class="modal-box" style="max-width:340px">
+    <div class="modal-title">設定 PIN</div>
+    <div class="modal-sub" id="set-pin-sub"></div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
+      <div class="form-field">
+        <label>新 PIN（4 位數字）</label>
+        <input type="password" inputmode="numeric" maxlength="4" id="set-pin-val" placeholder="例：1234" autocomplete="off"
+          style="letter-spacing:6px;text-align:center;font-size:20px">
+      </div>
+      <div class="modal-error" id="set-pin-err"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-set-pin')">取消</button>
+      <button class="act-btn act-primary" id="btn-set-pin-confirm">儲存 PIN</button>
     </div>
   </div>
 </div>
@@ -337,6 +368,77 @@
       .then(function () { loadUsers(); })
       .catch(function (e) { L.showToast(e.message || '操作失敗', 'error'); });
   }
+
+  // ── PIN management ──────────────────────────────────────────────────────────
+  var _pinTargetName = '';
+
+  function loadPins() {
+    L.apiFetch('/api/nurses/with-pin-status').then(function (nurses) {
+      var tbody = document.getElementById('pin-body');
+      if (!nurses.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="nm-empty">尚無護理師記錄</td></tr>';
+        return;
+      }
+      tbody.innerHTML = nurses.map(function (n) {
+        var hasPin = n.has_pin;
+        var status = hasPin
+          ? '<span class="nm-status active">已設定</span>'
+          : '<span class="nm-status inactive">未設定</span>';
+        var actions = '<button class="act-btn nm-set-pin" data-name="' + L.escHtml(n.name) + '">' + (hasPin ? '重設 PIN' : '設定 PIN') + '</button>';
+        if (hasPin) actions += '<button class="act-btn act-danger nm-clear-pin" data-name="' + L.escHtml(n.name) + '">清除 PIN</button>';
+        return '<tr><td class="nm-name">' + L.escHtml(n.name) + '</td><td>' + status + '</td><td><div class="nm-actions">' + actions + '</div></td></tr>';
+      }).join('');
+
+      document.querySelectorAll('.nm-set-pin').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          _pinTargetName = btn.dataset.name;
+          document.getElementById('set-pin-sub').textContent = '為 ' + _pinTargetName + ' 設定新的 PIN';
+          document.getElementById('set-pin-val').value = '';
+          document.getElementById('set-pin-err').classList.remove('show');
+          L.showModal('modal-set-pin');
+          setTimeout(function () { document.getElementById('set-pin-val').focus(); }, 80);
+        });
+      });
+
+      document.querySelectorAll('.nm-clear-pin').forEach(function (btn) {
+        btn.addEventListener('click', function () {
+          var name = btn.dataset.name;
+          L.apiAction('DELETE', '/api/admin/nurses/' + encodeURIComponent(name) + '/pin')
+            .then(function () { L.showToast(name + ' 的 PIN 已清除'); loadPins(); })
+            .catch(function (e) { L.showToast(e.message || '清除失敗', 'error'); });
+        });
+      });
+    }).catch(function (e) {
+      document.getElementById('pin-body').innerHTML = '<tr><td colspan="3" class="nm-empty">載入失敗</td></tr>';
+    });
+  }
+
+  document.getElementById('btn-set-pin-confirm').addEventListener('click', function () {
+    var pin = document.getElementById('set-pin-val').value.trim();
+    var errEl = document.getElementById('set-pin-err');
+    errEl.classList.remove('show');
+    if (!/^\d{4}$/.test(pin)) {
+      errEl.textContent = 'PIN 必須是 4 位數字';
+      errEl.classList.add('show');
+      return;
+    }
+    L.apiAction('PUT', '/api/admin/nurses/' + encodeURIComponent(_pinTargetName) + '/pin', { pin: pin })
+      .then(function () {
+        L.hideModal('modal-set-pin');
+        L.showToast(_pinTargetName + ' 的 PIN 已設定');
+        loadPins();
+      })
+      .catch(function (e) {
+        errEl.textContent = e.message || '設定失敗';
+        errEl.classList.add('show');
+      });
+  });
+
+  document.getElementById('set-pin-val').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') document.getElementById('btn-set-pin-confirm').click();
+  });
+
+  if (role === 'admin') loadPins();
 })();
 </script>
 </body>

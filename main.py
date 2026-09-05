@@ -334,6 +334,11 @@ def get_nurses() -> list[str]:
     return contacts.get_nurses()
 
 
+@app.get("/api/nurses/with-pin-status")
+def get_nurses_with_pin_status(_: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    return contacts.get_nurses_with_pin_status()
+
+
 @app.get("/api/history")
 def get_history(q: str = Query(..., min_length=1)):
     if not q.strip():
@@ -460,6 +465,56 @@ def remove_nurse(name: str, _: auth.CurrentUser = Depends(auth.require_admin)) -
     except Exception:
         logger.exception("remove_nurse failed for name=%s", name)
         raise HTTPException(status_code=500, detail="移除失敗")
+
+
+@app.put("/api/admin/nurses/{name}/pin")
+def set_nurse_pin(name: str, body: dict, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+    pin = str(body.get("pin", "")).strip()
+    try:
+        contacts.set_nurse_pin(name, pin)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception:
+        logger.exception("set_nurse_pin failed for name=%s", name)
+        raise HTTPException(status_code=500, detail="設定失敗")
+
+
+@app.delete("/api/admin/nurses/{name}/pin")
+def clear_nurse_pin(name: str, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+    try:
+        contacts.clear_nurse_pin(name)
+    except Exception:
+        logger.exception("clear_nurse_pin failed for name=%s", name)
+        raise HTTPException(status_code=500, detail="清除失敗")
+
+
+# ── Nurse PIN rate limiting (in-memory, per nurse name) ─────────────────────
+import time as _time
+_pin_failures: dict[str, list[float]] = {}
+_PIN_MAX_ATTEMPTS = 5
+_PIN_LOCKOUT_SECONDS = 300  # 5 minutes
+
+
+@app.post("/api/auth/nurse-pin")
+def verify_nurse_pin(body: dict, _: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    name = str(body.get("name", "")).strip()
+    pin  = str(body.get("pin",  "")).strip()
+    if not name or not pin:
+        raise HTTPException(status_code=422, detail="請輸入護理師名稱與 PIN")
+
+    now = _time.time()
+    recent = [t for t in _pin_failures.get(name, []) if now - t < _PIN_LOCKOUT_SECONDS]
+    _pin_failures[name] = recent
+    if len(recent) >= _PIN_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="嘗試次數過多，請 5 分鐘後再試")
+
+    if not contacts.verify_nurse_pin(name, pin):
+        _pin_failures.setdefault(name, []).append(now)
+        remaining = _PIN_MAX_ATTEMPTS - len(_pin_failures[name])
+        raise HTTPException(status_code=401, detail=f"PIN 不正確（還有 {remaining} 次機會）")
+
+    _pin_failures.pop(name, None)
+    return {"ok": True, "name": name}
 
 
 @app.get("/admin")

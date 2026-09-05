@@ -52,6 +52,7 @@
   var _activePage   = 'dashboard';
   var _onRefresh    = null;
   var _nurse        = localStorage.getItem('nurse') || '';
+  var _pinTarget    = '';   // nurse name waiting for PIN entry
   var _scheduleData = null;
   // _theme declared at top of IIFE for early application
 
@@ -180,28 +181,34 @@
       if (e.key === 'Escape') closeDd();
     });
 
-    apiFetch('/api/nurses').then(function (nurses) {
+    apiFetch('/api/nurses/with-pin-status').then(function (nurses) {
       var optsEl = document.getElementById('nurse-opts');
       if (!optsEl) return;
 
       function renderOpts() {
+        var LOCK = '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>';
         optsEl.innerHTML = nurses.map(function (n) {
-          var sel = n === _nurse;
-          return '<button class="nurse-opt' + (sel ? ' sel' : '') + '" data-nurse="' + escHtml(n) + '" type="button">' +
-            '<div class="nurse-opt-av">' + escHtml(n.slice(-1)) + '</div>' +
-            '<span class="nurse-opt-name">' + escHtml(n) + '</span>' +
+          var sel = n.name === _nurse;
+          return '<button class="nurse-opt' + (sel ? ' sel' : '') + '" data-nurse="' + escHtml(n.name) + '" data-has-pin="' + (n.has_pin ? '1' : '0') + '" type="button">' +
+            '<div class="nurse-opt-av">' + escHtml(n.name.slice(-1)) + '</div>' +
+            '<span class="nurse-opt-name">' + escHtml(n.name) + '</span>' +
+            (n.has_pin ? '<span class="nurse-pin-icon">' + LOCK + '</span>' : '') +
             CHECK_SVG +
           '</button>';
         }).join('');
         optsEl.querySelectorAll('.nurse-opt').forEach(function (el) {
           el.addEventListener('click', function () {
-            _nurse = el.dataset.nurse;
-            localStorage.setItem('nurse', _nurse);
-            _updateAvatar(_nurse);
-            _updateNurseLbl(_nurse);
-            _renderNurseShift();
-            renderOpts();
+            var name   = el.dataset.nurse;
+            var hasPin = el.dataset.hasPin === '1';
             closeDd();
+            if (name === _nurse) return;  // already this nurse, no action needed
+            if (!hasPin) {
+              // No PIN set — allow free selection with a one-time notice
+              _setNurse(name);
+              showToast('提示：' + name + ' 尚未設定 PIN，請管理員前往護理師管理設定');
+              return;
+            }
+            _openPinModal(name, renderOpts);
           });
         });
       }
@@ -211,16 +218,83 @@
       var clearBtn = document.getElementById('nurse-clear');
       if (clearBtn) {
         clearBtn.addEventListener('click', function () {
-          _nurse = '';
-          localStorage.removeItem('nurse');
-          _updateAvatar('');
-          _updateNurseLbl('');
-          _renderNurseShift();
+          _setNurse('');
           renderOpts();
           closeDd();
         });
       }
-    }).catch(function () {});
+    }).catch(function () {
+      // Fallback: use plain name list (unauthenticated or old server)
+      apiFetch('/api/nurses').then(function (names) {
+        var optsEl = document.getElementById('nurse-opts');
+        if (!optsEl) return;
+        optsEl.innerHTML = names.map(function (n) {
+          var sel = n === _nurse;
+          return '<button class="nurse-opt' + (sel ? ' sel' : '') + '" data-nurse="' + escHtml(n) + '" data-has-pin="0" type="button">' +
+            '<div class="nurse-opt-av">' + escHtml(n.slice(-1)) + '</div>' +
+            '<span class="nurse-opt-name">' + escHtml(n) + '</span>' +
+            CHECK_SVG +
+          '</button>';
+        }).join('');
+        optsEl.querySelectorAll('.nurse-opt').forEach(function (el) {
+          el.addEventListener('click', function () {
+            if (el.dataset.nurse !== _nurse) _setNurse(el.dataset.nurse);
+            closeDd();
+          });
+        });
+      }).catch(function () {});
+    });
+  }
+
+  // ── Nurse identity helpers ───────────────────────────
+  function _setNurse(name) {
+    _nurse = name;
+    if (name) { localStorage.setItem('nurse', name); }
+    else       { localStorage.removeItem('nurse'); }
+    _updateAvatar(name);
+    _updateNurseLbl(name);
+    _renderNurseShift();
+  }
+
+  function _openPinModal(name, onSuccess) {
+    _pinTarget = name;
+    var modal = document.getElementById('pin-modal');
+    var lbl   = document.getElementById('pin-modal-name');
+    var inp   = document.getElementById('pin-modal-input');
+    var err   = document.getElementById('pin-modal-err');
+    if (!modal) return;
+    if (lbl) lbl.textContent = name + ' 的 PIN';
+    if (inp) { inp.value = ''; }
+    if (err) { err.textContent = ''; err.style.display = 'none'; }
+    modal.style.display = 'flex';
+    setTimeout(function () { if (inp) inp.focus(); }, 50);
+  }
+
+  function _closePinModal() {
+    var modal = document.getElementById('pin-modal');
+    if (modal) modal.style.display = 'none';
+    _pinTarget = '';
+  }
+
+  function _submitPin() {
+    var name = _pinTarget;
+    var inp  = document.getElementById('pin-modal-input');
+    var err  = document.getElementById('pin-modal-err');
+    var btn  = document.getElementById('pin-modal-submit');
+    var pin  = inp ? inp.value.trim() : '';
+    if (!pin || !name) return;
+    if (btn) btn.disabled = true;
+    apiAction('POST', '/api/auth/nurse-pin', { name: name, pin: pin })
+      .then(function () {
+        _closePinModal();
+        _setNurse(name);
+        showToast(name + ' 已登入');
+      })
+      .catch(function (e) {
+        if (err) { err.textContent = e.message || 'PIN 不正確'; err.style.display = ''; }
+        if (inp) { inp.value = ''; inp.focus(); }
+      })
+      .finally(function () { if (btn) btn.disabled = false; });
   }
 
   // ── Sidebar ──────────────────────────────────────────
@@ -593,12 +667,37 @@
     var ic = th.querySelector('.sort-icon'); if (ic) ic.textContent = dir === 'asc' ? '↑' : '↓';
   }
 
+  // ── PIN modal (injected into body) ───────────────────
+  function _injectPinModal() {
+    if (document.getElementById('pin-modal')) return;
+    var div = document.createElement('div');
+    div.innerHTML =
+      '<div id="pin-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center">' +
+        '<div style="background:var(--card);border-radius:var(--r);padding:28px 28px 22px;min-width:280px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px">' +
+          '<div style="font-size:15px;font-weight:700;color:var(--text)" id="pin-modal-name">PIN 驗證</div>' +
+          '<input id="pin-modal-input" type="password" inputmode="numeric" maxlength="4" placeholder="4 位數 PIN" autocomplete="off" ' +
+            'style="border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:20px;letter-spacing:6px;text-align:center;width:100%;background:var(--bg);color:var(--text);box-sizing:border-box">' +
+          '<div id="pin-modal-err" style="display:none;color:#dc2626;font-size:12px;text-align:center"></div>' +
+          '<div style="display:flex;gap:8px;justify-content:flex-end">' +
+            '<button onclick="Layout._closePinModal()" style="padding:7px 16px;border-radius:var(--r);border:1.5px solid var(--border);background:transparent;cursor:pointer;color:var(--sub);font-size:13px">取消</button>' +
+            '<button id="pin-modal-submit" onclick="Layout._submitPin()" style="padding:7px 18px;border-radius:var(--r);border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600">確認</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(div.firstChild);
+    document.getElementById('pin-modal-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') _submitPin();
+      if (e.key === 'Escape') _closePinModal();
+    });
+  }
+
   // ── Public init ──────────────────────────────────────
   function init(config) {
     _activePage = config.activePage || 'dashboard';
     _onRefresh  = config.onRefresh  || null;
     _renderSidebar();
     _renderTopbar();
+    _injectPinModal();
     _initNurseSelector();
     loadShiftSidebar();
     if (_onRefresh) {
@@ -633,6 +732,8 @@
     catChip:           catChip,
     dayBadge:          dayBadge,
     getNurse:          getNurse,
+    _closePinModal:    _closePinModal,
+    _submitPin:        _submitPin,
     escHtml:           escHtml,
     localDateStr:      localDateStr,
     getMondayStr:      getMondayStr,
