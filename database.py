@@ -59,25 +59,62 @@ MSPT_STAGE_NEXT: dict[str, str] = {
 # All MSPT stages use the same inter-stage gap.
 _MSPT_STAGE_GAP = METABOLIC_FOLLOWUP_DAYS
 
-# Window for treating an existing blood draw as still covering a 追2/追3 stage.
-MSPT_BLOOD_TEST_WINDOW_DAYS = METABOLIC_FOLLOWUP_DAYS
+# Blood test window: 90 days (3 months) — independent of the inter-stage gap.
+MSPT_BLOOD_TEST_WINDOW_DAYS = 90
+
+
+def mspt_blood_status(mspt_stage: str, nat_id: str, as_of: date) -> tuple[bool, str | None]:
+    """Returns (needs_blood_test, available_draw_date_iso).
+
+    needs_blood_test=True: patient must come back for blood draw before we can proceed.
+    available_draw_date_iso: ISO date of usable blood test for recording on NHI submission.
+
+    Logic across 追1/追2/追3: only ONE blood draw is needed across the three stages.
+    - 收案: always needs blood test.
+    - 追1: use available draw if present; can complete either way.
+    - 追2: if 追1 already recorded a draw, done; else use available draw if present; can complete either way.
+    - 追3: if 追1 or 追2 already recorded a draw, done; else check — if none available, patient must come back.
+    - 年度追蹤: always needs a fresh blood test (independent cycle).
+    """
+    import contacts as _contacts
+    used = _contacts.get_mspt_blood_used(nat_id)
+    used_dates = set(used.values())
+
+    def _avail() -> str | None:
+        return lab_results.get_most_recent_metabolic_panel_date(
+            nat_id, as_of, MSPT_BLOOD_TEST_WINDOW_DAYS, exclude_iso_dates=used_dates
+        )
+
+    if mspt_stage == '收案':
+        d = _avail()
+        return (d is None), d
+
+    if mspt_stage == '追1':
+        d = _avail()
+        return False, d
+
+    if mspt_stage == '追2':
+        if '追1' in used:
+            return False, None
+        d = _avail()
+        return False, d
+
+    if mspt_stage == '追3':
+        if '追1' in used or '追2' in used:
+            return False, None
+        d = _avail()
+        return (d is None), d
+
+    if mspt_stage == '年度追蹤':
+        d = _avail()
+        return (d is None), d
+
+    return False, None
 
 
 def mspt_needs_blood_test(mspt_stage: str, nat_id: str, as_of: date) -> bool:
-    """Whether this MSPT stage needs a fresh blood draw.
-
-    收案/年度追蹤 always do; 追1 never does; 追2/追3 only need one if no recent
-    (within MSPT_BLOOD_TEST_WINDOW_DAYS) metabolic-panel result already covers
-    it — a patient can have blood drawn at 追2 time and have it count for 追3,
-    or vice versa, so only one of the two actually needs a fresh draw.
-    """
-    if mspt_stage in ('收案', '年度追蹤'):
-        return True
-    if mspt_stage == '追1':
-        return False
-    if mspt_stage in ('追2', '追3'):
-        return not lab_results.has_recent_metabolic_panel(nat_id, as_of, MSPT_BLOOD_TEST_WINDOW_DAYS)
-    return False
+    """Backward-compat wrapper — returns only the needs_blood_test bool."""
+    return mspt_blood_status(mspt_stage, nat_id, as_of)[0]
 
 # ── DBF cache ─────────────────────────────────────────────────────────────────
 
@@ -710,19 +747,23 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
         # Case closed: missed by > 1 year → needs 收案 restart.
         # Route to inactive (長期未回診) if no clinic visit in the past 6 months.
         if days_overdue > REOPEN_AFTER_DAYS:
+            bt_needed, bt_date = mspt_blood_status('收案', nat_id, as_of)
             entry = entry.model_copy(update={
                 'mspt_stage': '收案',
-                'needs_blood_test': mspt_needs_blood_test('收案', nat_id, as_of),
-                'contact_reason': '需重新收案+抽血',
+                'needs_blood_test': bt_needed,
+                'blood_draw_date': bt_date,
+                'contact_reason': '需重新收案+抽血' if bt_needed else '需重新收案',
             })
             if (as_of - info['latest_date']).days > LONG_INACTIVE_DAYS:
                 inactive.append(entry)
             else:
                 results.append(entry)
         else:
+            bt_needed, bt_date = mspt_blood_status(next_stage, nat_id, as_of)
             results.append(entry.model_copy(update={
                 'mspt_stage': next_stage,
-                'needs_blood_test': mspt_needs_blood_test(next_stage, nat_id, as_of),
+                'needs_blood_test': bt_needed,
+                'blood_draw_date': bt_date,
             }))
 
     return (

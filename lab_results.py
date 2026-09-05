@@ -527,18 +527,36 @@ def has_recent_metabolic_panel(national_id: str, as_of: date, window_days: int =
     (MSPT_PANEL_LABELS) — used to decide whether a 追2/追3 MSPT stage still
     needs a fresh blood draw or already has one recent enough to use.
     """
+    return get_most_recent_metabolic_panel_date(national_id, as_of, window_days) is not None
+
+
+def get_most_recent_metabolic_panel_date(
+    national_id: str,
+    as_of: date,
+    window_days: int = 90,
+    exclude_iso_dates: set[str] | None = None,
+) -> str | None:
+    """Return ISO date string of the most recent qualifying BIO metabolic-panel
+    result within window_days before as_of, excluding dates in exclude_iso_dates.
+    Returns None if no qualifying result is found.
+    """
     try:
         patient_code = _find_patient_code(national_id.strip().upper())
         if not patient_code:
-            return False
+            return None
         cutoff = as_of - timedelta(days=window_days)
+        exclude = exclude_iso_dates or set()
+        best: date | None = None
         for dbf_name in ('bioc.dbf', 'BIO2C.DBF'):
             for record in _read_bio_records(patient_code, dbf_name):
                 row_date = _parse_slash_date(record['date'])
                 if not row_date or row_date < cutoff or row_date > as_of:
                     continue
+                if row_date.isoformat() in exclude:
+                    continue
                 if any(item['label'] in MSPT_PANEL_LABELS for item in record['items']):
-                    return True
-        return False
+                    if best is None or row_date > best:
+                        best = row_date
+        return best.isoformat() if best else None
     except Exception:
-        return False
+        return None

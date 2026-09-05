@@ -73,6 +73,17 @@ _CREATE_MANUAL_PICKUPS = """
     )
 """
 
+_CREATE_MSPT_BLOOD_USED = """
+    CREATE TABLE IF NOT EXISTS mspt_blood_used (
+        nat_id       TEXT NOT NULL,
+        stage        TEXT NOT NULL,
+        draw_date    TEXT NOT NULL,
+        recorded_at  TEXT NOT NULL,
+        clinic_id    INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (nat_id, stage)
+    )
+"""
+
 _CREATE_MSPT_COMPLETED = """
     CREATE TABLE IF NOT EXISTS mspt_completed (
         chart_number    TEXT NOT NULL,
@@ -276,6 +287,7 @@ def init() -> None:
             cur.execute(_CREATE_CONTACTS)
             cur.execute(_CREATE_SUBMITTED)
             cur.execute(_CREATE_EXCLUDED)
+            cur.execute(_CREATE_MSPT_BLOOD_USED)
             cur.execute(_CREATE_MSPT_COMPLETED)
             cur.execute(_CREATE_MSPT_CHECKEDIN)
             cur.execute(_CREATE_MSPT_MANUAL)
@@ -486,6 +498,38 @@ def unmark_submitted(chart_number: str, mspt_stage: str) -> None:
             cur.execute(
                 "DELETE FROM submitted WHERE chart_number=%s AND mspt_stage=%s",
                 (chart_number, mspt_stage),
+            )
+
+
+def get_mspt_blood_used(nat_id: str) -> dict[str, str]:
+    """Return {stage: draw_date_iso} for all blood draws recorded for this patient."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT stage, draw_date FROM mspt_blood_used WHERE nat_id = %s AND clinic_id = 1",
+                (nat_id,),
+            )
+            return {row["stage"]: row["draw_date"] for row in cur.fetchall()}
+
+
+def record_mspt_blood_used(nat_id: str, stage: str, draw_iso_date: str) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO mspt_blood_used (nat_id, stage, draw_date, recorded_at, clinic_id)
+                   VALUES (%s, %s, %s, %s, 1)
+                   ON CONFLICT (nat_id, stage) DO UPDATE
+                   SET draw_date = EXCLUDED.draw_date, recorded_at = EXCLUDED.recorded_at""",
+                (nat_id, stage, draw_iso_date, datetime.now().isoformat()),
+            )
+
+
+def clear_mspt_blood_used(nat_id: str, stage: str) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM mspt_blood_used WHERE nat_id = %s AND stage = %s AND clinic_id = 1",
+                (nat_id, stage),
             )
 
 

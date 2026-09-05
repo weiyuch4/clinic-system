@@ -18,7 +18,8 @@ class FollowupEntry(BaseModel):
     days_overdue: int
     category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
     mspt_stage: MsptStage | None = None      # MSPT entries only — the NEXT stage due
-    needs_blood_test: bool | None = None     # MSPT entries only — whether mspt_stage needs a fresh blood draw
+    needs_blood_test: bool | None = None     # MSPT entries only — True = patient must come back for blood draw
+    blood_draw_date: str | None = None      # MSPT entries only — ISO date of usable blood test (to record on NHI submission)
     last_stage: str | None = None            # stage completed at last_visit_date (str to support hep values)
     chronic_stage: str | None = None         # 慢簽 only — next prescription type: 'IC01', 'IC02', or 'IC03'
     contact_reason: str | None = None        # e.g. "需回診+抽血" or "需抽血"

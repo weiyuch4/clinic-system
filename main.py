@@ -878,6 +878,11 @@ def unmark_contacted(req: ContactRequest) -> None:
 def mark_submitted(entry: MsptSubmittableEntry) -> None:
     try:
         contacts.mark_submitted(entry)
+        contacts.record_mspt_blood_used(
+            entry.patient.chart_number,
+            entry.mspt_stage,
+            entry.blood_report_date.isoformat(),
+        )
     except Exception:
         logger.exception("mark_submitted failed for %s", entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="申報記錄儲存失敗，請稍後再試")
@@ -887,6 +892,7 @@ def mark_submitted(entry: MsptSubmittableEntry) -> None:
 def unmark_submitted(req: SubmitRequest) -> None:
     try:
         contacts.unmark_submitted(req.chart_number, req.mspt_stage)
+        contacts.clear_mspt_blood_used(req.chart_number, req.mspt_stage)
     except Exception:
         logger.exception("unmark_submitted failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷申報失敗，請稍後再試")

@@ -161,7 +161,11 @@
 
   function followupRow(e) {
     var tags = [];
-    if (e.needs_blood_test) tags.push('<span class="pbadge b-prog">需抽血</span>');
+    if (e.needs_blood_test) {
+      tags.push('<span class="pbadge b-prog">需抽血</span>');
+    } else if (e.blood_draw_date) {
+      tags.push('<span class="pbadge b-done" title="可使用 ' + L.escHtml(e.blood_draw_date) + ' 血液報告">血測可用</span>');
+    }
     return L.patientRow({ entry: e, tags: tags, actions: [
       { label: '已聯繫', cls: 'act-primary', key: 'contact' },
       { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
@@ -248,7 +252,8 @@
     if (action === 'contact') {
       var entry = _followupsMap[_actionChart] || _inactiveMap[_actionChart]; if (!entry) return;
       document.getElementById('modal-contact-title').textContent = '聯絡 ' + entry.patient.name;
-      document.getElementById('modal-contact-sub').textContent = '病歷號 #' + entry.patient.chart_number + ' · 階段 ' + (entry.mspt_stage || '');
+      var subNote = entry.needs_blood_test ? '（需通知回診抽血）' : entry.blood_draw_date ? '（血測已可使用，一般通知）' : '（一般通知）';
+      document.getElementById('modal-contact-sub').textContent = '病歷號 #' + entry.patient.chart_number + ' · 階段 ' + (entry.mspt_stage || '') + ' ' + subNote;
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
       L.showModal('modal-contact');
