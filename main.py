@@ -3,6 +3,7 @@ import logging
 import os
 import re as _re
 import threading
+from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 
 import tempfile
@@ -568,20 +569,49 @@ def get_public_schedule(week_start: date) -> dict:
 @app.get("/api/report")
 def get_report(report_date: date | None = None) -> DailyReport:
     try:
-        report = database.get_daily_report(report_date or date.today())
-        hidden_keys = contacts.get_hidden_keys()
-        call_required_keys = contacts.get_call_required_keys()
-        submitted_keys = contacts.get_submitted_keys()
-        excluded_keys = contacts.get_excluded_keys()          # (chart_number, category)
-        mspt_completed_keys = contacts.get_mspt_completed_keys()  # (chart_number, mspt_stage, due_date)
-        mspt_checkedin_keys = contacts.get_mspt_checkedin_keys()  # (chart_number, mspt_stage, due_date)
-        on_hold_keys = contacts.get_on_hold_keys()            # (chart_number, category, due_date)
-        line_unlinked_charts = contacts.get_line_unlinked_chart_numbers()
-        alleypin_not_found_charts = contacts.get_alleypin_not_found_chart_numbers()
-        line_recently_sent_map = contacts.get_line_recently_sent_map()  # (chart_number, template) -> last_sent_at iso date
-        hep_returned_completed_keys = contacts.get_hep_returned_completed_keys()  # (chart_number, last_visit_date)
-        manual_overrides = contacts.get_mspt_manual_overrides()
         as_of = report_date or date.today()
+        # All DB queries run in parallel with the IC file report to avoid
+        # sequential 130ms round trips to Supabase Tokyo on every tab load.
+        with ThreadPoolExecutor(max_workers=19) as exe:
+            f_report               = exe.submit(database.get_daily_report, as_of)
+            f_hidden               = exe.submit(contacts.get_hidden_keys)
+            f_call_required        = exe.submit(contacts.get_call_required_keys)
+            f_submitted            = exe.submit(contacts.get_submitted_keys)
+            f_excluded_keys        = exe.submit(contacts.get_excluded_keys)
+            f_mspt_completed_keys  = exe.submit(contacts.get_mspt_completed_keys)
+            f_mspt_checkedin_keys  = exe.submit(contacts.get_mspt_checkedin_keys)
+            f_on_hold_keys         = exe.submit(contacts.get_on_hold_keys)
+            f_line_unlinked        = exe.submit(contacts.get_line_unlinked_chart_numbers)
+            f_alleypin             = exe.submit(contacts.get_alleypin_not_found_chart_numbers)
+            f_line_recently_sent   = exe.submit(contacts.get_line_recently_sent_map)
+            f_hep_returned_keys    = exe.submit(contacts.get_hep_returned_completed_keys)
+            f_manual_overrides     = exe.submit(contacts.get_mspt_manual_overrides)
+            f_contacted            = exe.submit(contacts.get_contacted_with_dates)
+            f_manual_pickup_map    = exe.submit(contacts.get_manual_pickup_map)
+            f_hep_completed_latest = exe.submit(contacts.get_hep_completed_latest_map)
+            f_excluded_entries     = exe.submit(contacts.get_excluded_entries)
+            f_auto_excluded        = exe.submit(contacts.get_auto_excluded_entries)
+            f_called_entries       = exe.submit(contacts.get_called_entries)
+
+        report                      = f_report.result()
+        hidden_keys                 = f_hidden.result()
+        call_required_keys          = f_call_required.result()
+        submitted_keys              = f_submitted.result()
+        excluded_keys               = f_excluded_keys.result()
+        mspt_completed_keys         = f_mspt_completed_keys.result()
+        mspt_checkedin_keys         = f_mspt_checkedin_keys.result()
+        on_hold_keys                = f_on_hold_keys.result()
+        line_unlinked_charts        = f_line_unlinked.result()
+        alleypin_not_found_charts   = f_alleypin.result()
+        line_recently_sent_map      = f_line_recently_sent.result()
+        hep_returned_completed_keys = f_hep_returned_keys.result()
+        manual_overrides            = f_manual_overrides.result()
+        contacted_with_dates        = f_contacted.result()
+        manual_pickup_map           = f_manual_pickup_map.result()
+        hep_completed_latest        = f_hep_completed_latest.result()
+        manual_excluded             = f_excluded_entries.result()
+        auto_excluded_raw           = f_auto_excluded.result()
+        called_entries              = f_called_entries.result()
 
         def apply_mspt_overrides(entries: list[FollowupEntry]) -> list[FollowupEntry]:
             if not manual_overrides:
@@ -651,7 +681,6 @@ def get_report(report_date: date | None = None) -> DailyReport:
             return result
 
         # Filter 已聯絡 entries: exclude patients who have already returned since being contacted
-        contacted_with_dates = contacts.get_contacted_with_dates()
         chronic_charts = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == '慢簽'}
         mspt_charts    = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == '代謝症候群'}
         hep_charts     = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == 'B肝'}
@@ -679,8 +708,6 @@ def get_report(report_date: date | None = None) -> DailyReport:
         ]
 
         # Filter chronic patients suppressed by a manual pickup record
-        manual_pickup_map = contacts.get_manual_pickup_map()
-
         def chronic_suppressed(entry: FollowupEntry) -> bool:
             mp = manual_pickup_map.get(entry.patient.chart_number)
             if not mp:
@@ -699,8 +726,6 @@ def get_report(report_date: date | None = None) -> DailyReport:
         # Same pattern for B/C肝: a nurse can manually mark 完成B肝 from the
         # pending list (e.g. the IC visit/order wasn't captured), which should
         # suppress the entry until IC data itself shows a newer confirmed visit.
-        hep_completed_latest = contacts.get_hep_completed_latest_map()
-
         def hep_suppressed(entry: FollowupEntry) -> bool:
             completed_str = hep_completed_latest.get(entry.patient.chart_number)
             if not completed_str:
@@ -710,14 +735,11 @@ def get_report(report_date: date | None = None) -> DailyReport:
                 return False
             return True
 
-        manual_excluded = contacts.get_excluded_entries()
-        auto_excluded = contacts.get_auto_excluded_entries()
         all_excluded = manual_excluded + [
-            e for e in auto_excluded
+            e for e in auto_excluded_raw
             if (e.patient.chart_number, e.category) not in {(x.patient.chart_number, x.category) for x in manual_excluded}
         ]
 
-        called_entries = contacts.get_called_entries()
         called_filtered = [
             e for e in called_entries
             if (e.patient.chart_number, e.category) not in excluded_keys
