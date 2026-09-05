@@ -76,12 +76,17 @@
 
   function load() {
     L.hideError();
-    L.apiFetch('/api/blood-pending').then(function (days) {
+    Promise.all([
+      L.apiFetch('/api/blood-pending'),
+      L.apiFetch('/api/report?report_date=' + L.localDateStr()),
+    ]).then(function (results) {
+      var days = results[0], report = results[1];
       L.updateLastUpdated();
       var container = document.getElementById('lab-list');
       if (!days.length) {
         container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">近期無外送抽血記錄</div>';
         document.getElementById('page-date').textContent = '近5日無外送抽血';
+        L.updateBadges(report, 0);
         return;
       }
       var pending = 0;
@@ -89,6 +94,7 @@
         (d.patients || []).forEach(function (p) { if (!p.results_back) pending++; });
       });
       document.getElementById('page-date').textContent = '待確認結果：' + pending + ' 件';
+      L.updateBadges(report, pending);
 
       container.innerHTML = days.map(function (day) {
         var pts = (day.patients || []);
@@ -119,7 +125,7 @@
         '</div>';
       }).join('');
     }).catch(function (e) {
-      L.showError('檢驗資料載入失敗 — ' + (e.message || ''));
+      L.showError('檢驗資料載入失敗 — ' + (e.message || e));
     });
   }
 
