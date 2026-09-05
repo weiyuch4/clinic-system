@@ -493,8 +493,14 @@
   var CAT_CLS = { '慢簽':'cat-c','代謝症候群':'cat-m','B肝':'cat-h','C肝':'cat-h','慢性腎臟病':'cat-k' };
 
   function catChip(category, msptStage) {
-    var label = (category === '代謝症候群' && msptStage) ? category + ' ' + msptStage : category;
+    var label = (category === '代謝症候群' && msptStage) ? msptStage : category;
     return '<span class="cat-chip ' + (CAT_CLS[category] || 'cat-c') + '">' + escHtml(label) + '</span>';
+  }
+
+  function toRoc(isoDate) {
+    var p = String(isoDate || '').split('-');
+    if (p.length !== 3) return isoDate || '';
+    return (parseInt(p[0]) - 1911) + '/' + p[1] + '/' + p[2];
   }
 
   function dayBadge(days) {
@@ -552,7 +558,8 @@
     var phone  = e.phone  || (e.patient && e.patient.phone)  || '';
     var mobile = e.mobile || (e.patient && e.patient.mobile) || '';
     var contact = [phone, mobile].filter(Boolean).join(' / ');
-    var dob = (e.patient && e.patient.birth_date) ? String(e.patient.birth_date).slice(0, 10) : '';
+    var dobIso = (e.patient && e.patient.birth_date) ? String(e.patient.birth_date).slice(0, 10) : '';
+    var dobRoc = dobIso ? toRoc(dobIso) : '';
     var daysN = e.days_overdue || 0;
     var daysCls = daysN >= 30 ? 'days-hi' : daysN >= 15 ? 'days-md' : 'days-lo';
     function sd(d) { var s = String(d || ''); return s.length >= 10 ? s.slice(5) : s; }
@@ -564,10 +571,10 @@
     var infoParts = [];
     if (contact) infoParts.push('<span class="pr-copy" data-copy="' + escHtml(contact) + '">' + escHtml(contact) + '</span>');
     else         infoParts.push('<span class="pr-noph">無電話</span>');
-    if (dob)     infoParts.push('<span class="pr-copy" data-copy="' + escHtml(dob) + '">' + escHtml(dob) + '</span>');
+    if (dobRoc)  infoParts.push('<span class="pr-copy" data-copy="' + escHtml(dobRoc) + '">' + escHtml(dobRoc) + '</span>');
     return '<tr class="pr" data-chart="' + escHtml(e.patient.chart_number) + '">' +
       '<td class="pr-num"><span class="pr-copy" data-copy="' + escHtml(e.patient.chart_number) + '" title="點擊複製病歷號">' + escHtml(e.patient.chart_number) + '</span></td>' +
-      '<td class="pr-pt"><div class="pr-name"><span class="pr-copy" data-copy="' + escHtml(e.patient.name) + '" title="點擊複製姓名">' + escHtml(e.patient.name) + '</span></div>' +
+      '<td class="pr-pt"><div class="pr-name"><span class="pr-lab" data-chart="' + escHtml(e.patient.chart_number) + '" data-name="' + escHtml(e.patient.name) + '" title="點擊查看檢驗結果">' + escHtml(e.patient.name) + '</span></div>' +
         '<div class="pr-info">' + infoParts.join(' · ') + '</div>' +
       '</td>' +
       '<td class="pr-cat">' + catChip(e.category, e.mspt_stage) + '</td>' +
@@ -787,10 +794,106 @@
     document.addEventListener('click', function (ev) {
       var th = ev.target.closest('th[data-sort]');
       if (th) { _handleSort(th); return; }
+      var lab = ev.target.closest('.pr-lab');
+      if (lab) { _openLabModal(lab.dataset.chart, lab.dataset.name); return; }
       var cp = ev.target.closest('[data-copy]');
       if (cp && !ev.target.closest('[data-action]')) _handleCopy(cp.dataset.copy);
     });
   }
+
+  // ── Lab results modal ────────────────────────────────
+  var _labActiveTab = 'bio';
+
+  function _injectLabModal() {
+    if (document.getElementById('lab-modal')) return;
+    var d = document.createElement('div');
+    d.innerHTML =
+      '<div class="modal-overlay" id="lab-modal">' +
+        '<div class="modal-box" style="max-width:560px;max-height:80vh;display:flex;flex-direction:column">' +
+          '<div style="display:flex;align-items:flex-start;gap:10px;margin-bottom:4px">' +
+            '<div style="flex:1">' +
+              '<div class="modal-title" id="lab-modal-title">檢驗結果</div>' +
+              '<div style="font-size:12px;color:var(--muted);margin-top:2px" id="lab-modal-sub"></div>' +
+            '</div>' +
+            '<button onclick="Layout.closeLabModal()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:18px;line-height:1;padding:2px 4px">✕</button>' +
+          '</div>' +
+          '<div style="display:flex;gap:0;border-bottom:1.5px solid var(--border);margin-bottom:12px;flex-shrink:0">' +
+            '<button class="lab-tab on" id="lab-tab-bio" onclick="Layout._labTab(\'bio\')">各項檢驗 BIO</button>' +
+            '<button class="lab-tab" id="lab-tab-cbc" onclick="Layout._labTab(\'cbc\')">CBC 血球計數</button>' +
+          '</div>' +
+          '<div id="lab-panel-bio" style="overflow-y:auto;flex:1"></div>' +
+          '<div id="lab-panel-cbc" style="overflow-y:auto;flex:1;display:none"></div>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(d.firstChild);
+  }
+
+  function _labTab(tab) {
+    _labActiveTab = tab;
+    var bio = document.getElementById('lab-panel-bio');
+    var cbc = document.getElementById('lab-panel-cbc');
+    var tbio = document.getElementById('lab-tab-bio');
+    var tcbc = document.getElementById('lab-tab-cbc');
+    if (!bio) return;
+    bio.style.display = tab === 'bio' ? '' : 'none';
+    cbc.style.display = tab === 'cbc' ? '' : 'none';
+    tbio.className = 'lab-tab' + (tab === 'bio' ? ' on' : '');
+    tcbc.className = 'lab-tab' + (tab === 'cbc' ? ' on' : '');
+  }
+
+  function _renderLabResults(data) {
+    function daysAgo(rocDate) {
+      if (!rocDate) return '';
+      var p = String(rocDate).split('/');
+      if (p.length < 3) return rocDate;
+      var ad = new Date((parseInt(p[0]) + 1911) + '-' + p[1] + '-' + p[2]);
+      var diff = Math.round((Date.now() - ad.getTime()) / 86400000);
+      return diff === 0 ? '今日' : diff === 1 ? '昨日' : diff + ' 天前';
+    }
+    function visitCard(visit) {
+      var items = (visit.items || []).map(function (it) {
+        var flag = it.flag === '+' ? ' <span style="color:#dc2626;font-weight:700">↑</span>'
+                 : it.flag === '-' ? ' <span style="color:#2563eb;font-weight:700">↓</span>' : '';
+        return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px;border-bottom:1px solid var(--border)">' +
+          '<span style="color:var(--sub)">' + escHtml(it.label || '') + '</span>' +
+          '<span style="font-variant-numeric:tabular-nums">' + escHtml(String(it.value || '—')) + flag + '</span>' +
+        '</div>';
+      }).join('');
+      return '<div style="margin-bottom:14px">' +
+        '<div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px">' +
+          escHtml(String(visit.date || '')) + ' <span style="font-weight:400;margin-left:4px;opacity:.6">' + daysAgo(visit.date) + '</span>' +
+        '</div>' +
+        (items || '<div style="font-size:12px;color:var(--muted)">無記錄</div>') +
+      '</div>';
+    }
+    var bio = document.getElementById('lab-panel-bio');
+    var cbc = document.getElementById('lab-panel-cbc');
+    var bioVisits = data.bio || [];
+    var cbcVisits = data.cbc || [];
+    bio.innerHTML = bioVisits.length ? bioVisits.map(visitCard).join('') :
+      '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">無 BIO 檢驗記錄</div>';
+    cbc.innerHTML = cbcVisits.length ? cbcVisits.map(visitCard).join('') :
+      '<div style="text-align:center;padding:30px;color:var(--muted);font-size:13px">無 CBC 檢驗記錄</div>';
+  }
+
+  function _openLabModal(chartNumber, name) {
+    _injectLabModal();
+    document.getElementById('lab-modal-title').textContent = '檢驗結果 — ' + (name || '');
+    document.getElementById('lab-modal-sub').textContent = '#' + (chartNumber || '');
+    document.getElementById('lab-panel-bio').innerHTML =
+      '<div style="text-align:center;padding:30px;color:var(--muted)">載入中…</div>';
+    document.getElementById('lab-panel-cbc').innerHTML = '';
+    _labTab('bio');
+    showModal('lab-modal');
+    apiFetch('/api/lab/' + encodeURIComponent(chartNumber || ''))
+      .then(function (data) { _renderLabResults(data); })
+      .catch(function () {
+        document.getElementById('lab-panel-bio').innerHTML =
+          '<div style="text-align:center;padding:30px;color:#dc2626;font-size:13px">載入失敗，請確認網路連線</div>';
+      });
+  }
+
+  function _closeLabModal() { hideModal('lab-modal'); }
 
   // ── Export ───────────────────────────────────────────
   window.Layout = {
@@ -811,6 +914,9 @@
     catChip:           catChip,
     dayBadge:          dayBadge,
     getNurse:          getNurse,
+    openLabModal:      _openLabModal,
+    closeLabModal:     _closeLabModal,
+    _labTab:           _labTab,
     _closePinModal:        _closePinModal,
     _submitPin:            _submitPin,
     _closeChangePinModal:  _closeChangePinModal,

@@ -26,6 +26,10 @@
 .sg-empty{color:var(--border);font-size:11px}
 .unpub-banner{background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r);padding:30px;text-align:center;color:var(--muted);font-size:13px}
 .sg-cell.last-row{border-bottom:none}
+.sg-mine{background:rgba(75,170,255,.08)}
+.view-toggle{display:flex;border:1.5px solid var(--border);border-radius:100px;overflow:hidden;flex-shrink:0}
+.view-toggle button{padding:5px 14px;font-size:12.5px;font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;transition:background .12s,color .12s}
+.view-toggle button.on{background:var(--text);color:var(--card)}
 </style>
 </head>
 <body>
@@ -53,6 +57,10 @@
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
         <button class="wn-today" id="btn-this-week">本週</button>
+        <div class="view-toggle">
+          <button id="btn-view-mine" class="on" onclick="setView(false)">我的班表</button>
+          <button id="btn-view-all" onclick="setView(true)">全體班表</button>
+        </div>
       </div>
 
       <div id="sched-area">
@@ -76,6 +84,16 @@
     { key: 'afternoon', label: '下午診' },
     { key: 'evening',   label: '晚診' },
   ];
+  var _showAll = false;
+  var _lastIdx = null;  // cached schedule index for re-render without refetch
+
+  function setView(all) {
+    _showAll = all;
+    document.getElementById('btn-view-mine').className = all ? '' : 'on';
+    document.getElementById('btn-view-all').className  = all ? 'on' : '';
+    if (_lastIdx) renderGrid(_lastIdx);
+  }
+  window.setView = setView;
 
   function weekDates(mon) {
     var dates = [];
@@ -95,10 +113,48 @@
     document.getElementById('week-label').textContent = monYear + '/' + mon.slice(5, 7) + ' 週（' + range + '）';
   }
 
+  function renderGrid(idx) {
+    _lastIdx = idx;
+    var myNurse = L.getNurse();
+    var dates = weekDates(_mondayStr);
+    var area = document.getElementById('sched-area');
+
+    // header row
+    var hdr = '<div class="sg-cell sg-hdr"></div>';
+    dates.forEach(function (d, i) {
+      var isToday = d === TODAY;
+      hdr += '<div class="sg-cell sg-hdr' + (isToday ? ' sg-today' : '') + '">' +
+        (isToday ? '<div class="sg-today-dot"></div>' : '') +
+        DOW[i] + '<br><span class="sg-date">' + d.slice(5) + '</span>' +
+      '</div>';
+    });
+
+    // slot rows
+    var rows = SLOTS.map(function (slot, si) {
+      var isLast = si === SLOTS.length - 1;
+      var cells = '<div class="sg-cell sg-lbl' + (isLast ? ' last-row' : '') + '">' + L.escHtml(slot.label) + '</div>';
+      dates.forEach(function (d) {
+        var isToday = d === TODAY;
+        var allNurses = (idx[d] && idx[d][slot.key]) || [];
+        var isMineDay = myNurse && allNurses.indexOf(myNurse) !== -1;
+        var nurses = _showAll ? allNurses : (myNurse ? allNurses.filter(function(n){return n===myNurse;}) : allNurses);
+        var highlight = !_showAll && isMineDay ? ' sg-mine' : '';
+        cells += '<div class="sg-cell sg-day' + (isToday ? ' sg-today' : '') + (isLast ? ' last-row' : '') + highlight + '">' +
+          (nurses.length
+            ? nurses.map(function (n) { return '<div class="sg-name">' + L.escHtml(n) + '</div>'; }).join('')
+            : '<span class="sg-empty">—</span>') +
+        '</div>';
+      });
+      return cells;
+    }).join('');
+
+    area.innerHTML = '<div class="sched-grid">' + hdr + rows + '</div>';
+  }
+
   function load() {
     L.hideError();
+    _lastIdx = null;
     setWeekLabel(_mondayStr);
-    var dates = weekDates(_mondayStr);
     L.apiFetch('/api/schedule?week_start=' + _mondayStr).then(function (data) {
       L.updateLastUpdated();
       var area = document.getElementById('sched-area');
@@ -106,41 +162,13 @@
         area.innerHTML = '<div class="unpub-banner">本週班表尚未發布</div>';
         return;
       }
-      // index shifts: {date: {slot: [nurse, ...]}}
       var idx = {};
       (data.shifts || []).forEach(function (s) {
         if (!idx[s.shift_date]) idx[s.shift_date] = {};
         if (!idx[s.shift_date][s.slot]) idx[s.shift_date][s.slot] = [];
         idx[s.shift_date][s.slot].push(s.nurse);
       });
-
-      // header row: empty corner + 7 day headers
-      var hdr = '<div class="sg-cell sg-hdr"></div>';
-      dates.forEach(function (d, i) {
-        var isToday = d === TODAY;
-        hdr += '<div class="sg-cell sg-hdr' + (isToday ? ' sg-today' : '') + '">' +
-          (isToday ? '<div class="sg-today-dot"></div>' : '') +
-          DOW[i] + '<br><span class="sg-date">' + d.slice(5) + '</span>' +
-        '</div>';
-      });
-
-      // slot rows
-      var rows = SLOTS.map(function (slot, si) {
-        var isLast = si === SLOTS.length - 1;
-        var cells = '<div class="sg-cell sg-lbl' + (isLast ? ' last-row' : '') + '">' + L.escHtml(slot.label) + '</div>';
-        dates.forEach(function (d) {
-          var isToday = d === TODAY;
-          var nurses = (idx[d] && idx[d][slot.key]) || [];
-          cells += '<div class="sg-cell sg-day' + (isToday ? ' sg-today' : '') + (isLast ? ' last-row' : '') + '">' +
-            (nurses.length
-              ? nurses.map(function (n) { return '<div class="sg-name">' + L.escHtml(n) + '</div>'; }).join('')
-              : '<span class="sg-empty">—</span>') +
-          '</div>';
-        });
-        return cells;
-      }).join('');
-
-      area.innerHTML = '<div class="sched-grid">' + hdr + rows + '</div>';
+      renderGrid(idx);
     }).catch(function (e) {
       L.showError('班表載入失敗 — ' + (e.message || ''));
     });

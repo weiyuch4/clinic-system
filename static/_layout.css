@@ -357,6 +357,11 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .pr-copy:hover{background:rgba(0,0,0,.07)}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .pr-copy:hover{background:rgba(255,255,255,.09)}}
 :root[data-theme=dark] .pr-copy:hover{background:rgba(255,255,255,.09)}
+.pr-lab{cursor:pointer;border-radius:3px;padding:0 1px;color:inherit;transition:background .1s,color .1s}
+.pr-lab:hover{background:rgba(75,170,255,.12);color:#2563eb;text-decoration:underline}
+.lab-tab{background:none;border:none;border-bottom:2.5px solid transparent;padding:8px 14px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;font-family:inherit;margin-bottom:-1.5px;transition:color .1s,border-color .1s}
+.lab-tab:hover{color:var(--text)}
+.lab-tab.on{color:var(--text);border-bottom-color:#4aa7f7}
 
 /* â”€â”€ sortable column headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}

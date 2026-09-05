@@ -39,13 +39,6 @@
       <!-- page header -->
       <div class="ph">
         <div><h1>今日追蹤總覽</h1><p id="page-date">各科病患追蹤狀況一覽</p></div>
-        <div class="phb">
-          <a href="/" class="bo">切換至舊版介面</a>
-          <a class="bp" style="display:none">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#111827" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            匯出報告
-          </a>
-        </div>
       </div>
 
       <!-- stat cards -->
@@ -270,19 +263,20 @@
 
   // ── contact log card ────────────────────────────────
   var CAT_SHORT = {'慢簽':'慢簽','代謝症候群':'代謝','慢性腎臟病':'腎臟','B肝':'B肝','C肝':'C肝'};
-  function renderContactLog(report) {
-    var all = (report.contacted||[]).concat(report.called||[]);
+  function renderContactLog(todayHistory) {
+    var all = ((todayHistory&&todayHistory.contacted)||[]).concat((todayHistory&&todayHistory.called)||[]);
     var el = document.getElementById('contact-log');
     var cntEl = document.getElementById('cl-count');
     if (cntEl) cntEl.textContent = all.length + ' 筆';
     if (!all.length) { el.innerHTML='<div class="dk-empty">今日尚無聯繫記錄</div>'; return; }
-    var show = all.slice(0, 6), rest = all.length - show.length;
+    var show = all.slice(0, 8), rest = all.length - show.length;
     el.innerHTML = show.map(function(e) {
       var name = (e.patient&&e.patient.name)||e.manual_name||'—';
       var cat  = CAT_SHORT[e.category]||(e.category||'').slice(0,2);
       var nurse = e.nurse ? ' · '+E(e.nurse) : '';
+      var time = e.contacted_time ? ' '+E(e.contacted_time) : '';
       return '<div class="dk-row">'+
-        '<span class="dk-label">'+E(cat)+nurse+'</span>'+
+        '<span class="dk-label">'+E(cat)+nurse+time+'</span>'+
         '<span class="dk-val">'+E(name)+'</span>'+
       '</div>';
     }).join('') +
@@ -306,14 +300,17 @@
       });
     });
   }
+  var _weekDataGlobal = [], _todayIdxGlobal = -1;
+  var DAY_NAMES = ['一','二','三','四','五','六','日'];
   function renderChart(weekData) {
+    _weekDataGlobal = weekData;
     var counts = weekData.map(function(d){return d.count!=null?d.count:0;});
     var maxVal = Math.max.apply(null, counts.concat([1]));
-    var DAY = ['一','二','三','四','五','六','日'];
     var todayIdx = -1;
     weekData.forEach(function(d,i){if(d.isToday)todayIdx=i;});
+    _todayIdxGlobal = todayIdx;
     var pts = weekData.map(function(d,i){
-      return {x:30+i*80,y:Math.round(140-(( d.count!=null?d.count:0)/maxVal)*118),isFuture:!!d.isFuture,isToday:!!d.isToday,count:d.count};
+      return {x:30+i*80,y:Math.round(140-((d.count!=null?d.count:0)/maxVal)*118),isFuture:!!d.isFuture,isToday:!!d.isToday,count:d.count};
     });
     var active = pts.filter(function(p){return !p.isFuture;});
     function smooth(ps) {
@@ -337,24 +334,72 @@
     });
     if(area) svgH+='<path d="'+area+'" fill="url(#ag)"/>';
     if(line) svgH+='<path d="'+line+'" fill="none" stroke="#4aa7f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
-    if(todayIdx>=0){
-      var tp=pts[todayIdx];
-      svgH+='<line x1="'+tp.x+'" y1="15" x2="'+tp.x+'" y2="142" stroke="#4aa7f7" stroke-width="1" stroke-dasharray="3,3"/>';
-      svgH+='<circle cx="'+tp.x+'" cy="'+tp.y+'" r="5" fill="#4aa7f7"/><circle cx="'+tp.x+'" cy="'+tp.y+'" r="3" fill="white"/>';
-      var ttx=tp.x+15; if(ttx+115>550) ttx=tp.x-130;
-      var tty=Math.min(tp.y-50,98); if(tty<5) tty=5;
-      svgH+='<rect x="'+ttx+'" y="'+tty+'" width="115" height="38" rx="7" fill="var(--card)" filter="drop-shadow(0 2px 6px rgba(0,0,0,.12))"/>';
-      svgH+='<rect x="'+ttx+'" y="'+tty+'" width="115" height="38" rx="7" fill="none" stroke="var(--border)" stroke-width="1"/>';
-      svgH+='<text x="'+(ttx+12)+'" y="'+(tty+16)+'" font-size="10" font-weight="700" fill="var(--text)">今日聯繫</text>';
-      svgH+='<circle cx="'+(ttx+12)+'" cy="'+(tty+27)+'" r="3" fill="#4aa7f7"/>';
-      svgH+='<text x="'+(ttx+20)+'" y="'+(tty+31)+'" font-size="10" fill="var(--text)" font-weight="700">'+(tp.count!=null?tp.count:0)+' 件</text>';
-    }
+    // dots for past/today points
+    active.forEach(function(p){
+      svgH+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#4aa7f7" class="chart-dot" data-idx="'+pts.indexOf(p)+'"/>';
+      svgH+='<circle cx="'+p.x+'" cy="'+p.y+'" r="2.5" fill="white" pointer-events="none"/>';
+    });
+    // invisible hit areas per day column for hover
+    weekData.forEach(function(d,i){
+      var x = 30+i*80, w = 80;
+      svgH+='<rect x="'+(x-40)+'" y="0" width="'+w+'" height="150" fill="transparent" class="day-hit" data-idx="'+i+'" style="cursor:'+(d.isFuture?'default':'pointer')+'"/>';
+    });
+    // tooltip group (hidden by default)
+    svgH+='<g id="chart-tip" style="display:none">'+
+      '<rect id="chart-tip-bg" x="0" y="0" width="115" height="38" rx="7" fill="var(--card)" filter="drop-shadow(0 2px 6px rgba(0,0,0,.12))"/>'+
+      '<rect id="chart-tip-bd" x="0" y="0" width="115" height="38" rx="7" fill="none" stroke="var(--border)" stroke-width="1"/>'+
+      '<text id="chart-tip-lbl" x="12" y="16" font-size="10" font-weight="700" fill="var(--text)">—</text>'+
+      '<circle id="chart-tip-dot" cx="12" cy="27" r="3" fill="#4aa7f7"/>'+
+      '<text id="chart-tip-val" x="20" y="31" font-size="10" fill="var(--text)" font-weight="700">—</text>'+
+    '</g>';
     document.getElementById('chart-svg').innerHTML = svgH;
-    document.getElementById('chart-days').innerHTML = DAY.map(function(l,i){
+    document.getElementById('chart-days').innerHTML = DAY_NAMES.map(function(l,i){
       var iT=i===todayIdx, iF=todayIdx>=0&&i>todayIdx;
       return '<span class="cd'+(iT?' today-lbl':'')+'"'+(iF?' style="opacity:.4"':'')+'>'+l+'</span>';
     }).join('');
     document.getElementById('chart-big-num').textContent = todayIdx>=0&&counts[todayIdx]!=null?counts[todayIdx]:0;
+
+    // attach hover listeners
+    var svg = document.getElementById('chart-svg');
+    svg.querySelectorAll('.day-hit').forEach(function(rect) {
+      rect.addEventListener('mouseenter', function() {
+        var idx = parseInt(rect.dataset.idx, 10);
+        var d = _weekDataGlobal[idx];
+        if (!d || d.isFuture) return;
+        var bigNum = document.getElementById('chart-big-num');
+        if(bigNum) bigNum.textContent = d.count != null ? d.count : 0;
+        var chip = document.getElementById('chart-chip');
+        if(chip) { chip.textContent = DAY_NAMES[idx]+'　'+d.dateStr.slice(5); chip.style.display=''; }
+        // show tooltip
+        var px = 30+idx*80;
+        var py = _weekDataGlobal.reduce(function(acc,dd,ii){return ii===idx?Math.round(140-((dd.count!=null?dd.count:0)/maxVal)*118):acc;},120);
+        var ttx = px+15; if(ttx+115>550) ttx=px-130;
+        var tty = Math.min(py-50,98); if(tty<5) tty=5;
+        var tip=document.getElementById('chart-tip');
+        if(!tip) return;
+        tip.style.display='';
+        document.getElementById('chart-tip-bg').setAttribute('x',ttx);
+        document.getElementById('chart-tip-bg').setAttribute('y',tty);
+        document.getElementById('chart-tip-bd').setAttribute('x',ttx);
+        document.getElementById('chart-tip-bd').setAttribute('y',tty);
+        document.getElementById('chart-tip-lbl').setAttribute('x',ttx+12);
+        document.getElementById('chart-tip-lbl').setAttribute('y',tty+16);
+        document.getElementById('chart-tip-lbl').textContent = DAY_NAMES[idx]+'　'+d.dateStr.slice(5);
+        document.getElementById('chart-tip-dot').setAttribute('cx',ttx+12);
+        document.getElementById('chart-tip-dot').setAttribute('cy',tty+27);
+        document.getElementById('chart-tip-val').setAttribute('x',ttx+20);
+        document.getElementById('chart-tip-val').setAttribute('y',tty+31);
+        document.getElementById('chart-tip-val').textContent = (d.count!=null?d.count:0)+' 件';
+      });
+      rect.addEventListener('mouseleave', function() {
+        var chip = document.getElementById('chart-chip');
+        if(chip) chip.style.display='none';
+        var bigNum = document.getElementById('chart-big-num');
+        if(bigNum) bigNum.textContent = _todayIdxGlobal>=0&&counts[_todayIdxGlobal]!=null?counts[_todayIdxGlobal]:0;
+        var tip=document.getElementById('chart-tip');
+        if(tip) tip.style.display='none';
+      });
+    });
   }
 
   // ── main load ───────────────────────────────────────
@@ -365,15 +410,21 @@
       L.apiFetch('/api/report?report_date='+today),
       L.apiFetch('/api/blood-pending').catch(function(){return [];}),
       fetchWeekHistory(),
+      L.apiFetch('/api/contacts/history?target_date='+today).catch(function(){return {contacted:[],called:[]};})
     ]).then(function(res){
-      var report=res[0], bloodData=res[1], week=res[2];
+      var report=res[0], bloodData=res[1], week=res[2], todayHistory=res[3];
       var bloodCount=0;
       if(Array.isArray(bloodData)) bloodData.forEach(function(day){(day.patients||[]).forEach(function(p){if(!p.results_back)bloodCount++;});});
       var s = renderStats(report, bloodCount);
+      // update "今日已聯繫" subtitle to show today's actual count from history
+      var todayContacted = ((todayHistory.contacted||[]).length + (todayHistory.called||[]).length);
+      document.getElementById('stat-contacted').textContent = todayContacted;
+      document.getElementById('stat-contacted-sub').textContent =
+        '已通知 '+(todayHistory.contacted||[]).length+'　已二通 '+(todayHistory.called||[]).length;
       renderTable(s.pending);
       renderGauge(s.contacted, s.pending.length);
       renderUrgent(report, bloodCount);
-      renderContactLog(report);
+      renderContactLog(todayHistory);
       renderChart(week);
       L.updateLastUpdated();
     }).catch(function(e){
