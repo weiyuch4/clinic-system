@@ -20,6 +20,10 @@
 :root[data-theme="dark"] .sub-banner{background:#1A0B35;border-color:#4C1D95;color:#C4B5FD}
 .modal-error{display:none;color:#991b1b;font-size:12.5px;margin-top:8px;background:#fef2f2;border-radius:6px;padding:7px 10px}
 .modal-error.show{display:block}
+.return-hint{font-size:12px;color:#92400e;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;padding:9px 13px;flex-shrink:0;display:flex;align-items:center;gap:8px}
+:root[data-theme="dark"] .return-hint,:root:not([data-theme="light"]) @media(prefers-color-scheme:dark){.return-hint{background:#1c1200;border-color:#78350f;color:#fcd34d}}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .return-hint{background:#1c1200;border-color:#78350f;color:#fcd34d}}
+:root[data-theme="dark"] .return-hint{background:#1c1200;border-color:#78350f;color:#fcd34d}
 </style>
 </head>
 <body>
@@ -50,7 +54,8 @@
       </div>
 
       <div class="filter-bar" id="filter-bar">
-        <button class="filter-tab on" data-tab="followups">待追蹤 <span class="tc-count" id="cnt-followups">…</span></button>
+        <button class="filter-tab on" data-tab="return">需回診 <span class="tc-count" id="cnt-return">…</span></button>
+        <button class="filter-tab" data-tab="followups">待追蹤 <span class="tc-count" id="cnt-followups">…</span></button>
         <button class="filter-tab" data-tab="submittable">可申報 <span class="tc-count" id="cnt-submittable">…</span></button>
         <button class="filter-tab" data-tab="inactive">未複診 <span class="tc-count" id="cnt-inactive">…</span></button>
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
@@ -63,7 +68,14 @@
       </div>
 
       <div class="list-area" id="list-scroll">
-        <div id="list-followups"><div class="sec-empty">載入中…</div></div>
+        <div id="list-return">
+          <div class="return-hint">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            這些病患需要回診抽血，才能繼續下一個MSPT階段。請電話通知安排回診。
+          </div>
+          <div id="list-return-rows"><div class="sec-empty">載入中…</div></div>
+        </div>
+        <div id="list-followups" style="display:none"></div>
         <div id="list-submittable" style="display:none"></div>
         <div id="list-inactive" style="display:none"></div>
         <div id="list-contacted" style="display:none"></div>
@@ -78,6 +90,9 @@
   <div class="modal-box">
     <div class="modal-title" id="modal-contact-title">聯絡病患</div>
     <div class="modal-sub" id="modal-contact-sub"></div>
+    <div class="modal-field" id="modal-contact-hint-wrap" style="display:none">
+      <div id="modal-contact-hint" style="font-size:12px;padding:8px 11px;border-radius:7px;border:1px solid;"></div>
+    </div>
     <div class="modal-field">
       <label class="modal-label">聯絡方式</label>
       <select class="modal-select" id="modal-contact-type">
@@ -118,34 +133,46 @@
 (function () {
   'use strict';
   var L = Layout;
-  var _tab = 'followups', _query = '';
-  var _followups = [], _submittable = [], _inactive = [], _contacted = [], _hold = [];
-  var _followupsMap = {}, _inactiveMap = {}, _contactedMap = {}, _holdMap = {};
-  var _actionChart = null;
+  var _tab = 'return', _query = '';
+  // _return: active followups needing blood draw; _followups: general contact
+  var _return = [], _followups = [], _submittable = [], _inactive = [], _contacted = [], _hold = [];
+  // unified lookup for action handlers
+  var _activeMap = {}, _contactedMap = {}, _holdMap = {};
+
+  var ALL_TABS = ['return','followups','submittable','inactive','contacted','hold'];
 
   function load() {
     L.hideError();
     var today = L.localDateStr();
     L.apiFetch('/api/report?report_date=' + today).then(function (r) {
-      _followups   = r.mspt_followups   || [];
+      var allFollowups = r.mspt_followups || [];
+      _return    = allFollowups.filter(function (e) { return e.needs_blood_test; });
+      _followups = allFollowups.filter(function (e) { return !e.needs_blood_test; });
       _submittable = r.mspt_submittable || [];
       _inactive    = r.mspt_inactive    || [];
       _contacted   = (r.contacted || []).filter(function (e) { return e.category === '代謝症候群'; })
                       .concat((r.called || []).filter(function (e) { return e.category === '代謝症候群'; }));
-      _hold        = (r.on_hold   || []).filter(function (e) { return e.category === '代謝症候群'; });
-      _followupsMap = {}; _followups.forEach(function (e) { _followupsMap[e.patient.chart_number]  = e; });
-      _inactiveMap  = {}; _inactive.forEach(function (e)  { _inactiveMap[e.patient.chart_number]   = e; });
-      _contactedMap = {}; _contacted.forEach(function (e) { _contactedMap[e.patient.chart_number]  = e; });
+      _hold        = (r.on_hold || []).filter(function (e) { return e.category === '代謝症候群'; });
+
+      _activeMap = {};
+      allFollowups.forEach(function (e) { _activeMap[e.patient.chart_number] = e; });
+      _inactive.forEach(function (e) { _activeMap[e.patient.chart_number] = e; });
+      _contactedMap = {}; _contacted.forEach(function (e) { _contactedMap[e.patient.chart_number] = e; });
       _holdMap      = {}; _hold.forEach(function (e) { if (e.patient) _holdMap[e.patient.chart_number] = e; });
-      document.getElementById('page-date').textContent = today + '  ·  共 ' + _followups.length + ' 人待追蹤';
+
+      var totalPending = allFollowups.length + _inactive.length;
+      document.getElementById('page-date').textContent = today + '  ·  共 ' + totalPending + ' 人待追蹤';
+      document.getElementById('cnt-return').textContent      = _return.length;
       document.getElementById('cnt-followups').textContent   = _followups.length;
       document.getElementById('cnt-submittable').textContent = _submittable.length;
       document.getElementById('cnt-inactive').textContent    = _inactive.length;
       document.getElementById('cnt-contacted').textContent   = _contacted.length;
       document.getElementById('cnt-hold').textContent        = _hold.length;
+
       var banner = document.getElementById('sub-banner');
       if (_submittable.length) { banner.style.display = 'flex'; document.getElementById('sub-count').textContent = _submittable.length; }
       else { banner.style.display = 'none'; }
+
       renderAll();
       L.updateBadges(r, 0);
       L.updateLastUpdated();
@@ -159,11 +186,18 @@
            (p.chart_number && String(p.chart_number).toLowerCase().includes(q));
   }
 
+  function returnRow(e) {
+    return L.patientRow({ entry: e,
+      tags: ['<span class="pbadge b-prog">需抽血</span>'],
+      actions: [
+        { label: '已聯繫', cls: 'act-primary', key: 'contact' },
+        { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+      ],
+    });
+  }
   function followupRow(e) {
     var tags = [];
-    if (e.needs_blood_test) {
-      tags.push('<span class="pbadge b-prog">需抽血</span>');
-    } else if (e.blood_draw_date) {
+    if (e.blood_draw_date) {
       tags.push('<span class="pbadge b-done" title="可使用 ' + L.escHtml(e.blood_draw_date) + ' 血液報告">血測可用</span>');
     }
     return L.patientRow({ entry: e, tags: tags, actions: [
@@ -183,13 +217,13 @@
     });
   }
   function inactiveRow(e) {
-    return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge b-prog">未複診</span>'],
-      actions: [
-        { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-        { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
-      ],
-    });
+    var tags = ['<span class="pbadge b-hold">未複診</span>'];
+    if (e.needs_blood_test) tags.push('<span class="pbadge b-prog">需抽血</span>');
+    else if (e.blood_draw_date) tags.push('<span class="pbadge b-done">血測可用</span>');
+    return L.patientRow({ entry: e, tags: tags, actions: [
+      { label: '已聯繫', cls: 'act-primary', key: 'contact' },
+      { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+    ]});
   }
   function contactedRow(e) {
     return L.patientRow({ entry: e,
@@ -223,7 +257,21 @@
     if (_tab === id.replace('list-', ''))
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
+
+  function renderReturnTab() {
+    var filtered = _return.filter(match);
+    var rowsEl = document.getElementById('list-return-rows');
+    if (!filtered.length) {
+      rowsEl.innerHTML = '<div class="sec-empty">' + (_return.length ? '沒有符合搜尋條件' : '目前沒有需要回診抽血的病患') + '</div>';
+    } else {
+      rowsEl.innerHTML = L.patientTable(filtered.map(returnRow).join(''));
+    }
+    if (_tab === 'return')
+      document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
+  }
+
   function renderAll() {
+    renderReturnTab();
     renderList(_followups,   followupRow,    'list-followups');
     renderList(_submittable, submittableRow, 'list-submittable', ['>到期日 <span', '>抽血日期 <span']);
     renderList(_inactive,    inactiveRow,    'list-inactive');
@@ -236,11 +284,14 @@
     _tab = btn.dataset.tab;
     document.querySelectorAll('.filter-tab').forEach(function (b) { b.classList.remove('on'); });
     btn.classList.add('on');
-    ['followups','submittable','inactive','contacted','hold'].forEach(function (t) {
+    ALL_TABS.forEach(function (t) {
       document.getElementById('list-' + t).style.display = t === _tab ? '' : 'none';
     });
-    var arr = {followups:_followups,submittable:_submittable,inactive:_inactive,contacted:_contacted,hold:_hold}[_tab] || [];
-    document.getElementById('result-count').textContent = '共 ' + arr.filter(match).length + ' 筆';
+    var counts = {
+      return: _return, followups: _followups, submittable: _submittable,
+      inactive: _inactive, contacted: _contacted, hold: _hold,
+    };
+    document.getElementById('result-count').textContent = '共 ' + (counts[_tab] || []).filter(match).length + ' 筆';
   });
 
   document.getElementById('search-input').addEventListener('input', function (e) { _query = e.target.value.trim(); renderAll(); });
@@ -248,23 +299,39 @@
   document.getElementById('list-scroll').addEventListener('click', function (ev) {
     var btn = ev.target.closest('[data-action]'); if (!btn) return;
     var action = btn.dataset.action, row = btn.closest('.pr'); if (!row) return;
-    _actionChart = row.dataset.chart;
+    var chart = row.dataset.chart;
+
     if (action === 'contact') {
-      var entry = _followupsMap[_actionChart] || _inactiveMap[_actionChart]; if (!entry) return;
+      var entry = _activeMap[chart]; if (!entry) return;
       document.getElementById('modal-contact-title').textContent = '聯絡 ' + entry.patient.name;
-      var subNote = entry.needs_blood_test ? '（需通知回診抽血）' : entry.blood_draw_date ? '（血測已可使用，一般通知）' : '（一般通知）';
-      document.getElementById('modal-contact-sub').textContent = '病歷號 #' + entry.patient.chart_number + ' · 階段 ' + (entry.mspt_stage || '') + ' ' + subNote;
+      document.getElementById('modal-contact-sub').textContent =
+        '病歷號 #' + entry.patient.chart_number + ' · 階段 ' + (entry.mspt_stage || '');
+      var hintEl = document.getElementById('modal-contact-hint');
+      var hintWrap = document.getElementById('modal-contact-hint-wrap');
+      if (entry.needs_blood_test) {
+        hintEl.textContent = '⚠️ 此病患需回診抽血，請通知安排回診預約。';
+        hintEl.style.background = '#fef3c7'; hintEl.style.borderColor = '#fde68a'; hintEl.style.color = '#78350f';
+        hintWrap.style.display = '';
+      } else if (entry.blood_draw_date) {
+        hintEl.textContent = '✓ 已有 ' + entry.blood_draw_date + ' 的血液報告可使用，一般追蹤通知即可。';
+        hintEl.style.background = '#f0fdf4'; hintEl.style.borderColor = '#bbf7d0'; hintEl.style.color = '#14532d';
+        hintWrap.style.display = '';
+      } else {
+        hintWrap.style.display = 'none';
+      }
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
+      L._contactEntry = entry;
       L.showModal('modal-contact');
     } else if (action === 'hold') {
-      var entry2 = _followupsMap[_actionChart] || _inactiveMap[_actionChart]; if (!entry2) return;
+      var entry2 = _activeMap[chart]; if (!entry2) return;
       document.getElementById('modal-hold-sub').textContent = entry2.patient.name + ' · ' + (entry2.mspt_stage || '');
       document.getElementById('modal-hold-note').value = '';
       document.getElementById('hold-error').classList.remove('show');
+      L._holdEntry = entry2;
       L.showModal('modal-hold');
     } else if (action === 'submit') {
-      var se = _submittable.find(function (e) { return e.patient.chart_number === _actionChart; });
+      var se = _submittable.find(function (e) { return e.patient.chart_number === chart; });
       if (!se) return;
       btn.disabled = true;
       L.apiAction('POST', '/api/submitted', se)
@@ -272,14 +339,14 @@
         .catch(function (e) { L.showToast('儲存失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     } else if (action === 'undo-contact') {
-      var ce = _contactedMap[_actionChart]; if (!ce) return;
+      var ce = _contactedMap[chart]; if (!ce) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/contacted', { chart_number: ce.patient.chart_number, category: ce.category, due_date: ce.due_date })
         .then(function () { L.showToast('已撤銷聯絡記錄'); load(); })
         .catch(function (e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     } else if (action === 'undo-hold') {
-      var he = _holdMap[_actionChart]; if (!he) return;
+      var he = _holdMap[chart]; if (!he) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/on-hold', { hold_id: he.hold_id })
         .then(function () { L.showToast('已解除暫緩'); load(); })
@@ -289,7 +356,7 @@
   });
 
   document.getElementById('btn-contact-confirm').addEventListener('click', function () {
-    var entry = _followupsMap[_actionChart] || _inactiveMap[_actionChart]; if (!entry) return;
+    var entry = L._contactEntry; if (!entry) return;
     var url = document.getElementById('modal-contact-type').value === 'called' ? '/api/called' : '/api/contacted';
     var confirmBtn = this;
     var errEl = document.getElementById('contact-error');
@@ -302,7 +369,7 @@
   });
 
   document.getElementById('btn-hold-confirm').addEventListener('click', function () {
-    var entry = _followupsMap[_actionChart] || _inactiveMap[_actionChart]; if (!entry) return;
+    var entry = L._holdEntry; if (!entry) return;
     var note = document.getElementById('modal-hold-note').value.trim() || '暫緩';
     var confirmBtn = this;
     var errEl = document.getElementById('hold-error');
