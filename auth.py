@@ -81,6 +81,16 @@ _CREATE_REFRESH_TOKENS = """
     )
 """
 
+_CREATE_CLINIC_SETTINGS = """
+    CREATE TABLE IF NOT EXISTS clinic_settings (
+        clinic_id  INTEGER NOT NULL REFERENCES clinics(id),
+        key        TEXT    NOT NULL,
+        value      JSONB   NOT NULL,
+        updated_at TEXT    NOT NULL DEFAULT NOW()::text,
+        PRIMARY KEY (clinic_id, key)
+    )
+"""
+
 
 def init() -> None:
     with _conn() as conn:
@@ -88,6 +98,7 @@ def init() -> None:
             cur.execute(_CREATE_CLINICS)
             cur.execute(_CREATE_USERS)
             cur.execute(_CREATE_REFRESH_TOKENS)
+            cur.execute(_CREATE_CLINIC_SETTINGS)
 
 
 # ── Bootstrap ───────────────────────────────────────────────────────────────────

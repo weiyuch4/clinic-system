@@ -25,6 +25,17 @@
 .allergy-chip{background:#FFE4E6;color:#9F1239;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .allergy-chip{background:#2A0A0F;color:#FCA5A5}}
 :root[data-theme="dark"] .allergy-chip{background:#2A0A0F;color:#FCA5A5}
+/* settings gear */
+.lab-gear{display:flex;align-items:center;gap:6px;margin-left:auto;background:transparent;border:1.5px solid var(--border);border-radius:var(--r);padding:6px 12px;cursor:pointer;color:var(--sub);font-size:13px;font-weight:600}
+.lab-gear:hover{color:var(--text);border-color:var(--sub)}
+/* settings modal */
+.lc-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
+.lc-row:last-child{border-bottom:none}
+.lc-label{flex:1;font-size:13px;color:var(--text)}
+.lc-sub{font-size:11px;color:var(--muted)}
+.lc-custom{display:flex;gap:8px;margin-top:12px}
+.lc-custom input{flex:1;border:1.5px solid var(--border);border-radius:var(--r);padding:6px 10px;background:var(--bg);color:var(--text);font-size:13px}
+.lc-custom input:focus{outline:none;border-color:var(--accent)}
 </style>
 </head>
 <body>
@@ -41,12 +52,33 @@
 
       <div class="ph">
         <div><h1>檢驗追蹤</h1><p id="page-date">外送抽血結果追蹤（近5日）</p></div>
+        <button class="lab-gear" id="btn-lab-settings" style="display:none" onclick="openLabSettings()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          代碼設定
+        </button>
       </div>
 
       <div class="scroll-area" id="lab-list">
         <div style="text-align:center;padding:30px;color:var(--muted)">載入中…</div>
       </div>
 
+    </div>
+  </div>
+</div>
+
+<!-- lab code settings modal (admin only) -->
+<div class="modal-overlay" id="modal-lab-settings">
+  <div class="modal-box" style="max-width:440px">
+    <div class="modal-title">外送檢驗代碼設定</div>
+    <div class="modal-sub">勾選要追蹤的 NHI 章別。凡屬選取章別的醫令代碼，都會被納入今日外送抽血清單。</div>
+    <div id="lc-chapter-list" style="margin-top:12px"></div>
+    <div class="lc-custom">
+      <input type="text" id="lc-custom-input" placeholder="自訂章別前綴，例：14" maxlength="6">
+      <button class="act-btn" onclick="addCustomPrefix()">新增</button>
+    </div>
+    <div class="modal-footer" style="margin-top:16px">
+      <button class="act-btn" onclick="Layout.hideModal('modal-lab-settings')">取消</button>
+      <button class="act-btn act-primary" id="btn-lab-settings-save" onclick="saveLabSettings()">儲存</button>
     </div>
   </div>
 </div>
@@ -152,7 +184,88 @@
       .catch(function (e) { L.showToast('移除失敗：' + (e.message || ''), 'error'); });
   });
 
+  // ── Admin role detection ─────────────────────────────
+  function getRole() {
+    var t = localStorage.getItem('clinic_token');
+    if (!t) return null;
+    try {
+      var b64 = t.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      while (b64.length % 4) b64 += '=';
+      return JSON.parse(atob(b64)).role;
+    } catch (e) { return null; }
+  }
+
+  // ── Lab settings modal ───────────────────────────────
+  var KNOWN_CHAPTERS = [
+    { prefix: '08', label: '尿液／糞便檢查', sub: '08xxx' },
+    { prefix: '09', label: '血液生化檢查',   sub: '09xxx' },
+    { prefix: '12', label: '細菌／病毒培養', sub: '12xxx' },
+    { prefix: '14', label: '病理切片',       sub: '14xxx' },
+    { prefix: '25', label: '特殊功能檢查',   sub: '25xxx' },
+    { prefix: '28', label: '其他外送檢查',   sub: '28xxx' },
+    { prefix: '30', label: '過敏原測試',     sub: '30xxx' },
+  ];
+  var _activePrefixes = [];
+
+  function renderChapterList() {
+    var known = new Set(KNOWN_CHAPTERS.map(function (c) { return c.prefix; }));
+    var custom = _activePrefixes.filter(function (p) { return !known.has(p); });
+    var rows = KNOWN_CHAPTERS.map(function (c) {
+      var checked = _activePrefixes.indexOf(c.prefix) !== -1 ? ' checked' : '';
+      return '<div class="lc-row">' +
+        '<input type="checkbox" id="lc-' + c.prefix + '" value="' + c.prefix + '"' + checked + '>' +
+        '<label for="lc-' + c.prefix + '" class="lc-label">' + L.escHtml(c.label) +
+          ' <span class="lc-sub">(' + c.sub + ')</span></label>' +
+        '</div>';
+    });
+    custom.forEach(function (p) {
+      rows.push('<div class="lc-row">' +
+        '<input type="checkbox" id="lc-c-' + L.escHtml(p) + '" value="' + L.escHtml(p) + '" checked>' +
+        '<label for="lc-c-' + L.escHtml(p) + '" class="lc-label">自訂：' + L.escHtml(p) + '</label>' +
+        '</div>');
+    });
+    document.getElementById('lc-chapter-list').innerHTML = rows.join('');
+  }
+
+  function openLabSettings() {
+    L.apiFetch('/api/admin/settings/lab-codes').then(function (data) {
+      _activePrefixes = data.prefixes || [];
+      renderChapterList();
+      L.showModal('modal-lab-settings');
+    }).catch(function (e) {
+      L.showToast('讀取設定失敗：' + (e.message || ''), 'error');
+    });
+  }
+
+  function addCustomPrefix() {
+    var val = document.getElementById('lc-custom-input').value.trim();
+    if (!val) return;
+    if (_activePrefixes.indexOf(val) === -1) _activePrefixes.push(val);
+    document.getElementById('lc-custom-input').value = '';
+    renderChapterList();
+  }
+
+  function saveLabSettings() {
+    var checkboxes = document.querySelectorAll('#lc-chapter-list input[type=checkbox]');
+    var selected = [];
+    checkboxes.forEach(function (cb) { if (cb.checked) selected.push(cb.value); });
+    if (!selected.length) { L.showToast('至少需選擇一個章別', 'error'); return; }
+    var btn = document.getElementById('btn-lab-settings-save');
+    btn.disabled = true;
+    L.apiAction('PUT', '/api/admin/settings/lab-codes', { prefixes: selected })
+      .then(function () {
+        L.hideModal('modal-lab-settings');
+        L.showToast('代碼設定已儲存');
+        load();
+      })
+      .catch(function (e) { L.showToast('儲存失敗：' + (e.message || ''), 'error'); })
+      .finally(function () { btn.disabled = false; });
+  }
+
   Layout.init({ activePage: 'lab', onRefresh: load });
+  if (getRole() === 'admin') {
+    document.getElementById('btn-lab-settings').style.display = 'flex';
+  }
   load();
 })();
 </script>

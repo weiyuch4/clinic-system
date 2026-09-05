@@ -25,6 +25,7 @@ import db
 import directory
 import lab_report
 import lab_results
+import settings as _settings
 from models import (
     BloodDismissRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
     CreateUserRequest, DailyReport,
@@ -1346,6 +1347,32 @@ def delete_lab_report(report_id: int, _: auth.CurrentUser = Depends(auth.require
     except Exception:
         logger.exception("delete_lab_report failed for id=%s", report_id)
         raise HTTPException(status_code=500, detail="刪除失敗")
+
+
+@app.get("/api/admin/settings/lab-codes")
+def get_lab_code_settings(admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    try:
+        return {"prefixes": _settings.get_lab_prefixes(admin.clinic_id)}
+    except Exception:
+        logger.exception("get_lab_code_settings failed")
+        raise HTTPException(status_code=500, detail="讀取失敗")
+
+
+@app.put("/api/admin/settings/lab-codes")
+def save_lab_code_settings(body: dict, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    try:
+        prefixes = body.get("prefixes", [])
+        if not isinstance(prefixes, list):
+            raise HTTPException(status_code=422, detail="prefixes 必須是清單")
+        _settings.save_lab_prefixes(prefixes, admin.clinic_id)
+        return {"prefixes": _settings.get_lab_prefixes(admin.clinic_id)}
+    except HTTPException:
+        raise
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    except Exception:
+        logger.exception("save_lab_code_settings failed")
+        raise HTTPException(status_code=500, detail="儲存失敗")
 
 
 @app.get("/api/directory")

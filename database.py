@@ -1497,21 +1497,24 @@ def search_patients(q: str, limit: int = 20) -> list[dict]:
 
 # ── Blood draw tracking ───────────────────────────────────────────────────────
 
-# NHI chapters whose codes represent tests sent to an external lab:
-#   08 = 尿液  09 = 血液/生化  12 = 微生物  14 = 病理  25/28 = 其他檢查  30 = 過敏原
-_LAB_ORDER_RE = re.compile(r'^(08|09|12|25|28|30)\d+C$')
+def _build_lab_re(prefixes: list[str]):
+    escaped = '|'.join(re.escape(p) for p in prefixes)
+    return re.compile(r'^(' + escaped + r')\d+[A-Z]$')
 
 
-def _is_lab_order(code: str) -> bool:
-    return bool(_LAB_ORDER_RE.match(code))
+def _is_lab_order(code: str, lab_re) -> bool:
+    return bool(lab_re.match(code))
 
 
-def get_blood_draw_patients(as_of: date, lookback_days: int = 5) -> list[dict]:
+def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int = 1) -> list[dict]:
     """Scan IC files for the last lookback_days days and return patients who had
-    external lab orders (NHI chapters 08/09/12/14/25/28/30), grouped by draw date,
-    most recent first. Returns [] when USE_MOCK_DATA is True."""
+    external lab orders, grouped by draw date, most recent first.
+    Returns [] when USE_MOCK_DATA is True."""
     if USE_MOCK_DATA:
         return []
+
+    import settings as _settings
+    lab_re = _build_lab_re(_settings.get_lab_prefixes(clinic_id))
 
     dismissed = {(d['nat_id'], d['draw_date']) for d in _load_blood_dismissed()}
     result = []
@@ -1546,7 +1549,7 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5) -> list[dict]:
         for r in _parse_dbf_cached(ic_p):
             cf   = r.get('CODE_F',  '').strip()
             drug = r.get('DRUG_NO', '').strip()
-            if cf in visits and _is_lab_order(drug):
+            if cf in visits and _is_lab_order(drug, lab_re):
                 cf_codes.setdefault(cf, []).append(drug)
 
         # Merge multiple visits on same day for the same patient
