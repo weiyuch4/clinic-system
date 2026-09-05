@@ -55,7 +55,7 @@ app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 try:
-    db.init_pool()
+    db.init_pool(minconn=2, maxconn=25)
 except RuntimeError as e:
     logger.warning(f"PostgreSQL pool not initialized: {e}. Set DATABASE_URL to enable database access.")
 
@@ -572,7 +572,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
         as_of = report_date or date.today()
         # All DB queries run in parallel with the IC file report to avoid
         # sequential 130ms round trips to Supabase Tokyo on every tab load.
-        with ThreadPoolExecutor(max_workers=19) as exe:
+        with ThreadPoolExecutor(max_workers=20) as exe:
             f_report               = exe.submit(database.get_daily_report, as_of)
             f_hidden               = exe.submit(contacts.get_hidden_keys)
             f_call_required        = exe.submit(contacts.get_call_required_keys)
