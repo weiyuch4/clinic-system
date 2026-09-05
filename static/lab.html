@@ -99,7 +99,7 @@
             '<span class="lab-gcount">' + pts.length + ' 人</span>' +
           '</div>' +
           pts.map(function (p) {
-            var codes = (p.draw_codes || '').split(',').map(function (c) { return c.trim(); }).filter(Boolean);
+            var codes = Array.isArray(p.draw_codes) ? p.draw_codes.map(String).filter(Boolean) : (p.draw_codes || '').split(',').map(function (c) { return c.trim(); }).filter(Boolean);
             var codeHtml = codes.map(function (c) {
               return '<span class="lab-code-chip">' + L.escHtml(c) + '</span>';
             }).join('');
