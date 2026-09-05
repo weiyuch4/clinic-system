@@ -232,26 +232,8 @@
           _openChangePinModal(_nurse);
         });
       }
-    }).catch(function () {
-      // Fallback: use plain name list (unauthenticated or old server)
-      apiFetch('/api/nurses').then(function (names) {
-        var optsEl = document.getElementById('nurse-opts');
-        if (!optsEl) return;
-        optsEl.innerHTML = names.map(function (n) {
-          var sel = n === _nurse;
-          return '<button class="nurse-opt' + (sel ? ' sel' : '') + '" data-nurse="' + escHtml(n) + '" data-has-pin="0" type="button">' +
-            '<div class="nurse-opt-av">' + escHtml(n.slice(-1)) + '</div>' +
-            '<span class="nurse-opt-name">' + escHtml(n) + '</span>' +
-            CHECK_SVG +
-          '</button>';
-        }).join('');
-        optsEl.querySelectorAll('.nurse-opt').forEach(function (el) {
-          el.addEventListener('click', function () {
-            if (el.dataset.nurse !== _nurse) _setNurse(el.dataset.nurse);
-            closeDd();
-          });
-        });
-      }).catch(function () {});
+    }).catch(function (e) {
+      console.error('Failed to load nurse list:', e);
     });
   }
 
@@ -272,23 +254,20 @@
   }
 
   function _openChangePinModal(name) {
-    var modal = document.getElementById('change-pin-modal');
-    var lbl   = document.getElementById('change-pin-name');
-    var inp1  = document.getElementById('change-pin-old');
-    var inp2  = document.getElementById('change-pin-new');
-    var err   = document.getElementById('change-pin-err');
-    if (!modal) return;
+    var lbl  = document.getElementById('change-pin-name');
+    var inp1 = document.getElementById('change-pin-old');
+    var inp2 = document.getElementById('change-pin-new');
+    var err  = document.getElementById('change-pin-err');
     if (lbl)  lbl.textContent = name + '：更改 PIN';
     if (inp1) inp1.value = '';
     if (inp2) inp2.value = '';
     if (err)  { err.textContent = ''; err.style.display = 'none'; }
-    modal.style.display = 'flex';
-    setTimeout(function () { if (inp1) inp1.focus(); }, 50);
+    showModal('change-pin-modal');
+    setTimeout(function () { if (inp1) inp1.focus(); }, 120);
   }
 
   function _closeChangePinModal() {
-    var modal = document.getElementById('change-pin-modal');
-    if (modal) modal.style.display = 'none';
+    hideModal('change-pin-modal');
   }
 
   function _submitChangePinModal() {
@@ -315,24 +294,25 @@
       .finally(function () { if (btn) btn.disabled = false; });
   }
 
+  var _pinOnSuccess = null;
+
   function _openPinModal(name, onSuccess) {
-    _pinTarget = name;
-    var modal = document.getElementById('pin-modal');
-    var lbl   = document.getElementById('pin-modal-name');
-    var inp   = document.getElementById('pin-modal-input');
-    var err   = document.getElementById('pin-modal-err');
-    if (!modal) return;
+    _pinTarget    = name;
+    _pinOnSuccess = onSuccess || null;
+    var lbl = document.getElementById('pin-modal-name');
+    var inp = document.getElementById('pin-modal-input');
+    var err = document.getElementById('pin-modal-err');
     if (lbl) lbl.textContent = name + ' 的 PIN';
-    if (inp) { inp.value = ''; }
+    if (inp) inp.value = '';
     if (err) { err.textContent = ''; err.style.display = 'none'; }
-    modal.style.display = 'flex';
-    setTimeout(function () { if (inp) inp.focus(); }, 50);
+    showModal('pin-modal');
+    setTimeout(function () { if (inp) inp.focus(); }, 120);
   }
 
   function _closePinModal() {
-    var modal = document.getElementById('pin-modal');
-    if (modal) modal.style.display = 'none';
-    _pinTarget = '';
+    hideModal('pin-modal');
+    _pinTarget    = '';
+    _pinOnSuccess = null;
   }
 
   function _submitPin() {
@@ -348,6 +328,7 @@
         _closePinModal();
         _setNurse(name);
         showToast(name + ' 已登入');
+        if (_pinOnSuccess) { _pinOnSuccess(); _pinOnSuccess = null; }
       })
       .catch(function (e) {
         if (err) { err.textContent = e.message || 'PIN 不正確'; err.style.display = ''; }
@@ -727,24 +708,30 @@
     var ic = th.querySelector('.sort-icon'); if (ic) ic.textContent = dir === 'asc' ? '↑' : '↓';
   }
 
+  var _PIN_INPUT_STYLE = 'border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:22px;letter-spacing:8px;text-align:center;width:100%;background:var(--bg);color:var(--text);box-sizing:border-box;outline:none';
+  var _PIN_LBL_STYLE  = 'font-size:12px;font-weight:600;color:var(--sub);margin-bottom:3px';
+
   // ── PIN modal (injected into body) ───────────────────
   function _injectPinModal() {
     if (document.getElementById('pin-modal')) return;
-    var div = document.createElement('div');
-    div.innerHTML =
-      '<div id="pin-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center">' +
-        '<div style="background:var(--card);border-radius:var(--r);padding:28px 28px 22px;min-width:280px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px">' +
-          '<div style="font-size:15px;font-weight:700;color:var(--text)" id="pin-modal-name">PIN 驗證</div>' +
-          '<input id="pin-modal-input" type="password" inputmode="numeric" maxlength="4" placeholder="4 位數 PIN" autocomplete="off" ' +
-            'style="border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:20px;letter-spacing:6px;text-align:center;width:100%;background:var(--bg);color:var(--text);box-sizing:border-box">' +
-          '<div id="pin-modal-err" style="display:none;color:#dc2626;font-size:12px;text-align:center"></div>' +
-          '<div style="display:flex;gap:8px;justify-content:flex-end">' +
-            '<button onclick="Layout._closePinModal()" style="padding:7px 16px;border-radius:var(--r);border:1.5px solid var(--border);background:transparent;cursor:pointer;color:var(--sub);font-size:13px">取消</button>' +
-            '<button id="pin-modal-submit" onclick="Layout._submitPin()" style="padding:7px 18px;border-radius:var(--r);border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600">確認</button>' +
+
+    // Verify-PIN modal
+    var d1 = document.createElement('div');
+    d1.innerHTML =
+      '<div class="modal-overlay" id="pin-modal">' +
+        '<div class="modal-box" style="max-width:320px">' +
+          '<div class="modal-title" id="pin-modal-name">PIN 驗證</div>' +
+          '<div style="display:flex;flex-direction:column;gap:4px;margin-top:4px">' +
+            '<input id="pin-modal-input" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="new-password" style="' + _PIN_INPUT_STYLE + '">' +
+          '</div>' +
+          '<div id="pin-modal-err" style="display:none;color:#B91C1C;font-size:12px;text-align:center;margin-top:4px"></div>' +
+          '<div class="modal-footer">' +
+            '<button class="act-btn" onclick="Layout._closePinModal()">取消</button>' +
+            '<button id="pin-modal-submit" class="act-btn act-primary" onclick="Layout._submitPin()">確認</button>' +
           '</div>' +
         '</div>' +
       '</div>';
-    document.body.appendChild(div.firstChild);
+    document.body.appendChild(d1.firstChild);
     document.getElementById('pin-modal-input').addEventListener('keydown', function (e) {
       if (e.key === 'Enter') _submitPin();
       if (e.key === 'Escape') _closePinModal();
@@ -752,23 +739,25 @@
 
     // Change-PIN modal (self-service)
     if (!document.getElementById('change-pin-modal')) {
-      var div2 = document.createElement('div');
-      div2.innerHTML =
-        '<div id="change-pin-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.45);align-items:center;justify-content:center">' +
-          '<div style="background:var(--card);border-radius:var(--r);padding:28px 28px 22px;min-width:290px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px">' +
-            '<div style="font-size:15px;font-weight:700;color:var(--text)" id="change-pin-name">更改 PIN</div>' +
-            '<input id="change-pin-old" type="password" inputmode="numeric" maxlength="4" placeholder="目前 PIN" autocomplete="off" ' +
-              'style="border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:20px;letter-spacing:6px;text-align:center;width:100%;background:var(--bg);color:var(--text);box-sizing:border-box">' +
-            '<input id="change-pin-new" type="password" inputmode="numeric" maxlength="4" placeholder="新 PIN（4 位數字）" autocomplete="off" ' +
-              'style="border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:20px;letter-spacing:6px;text-align:center;width:100%;background:var(--bg);color:var(--text);box-sizing:border-box">' +
-            '<div id="change-pin-err" style="display:none;color:#dc2626;font-size:12px;text-align:center"></div>' +
-            '<div style="display:flex;gap:8px;justify-content:flex-end">' +
-              '<button onclick="Layout._closeChangePinModal()" style="padding:7px 16px;border-radius:var(--r);border:1.5px solid var(--border);background:transparent;cursor:pointer;color:var(--sub);font-size:13px">取消</button>' +
-              '<button id="change-pin-submit" onclick="Layout._submitChangePinModal()" style="padding:7px 18px;border-radius:var(--r);border:none;background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600">更改 PIN</button>' +
+      var d2 = document.createElement('div');
+      d2.innerHTML =
+        '<div class="modal-overlay" id="change-pin-modal">' +
+          '<div class="modal-box" style="max-width:320px">' +
+            '<div class="modal-title" id="change-pin-name">更改 PIN</div>' +
+            '<div style="display:flex;flex-direction:column;gap:12px;margin-top:4px">' +
+              '<div><div style="' + _PIN_LBL_STYLE + '">目前 PIN</div>' +
+                '<input id="change-pin-old" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="new-password" style="' + _PIN_INPUT_STYLE + '"></div>' +
+              '<div><div style="' + _PIN_LBL_STYLE + '">新 PIN（4 位數字）</div>' +
+                '<input id="change-pin-new" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="new-password" style="' + _PIN_INPUT_STYLE + '"></div>' +
+            '</div>' +
+            '<div id="change-pin-err" style="display:none;color:#B91C1C;font-size:12px;text-align:center;margin-top:4px"></div>' +
+            '<div class="modal-footer">' +
+              '<button class="act-btn" onclick="Layout._closeChangePinModal()">取消</button>' +
+              '<button id="change-pin-submit" class="act-btn act-primary" onclick="Layout._submitChangePinModal()">更改 PIN</button>' +
             '</div>' +
           '</div>' +
         '</div>';
-      document.body.appendChild(div2.firstChild);
+      document.body.appendChild(d2.firstChild);
       document.getElementById('change-pin-old').addEventListener('keydown', function (e) {
         if (e.key === 'Enter') document.getElementById('change-pin-new').focus();
         if (e.key === 'Escape') _closeChangePinModal();

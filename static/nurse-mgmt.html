@@ -19,6 +19,7 @@
 .nm-status{font-size:12px;font-weight:500}
 .nm-status.active{color:#059669}
 .nm-status.inactive{color:var(--muted)}
+.section-title{font-size:16px;font-weight:700;color:var(--text);margin:0}
 .nm-actions{display:flex;gap:6px;justify-content:flex-end;flex-wrap:wrap}
 .nm-empty{text-align:center;padding:48px;color:var(--muted);font-size:14px}
 
@@ -69,15 +70,16 @@
       </div>
 
       <!-- PIN management section -->
-      <div class="ph" style="margin-top:12px">
-        <div><h1 style="font-size:18px">護理師 PIN 設定</h1><p>每位護理師需設定 4 位數 PIN，切換身份時使用</p></div>
+      <div class="ph" style="margin-top:12px" id="pin-section">
+        <div><h2 class="section-title">護理師 PIN 設定</h2><p>每位護理師需設定 4 位數 PIN，切換身份時使用</p></div>
       </div>
-      <div class="nm-table-wrap">
+      <div class="nm-table-wrap" id="pin-table-wrap">
         <table class="nmtable" id="pin-table">
           <thead><tr><th>護理師</th><th>PIN 狀態</th><th></th></tr></thead>
           <tbody id="pin-body"><tr><td colspan="3" class="nm-empty">載入中…</td></tr></tbody>
         </table>
       </div>
+      <div id="pin-no-access" style="display:none;padding:24px;color:var(--muted);font-size:14px;text-align:center">此功能需要管理員權限</div>
 
     </div>
   </div>
@@ -383,7 +385,7 @@
         var hasPin = n.has_pin;
         var status = hasPin
           ? '<span class="nm-status active">已設定</span>'
-          : '<span class="nm-status inactive">未設定</span>';
+          : '<span class="nm-status" style="color:#B45309">未設定</span>';
         var actions = '<button class="act-btn nm-set-pin" data-name="' + L.escHtml(n.name) + '">' + (hasPin ? '重設 PIN' : '設定 PIN') + '</button>';
         if (hasPin) actions += '<button class="act-btn act-danger nm-clear-pin" data-name="' + L.escHtml(n.name) + '">清除 PIN</button>';
         return '<tr><td class="nm-name">' + L.escHtml(n.name) + '</td><td>' + status + '</td><td><div class="nm-actions">' + actions + '</div></td></tr>';
@@ -438,7 +440,12 @@
     if (e.key === 'Enter') document.getElementById('btn-set-pin-confirm').click();
   });
 
-  if (role === 'admin') loadPins();
+  if (role === 'admin') {
+    loadPins();
+  } else {
+    document.getElementById('pin-table-wrap').style.display = 'none';
+    document.getElementById('pin-no-access').style.display = '';
+  }
 })();
 </script>
 </body>

@@ -26,7 +26,7 @@
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .allergy-chip{background:#2A0A0F;color:#FCA5A5}}
 :root[data-theme="dark"] .allergy-chip{background:#2A0A0F;color:#FCA5A5}
 /* settings gear */
-.lab-gear{display:flex;align-items:center;gap:6px;margin-left:auto;background:transparent;border:1.5px solid var(--border);border-radius:var(--r);padding:6px 12px;cursor:pointer;color:var(--sub);font-size:13px;font-weight:600}
+.lab-gear{display:flex;align-items:center;gap:6px;margin-left:auto;background:transparent;border:1.5px solid var(--border);border-radius:100px;padding:6px 12px;cursor:pointer;color:var(--sub);font-size:13px;font-weight:600}
 .lab-gear:hover{color:var(--text);border-color:var(--sub)}
 /* settings modal */
 .lc-row{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)}
@@ -35,7 +35,7 @@
 .lc-sub{font-size:11px;color:var(--muted)}
 .lc-custom{display:flex;gap:8px;margin-top:12px}
 .lc-custom input{flex:1;border:1.5px solid var(--border);border-radius:var(--r);padding:6px 10px;background:var(--bg);color:var(--text);font-size:13px}
-.lc-custom input:focus{outline:none;border-color:var(--accent)}
+.lc-custom input:focus{outline:none;border-color:#b5d7f5}
 </style>
 </head>
 <body>
@@ -71,9 +71,9 @@
   <div class="modal-box" style="max-width:440px">
     <div class="modal-title">外送檢驗代碼設定</div>
     <div class="modal-sub">勾選要追蹤的 NHI 章別。凡屬選取章別的醫令代碼，都會被納入今日外送抽血清單。</div>
-    <div id="lc-chapter-list" style="margin-top:12px"></div>
+    <div id="lc-chapter-list" style="margin-top:12px;max-height:calc(100vh - 280px);overflow-y:auto"></div>
     <div class="lc-custom">
-      <input type="text" id="lc-custom-input" placeholder="自訂章別前綴，例：14" maxlength="6">
+      <input type="text" id="lc-custom-input" placeholder="自訂章別前綴，例：70" maxlength="6">
       <button class="act-btn" onclick="addCustomPrefix()">新增</button>
     </div>
     <div class="modal-footer" style="margin-top:16px">
@@ -213,19 +213,23 @@
     var rows = KNOWN_CHAPTERS.map(function (c) {
       var checked = _activePrefixes.indexOf(c.prefix) !== -1 ? ' checked' : '';
       return '<div class="lc-row">' +
-        '<input type="checkbox" id="lc-' + c.prefix + '" value="' + c.prefix + '"' + checked + '>' +
+        '<input type="checkbox" id="lc-' + c.prefix + '" value="' + c.prefix + '"' + checked + ' style="accent-color:#b5d7f5;width:16px;height:16px;cursor:pointer">' +
         '<label for="lc-' + c.prefix + '" class="lc-label">' + L.escHtml(c.label) +
           ' <span class="lc-sub">(' + c.sub + ')</span></label>' +
         '</div>';
     });
     custom.forEach(function (p) {
       rows.push('<div class="lc-row">' +
-        '<input type="checkbox" id="lc-c-' + L.escHtml(p) + '" value="' + L.escHtml(p) + '" checked>' +
+        '<input type="checkbox" id="lc-c-' + L.escHtml(p) + '" value="' + L.escHtml(p) + '" checked style="accent-color:#b5d7f5;width:16px;height:16px;cursor:pointer">' +
         '<label for="lc-c-' + L.escHtml(p) + '" class="lc-label">自訂：' + L.escHtml(p) + '</label>' +
         '</div>');
     });
     document.getElementById('lc-chapter-list').innerHTML = rows.join('');
   }
+
+  document.getElementById('lc-custom-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') addCustomPrefix();
+  });
 
   function openLabSettings() {
     L.apiFetch('/api/admin/settings/lab-codes').then(function (data) {
@@ -240,7 +244,8 @@
   function addCustomPrefix() {
     var val = document.getElementById('lc-custom-input').value.trim();
     if (!val) return;
-    if (_activePrefixes.indexOf(val) === -1) _activePrefixes.push(val);
+    if (_activePrefixes.indexOf(val) !== -1) { L.showToast('該章別前綴已存在', 'error'); return; }
+    _activePrefixes.push(val);
     document.getElementById('lc-custom-input').value = '';
     renderChapterList();
   }
