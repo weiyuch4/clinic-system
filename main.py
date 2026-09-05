@@ -488,46 +488,14 @@ def clear_nurse_pin(name: str, _: auth.CurrentUser = Depends(auth.require_admin)
         raise HTTPException(status_code=500, detail="清除失敗")
 
 
-# ── Nurse PIN rate limiting (in-memory, per nurse name) ─────────────────────
-import time as _time
-_pin_failures: dict[str, list[float]] = {}
-_pin_lock = threading.Lock()
-_PIN_MAX_ATTEMPTS = 5
-_PIN_LOCKOUT_SECONDS = 300  # 5 minutes
-
-
-def _check_and_record_failure(name: str, now: float) -> bool:
-    """Atomically checks lockout and pre-records a failure slot. Returns True if locked out."""
-    with _pin_lock:
-        recent = [t for t in _pin_failures.get(name, []) if now - t < _PIN_LOCKOUT_SECONDS]
-        if len(recent) >= _PIN_MAX_ATTEMPTS:
-            _pin_failures[name] = recent
-            return True
-        recent.append(now)
-        _pin_failures[name] = recent
-        return False
-
-
-def _clear_failures(name: str) -> None:
-    with _pin_lock:
-        _pin_failures.pop(name, None)
-
-
 @app.post("/api/auth/nurse-pin")
 def verify_nurse_pin(body: dict, _: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     name = str(body.get("name", "")).strip()
     pin  = str(body.get("pin",  "")).strip()
     if not name or not pin:
         raise HTTPException(status_code=422, detail="請輸入護理師名稱與 PIN")
-
-    now = _time.time()
-    if _check_and_record_failure(name, now):
-        raise HTTPException(status_code=429, detail="嘗試次數過多，請 5 分鐘後再試")
-
     if not contacts.verify_nurse_pin(name, pin):
         raise HTTPException(status_code=401, detail="PIN 不正確")
-
-    _clear_failures(name)
     return {"ok": True, "name": name}
 
 
@@ -538,20 +506,12 @@ def change_nurse_pin(body: dict, _: auth.CurrentUser = Depends(auth.get_current_
     new_pin = str(body.get("new_pin", "")).strip()
     if not name or not old_pin or not new_pin:
         raise HTTPException(status_code=422, detail="請填寫所有欄位")
-
-    now = _time.time()
-    if _check_and_record_failure(name, now):
-        raise HTTPException(status_code=429, detail="嘗試次數過多，請 5 分鐘後再試")
-
     if not contacts.verify_nurse_pin(name, old_pin):
         raise HTTPException(status_code=401, detail="目前 PIN 不正確")
-
     try:
         contacts.set_nurse_pin(name, new_pin)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
-
-    _clear_failures(name)
     return {"ok": True}
 
 
