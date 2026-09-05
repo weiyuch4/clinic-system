@@ -65,6 +65,22 @@ lab_report.init()
 backup.run()
 threading.Thread(target=database.warmup_cache, daemon=True).start()
 
+if not auth.has_any_users():
+    _default_pass = os.environ.get("BOOTSTRAP_ADMIN_PASS", "ClinicAdmin2026!")
+    auth.bootstrap_clinic(
+        clinic_slug="clinic1",
+        clinic_name="診所",
+        admin_username="admin",
+        admin_password=_default_pass,
+        nurse_names=[],
+        nurse_password="",
+    )
+    logger.warning(
+        "No users found — bootstrapped default admin account. "
+        "Username: admin  Password: %s  (change this immediately after first login)",
+        _default_pass,
+    )
+
 if not contacts.get_nurses():  # first run on this DB — seed from the hardcoded defaults above
     for _name in NURSE_NAMES:
         contacts.add_nurse(_name)

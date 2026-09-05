@@ -9,4 +9,4 @@ appDir = oFS.GetParentFolderName(WScript.ScriptFullName)
 ' Start server silently in the background.
 ' Route through cmd /c so the full user PATH is used (handles per-user Python installs,
 ' Microsoft Store Python, Anaconda, etc. — all of which only appear in cmd PATH not WScript PATH)
-oShell.Run "cmd /c python """ & appDir & "\main.py""", 0, False
+oShell.Run "cmd /c cd /d """ & appDir & """ && python main.py", 0, False
