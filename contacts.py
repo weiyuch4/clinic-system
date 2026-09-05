@@ -1547,3 +1547,155 @@ def delete_salary_record(record_id: int) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM salary_records WHERE id = %s", (record_id,))
+
+
+def get_contact_history(q: str, clinic_id: int = 1) -> list[dict]:
+    """Return all recorded events for a patient matching chart_number or name."""
+    events: list[dict] = []
+    escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    like = f"%{escaped}%"
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT chart_number, name, category, attempt,
+                          contacted_at, contacted_time, nurse, disease_name, mspt_stage
+                   FROM contacts
+                   WHERE clinic_id=%s AND (chart_number=%s OR name ILIKE %s)
+                   ORDER BY contacted_at DESC""",
+                (clinic_id, q, like),
+            )
+            for r in cur.fetchall():
+                events.append({
+                    "type": "called" if r["attempt"] >= 2 else "contacted",
+                    "date": r["contacted_at"],
+                    "time": r["contacted_time"],
+                    "nurse": r["nurse"] or "",
+                    "category": r["category"],
+                    "chart_number": r["chart_number"],
+                    "name": r["name"],
+                    "detail": r["mspt_stage"] or r["disease_name"] or "",
+                })
+
+            cur.execute(
+                """SELECT chart_number, name, category, template, status,
+                          sent_at, sent_time, nurse, dry_run, undone_at
+                   FROM line_notification_log
+                   WHERE clinic_id=%s AND (chart_number=%s OR name ILIKE %s)
+                   ORDER BY sent_at DESC""",
+                (clinic_id, q, like),
+            )
+            for r in cur.fetchall():
+                detail = r["template"]
+                if r["dry_run"]: detail += "（測試）"
+                if r["undone_at"]: detail += "（已撤銷）"
+                if r["status"] != "ok": detail += f" [{r['status']}]"
+                events.append({
+                    "type": "line",
+                    "date": r["sent_at"],
+                    "time": r["sent_time"],
+                    "nurse": r["nurse"] or "",
+                    "category": r["category"],
+                    "chart_number": r["chart_number"],
+                    "name": r["name"],
+                    "detail": detail,
+                })
+
+            cur.execute(
+                """SELECT chart_number, name, category, note, held_at, nurse
+                   FROM on_hold
+                   WHERE clinic_id=%s AND (chart_number=%s OR name ILIKE %s)
+                   ORDER BY held_at DESC""",
+                (clinic_id, q, like),
+            )
+            for r in cur.fetchall():
+                events.append({
+                    "type": "hold",
+                    "date": r["held_at"],
+                    "time": None,
+                    "nurse": r["nurse"] or "",
+                    "category": r["category"] or "",
+                    "chart_number": r["chart_number"] or "",
+                    "name": r["name"],
+                    "detail": r["note"] or "",
+                })
+
+            cur.execute(
+                """SELECT chart_number, name, category, reason, note, excluded_at, nurse
+                   FROM excluded
+                   WHERE clinic_id=%s AND (chart_number=%s OR name ILIKE %s)
+                   ORDER BY excluded_at DESC""",
+                (clinic_id, q, like),
+            )
+            for r in cur.fetchall():
+                detail = r["reason"]
+                if r["note"]: detail += f"：{r['note']}"
+                events.append({
+                    "type": "excluded",
+                    "date": r["excluded_at"],
+                    "time": None,
+                    "nurse": r["nurse"] or "",
+                    "category": r["category"],
+                    "chart_number": r["chart_number"],
+                    "name": r["name"],
+                    "detail": detail,
+                })
+
+            cur.execute(
+                """SELECT chart_number, name, mspt_stage, completed_at, completed_time, nurse
+                   FROM mspt_completed
+                   WHERE clinic_id=%s AND (chart_number=%s OR name ILIKE %s)
+                   ORDER BY completed_at DESC""",
+                (clinic_id, q, like),
+            )
+            for r in cur.fetchall():
+                events.append({
+                    "type": "mspt_completed",
+                    "date": r["completed_at"],
+                    "time": r["completed_time"],
+                    "nurse": r["nurse"] or "",
+                    "category": "代謝症候群",
+                    "chart_number": r["chart_number"],
+                    "name": r["name"],
+                    "detail": r["mspt_stage"] or "",
+                })
+
+            cur.execute(
+                """SELECT chart_number, name, mspt_stage, checkedin_at, checkedin_time, nurse
+                   FROM mspt_checkedin
+                   WHERE clinic_id=%s AND (chart_number=%s OR name ILIKE %s)
+                   ORDER BY checkedin_at DESC""",
+                (clinic_id, q, like),
+            )
+            for r in cur.fetchall():
+                events.append({
+                    "type": "checkedin",
+                    "date": r["checkedin_at"],
+                    "time": r["checkedin_time"],
+                    "nurse": r["nurse"] or "",
+                    "category": "代謝症候群",
+                    "chart_number": r["chart_number"],
+                    "name": r["name"],
+                    "detail": r["mspt_stage"] or "",
+                })
+
+            cur.execute(
+                """SELECT chart_number, name, completed_at, completed_time, nurse, disease_name
+                   FROM hep_returned_completed
+                   WHERE clinic_id=%s AND (chart_number=%s OR name ILIKE %s)
+                   ORDER BY completed_at DESC""",
+                (clinic_id, q, like),
+            )
+            for r in cur.fetchall():
+                events.append({
+                    "type": "hep_completed",
+                    "date": r["completed_at"],
+                    "time": r["completed_time"],
+                    "nurse": r["nurse"] or "",
+                    "category": "B肝",
+                    "chart_number": r["chart_number"],
+                    "name": r["name"],
+                    "detail": r["disease_name"] or "",
+                })
+
+    events.sort(key=lambda e: (e["date"] or "", e["time"] or ""), reverse=True)
+    return events

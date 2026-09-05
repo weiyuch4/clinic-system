@@ -5,7 +5,7 @@ Tables managed in PostgreSQL (shared pool from db.py).
 All tokens are validated before any patient data is returned.
 
 JWT flow:
-  POST /auth/login  → access_token (JSON body, 8h) + refresh_token (HttpOnly cookie, 7d)
+  POST /auth/login  → access_token (JSON body, 8h) + refresh_token (HttpOnly cookie, 30d)
   POST /auth/refresh → new access_token; refresh token rotated
   POST /auth/logout  → refresh token deleted server-side
 """
