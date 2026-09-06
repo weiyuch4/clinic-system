@@ -27,6 +27,11 @@
 .unpub-banner{background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r);padding:30px;text-align:center;color:var(--muted);font-size:13px}
 .sg-cell.last-row{border-bottom:none}
 .sg-mine{background:rgba(75,170,255,.08)}
+.sg-entry{display:flex;flex-direction:column;gap:1px;padding:2px 0}
+.sg-entry+.sg-entry{border-top:1px solid var(--border);margin-top:5px;padding-top:5px}
+.sg-time{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.sg-clean{font-size:10.5px;color:var(--muted)}
+.sg-clean::before{content:'清潔 '}
 .view-toggle{display:flex;border:1.5px solid var(--border);border-radius:100px;overflow:hidden;flex-shrink:0}
 .view-toggle button{padding:5px 14px;font-size:12.5px;font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;transition:background .12s,color .12s}
 .view-toggle button.on{background:var(--text);color:var(--card)}
@@ -113,6 +118,18 @@
     document.getElementById('week-label').textContent = monYear + '/' + mon.slice(5, 7) + ' 週（' + range + '）';
   }
 
+  function entryHtml(e) {
+    var h = '<div class="sg-entry"><div class="sg-name">' + L.escHtml(e.nurse) + '</div>';
+    if (e.start_time || e.end_time) {
+      h += '<div class="sg-time">' + (e.start_time || '') + (e.end_time ? '–' + e.end_time : '') + '</div>';
+    }
+    if (e.clean_start && e.clean_end) {
+      h += '<div class="sg-clean">' + e.clean_start + '–' + e.clean_end + '</div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
   function renderGrid(idx) {
     _lastIdx = idx;
     var myNurse = L.getNurse();
@@ -135,13 +152,13 @@
       var cells = '<div class="sg-cell sg-lbl' + (isLast ? ' last-row' : '') + '">' + L.escHtml(slot.label) + '</div>';
       dates.forEach(function (d) {
         var isToday = d === TODAY;
-        var allNurses = (idx[d] && idx[d][slot.key]) || [];
-        var isMineDay = myNurse && allNurses.indexOf(myNurse) !== -1;
-        var nurses = _showAll ? allNurses : (myNurse ? allNurses.filter(function(n){return n===myNurse;}) : allNurses);
+        var allEntries = (idx[d] && idx[d][slot.key]) || [];
+        var isMineDay = myNurse && allEntries.some(function(e){return e.nurse===myNurse;});
+        var entries = _showAll ? allEntries : (myNurse ? allEntries.filter(function(e){return e.nurse===myNurse;}) : allEntries);
         var highlight = !_showAll && isMineDay ? ' sg-mine' : '';
         cells += '<div class="sg-cell sg-day' + (isToday ? ' sg-today' : '') + (isLast ? ' last-row' : '') + highlight + '">' +
-          (nurses.length
-            ? nurses.map(function (n) { return '<div class="sg-name">' + L.escHtml(n) + '</div>'; }).join('')
+          (entries.length
+            ? entries.map(entryHtml).join('')
             : '<span class="sg-empty">—</span>') +
         '</div>';
       });
@@ -166,7 +183,13 @@
       (data.shifts || []).forEach(function (s) {
         if (!idx[s.shift_date]) idx[s.shift_date] = {};
         if (!idx[s.shift_date][s.slot]) idx[s.shift_date][s.slot] = [];
-        idx[s.shift_date][s.slot].push(s.nurse);
+        idx[s.shift_date][s.slot].push({
+          nurse: s.nurse,
+          start_time: s.start_time || null,
+          end_time: s.end_time || null,
+          clean_start: s.clean_start || null,
+          clean_end: s.clean_end || null,
+        });
       });
       renderGrid(idx);
     }).catch(function (e) {
