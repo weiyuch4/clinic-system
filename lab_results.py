@@ -154,10 +154,10 @@ def _iter_rows(path: str):
                     fields.append((name, offset, flen))
                 offset += flen
             f.seek(header_size)
-            while True:
-                raw = f.read(record_size)
-                if not raw or len(raw) < record_size:
-                    break
+            data = f.read()   # one network read for all records
+            n = len(data) // record_size
+            for i in range(n):
+                raw = data[i * record_size : (i + 1) * record_size]
                 if raw[0] == 0x2A:
                     continue
                 row: dict[str, str] = {}
@@ -215,13 +215,17 @@ def _read_dbf_header(f) -> tuple[int, int, int, list]:
 
 def _parse_dbf_records(f, header_size: int, record_size: int, fields: list,
                         start: int = 0) -> list[dict]:
-    """Parse records from an open DBF file starting at record index `start`."""
-    rows: list[dict] = []
+    """Parse records from an open DBF file starting at record index `start`.
+
+    Reads the entire remaining data section in one call so network-drive files
+    need only one round-trip instead of one per record.
+    """
     f.seek(header_size + start * record_size)
-    while True:
-        raw = f.read(record_size)
-        if not raw or len(raw) < record_size:
-            break
+    data = f.read()   # one network read for all remaining records
+    n = len(data) // record_size
+    rows: list[dict] = []
+    for i in range(n):
+        raw = data[i * record_size : (i + 1) * record_size]
         if raw[0] == 0x2A:   # deleted record marker
             continue
         row: dict[str, str] = {}
