@@ -648,6 +648,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
             f_excluded_entries     = exe.submit(contacts.get_excluded_entries)
             f_auto_excluded        = exe.submit(contacts.get_auto_excluded_entries)
             f_called_entries       = exe.submit(contacts.get_called_entries)
+            f_all_blood_used       = exe.submit(contacts.get_all_mspt_blood_used)
 
         report                      = f_report.result()
         hidden_keys                 = f_hidden.result()
@@ -670,6 +671,24 @@ def get_report(report_date: date | None = None) -> DailyReport:
         manual_excluded             = f_excluded_entries.result()
         auto_excluded_raw           = f_auto_excluded.result()
         called_entries              = f_called_entries.result()
+        all_blood_used              = f_all_blood_used.result()
+
+        def apply_blood_status(entries: list[FollowupEntry]) -> list[FollowupEntry]:
+            """Fill needs_blood_test and blood_draw_date fresh from contacts DB + lab files.
+            Must run outside the IC-file cache so it reflects current mspt_blood_used state."""
+            out = []
+            for e in entries:
+                if e.category != '代謝症候群' or not e.mspt_stage:
+                    out.append(e)
+                    continue
+                nat_id = e.patient.chart_number
+                used = all_blood_used.get(nat_id, {})
+                bt_needed, bt_date = database.mspt_blood_status(e.mspt_stage, nat_id, as_of, _used=used)
+                updates: dict = {'needs_blood_test': bt_needed, 'blood_draw_date': bt_date}
+                if e.mspt_stage == '收案' and e.last_stage is not None:
+                    updates['contact_reason'] = '需重新收案+抽血' if bt_needed else '需重新收案'
+                out.append(e.model_copy(update=updates))
+            return out
 
         def apply_mspt_overrides(entries: list[FollowupEntry]) -> list[FollowupEntry]:
             if not manual_overrides:
@@ -810,8 +829,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
         return DailyReport(
             report_date=report.report_date,
             chronic_prescriptions=filter_followups(chronic_prescriptions),
-            mspt_followups=filter_followups(apply_mspt_overrides(report.mspt_followups)),
-            mspt_inactive=filter_followups(apply_mspt_overrides(report.mspt_inactive)),
+            mspt_followups=filter_followups(apply_mspt_overrides(apply_blood_status(report.mspt_followups))),
+            mspt_inactive=filter_followups(apply_mspt_overrides(apply_blood_status(report.mspt_inactive))),
             mspt_submittable=[
                 e for e in (report.mspt_submittable + phone_submittable)
                 if (e.patient.chart_number, e.mspt_stage) not in submitted_keys

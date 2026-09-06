@@ -528,6 +528,19 @@ def get_mspt_blood_used(nat_id: str) -> dict[str, str]:
             return {row["stage"]: row["draw_date"] for row in cur.fetchall()}
 
 
+def get_all_mspt_blood_used() -> dict[str, dict[str, str]]:
+    """Return {nat_id: {stage: draw_date_iso}} for all patients — one query for the whole clinic."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT nat_id, stage, draw_date FROM mspt_blood_used WHERE clinic_id = 1",
+            )
+            result: dict[str, dict[str, str]] = {}
+            for row in cur.fetchall():
+                result.setdefault(row["nat_id"], {})[row["stage"]] = row["draw_date"]
+            return result
+
+
 def record_mspt_blood_used(nat_id: str, stage: str, draw_iso_date: str) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:

@@ -63,7 +63,12 @@ _MSPT_STAGE_GAP = METABOLIC_FOLLOWUP_DAYS
 MSPT_BLOOD_TEST_WINDOW_DAYS = 90
 
 
-def mspt_blood_status(mspt_stage: str, nat_id: str, as_of: date) -> tuple[bool, str | None]:
+def mspt_blood_status(
+    mspt_stage: str,
+    nat_id: str,
+    as_of: date,
+    _used: dict[str, str] | None = None,
+) -> tuple[bool, str | None]:
     """Returns (needs_blood_test, available_draw_date_iso).
 
     needs_blood_test=True: patient must come back for blood draw before we can proceed.
@@ -75,9 +80,13 @@ def mspt_blood_status(mspt_stage: str, nat_id: str, as_of: date) -> tuple[bool, 
     - 追2: if 追1 already recorded a draw, done; else use available draw if present; can complete either way.
     - 追3: if 追1 or 追2 already recorded a draw, done; else check — if none available, patient must come back.
     - 年度追蹤: always needs a fresh blood test (independent cycle).
+
+    Pass _used to skip the contacts DB query (use pre-fetched batch data from main.py).
     """
-    import contacts as _contacts
-    used = _contacts.get_mspt_blood_used(nat_id)
+    if _used is None:
+        import contacts as _contacts
+        _used = _contacts.get_mspt_blood_used(nat_id)
+    used = _used
     used_dates = set(used.values())
 
     def _avail() -> str | None:
@@ -747,24 +756,13 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
         # Case closed: missed by > 1 year → needs 收案 restart.
         # Route to inactive (長期未回診) if no clinic visit in the past 6 months.
         if days_overdue > REOPEN_AFTER_DAYS:
-            bt_needed, bt_date = mspt_blood_status('收案', nat_id, as_of)
-            entry = entry.model_copy(update={
-                'mspt_stage': '收案',
-                'needs_blood_test': bt_needed,
-                'blood_draw_date': bt_date,
-                'contact_reason': '需重新收案+抽血' if bt_needed else '需重新收案',
-            })
+            entry = entry.model_copy(update={'mspt_stage': '收案'})
             if (as_of - info['latest_date']).days > LONG_INACTIVE_DAYS:
                 inactive.append(entry)
             else:
                 results.append(entry)
         else:
-            bt_needed, bt_date = mspt_blood_status(next_stage, nat_id, as_of)
-            results.append(entry.model_copy(update={
-                'mspt_stage': next_stage,
-                'needs_blood_test': bt_needed,
-                'blood_draw_date': bt_date,
-            }))
+            results.append(entry.model_copy(update={'mspt_stage': next_stage}))
 
     return (
         sorted(results, key=lambda e: e.days_overdue, reverse=True),
