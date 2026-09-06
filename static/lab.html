@@ -22,8 +22,6 @@
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .lab-back{color:#34D399}:root:not([data-theme="light"]) .lab-pending{color:#FBBF24}}
 :root[data-theme="dark"] .lab-back{color:#34D399}
 :root[data-theme="dark"] .lab-pending{color:#FBBF24}
-.lab-dismiss{margin-left:8px;font-size:11px;color:var(--muted);border:1.5px solid var(--border);border-radius:100px;padding:3px 9px;cursor:pointer;background:transparent;flex-shrink:0}
-.lab-dismiss:hover{color:var(--text);border-color:var(--sub)}
 .scroll-area{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
 .allergy-chip{background:#FFE4E6;color:#9F1239;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .allergy-chip{background:#2A0A0F;color:#FCA5A5}}
@@ -73,7 +71,7 @@
 <div class="modal-overlay" id="modal-lab-settings">
   <div class="modal-box" style="max-width:440px">
     <div class="modal-title">外送檢驗代碼設定</div>
-    <div class="modal-sub">勾選要追蹤的 NHI 章別。凡屬選取章別的醫令代碼，都會被納入今日外送抽血清單。</div>
+    <div class="modal-sub">勾選要追蹤的 NHI 章別。系統以完整醫令代碼比對，選取章別內的代碼才會納入外送抽血清單。</div>
     <div id="lc-chapter-list" style="margin-top:12px;max-height:calc(100vh - 280px);overflow-y:auto"></div>
     <div class="lc-custom">
       <input type="text" id="lc-custom-input" placeholder="自訂章別前綴，例：70" maxlength="6">
@@ -86,29 +84,12 @@
   </div>
 </div>
 
-<!-- dismiss modal -->
-<div class="modal-overlay" id="modal-dismiss">
-  <div class="modal-box">
-    <div class="modal-title">移除追蹤記錄</div>
-    <div class="modal-sub" id="modal-dismiss-sub">確認要從今日追蹤清單移除此筆記錄？</div>
-    <div class="modal-field">
-      <label class="modal-label">原因（選填）</label>
-      <textarea class="modal-input" id="modal-dismiss-reason" rows="2" placeholder="例：改至大醫院抽血"></textarea>
-    </div>
-    <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-dismiss')">取消</button>
-      <button class="act-btn act-danger" id="btn-dismiss-confirm">確認移除</button>
-    </div>
-  </div>
-</div>
 
 <script src="/static/_layout.js?v=31"></script>
 <script>
 (function () {
   'use strict';
   var L = Layout;
-  var _dismissTarget = null;
-
   function load() {
     L.hideError();
     Promise.all([
@@ -141,8 +122,10 @@
           '</div>' +
           pts.map(function (p) {
             var codes = Array.isArray(p.draw_codes) ? p.draw_codes.map(String).filter(Boolean) : (p.draw_codes || '').split(',').map(function (c) { return c.trim(); }).filter(Boolean);
-            var codeHtml = codes.map(function (c) {
-              return '<span class="lab-code-chip">' + L.escHtml(c) + '</span>';
+            var names = Array.isArray(p.draw_code_names) ? p.draw_code_names : [];
+            var codeHtml = codes.map(function (c, i) {
+              var label = names[i] || c;
+              return '<span class="lab-code-chip" title="' + L.escHtml(c) + '">' + L.escHtml(label) + '</span>';
             }).join('');
             var allergyHtml = p.is_allergy ? '<span class="allergy-chip">過敏</span>' : '';
             var statusHtml = p.results_back
@@ -153,8 +136,6 @@
               allergyHtml +
               '<div class="lab-codes">' + codeHtml + '</div>' +
               '<div class="lab-status">' + statusHtml + '</div>' +
-              (p.results_back ? '' :
-                '<button class="lab-dismiss" data-natid="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '" data-name="' + L.escHtml(p.name) + '">移除</button>') +
             '</div>';
           }).join('') +
         '</div>';
@@ -163,29 +144,6 @@
       L.showError('檢驗資料載入失敗 — ' + (e.message || e));
     });
   }
-
-  document.getElementById('lab-list').addEventListener('click', function (ev) {
-    var btn = ev.target.closest('.lab-dismiss');
-    if (!btn) return;
-    _dismissTarget = { nat_id: btn.dataset.natid, draw_date: btn.dataset.date, name: btn.dataset.name };
-    document.getElementById('modal-dismiss-sub').textContent =
-      '移除 ' + _dismissTarget.name + '（' + _dismissTarget.draw_date + '）的追蹤記錄？';
-    document.getElementById('modal-dismiss-reason').value = '';
-    L.showModal('modal-dismiss');
-  });
-
-  document.getElementById('btn-dismiss-confirm').addEventListener('click', function () {
-    if (!_dismissTarget) return;
-    var reason = document.getElementById('modal-dismiss-reason').value.trim();
-    L.hideModal('modal-dismiss');
-    L.apiAction('POST', '/api/blood-dismiss', {
-      nat_id: _dismissTarget.nat_id,
-      draw_date: _dismissTarget.draw_date,
-      name: _dismissTarget.name,
-      reason: reason || '手動移除',
-    }).then(function () { L.showToast('已移除追蹤記錄'); load(); })
-      .catch(function (e) { L.showToast('移除失敗：' + (e.message || ''), 'error'); });
-  });
 
   // ── Admin role detection ─────────────────────────────
   function getRole() {
@@ -200,13 +158,12 @@
 
   // ── Lab settings modal ───────────────────────────────
   var KNOWN_CHAPTERS = [
-    { prefix: '08', label: '尿液／糞便檢查', sub: '08xxx' },
-    { prefix: '09', label: '血液生化檢查',   sub: '09xxx' },
-    { prefix: '12', label: '細菌／病毒培養', sub: '12xxx' },
-    { prefix: '14', label: '病理切片',       sub: '14xxx' },
-    { prefix: '25', label: '特殊功能檢查',   sub: '25xxx' },
-    { prefix: '28', label: '其他外送檢查',   sub: '28xxx' },
-    { prefix: '30', label: '過敏原測試',     sub: '30xxx' },
+    { prefix: '08', label: '血液常規檢查', sub: '131 項代碼' },
+    { prefix: '09', label: '血液生化檢查', sub: '138 項代碼' },
+    { prefix: '12', label: '血清免疫學',   sub: '218 項代碼' },
+    { prefix: '14', label: '病毒學檢查',   sub: '86 項代碼'  },
+    { prefix: '27', label: '放射免疫分析', sub: '82 項代碼'  },
+    { prefix: '30', label: '過敏原測試',   sub: '71 項代碼'  },
   ];
   var _activePrefixes = [];
 

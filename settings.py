@@ -1,8 +1,9 @@
 """Per-clinic configurable settings stored in PostgreSQL."""
 import json
 import db
+import nhi_blood_codes as _nhi
 
-_DEFAULT_LAB_PREFIXES = ["08", "09", "12", "25", "28", "30"]
+_DEFAULT_LAB_CHAPTERS = _nhi.DEFAULT_CHAPTERS  # ["08","09","12","14","27","30"]
 
 
 def get_lab_prefixes(clinic_id: int = 1) -> list[str]:
@@ -20,9 +21,14 @@ def get_lab_prefixes(clinic_id: int = 1) -> list[str]:
                 val = json.loads(val)
             if isinstance(val, list) and val:
                 return [str(p).strip() for p in val if str(p).strip()]
-        return list(_DEFAULT_LAB_PREFIXES)
+        return list(_DEFAULT_LAB_CHAPTERS)
     finally:
         db._pool.putconn(conn)
+
+
+def get_lab_code_set(clinic_id: int = 1) -> frozenset:
+    """Return the exact NHI code set for the clinic's active chapters."""
+    return _nhi.code_set_for(get_lab_prefixes(clinic_id))
 
 
 def save_lab_prefixes(prefixes: list[str], clinic_id: int = 1) -> None:

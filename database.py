@@ -2,12 +2,12 @@ from datetime import date, timedelta
 import glob
 import json
 import os
-import re
 import struct
 import threading
 from pathlib import Path
 
 import lab_results
+import nhi_blood_codes as _nhi
 from config import IC_DATA_PATH, METABOLIC_FOLLOWUP_DAYS, PATDB_PATH, QUEUE_PATH, USE_MOCK_DATA
 from models import (
     DailyReport,
@@ -1604,13 +1604,8 @@ def search_patients(q: str, limit: int = 20) -> list[dict]:
 
 # ── Blood draw tracking ───────────────────────────────────────────────────────
 
-def _build_lab_re(prefixes: list[str]):
-    escaped = '|'.join(re.escape(p) for p in prefixes)
-    return re.compile(r'^(' + escaped + r')\d+[A-Z]$')
-
-
-def _is_lab_order(code: str, lab_re) -> bool:
-    return bool(lab_re.match(code))
+def _is_lab_order(code: str, code_set: frozenset) -> bool:
+    return code in code_set
 
 
 def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int = 1) -> list[dict]:
@@ -1621,7 +1616,7 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
         return []
 
     import settings as _settings
-    lab_re = _build_lab_re(_settings.get_lab_prefixes(clinic_id))
+    lab_code_set = _settings.get_lab_code_set(clinic_id)
 
     dismissed = {(d['nat_id'], d['draw_date']) for d in _load_blood_dismissed()}
     result = []
@@ -1656,7 +1651,7 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
         for r in _parse_dbf_cached(ic_p):
             cf   = r.get('CODE_F',  '').strip()
             drug = r.get('DRUG_NO', '').strip()
-            if cf in visits and _is_lab_order(drug, lab_re):
+            if cf in visits and _is_lab_order(drug, lab_code_set):
                 cf_codes.setdefault(cf, []).append(drug)
 
         # Merge multiple visits on same day for the same patient
@@ -1672,7 +1667,11 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
                 by_nat_id[nat_id] = {'name': info['name'], 'nat_id': nat_id, 'draw_codes': list(codes)}
 
         patients = [
-            {**info, 'is_allergy': all(c.startswith('30') for c in info['draw_codes'])}
+            {
+                **info,
+                'is_allergy': all(_nhi.is_allergy_code(c) for c in info['draw_codes']),
+                'draw_code_names': [_nhi.CODE_NAMES.get(c, c) for c in info['draw_codes']],
+            }
             for info in sorted(by_nat_id.values(), key=lambda p: p['name'])
             if (info['nat_id'], draw_date.isoformat()) not in dismissed
         ]
