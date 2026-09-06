@@ -35,7 +35,7 @@
 
   // ── Nav structure ────────────────────────────────────
   var MAIN_NAV = [
-    { id: 'dashboard', label: '今日總覽',  href: '/new',             badge: false },
+    { id: 'dashboard', label: '今日總覽',  href: '/dashboard',       badge: false },
     { id: 'chronic',   label: '慢簽追蹤',  href: '/chronic',     badge: true  },
     { id: 'mspt',      label: '代謝症候群', href: '/mspt',        badge: true  },
     { id: 'hepatitis', label: 'B/C型肝炎', href: '/hepatitis',   badge: true  },

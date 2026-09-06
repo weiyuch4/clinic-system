@@ -295,13 +295,9 @@ def login_page() -> Response:
 
 
 @app.get("/")
-def index() -> Response:
-    try:
-        content = open("static/index.html", "rb").read()
-    except OSError:
-        raise HTTPException(status_code=503, detail="無法載入介面檔案")
-    return Response(content=content, media_type="text/html",
-                    headers={"Cache-Control": "no-store"})
+def index():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/dashboard", status_code=302)
 
 
 @app.get("/doctor")
