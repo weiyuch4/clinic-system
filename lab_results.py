@@ -176,60 +176,130 @@ def _iter_rows(path: str):
 
 
 _dbf_rows_cache: dict[str, tuple[float, list[dict]]] = {}  # path -> (cached_at, rows)
-_CACHE_TTL_SECONDS = 4 * 3600  # long enough that database.warmup_cache()'s startup
-                                # pre-load stays warm through a clinic session, short
-                                # enough that a same-day new lab entry isn't stale for
-                                # more than half a shift
+_CACHE_TTL_SECONDS = 4 * 3600
 
-# Disk cache for BIO DBF rows: persists across restarts so large network files
-# (bioc.dbf, BIO2C.DBF, CBCC.DBF) are only re-read when their mtime changes.
+# Disk cache for BIO DBF rows.  Keyed by total record count (not mtime) so that
+# appending new lab results only requires reading the new records, not the whole file.
 _BIO_DISK_CACHE_DIR = Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / "clinic-bio-cache"
 
 
-def _cached_rows(path: str) -> list[dict]:
-    """Parse a DBF file, with two-level caching: in-memory (fast) + disk (survives restarts).
+def _read_dbf_header(f) -> tuple[int, int, int, list]:
+    """Read DBF header from an open binary file.
+    Returns (record_count, header_size, record_size, fields).
+    fields = list of (name, byte_offset_within_record, length).
+    """
+    f.seek(0)
+    hdr = f.read(32)
+    if len(hdr) < 32 or hdr[0] not in (0x03, 0x04, 0x05, 0x30, 0x31, 0x32, 0x83, 0xF5):
+        return 0, 0, 0, []
+    record_count = struct.unpack_from('<I', hdr, 4)[0]
+    header_size  = struct.unpack_from('<H', hdr, 8)[0]
+    record_size  = struct.unpack_from('<H', hdr, 10)[0]
+    fields: list = []
+    offset = 1
+    f.seek(32)
+    while True:
+        fd = f.read(32)
+        if not fd or fd[0] == 0x0D:
+            break
+        name = fd[:11].rstrip(b'\x00').decode('ascii', errors='replace').strip()
+        flen = fd[16]
+        if name:
+            fields.append((name, offset, flen))
+        offset += flen
+    return record_count, header_size, record_size, fields
 
-    The disk cache is keyed by file mtime, so it auto-invalidates when the lab
-    system writes new results. bioc.dbf and BIO2C.DBF can be 10-30 MB on a
-    network drive — a single cold read can take 30-60 s; the disk cache brings
-    this down to <1 s on subsequent server starts."""
+
+def _parse_dbf_records(f, header_size: int, record_size: int, fields: list,
+                        start: int = 0) -> list[dict]:
+    """Parse records from an open DBF file starting at record index `start`."""
+    rows: list[dict] = []
+    f.seek(header_size + start * record_size)
+    while True:
+        raw = f.read(record_size)
+        if not raw or len(raw) < record_size:
+            break
+        if raw[0] == 0x2A:   # deleted record marker
+            continue
+        row: dict[str, str] = {}
+        for name, off, flen in fields:
+            chunk = raw[off:off + flen]
+            try:
+                val = chunk.decode('cp950', errors='replace').strip()
+            except Exception:
+                val = chunk.decode('latin-1', errors='replace').strip()
+            val = unicodedata.normalize('NFKC', val)
+            if val and '\x00' not in val:
+                row[name] = val
+        rows.append(row)
+    return rows
+
+
+def _cached_rows(path: str) -> list[dict]:
+    """Parse a BIO DBF file with two-level caching: in-memory + disk.
+
+    Disk cache is keyed by the file's *total record count* (4 bytes from the
+    DBF header) rather than mtime.  Because the lab system only ever appends
+    records, a changed mtime means new rows were added — we read just those new
+    rows and merge them with the cached ones.  The first cold read of a large
+    file is still slow, but every subsequent restart only reads the delta
+    (typically a few dozen records per day).
+    """
     now = time.time()
     cached = _dbf_rows_cache.get(path)
     if cached and (now - cached[0]) < _CACHE_TTL_SECONDS:
         return cached[1]
 
-    # Try disk cache (survives server restarts).
-    rows: list[dict] | None = None
-    mtime: float | None = None
     stem = Path(path).stem.lower()
+    cache_file = _BIO_DISK_CACHE_DIR / f"{stem}.json"
+
+    # Load whatever we already have on disk.
+    disk_count: int = 0
+    rows: list[dict] = []
     try:
-        mtime = os.path.getmtime(path)
-        cache_file = _BIO_DISK_CACHE_DIR / f"{stem}_{mtime:.0f}.json"
-        if cache_file.exists():
-            rows = json.loads(cache_file.read_text(encoding='utf-8'))
+        disk_data = json.loads(cache_file.read_text(encoding='utf-8'))
+        disk_count = int(disk_data.get('record_count', 0))
+        rows = disk_data.get('records', [])
     except Exception:
         pass
 
-    if rows is None:
-        rows = list(_iter_rows(path))
-        # Persist to disk for the next restart.
+    wrote_cache = False
+    try:
+        with open(path, 'rb') as f:
+            file_count, header_size, record_size, fields = _read_dbf_header(f)
+            if file_count == 0 or not fields:
+                pass                          # unreadable — keep whatever we have
+            elif file_count < disk_count:
+                # File was rebuilt from scratch — full re-read.
+                rows = _parse_dbf_records(f, header_size, record_size, fields)
+                disk_count = file_count
+                wrote_cache = True
+            elif file_count == disk_count:
+                pass                          # no new records
+            else:
+                # Append-only delta: seek past already-cached records.
+                new_rows = _parse_dbf_records(f, header_size, record_size, fields,
+                                              start=disk_count)
+                rows = rows + new_rows
+                disk_count = file_count
+                wrote_cache = True
+    except Exception:
+        pass
+
+    if wrote_cache or (rows and disk_count and not cache_file.exists()):
         try:
-            if mtime is None:
-                mtime = os.path.getmtime(path)
             _BIO_DISK_CACHE_DIR.mkdir(exist_ok=True)
-            stem = Path(path).stem.lower()
-            cache_file = _BIO_DISK_CACHE_DIR / f"{stem}_{mtime:.0f}.json"
             tmp = str(cache_file) + '.tmp'
             with open(tmp, 'w', encoding='utf-8') as f:
-                json.dump(rows, f, ensure_ascii=False)
+                json.dump({'record_count': disk_count, 'records': rows},
+                          f, ensure_ascii=False)
             os.replace(tmp, str(cache_file))
-            # Remove stale cache files for the same stem (different mtime = old data).
+            # Remove old mtime-keyed files left over from the previous cache format.
             for old in _BIO_DISK_CACHE_DIR.glob(f"{stem}_*.json"):
-                if old != cache_file:
-                    try:
-                        old.unlink()
-                    except Exception:
-                        pass
+                try:
+                    old.unlink()
+                except Exception:
+                    pass
         except Exception:
             pass
 
