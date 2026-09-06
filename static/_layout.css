@@ -354,6 +354,9 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   :root:not([data-theme=light]) .days-hi{color:#F87171}
   :root:not([data-theme=light]) .days-md{color:#FBBF24}
   :root:not([data-theme=light]) .days-lo{color:#34D399}
+  :root:not([data-theme=light]) .modal-error{background:#2A0A0F;color:#FCA5A5}
+  :root:not([data-theme=light]) .act-primary{background:#1E3A5F;color:#93C5FD;border-color:#1E3A5F}
+  :root:not([data-theme=light]) .act-primary:hover{background:#254A76;color:#93C5FD;border-color:#254A76}
 }
 :root[data-theme=dark] .err-bar{background:#2A0A0F;border-color:#9F1239;color:#FCA5A5}
 :root[data-theme=dark] .b-pend{background:#2A0A0F;color:#FCA5A5}
@@ -380,6 +383,9 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 :root[data-theme=dark] .days-hi{color:#F87171}
 :root[data-theme=dark] .days-md{color:#FBBF24}
 :root[data-theme=dark] .days-lo{color:#34D399}
+:root[data-theme=dark] .modal-error{background:#2A0A0F;color:#FCA5A5}
+:root[data-theme=dark] .act-primary{background:#1E3A5F;color:#93C5FD;border-color:#1E3A5F}
+:root[data-theme=dark] .act-primary:hover{background:#254A76;color:#93C5FD;border-color:#254A76}
 
 /* â”€â”€ sidebar selected state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media(prefers-color-scheme:dark){
