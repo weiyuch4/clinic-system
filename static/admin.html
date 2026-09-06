@@ -1279,6 +1279,7 @@ tbody tr:hover td { background: #F7F9FF; }
   <button class="tab"        data-section="linenotify">LINE 通知</button>
   <button class="tab"        data-section="schedule">排班表</button>
   <button class="tab"        data-section="salary">薪資計算</button>
+  <button class="tab"        data-section="labcodes">代碼設定</button>
 </div>
 
 <main>
@@ -1537,6 +1538,24 @@ tbody tr:hover td { background: #F7F9FF; }
         <span class="card-meta" id="sal-history-meta"></span>
       </div>
       <div id="sal-history-list"></div>
+    </div>
+  </section>
+
+  <!-- ── Lab code settings ── -->
+  <section id="labcodes" class="section">
+    <div class="card" style="max-width:520px">
+      <div class="card-head">
+        <span class="card-title">外送檢驗代碼設定</span>
+        <span class="card-spacer"></span>
+        <button class="btn-sm primary" id="btn-labcodes-save" onclick="saveLabCodes()">儲存</button>
+      </div>
+      <p style="padding:0 18px 12px;font-size:13px;color:var(--text-2)">勾選要追蹤的 NHI 章別。系統以完整醫令代碼比對，選取章別內的代碼才會納入外送抽血清單。</p>
+      <div id="lc-chapter-list" style="padding:0 18px 8px"></div>
+      <div style="display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--border)">
+        <input type="text" id="lc-custom-input" placeholder="自訂章別前綴，例：10" maxlength="6"
+          style="flex:1;border:1.5px solid var(--border-mid);border-radius:6px;padding:6px 10px;background:var(--bg);color:var(--text-1);font-size:13px;font-family:inherit">
+        <button class="btn-sm" onclick="addLabCustomPrefix()">新增</button>
+      </div>
     </div>
   </section>
 
@@ -3460,6 +3479,7 @@ function load(section) {
   else if (section === 'linenotify') loadLineLog();
   else if (section === 'schedule')   loadSchedule();
   else if (section === 'salary')     initSalaryTab();
+  else if (section === 'labcodes')   loadLabCodes();
 }
 
 function refresh() {
@@ -3478,6 +3498,72 @@ if (_savedAdminTab && $(_savedAdminTab)) {
   $(_savedAdminTab).classList.add('active');
   activeSection = _savedAdminTab;
 }
+// ── Lab code settings ─────────────────────────────────────────────────────────
+const LAB_KNOWN_CHAPTERS = [
+  { prefix: '08', label: '血液常規檢查', sub: '131 項代碼' },
+  { prefix: '09', label: '血液生化檢查', sub: '138 項代碼' },
+  { prefix: '12', label: '血清免疫學',   sub: '218 項代碼' },
+  { prefix: '14', label: '病毒學檢查',   sub: '86 項代碼'  },
+  { prefix: '27', label: '放射免疫分析', sub: '82 項代碼'  },
+  { prefix: '30', label: '過敏原測試',   sub: '71 項代碼'  },
+];
+let _labActivePrefixes = [];
+
+function renderLabChapterList() {
+  const known = new Set(LAB_KNOWN_CHAPTERS.map(c => c.prefix));
+  const custom = _labActivePrefixes.filter(p => !known.has(p));
+  const rows = LAB_KNOWN_CHAPTERS.map(c => {
+    const checked = _labActivePrefixes.includes(c.prefix) ? ' checked' : '';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <input type="checkbox" id="lc-${c.prefix}" value="${c.prefix}"${checked} style="accent-color:var(--blue);width:16px;height:16px;cursor:pointer;flex-shrink:0">
+      <label for="lc-${c.prefix}" style="flex:1;font-size:13px;color:var(--text-1);cursor:pointer">${esc(c.label)} <span style="font-size:11px;color:var(--text-3)">(${c.sub})</span></label>
+    </div>`;
+  });
+  custom.forEach(p => {
+    rows.push(`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
+      <input type="checkbox" id="lc-c-${esc(p)}" value="${esc(p)}" checked style="accent-color:var(--blue);width:16px;height:16px;cursor:pointer;flex-shrink:0">
+      <label for="lc-c-${esc(p)}" style="flex:1;font-size:13px;color:var(--text-1);cursor:pointer">自訂：${esc(p)}</label>
+    </div>`);
+  });
+  $('lc-chapter-list').innerHTML = rows.join('');
+}
+
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+async function loadLabCodes() {
+  try {
+    const data = await api('/api/admin/settings/lab-codes');
+    _labActivePrefixes = data.prefixes || [];
+    renderLabChapterList();
+    $('lc-custom-input').onkeydown = e => { if (e.key === 'Enter') addLabCustomPrefix(); };
+  } catch(e) { alert('讀取代碼設定失敗：' + (e.message || '')); }
+}
+
+function addLabCustomPrefix() {
+  const val = $('lc-custom-input').value.trim();
+  if (!val) return;
+  if (_labActivePrefixes.includes(val)) { alert('該章別前綴已存在'); return; }
+  _labActivePrefixes.push(val);
+  $('lc-custom-input').value = '';
+  renderLabChapterList();
+}
+
+async function saveLabCodes() {
+  const checkboxes = document.querySelectorAll('#lc-chapter-list input[type=checkbox]');
+  const selected = [...checkboxes].filter(cb => cb.checked).map(cb => cb.value);
+  if (!selected.length) { alert('至少需選擇一個章別'); return; }
+  const btn = $('btn-labcodes-save');
+  btn.disabled = true;
+  try {
+    await api('/api/admin/settings/lab-codes', { method: 'PUT', body: JSON.stringify({ prefixes: selected }) });
+    _labActivePrefixes = selected;
+    alert('代碼設定已儲存');
+  } catch(e) { alert('儲存失敗：' + (e.message || '')); }
+  finally { btn.disabled = false; }
+}
+
 // Always initialize the schedule week label synchronously so it never shows "—"
 $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
 refresh();
