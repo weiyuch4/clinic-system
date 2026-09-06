@@ -157,6 +157,10 @@ _BASE_REPORT_CACHE_PATH = Path(__file__).parent / "base_report_cache.json"
 # os.scandir() call — much faster than 50 individual os.path.getmtime() calls.
 _ic_dir_mtimes: dict[str, float] = {}
 
+# Serializes the slow IC parse so warmup and a concurrent API request don't
+# both read the same network-drive files simultaneously.
+_ic_parse_lock = threading.Lock()
+
 # Blood status cache — populated by warmup_cache() after BIO files are read into memory.
 # Keyed by "{nat_id}:{mspt_stage}" → (needs_blood_test, blood_draw_date).
 # Set by a threading.Event so apply_blood_status() in main.py can check readiness.
@@ -351,49 +355,64 @@ def get_daily_report(as_of: date) -> DailyReport:
         pass
 
     # Slow path: parse IC files and build the report from scratch.
-    import time as _t
-    _t0 = _t.time()
-    mspt_followups, mspt_inactive = _query_mspt_followups(as_of)
-    print(f"[report] mspt: {_t.time()-_t0:.1f}s", flush=True)
-    _t1 = _t.time()
-    ckd_followups,  ckd_inactive  = _query_ckd_followups(as_of)
-    print(f"[report] ckd: {_t.time()-_t1:.1f}s", flush=True)
-    _t2 = _t.time()
-    hep_patient_info = _scan_hep_patient_info(as_of)
-    print(f"[report] hep_scan: {_t.time()-_t2:.1f}s", flush=True)
-    hep_followups, hep_inactive = _query_hep_followups(as_of, hep_patient_info)
-    _t3 = _t.time()
-    chronic = _query_chronic_prescriptions(as_of)
-    print(f"[report] chronic: {_t.time()-_t3:.1f}s", flush=True)
-    hep_ret = _query_hep_returned(as_of, hep_patient_info)
-    report = DailyReport(
-        report_date=as_of,
-        chronic_prescriptions=chronic,
-        mspt_followups=mspt_followups,
-        mspt_inactive=mspt_inactive,
-        mspt_submittable=[],
-        mspt_waiting=[],
-        hep_followups=hep_followups,
-        hep_inactive=hep_inactive,
-        hep_returned=hep_ret,
-        ckd_followups=ckd_followups,
-        ckd_inactive=ckd_inactive,
-    )
+    # Hold the lock so the warmup thread and a concurrent API request don't both
+    # read the same network-drive files simultaneously. Double-check the cache
+    # after acquiring in case warmup finished while we were waiting.
+    with _ic_parse_lock:
+        try:
+            raw = json.loads(_BASE_REPORT_CACHE_PATH.read_text(encoding='utf-8'))
+            cached_as_of_str = raw.get('as_of', '')
+            if raw.get('fingerprint') == fp and cached_as_of_str:
+                day_diff = abs((as_of - date.fromisoformat(cached_as_of_str)).days)
+                if day_diff <= 1:
+                    print("[report] cache hit (post-lock) — skipping IC parse", flush=True)
+                    return DailyReport.model_validate(raw['report'])
+        except Exception:
+            pass
 
-    # Persist the report so the next start skips the slow parse.
-    try:
-        _BASE_REPORT_CACHE_PATH.write_text(
-            json.dumps(
-                {'as_of': as_of.isoformat(), 'fingerprint': fp,
-                 'report': json.loads(report.model_dump_json())},
-                ensure_ascii=False,
-            ),
-            encoding='utf-8',
+        import time as _t
+        _t0 = _t.time()
+        mspt_followups, mspt_inactive = _query_mspt_followups(as_of)
+        print(f"[report] mspt: {_t.time()-_t0:.1f}s", flush=True)
+        _t1 = _t.time()
+        ckd_followups,  ckd_inactive  = _query_ckd_followups(as_of)
+        print(f"[report] ckd: {_t.time()-_t1:.1f}s", flush=True)
+        _t2 = _t.time()
+        hep_patient_info = _scan_hep_patient_info(as_of)
+        print(f"[report] hep_scan: {_t.time()-_t2:.1f}s", flush=True)
+        hep_followups, hep_inactive = _query_hep_followups(as_of, hep_patient_info)
+        _t3 = _t.time()
+        chronic = _query_chronic_prescriptions(as_of)
+        print(f"[report] chronic: {_t.time()-_t3:.1f}s", flush=True)
+        hep_ret = _query_hep_returned(as_of, hep_patient_info)
+        report = DailyReport(
+            report_date=as_of,
+            chronic_prescriptions=chronic,
+            mspt_followups=mspt_followups,
+            mspt_inactive=mspt_inactive,
+            mspt_submittable=[],
+            mspt_waiting=[],
+            hep_followups=hep_followups,
+            hep_inactive=hep_inactive,
+            hep_returned=hep_ret,
+            ckd_followups=ckd_followups,
+            ckd_inactive=ckd_inactive,
         )
-    except Exception:
-        pass
 
-    return report
+        # Persist the report so the next start skips the slow parse.
+        try:
+            _BASE_REPORT_CACHE_PATH.write_text(
+                json.dumps(
+                    {'as_of': as_of.isoformat(), 'fingerprint': fp,
+                     'report': json.loads(report.model_dump_json())},
+                    ensure_ascii=False,
+                ),
+                encoding='utf-8',
+            )
+        except Exception:
+            pass
+
+        return report
 
 
 # ── DBF utilities ─────────────────────────────────────────────────────────────
