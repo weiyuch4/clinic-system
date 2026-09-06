@@ -279,6 +279,21 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .sct{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .scl{font-size:13px;color:var(--sub)}
 .sico{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ico-blue{background:#EFF6FF}.ico-green{background:#D1FAE5}.ico-purple{background:#EDE9FE}.ico-amber{background:#FEF3C7}.ico-sky{background:#E0F2FE}.ico-rose{background:#FFE4E6}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .ico-blue{background:rgba(96,165,250,.12)}
+  :root:not([data-theme=light]) .ico-green{background:rgba(52,211,153,.12)}
+  :root:not([data-theme=light]) .ico-purple{background:rgba(167,139,250,.12)}
+  :root:not([data-theme=light]) .ico-amber{background:rgba(251,191,36,.12)}
+  :root:not([data-theme=light]) .ico-sky{background:rgba(56,189,248,.12)}
+  :root:not([data-theme=light]) .ico-rose{background:rgba(251,113,133,.12)}
+}
+:root[data-theme=dark] .ico-blue{background:rgba(96,165,250,.12)}
+:root[data-theme=dark] .ico-green{background:rgba(52,211,153,.12)}
+:root[data-theme=dark] .ico-purple{background:rgba(167,139,250,.12)}
+:root[data-theme=dark] .ico-amber{background:rgba(251,191,36,.12)}
+:root[data-theme=dark] .ico-sky{background:rgba(56,189,248,.12)}
+:root[data-theme=dark] .ico-rose{background:rgba(251,113,133,.12)}
 .sn{font-size:34px;font-weight:700;color:var(--text);line-height:1;margin-bottom:8px;font-variant-numeric:tabular-nums}
 .ft .sn{color:var(--text)}
 .str{font-size:11.5px;color:var(--sub)}
