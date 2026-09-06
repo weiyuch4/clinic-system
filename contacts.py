@@ -73,6 +73,21 @@ _CREATE_MANUAL_PICKUPS = """
     )
 """
 
+_CREATE_MSPT_PHONE_COMPLETED = """
+    CREATE TABLE IF NOT EXISTS mspt_phone_completed (
+        chart_number    TEXT NOT NULL,
+        mspt_stage      TEXT NOT NULL,
+        due_date        TEXT NOT NULL,
+        name            TEXT NOT NULL,
+        birth_date      TEXT NOT NULL,
+        blood_draw_date TEXT,
+        completed_at    TEXT NOT NULL,
+        nurse           TEXT DEFAULT '',
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (chart_number, mspt_stage, due_date)
+    )
+"""
+
 _CREATE_MSPT_BLOOD_USED = """
     CREATE TABLE IF NOT EXISTS mspt_blood_used (
         nat_id       TEXT NOT NULL,
@@ -287,6 +302,7 @@ def init() -> None:
             cur.execute(_CREATE_CONTACTS)
             cur.execute(_CREATE_SUBMITTED)
             cur.execute(_CREATE_EXCLUDED)
+            cur.execute(_CREATE_MSPT_PHONE_COMPLETED)
             cur.execute(_CREATE_MSPT_BLOOD_USED)
             cur.execute(_CREATE_MSPT_COMPLETED)
             cur.execute(_CREATE_MSPT_CHECKEDIN)
@@ -539,6 +555,76 @@ def get_submitted_keys() -> set[tuple[str, str]]:
             cur.execute("SELECT chart_number, mspt_stage FROM submitted")
             rows = cur.fetchall()
     return {(r["chart_number"], r["mspt_stage"]) for r in rows}
+
+
+def mark_mspt_phone_completed(entry: FollowupEntry, nurse: str = "", blood_draw_date: str | None = None) -> None:
+    """Record a phone-contact completion: marks entry as contacted AND adds to phone_completed
+    so it flows into 可申報 without needing a clinic visit."""
+    mark_contacted(entry, nurse)
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO mspt_phone_completed
+                   (chart_number, mspt_stage, due_date, name, birth_date, blood_draw_date, completed_at, nurse, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1)
+                   ON CONFLICT (chart_number, mspt_stage, due_date) DO UPDATE SET
+                       blood_draw_date = EXCLUDED.blood_draw_date,
+                       completed_at = EXCLUDED.completed_at,
+                       nurse = EXCLUDED.nurse""",
+                (
+                    entry.patient.chart_number, entry.mspt_stage, entry.due_date.isoformat(),
+                    entry.patient.name, entry.patient.birth_date.isoformat(),
+                    blood_draw_date, date.today().isoformat(), nurse,
+                ),
+            )
+
+
+def get_mspt_phone_completed_submittable() -> list:
+    """Return phone-completed entries as MsptSubmittableEntry objects for the 可申報 queue."""
+    from models import MsptSubmittableEntry, Patient
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT chart_number, mspt_stage, due_date, name, birth_date, blood_draw_date, completed_at
+                   FROM mspt_phone_completed WHERE clinic_id = 1""",
+            )
+            rows = cur.fetchall()
+    results = []
+    for row in rows:
+        blood_iso = row["blood_draw_date"] or row["completed_at"]
+        try:
+            blood_date = date.fromisoformat(blood_iso)
+        except (ValueError, TypeError):
+            blood_date = date.today()
+        results.append(MsptSubmittableEntry(
+            patient=Patient(
+                chart_number=row["chart_number"],
+                name=row["name"],
+                birth_date=date.fromisoformat(row["birth_date"]),
+            ),
+            mspt_stage=row["mspt_stage"],
+            blood_report_date=blood_date,
+            days_since_last_stage=0,
+        ))
+    return results
+
+
+def get_mspt_phone_completed_keys() -> set[tuple[str, str, str]]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT chart_number, mspt_stage, due_date FROM mspt_phone_completed WHERE clinic_id = 1",
+            )
+            return {(r["chart_number"], r["mspt_stage"], r["due_date"]) for r in cur.fetchall()}
+
+
+def unmark_mspt_phone_completed(chart_number: str, mspt_stage: str) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM mspt_phone_completed WHERE chart_number = %s AND mspt_stage = %s AND clinic_id = 1",
+                (chart_number, mspt_stage),
+            )
 
 
 # ── Called entries split: recent vs auto-excluded ────────────────────────────

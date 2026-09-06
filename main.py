@@ -634,6 +634,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
             f_excluded_keys        = exe.submit(contacts.get_excluded_keys)
             f_mspt_completed_keys  = exe.submit(contacts.get_mspt_completed_keys)
             f_mspt_checkedin_keys  = exe.submit(contacts.get_mspt_checkedin_keys)
+            f_mspt_phone_keys      = exe.submit(contacts.get_mspt_phone_completed_keys)
+            f_phone_submittable    = exe.submit(contacts.get_mspt_phone_completed_submittable)
             f_on_hold_keys         = exe.submit(contacts.get_on_hold_keys)
             f_line_unlinked        = exe.submit(contacts.get_line_unlinked_chart_numbers)
             f_alleypin             = exe.submit(contacts.get_alleypin_not_found_chart_numbers)
@@ -654,6 +656,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
         excluded_keys               = f_excluded_keys.result()
         mspt_completed_keys         = f_mspt_completed_keys.result()
         mspt_checkedin_keys         = f_mspt_checkedin_keys.result()
+        mspt_phone_completed_keys   = f_mspt_phone_keys.result()
+        phone_submittable           = f_phone_submittable.result()
         on_hold_keys                = f_on_hold_keys.result()
         line_unlinked_charts        = f_line_unlinked.result()
         alleypin_not_found_charts   = f_alleypin.result()
@@ -712,6 +716,8 @@ def get_report(report_date: date | None = None) -> DailyReport:
                 if (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_completed_keys:
                     continue
                 if (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_checkedin_keys:
+                    continue
+                if (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_phone_completed_keys:
                     continue
                 if key in on_hold_keys:
                     continue
@@ -807,7 +813,7 @@ def get_report(report_date: date | None = None) -> DailyReport:
             mspt_followups=filter_followups(apply_mspt_overrides(report.mspt_followups)),
             mspt_inactive=filter_followups(apply_mspt_overrides(report.mspt_inactive)),
             mspt_submittable=[
-                e for e in report.mspt_submittable
+                e for e in (report.mspt_submittable + phone_submittable)
                 if (e.patient.chart_number, e.mspt_stage) not in submitted_keys
             ],
             mspt_waiting=report.mspt_waiting,
@@ -893,9 +899,27 @@ def unmark_submitted(req: SubmitRequest) -> None:
     try:
         contacts.unmark_submitted(req.chart_number, req.mspt_stage)
         contacts.clear_mspt_blood_used(req.chart_number, req.mspt_stage)
+        contacts.unmark_mspt_phone_completed(req.chart_number, req.mspt_stage)
     except Exception:
         logger.exception("unmark_submitted failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷申報失敗，請稍後再試")
+
+
+@app.post("/api/mspt-phone-complete")
+def mspt_phone_complete(req: NurseEntryRequest) -> None:
+    """Mark a phone-contact-only MSPT stage as complete: records contact + queues for NHI submission."""
+    try:
+        blood_draw_date = req.entry.blood_draw_date
+        contacts.mark_mspt_phone_completed(req.entry, req.nurse, blood_draw_date)
+        if blood_draw_date:
+            contacts.record_mspt_blood_used(
+                req.entry.patient.chart_number,
+                req.entry.mspt_stage,
+                blood_draw_date,
+            )
+    except Exception:
+        logger.exception("mspt_phone_complete failed for %s", req.entry.patient.chart_number)
+        raise HTTPException(status_code=500, detail="完成記錄失敗，請稍後再試")
 
 
 @app.post("/api/excluded")
