@@ -82,7 +82,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=30"></script>
+<script src="/static/_layout.js?v=31"></script>
 <script>
 (function () {
   'use strict';
@@ -92,24 +92,27 @@
   var _pendingMap = {}, _contactedMap = {}, _holdMap = {};
   var _actionChart = null;
 
+  function applyReport(r) {
+    _pending   = r.chronic_prescriptions || [];
+    _contacted = (r.contacted || []).filter(function (e) { return e.category === '慢簽'; })
+                  .concat((r.called || []).filter(function (e) { return e.category === '慢簽'; }));
+    _hold      = (r.on_hold || []).filter(function (e) { return e.category === '慢簽'; });
+    _pendingMap = {}; _pending.forEach(function (e) { _pendingMap[e.patient.chart_number] = e; });
+    _contactedMap = {}; _contacted.forEach(function (e) { _contactedMap[e.patient.chart_number] = e; });
+    _holdMap = {}; _hold.forEach(function (e) { if (e.patient) _holdMap[e.patient.chart_number] = e; });
+    document.getElementById('page-date').textContent = L.fmtChineseDate() + '  ·  共 ' + _pending.length + ' 人待聯絡';
+    document.getElementById('cnt-pending').textContent   = _pending.length;
+    document.getElementById('cnt-contacted').textContent = _contacted.length;
+    document.getElementById('cnt-hold').textContent      = _hold.length;
+    renderAll();
+    L.updateBadges(r, null);
+    L.updateLastUpdated();
+  }
+
   function load() {
     L.hideError();
-    L.getReport().then(function (r) {
-      _pending   = r.chronic_prescriptions || [];
-      _contacted = (r.contacted || []).filter(function (e) { return e.category === '慢簽'; })
-                    .concat((r.called || []).filter(function (e) { return e.category === '慢簽'; }));
-      _hold      = (r.on_hold || []).filter(function (e) { return e.category === '慢簽'; });
-      _pendingMap = {}; _pending.forEach(function (e) { _pendingMap[e.patient.chart_number] = e; });
-      _contactedMap = {}; _contacted.forEach(function (e) { _contactedMap[e.patient.chart_number] = e; });
-      _holdMap = {}; _hold.forEach(function (e) { if (e.patient) _holdMap[e.patient.chart_number] = e; });
-      document.getElementById('page-date').textContent = L.fmtChineseDate() + '  ·  共 ' + _pending.length + ' 人待聯絡';
-      document.getElementById('cnt-pending').textContent   = _pending.length;
-      document.getElementById('cnt-contacted').textContent = _contacted.length;
-      document.getElementById('cnt-hold').textContent      = _hold.length;
-      renderAll();
-      L.updateBadges(r, null);
-      L.updateLastUpdated();
-    }).catch(function (e) { L.showError('資料載入失敗 — ' + (e.message || '')); });
+    L.getReport(null, applyReport).then(applyReport)
+      .catch(function (e) { L.showError('資料載入失敗 — ' + (e.message || '')); });
   }
 
   function match(e) {

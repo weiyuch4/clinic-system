@@ -112,23 +112,40 @@
     });
   }
 
-  // Cached /api/report — avoids re-fetching when switching between sidebar tabs.
-  // sessionStorage survives page navigations within the same browser tab.
-  var _RPT_TTL = 60000; // 60 seconds
-  function getReport(dateStr) {
+  // Stale-while-revalidate cache for /api/report.
+  // If cached data exists: return it instantly, then fetch fresh in background and call onUpdate(freshData).
+  // If cache is very fresh (< 15 s): skip background fetch entirely.
+  // If no cache: block until fetch completes (first load of the day).
+  var _RPT_MIN_AGE = 15000; // skip background fetch if cache is this fresh
+  function getReport(dateStr, onUpdate) {
     var key = 'clinic_rpt_' + (dateStr || localDateStr());
+    var cached = null, cacheAge = Infinity;
     try {
       var raw = sessionStorage.getItem(key);
       if (raw) {
         var hit = JSON.parse(raw);
-        if (Date.now() - hit.ts < _RPT_TTL) return Promise.resolve(hit.data);
+        cached = hit.data;
+        cacheAge = Date.now() - hit.ts;
       }
     } catch(e) {}
-    return apiFetch('/api/report?report_date=' + (dateStr || localDateStr()))
-      .then(function(data) {
-        try { sessionStorage.setItem(key, JSON.stringify({ data: data, ts: Date.now() })); } catch(e) {}
-        return data;
-      });
+
+    function _fetchFresh() {
+      return apiFetch('/api/report?report_date=' + (dateStr || localDateStr()))
+        .then(function(data) {
+          try { sessionStorage.setItem(key, JSON.stringify({ data: data, ts: Date.now() })); } catch(e) {}
+          return data;
+        });
+    }
+
+    if (cached) {
+      if (cacheAge >= _RPT_MIN_AGE && onUpdate) {
+        // Stale-while-revalidate: serve cache now, refresh silently
+        _fetchFresh().then(onUpdate).catch(function() {});
+      }
+      return Promise.resolve(cached);
+    }
+    // No cache — must wait for fresh data
+    return _fetchFresh();
   }
 
   // Generic mutating API call (POST / DELETE / PUT)

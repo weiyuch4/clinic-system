@@ -172,7 +172,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=30"></script>
+<script src="/static/_layout.js?v=31"></script>
 <script>
 (function () {
   'use strict';
@@ -185,42 +185,45 @@
 
   var ALL_TABS = ['return','phone','submittable','inactive','contacted','hold'];
 
+  function applyReport(r) {
+    var allFollowups = r.mspt_followups || [];
+    _return = allFollowups.filter(function (e) { return e.needs_blood_test; });
+    _phone  = allFollowups.filter(function (e) { return !e.needs_blood_test; });
+    _submittable = r.mspt_submittable || [];
+    _inactive    = r.mspt_inactive    || [];
+    _contacted   = (r.contacted || []).filter(function (e) { return e.category === '代謝症候群'; })
+                    .concat((r.called || []).filter(function (e) { return e.category === '代謝症候群'; }));
+    _hold        = (r.on_hold || []).filter(function (e) { return e.category === '代謝症候群'; });
+
+    _activeMap = {};
+    allFollowups.forEach(function (e) { _activeMap[e.patient.chart_number] = e; });
+    _inactive.forEach(function (e)   { _activeMap[e.patient.chart_number] = e; });
+    _contactedMap = {}; _contacted.forEach(function (e) { _contactedMap[e.patient.chart_number] = e; });
+    _holdMap      = {}; _hold.forEach(function (e) { if (e.patient) _holdMap[e.patient.chart_number] = e; });
+
+    var totalPending = allFollowups.length + _inactive.length;
+    document.getElementById('page-date').textContent = L.fmtChineseDate() + '  ·  共 ' + totalPending + ' 人待追蹤';
+    document.getElementById('cnt-return').textContent      = _return.length;
+    document.getElementById('cnt-phone').textContent       = _phone.length;
+    document.getElementById('cnt-submittable').textContent = _submittable.length;
+    document.getElementById('cnt-inactive').textContent    = _inactive.length;
+    document.getElementById('cnt-contacted').textContent   = _contacted.length;
+    document.getElementById('cnt-hold').textContent        = _hold.length;
+
+    var banner = document.getElementById('sub-banner');
+    if (_submittable.length) { banner.style.display = 'flex'; document.getElementById('sub-count').textContent = _submittable.length; }
+    else { banner.style.display = 'none'; }
+
+    renderAll();
+    L.updateBadges(r, null);
+    L.updateLastUpdated();
+  }
+
   function load() {
     L.hideError();
     var today = L.localDateStr();
-    L.getReport(today).then(function (r) {
-      var allFollowups = r.mspt_followups || [];
-      _return = allFollowups.filter(function (e) { return e.needs_blood_test; });
-      _phone  = allFollowups.filter(function (e) { return !e.needs_blood_test; });
-      _submittable = r.mspt_submittable || [];
-      _inactive    = r.mspt_inactive    || [];
-      _contacted   = (r.contacted || []).filter(function (e) { return e.category === '代謝症候群'; })
-                      .concat((r.called || []).filter(function (e) { return e.category === '代謝症候群'; }));
-      _hold        = (r.on_hold || []).filter(function (e) { return e.category === '代謝症候群'; });
-
-      _activeMap = {};
-      allFollowups.forEach(function (e) { _activeMap[e.patient.chart_number] = e; });
-      _inactive.forEach(function (e)   { _activeMap[e.patient.chart_number] = e; });
-      _contactedMap = {}; _contacted.forEach(function (e) { _contactedMap[e.patient.chart_number] = e; });
-      _holdMap      = {}; _hold.forEach(function (e) { if (e.patient) _holdMap[e.patient.chart_number] = e; });
-
-      var totalPending = allFollowups.length + _inactive.length;
-      document.getElementById('page-date').textContent = L.fmtChineseDate() + '  ·  共 ' + totalPending + ' 人待追蹤';
-      document.getElementById('cnt-return').textContent      = _return.length;
-      document.getElementById('cnt-phone').textContent       = _phone.length;
-      document.getElementById('cnt-submittable').textContent = _submittable.length;
-      document.getElementById('cnt-inactive').textContent    = _inactive.length;
-      document.getElementById('cnt-contacted').textContent   = _contacted.length;
-      document.getElementById('cnt-hold').textContent        = _hold.length;
-
-      var banner = document.getElementById('sub-banner');
-      if (_submittable.length) { banner.style.display = 'flex'; document.getElementById('sub-count').textContent = _submittable.length; }
-      else { banner.style.display = 'none'; }
-
-      renderAll();
-      L.updateBadges(r, null);
-      L.updateLastUpdated();
-    }).catch(function (e) { L.showError('資料載入失敗 — ' + (e.message || '')); });
+    L.getReport(today, applyReport).then(applyReport)
+      .catch(function (e) { L.showError('資料載入失敗 — ' + (e.message || '')); });
 
     // Check if warmup (BIO file reading) is still in progress.
     // Until it finishes, 追3 routing may be approximate (DB-only).
