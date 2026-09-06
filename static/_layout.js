@@ -423,7 +423,7 @@
     set('mspt',      (report.mspt_followups || []).length + (report.mspt_inactive || []).length);
     set('hepatitis', (report.hep_followups  || []).length);
     set('ckd',       (report.ckd_followups  || []).length + (report.ckd_inactive   || []).length);
-    set('lab', bloodCount != null ? bloodCount : 0);
+    if (bloodCount != null) set('lab', bloodCount);
   }
 
   function updateShiftInfo(text) {

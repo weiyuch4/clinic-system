@@ -116,7 +116,7 @@
       document.getElementById('cnt-contacted').textContent = _contacted.length;
       document.getElementById('cnt-hold').textContent      = _hold.length;
       renderAll();
-      L.updateBadges(r, 0);
+      L.updateBadges(r, null);
       L.updateLastUpdated();
     }).catch(function (e) { L.showError('資料載入失敗 — ' + (e.message || '')); });
   }
