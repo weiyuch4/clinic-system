@@ -1140,6 +1140,31 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   .cov-day-group { break-inside: avoid; }
 }
 
+/* ── Lab code settings ───────────────────────────────────────────────────────── */
+.lc-chapter-head{display:flex;align-items:center;gap:10px;padding:12px 20px;cursor:pointer;user-select:none;transition:background .12s;border-bottom:1px solid var(--border)}
+.lc-chapter-head:last-child{border-bottom:none}
+.lc-chapter-head:hover{background:var(--bg)}
+.lc-ch-label{flex:1;font-size:13px;font-weight:600;color:var(--text-1)}
+.lc-ch-sub{font-size:11.5px;color:var(--text-3);font-variant-numeric:tabular-nums}
+.lc-chevron{font-size:11px;color:var(--text-3);transition:transform .2s;flex-shrink:0}
+.lc-chevron.open{transform:rotate(180deg)}
+.lc-code-grid{display:flex;flex-wrap:wrap;gap:6px;padding:12px 20px 16px;border-bottom:1px solid var(--border);background:var(--bg)}
+.lc-chip{font-size:11.5px;padding:3px 9px;border-radius:999px;background:var(--surface);border:1px solid var(--border);color:var(--text-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.lc-custom-chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;padding:4px 8px 4px 10px;border-radius:999px;background:#EFF6FF;border:1px solid #BFDBFE;color:var(--blue);white-space:nowrap}
+.lc-custom-chip button{background:none;border:none;cursor:pointer;color:#93C5FD;font-size:14px;line-height:1;padding:0 1px;border-radius:50%;transition:color .1s}
+.lc-custom-chip button:hover{color:var(--blue)}
+.lc-drop-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background .1s;font-size:13px}
+.lc-drop-item:hover{background:var(--bg)}
+.lc-drop-code{font-weight:700;color:var(--text-1);font-variant-numeric:tabular-nums;min-width:62px;flex-shrink:0}
+.lc-drop-name{flex:1;color:var(--text-2)}
+.lc-drop-tag{font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap;flex-shrink:0}
+.lc-drop-tag.in-ch{background:#F0FDF4;color:#059669}
+.lc-drop-tag.custom{background:#EFF6FF;color:var(--blue)}
+.lc-drop-tag.add{background:var(--bg);color:var(--text-3);border:1px solid var(--border)}
+.lc-drop-item.lc-add-btn .lc-drop-tag.add{background:var(--blue);color:#fff;border-color:var(--blue)}
+.lc-drop-sep{height:1px;background:var(--border);margin:2px 0}
+.lc-empty-drop{padding:14px 16px;font-size:13px;color:var(--text-3);text-align:center}
+
 /* ── LINE notification ──────────────────────────────────────────────────────── */
 .ln-form { padding: 18px 24px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
 .ln-field { display: flex; flex-direction: column; gap: 4px; }
@@ -1459,19 +1484,44 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
   <!-- ── Lab code settings ── -->
   <section id="labcodes" class="section">
-    <div class="card" style="max-width:520px">
-      <div class="card-head">
-        <span class="card-title">外送檢驗代碼設定</span>
-        <span class="card-spacer"></span>
-        <button class="btn-sm primary" id="btn-labcodes-save" onclick="saveLabCodes()">儲存</button>
+    <div style="max-width:720px">
+
+      <!-- Search / add bar -->
+      <div class="card" style="margin-bottom:14px">
+        <div style="padding:16px 20px 14px">
+          <div style="font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:3px">搜尋並新增代碼</div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:10px">輸入 NHI 醫令代碼（如 09001C）或中文名稱，找到後點擊加入自訂清單</div>
+          <div style="position:relative">
+            <input id="lc-search" type="text" autocomplete="off" placeholder="搜尋代碼或名稱…"
+              style="width:100%;border:1.5px solid var(--border-mid);border-radius:8px;padding:9px 12px;background:var(--surface);color:var(--text-1);font-size:13px;font-family:var(--font);outline:none"
+              onfocus="this.style.borderColor='var(--blue)'" onblur="setTimeout(()=>{lcHideDrop()},180)"
+              oninput="lcSearch(this.value)">
+            <div id="lc-drop" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--surface);border:1px solid var(--border-mid);border-radius:8px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:200;max-height:260px;overflow-y:auto"></div>
+          </div>
+        </div>
       </div>
-      <p style="padding:0 18px 12px;font-size:13px;color:var(--text-2)">勾選要追蹤的 NHI 章別。系統以完整醫令代碼比對，選取章別內的代碼才會納入外送抽血清單。</p>
-      <div id="lc-chapter-list" style="padding:0 18px 8px"></div>
-      <div style="display:flex;gap:8px;padding:12px 18px;border-top:1px solid var(--border)">
-        <input type="text" id="lc-custom-input" placeholder="自訂章別前綴，例：10" maxlength="6"
-          style="flex:1;border:1.5px solid var(--border-mid);border-radius:6px;padding:6px 10px;background:var(--bg);color:var(--text-1);font-size:13px;font-family:inherit">
-        <button class="btn-sm" onclick="addLabCustomPrefix()">新增</button>
+
+      <!-- Chapter cards -->
+      <div class="card" style="margin-bottom:14px;overflow:visible">
+        <div class="card-head">
+          <span class="card-title">章別設定</span>
+          <span class="card-spacer"></span>
+          <button class="btn-sm primary" id="btn-labcodes-save" onclick="saveLabCodes()">儲存設定</button>
+        </div>
+        <div id="lc-chapters"></div>
       </div>
+
+      <!-- Custom individual codes -->
+      <div class="card" id="lc-custom-card" style="display:none">
+        <div class="card-head">
+          <span class="card-title">自訂代碼</span>
+          <span class="card-badge" id="lc-custom-badge">0</span>
+          <span class="card-spacer"></span>
+          <span style="font-size:12px;color:var(--text-3)">章別以外手動加入的代碼</span>
+        </div>
+        <div id="lc-custom-chips" style="padding:14px 18px;display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+
     </div>
   </section>
 
@@ -3420,69 +3470,152 @@ if (_savedAdminTab && $(_savedAdminTab)) {
   activeSection = _savedAdminTab;
 }
 // ── Lab code settings ─────────────────────────────────────────────────────────
-const LAB_KNOWN_CHAPTERS = [
-  { prefix: '08', label: '血液常規檢查', sub: '131 項代碼' },
-  { prefix: '09', label: '血液生化檢查', sub: '138 項代碼' },
-  { prefix: '12', label: '血清免疫學',   sub: '218 項代碼' },
-  { prefix: '14', label: '病毒學檢查',   sub: '86 項代碼'  },
-  { prefix: '27', label: '放射免疫分析', sub: '82 項代碼'  },
-  { prefix: '30', label: '過敏原測試',   sub: '71 項代碼'  },
-];
-let _labActivePrefixes = [];
-
-function renderLabChapterList() {
-  const known = new Set(LAB_KNOWN_CHAPTERS.map(c => c.prefix));
-  const custom = _labActivePrefixes.filter(p => !known.has(p));
-  const rows = LAB_KNOWN_CHAPTERS.map(c => {
-    const checked = _labActivePrefixes.includes(c.prefix) ? ' checked' : '';
-    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-      <input type="checkbox" id="lc-${c.prefix}" value="${c.prefix}"${checked} style="accent-color:var(--blue);width:16px;height:16px;cursor:pointer;flex-shrink:0">
-      <label for="lc-${c.prefix}" style="flex:1;font-size:13px;color:var(--text-1);cursor:pointer">${esc(c.label)} <span style="font-size:11px;color:var(--text-3)">(${c.sub})</span></label>
-    </div>`;
-  });
-  custom.forEach(p => {
-    rows.push(`<div style="display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--border)">
-      <input type="checkbox" id="lc-c-${esc(p)}" value="${esc(p)}" checked style="accent-color:var(--blue);width:16px;height:16px;cursor:pointer;flex-shrink:0">
-      <label for="lc-c-${esc(p)}" style="flex:1;font-size:13px;color:var(--text-1);cursor:pointer">自訂：${esc(p)}</label>
-    </div>`);
-  });
-  $('lc-chapter-list').innerHTML = rows.join('');
-}
+// ── Lab code settings ─────────────────────────────────────────────────────────
+let _labCatalog = null;         // { chapters: {08:{label,codes:[]}}, names:{code:name} }
+let _labActiveChapters = [];    // 2-char chapter prefixes currently enabled
+let _labCustomCodes = [];       // individual code IDs added on top of chapters
+let _lcExpandedChapters = new Set();
 
 function esc(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
 async function loadLabCodes() {
+  $('lc-chapters').innerHTML = '<div style="padding:24px 20px;color:var(--text-3);font-size:13px">載入中…</div>';
   try {
-    const data = await api('/api/admin/settings/lab-codes');
-    _labActivePrefixes = data.prefixes || [];
-    renderLabChapterList();
-    $('lc-custom-input').onkeydown = e => { if (e.key === 'Enter') addLabCustomPrefix(); };
-  } catch(e) { alert('讀取代碼設定失敗：' + (e.message || '')); }
+    const [settings, catalog] = await Promise.all([
+      api('/api/admin/settings/lab-codes'),
+      _labCatalog ? Promise.resolve(_labCatalog) : api('/api/admin/settings/lab-code-catalog'),
+    ]);
+    if (!_labCatalog) _labCatalog = catalog;
+    const prefixes = settings.prefixes || [];
+    const chapterSet = new Set(Object.keys(_labCatalog.chapters));
+    _labActiveChapters = prefixes.filter(p => chapterSet.has(p));
+    _labCustomCodes    = prefixes.filter(p => !chapterSet.has(p));
+    renderLabChapters();
+    renderLabCustomChips();
+  } catch(e) { $('lc-chapters').innerHTML = `<div style="padding:20px;color:var(--red)">${esc(e.message||'讀取失敗')}</div>`; }
 }
 
-function addLabCustomPrefix() {
-  const val = $('lc-custom-input').value.trim();
-  if (!val) return;
-  if (_labActivePrefixes.includes(val)) { alert('該章別前綴已存在'); return; }
-  _labActivePrefixes.push(val);
-  $('lc-custom-input').value = '';
-  renderLabChapterList();
+function renderLabChapters() {
+  if (!_labCatalog) return;
+  const html = Object.entries(_labCatalog.chapters).map(([prefix, ch]) => {
+    const active = _labActiveChapters.includes(prefix);
+    const expanded = _lcExpandedChapters.has(prefix);
+    let codeGrid = '';
+    if (expanded) {
+      const chips = ch.codes.map(c =>
+        `<span class="lc-chip" title="${esc(c)}">${esc(c)} · ${esc(_labCatalog.names[c] || c)}</span>`
+      ).join('');
+      codeGrid = `<div class="lc-code-grid">${chips}</div>`;
+    }
+    return `<div>
+      <div class="lc-chapter-head" onclick="lcToggleChapter('${esc(prefix)}')">
+        <input type="checkbox" id="lc-ch-${esc(prefix)}" style="accent-color:var(--blue);width:16px;height:16px;cursor:pointer;flex-shrink:0"
+          ${active ? 'checked' : ''} onclick="event.stopPropagation();lcCheckChapter('${esc(prefix)}',this.checked)">
+        <span class="lc-ch-label">${esc(prefix)} · ${esc(ch.label)}</span>
+        <span class="lc-ch-sub">${ch.codes.length} 項</span>
+        <span class="lc-chevron${expanded?' open':''}">▼</span>
+      </div>
+      ${codeGrid}
+    </div>`;
+  }).join('');
+  $('lc-chapters').innerHTML = html;
+}
+
+function lcCheckChapter(prefix, checked) {
+  if (checked) { if (!_labActiveChapters.includes(prefix)) _labActiveChapters.push(prefix); }
+  else { _labActiveChapters = _labActiveChapters.filter(p => p !== prefix); }
+}
+
+function lcToggleChapter(prefix) {
+  if (_lcExpandedChapters.has(prefix)) _lcExpandedChapters.delete(prefix);
+  else _lcExpandedChapters.add(prefix);
+  renderLabChapters();
+}
+
+function renderLabCustomChips() {
+  const card = $('lc-custom-card');
+  const chips = $('lc-custom-chips');
+  const badge = $('lc-custom-badge');
+  if (!_labCustomCodes.length) { card.style.display = 'none'; return; }
+  card.style.display = '';
+  badge.textContent = _labCustomCodes.length;
+  chips.innerHTML = _labCustomCodes.map(c => {
+    const name = _labCatalog ? (_labCatalog.names[c] || '') : '';
+    return `<span class="lc-custom-chip">
+      <span>${esc(c)}${name ? ' · ' + esc(name) : ''}</span>
+      <button onclick="lcRemoveCustom('${esc(c)}')" title="移除">×</button>
+    </span>`;
+  }).join('');
+}
+
+function lcRemoveCustom(code) {
+  _labCustomCodes = _labCustomCodes.filter(c => c !== code);
+  renderLabCustomChips();
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────────
+function lcSearch(q) {
+  const drop = $('lc-drop');
+  q = q.trim().toUpperCase();
+  if (!q || !_labCatalog) { drop.style.display = 'none'; return; }
+  const names = _labCatalog.names;
+  const chapterSet = new Set(Object.keys(_labCatalog.chapters));
+  // find which chapter each code belongs to
+  const codeChapter = {};
+  for (const [ch, data] of Object.entries(_labCatalog.chapters))
+    for (const c of data.codes) codeChapter[c] = ch;
+
+  const results = Object.entries(names).filter(([code, name]) => {
+    return code.includes(q) || name.includes(q) || (q.length > 1 && name.toUpperCase().includes(q));
+  }).slice(0, 20);
+
+  if (!results.length) {
+    drop.innerHTML = `<div class="lc-empty-drop">找不到符合的代碼</div>`;
+    drop.style.display = '';
+    return;
+  }
+
+  const rows = results.map(([code, name]) => {
+    const ch = codeChapter[code];
+    const chActive = ch && _labActiveChapters.includes(ch);
+    const isCustom = _labCustomCodes.includes(code);
+    let tag, clickable = false;
+    if (chActive)       tag = `<span class="lc-drop-tag in-ch">已含（${esc(ch)}章）</span>`;
+    else if (isCustom)  tag = `<span class="lc-drop-tag custom">已加入</span>`;
+    else { tag = `<span class="lc-drop-tag add">＋ 新增</span>`; clickable = true; }
+    return `<div class="lc-drop-item${clickable?' lc-add-btn':''}" ${clickable?`onclick="lcAddCustom('${esc(code)}')"`:''}
+      style="${clickable?'':'opacity:.65;cursor:default'}">
+      <span class="lc-drop-code">${esc(code)}</span>
+      <span class="lc-drop-name">${esc(name)}</span>
+      ${tag}
+    </div>`;
+  });
+  drop.innerHTML = rows.join('<div class="lc-drop-sep"></div>');
+  drop.style.display = '';
+}
+
+function lcHideDrop() { const d = $('lc-drop'); if (d) d.style.display = 'none'; }
+
+function lcAddCustom(code) {
+  if (_labCustomCodes.includes(code)) return;
+  _labCustomCodes.push(code);
+  renderLabCustomChips();
+  $('lc-search').value = '';
+  lcHideDrop();
 }
 
 async function saveLabCodes() {
-  const checkboxes = document.querySelectorAll('#lc-chapter-list input[type=checkbox]');
-  const selected = [...checkboxes].filter(cb => cb.checked).map(cb => cb.value);
-  if (!selected.length) { alert('至少需選擇一個章別'); return; }
+  const prefixes = [..._labActiveChapters, ..._labCustomCodes];
+  if (!prefixes.length) { alert('至少需選擇一個章別或代碼'); return; }
   const btn = $('btn-labcodes-save');
-  btn.disabled = true;
+  btn.disabled = true; btn.textContent = '儲存中…';
   try {
-    await api('/api/admin/settings/lab-codes', { method: 'PUT', body: JSON.stringify({ prefixes: selected }) });
-    _labActivePrefixes = selected;
+    await api('/api/admin/settings/lab-codes', { method: 'PUT', body: JSON.stringify({ prefixes }) });
     alert('代碼設定已儲存');
   } catch(e) { alert('儲存失敗：' + (e.message || '')); }
-  finally { btn.disabled = false; }
+  finally { btn.disabled = false; btn.textContent = '儲存設定'; }
 }
 
 // Always initialize the schedule week label synchronously so it never shows "—"

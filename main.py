@@ -1521,6 +1521,21 @@ def save_lab_code_settings(body: dict, admin: auth.CurrentUser = Depends(auth.re
         raise HTTPException(status_code=500, detail="儲存失敗")
 
 
+@app.get("/api/admin/settings/lab-code-catalog")
+def get_lab_code_catalog(_: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    """Return all NHI blood-test codes grouped by chapter, with Chinese names."""
+    import nhi_blood_codes as _nhi_mod
+    _LABELS = {
+        "08": "血液常規", "09": "血液生化", "12": "血清免疫學",
+        "14": "病毒學", "27": "放射免疫分析", "30": "過敏原",
+    }
+    chapters = {
+        ch: {"label": _LABELS.get(ch, f"章別 {ch}"), "codes": sorted(_nhi_mod.CHAPTER_CODES[ch])}
+        for ch in _nhi_mod.DEFAULT_CHAPTERS
+    }
+    return {"chapters": chapters, "names": _nhi_mod.CODE_NAMES}
+
+
 @app.get("/api/directory")
 def list_clinic_contacts() -> list:
     try:

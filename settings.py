@@ -27,8 +27,19 @@ def get_lab_prefixes(clinic_id: int = 1) -> list[str]:
 
 
 def get_lab_code_set(clinic_id: int = 1) -> frozenset:
-    """Return the exact NHI code set for the clinic's active chapters."""
-    return _nhi.code_set_for(get_lab_prefixes(clinic_id))
+    """Return the exact NHI code set for the clinic's active chapters.
+
+    Stored prefixes can be either 2-char chapter codes (e.g. "08") that
+    expand to the full chapter, or individual 6-char NHI codes (e.g.
+    "08001C") that are added one at a time.
+    """
+    result: set[str] = set()
+    for p in get_lab_prefixes(clinic_id):
+        if p in _nhi.CHAPTER_CODES:
+            result.update(_nhi.CHAPTER_CODES[p])
+        elif p in _nhi.CODE_NAMES:
+            result.add(p)
+    return frozenset(result)
 
 
 def save_lab_prefixes(prefixes: list[str], clinic_id: int = 1) -> None:
