@@ -10,9 +10,6 @@
 .big-num{font-size:34px;font-weight:700;color:var(--text);line-height:1;margin-bottom:6px;font-variant-numeric:tabular-nums}
 .num-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .csvg{width:100%;display:block;overflow:hidden}
-.cday{display:flex;justify-content:space-between;padding:4px 0 0;margin-top:3px}
-.cd{font-size:11.5px;color:var(--muted);text-align:center;flex:1}
-.today-lbl{color:var(--g7);font-weight:600}
 .leg-line{width:20px;height:2.5px;border-radius:2px}
 .tc{display:grid;grid-template-columns:1fr minmax(240px,28%);gap:12px;flex:1;min-height:0}
 .lc,.rc{display:flex;flex-direction:column;gap:12px}
@@ -110,11 +107,7 @@
                 <div class="leg-line" style="background:#4aa7f7"></div>本週
               </div>
             </div>
-            <svg class="csvg" viewBox="0 0 560 150" preserveAspectRatio="xMidYMid meet" id="chart-svg"></svg>
-            <div class="cday" id="chart-days">
-              <span class="cd">一</span><span class="cd">二</span><span class="cd">三</span>
-              <span class="cd">四</span><span class="cd">五</span><span class="cd">六</span><span class="cd">日</span>
-            </div>
+            <svg class="csvg" viewBox="0 0 560 166" preserveAspectRatio="xMidYMid meet" id="chart-svg"></svg>
           </div>
           <!-- chart hover tooltip (fixed, outside card) -->
           <div id="chart-htip">
@@ -372,16 +365,19 @@
       svgH+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#4aa7f7" class="chart-dot" data-idx="'+pts.indexOf(p)+'"/>';
       svgH+='<circle cx="'+p.x+'" cy="'+p.y+'" r="2.5" fill="white" pointer-events="none"/>';
     });
+    // day labels inside SVG — exact alignment with dots
+    weekData.forEach(function(d,i){
+      var x=30+i*80, iT=i===todayIdx, iF=todayIdx>=0&&i>todayIdx;
+      var opacity=iF?'0.4':'1', fill=iT?'var(--text)':'var(--muted)';
+      var fw=iT?'700':'400';
+      svgH+='<text x="'+x+'" y="163" font-size="11.5" text-anchor="middle" fill="'+fill+'" font-weight="'+fw+'" opacity="'+opacity+'">'+DAY_NAMES[i]+'</text>';
+    });
     // invisible hit areas per day column for hover
     weekData.forEach(function(d,i){
       var x = 30+i*80, w = 80;
-      svgH+='<rect x="'+(x-40)+'" y="0" width="'+w+'" height="150" fill="transparent" class="day-hit" data-idx="'+i+'" style="cursor:'+(d.isFuture?'default':'pointer')+'"/>';
+      svgH+='<rect x="'+(x-40)+'" y="0" width="'+w+'" height="152" fill="transparent" class="day-hit" data-idx="'+i+'" style="cursor:'+(d.isFuture?'default':'pointer')+'"/>';
     });
     document.getElementById('chart-svg').innerHTML = svgH;
-    document.getElementById('chart-days').innerHTML = DAY_NAMES.map(function(l,i){
-      var iT=i===todayIdx, iF=todayIdx>=0&&i>todayIdx;
-      return '<span class="cd'+(iT?' today-lbl':'')+'"'+(iF?' style="opacity:.4"':'')+'>'+l+'</span>';
-    }).join('');
     document.getElementById('chart-big-num').textContent = todayIdx>=0&&counts[todayIdx]!=null?counts[todayIdx]:0;
 
     // attach hover listeners
