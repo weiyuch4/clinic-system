@@ -231,7 +231,7 @@
     }
     document.getElementById('table-body').innerHTML = top.map(function(e){
       var d = e.days_overdue, dc = d>=30?'days-hi':d>=15?'days-md':'days-lo';
-      var cat = (e.category==='代謝症候群'&&e.mspt_stage)?e.category+' '+e.mspt_stage:e.category;
+      var cat = (e.category==='代謝症候群'&&e.mspt_stage)?e.mspt_stage:e.category;
       return '<tr>'+
         '<td style="color:var(--muted);font-size:12px">#'+E(e.patient.chart_number)+'</td>'+
         '<td class="name">'+E(e.patient.name)+'</td>'+
