@@ -178,7 +178,7 @@
 
           <!-- gauge -->
           <div class="card">
-            <div class="chd" style="margin-bottom:10px"><div class="cttl">今日完成率</div></div>
+            <div class="chd" style="margin-bottom:10px"><div class="cttl">今日聯繫進度</div></div>
             <div class="gw">
               <svg class="gsvg" viewBox="0 0 200 108">
                 <path d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="var(--border)" stroke-width="14" stroke-linecap="round"/>
@@ -267,12 +267,12 @@
   }
 
   // ── gauge ───────────────────────────────────────────
-  function renderGauge(contacted, totalPending) {
-    var total = contacted + totalPending;
-    var pct = total > 0 ? Math.round(contacted / total * 100) : 0;
+  function renderGauge(contactedToday, stillPending) {
+    var total = contactedToday + stillPending;
+    var pct = total > 0 ? Math.round(contactedToday / total * 100) : 0;
     document.getElementById('gauge-pct').textContent = pct + '%';
     document.getElementById('gauge-arc').setAttribute('stroke-dasharray', Math.round(pct/100*267)+' 267');
-    document.getElementById('gauge-sub').textContent = contacted+' / '+total+' 人已處理';
+    document.getElementById('gauge-sub').textContent = contactedToday+' / '+total+' 人已聯繫';
   }
 
   // ── urgent panel ────────────────────────────────────
@@ -481,7 +481,7 @@
       document.getElementById('stat-contacted-sub').textContent =
         '已通知 '+(todayHistory.contacted||[]).length+'　已二通 '+(todayHistory.called||[]).length;
       renderTable(s.pending);
-      renderGauge(s.contacted, s.pending.length);
+      renderGauge(todayContacted, s.pending.length);
       renderUrgent(report, bloodCount);
       renderContactLog(todayHistory);
       renderChart(week);
