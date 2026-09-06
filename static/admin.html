@@ -1241,9 +1241,25 @@ tbody tr:hover td { background: #F7F9FF; }
 .ln-progress-bar { background: var(--blue); height: 100%; width: 0%; transition: width .3s; }
 .ln-detail { font-size: 11px; color: var(--text-3); }
 </style>
-<script src="/static/auth-client.js?v=1"></script>
+<script src="/static/admin-auth.js?v=1"></script>
 </head>
 <body>
+
+<!-- Admin login overlay — shown when sessionStorage has no valid admin token -->
+<div id="adm-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0f1117;align-items:center;justify-content:center">
+  <div style="background:#1a1d27;border:1px solid #2d3148;border-radius:14px;padding:40px;width:360px;max-width:90vw">
+    <div style="font-size:22px;font-weight:700;color:#f3f4f6;margin-bottom:6px">管理員後台</div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:28px;line-height:1.5">關閉視窗後登入狀態自動清除，不留任何痕跡。</div>
+    <form id="adm-login-form">
+      <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">帳號</label>
+      <input id="adm-u" type="text" autocomplete="username" style="display:block;width:100%;padding:10px 12px;border:1.5px solid #2d3148;border-radius:8px;background:#0f1117;color:#f3f4f6;font-size:14px;font-family:inherit;outline:none;margin-bottom:16px">
+      <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">密碼</label>
+      <input id="adm-p" type="password" autocomplete="current-password" style="display:block;width:100%;padding:10px 12px;border:1.5px solid #2d3148;border-radius:8px;background:#0f1117;color:#f3f4f6;font-size:14px;font-family:inherit;outline:none;margin-bottom:20px">
+      <div id="adm-err" style="display:none;color:#fca5a5;font-size:12.5px;background:#2A0A0F;border-radius:6px;padding:8px 11px;margin-bottom:14px"></div>
+      <button type="submit" style="width:100%;padding:11px;background:#2563EB;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">登入</button>
+    </form>
+  </div>
+</div>
 
 <header class="topbar">
   <div class="brand">
@@ -1252,7 +1268,7 @@ tbody tr:hover td { background: #F7F9FF; }
   </div>
   <div class="topbar-divider"></div>
   <span class="topbar-sub">管理員專用</span>
-  <a href="/" style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.55);text-decoration:none;white-space:nowrap" onmouseover="this.style.color='rgba(255,255,255,.85)'" onmouseout="this.style.color='rgba(255,255,255,.55)'">← 返回系統</a>
+  <button onclick="exitAdminMode()" style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.55);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap;font-family:inherit" onmouseover="this.style.color='rgba(255,255,255,.85)'" onmouseout="this.style.color='rgba(255,255,255,.55)'">← 離開管理員模式</button>
 </header>
 
 <div class="tabbar">

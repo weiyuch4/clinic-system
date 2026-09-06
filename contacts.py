@@ -1590,7 +1590,11 @@ def add_nurse(name: str) -> bool:
                 return False
             cur.execute("SELECT COALESCE(MAX(sort_order), -1) AS max_order FROM nurses")
             max_order = cur.fetchone()["max_order"]
-            cur.execute("INSERT INTO nurses (name, sort_order) VALUES (%s, %s)", (name, max_order + 1))
+            default_pin = bcrypt.hashpw(b'0000', bcrypt.gensalt(10)).decode()
+            cur.execute(
+                "INSERT INTO nurses (name, sort_order, pin_hash) VALUES (%s, %s, %s)",
+                (name, max_order + 1, default_pin)
+            )
     return True
 
 

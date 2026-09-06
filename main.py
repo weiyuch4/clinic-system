@@ -111,6 +111,23 @@ _REFRESH_COOKIE = "refresh_token"
 _COOKIE_MAX_AGE = auth.REFRESH_TOKEN_DAYS * 86400
 
 
+@app.post("/api/admin/login")
+def admin_login(body: LoginRequest) -> dict:
+    """Admin portal login — returns a short-lived access token only, NO refresh cookie.
+    The frontend stores this in sessionStorage; closing the window wipes it automatically."""
+    CLINIC_ID = 1
+    user = auth.get_user_by_username(CLINIC_ID, body.username)
+    if not user or not auth.verify_password(body.password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="帳號或密碼錯誤")
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="此帳號無管理員權限")
+    token = auth.create_access_token(
+        user_id=user["id"], clinic_id=user["clinic_id"],
+        role=user["role"], display_name=user["display_name"],
+    )
+    return {"access_token": token, "display_name": user["display_name"]}
+
+
 @app.post("/auth/login", response_model=LoginResponse)
 def login(body: LoginRequest) -> JSONResponse:
     # Single-tenant: clinic_id is always 1 for now.

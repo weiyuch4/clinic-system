@@ -376,7 +376,8 @@
         '<div class="ps">我的今日班表</div>' +
         '<div class="pt" id="sb-shift-info">載入中…</div>' +
         '<a href="/new/schedule" class="pb">查看完整班表</a>' +
-      '</div>';
+      '</div>' +
+      '<button class="adm-entry" type="button" onclick="window.open(\'/admin\',\'adm\',\'width=1280,height=840,noopener\')">管理員後台</button>';
   }
 
   // ── Topbar ───────────────────────────────────────────
