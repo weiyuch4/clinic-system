@@ -1,12 +1,12 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>今日總覽 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=25">
+<title>ä»Šæ—¥ç¸½è¦½ â€” è¨ºæ‰€è¿½è¹¤ç³»çµ±</title>
+<link rel="stylesheet" href="/static/_layout.css?v=26">
 <style>
-/* ── dashboard-specific ─────────────────────────────── */
+/* â”€â”€ dashboard-specific â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .big-num{font-size:34px;font-weight:700;color:var(--text);line-height:1;margin-bottom:6px;font-variant-numeric:tabular-nums}
 .num-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .csvg{width:100%;display:block;overflow:hidden}
@@ -48,46 +48,46 @@
 
       <!-- page header -->
       <div class="ph">
-        <div><h1>今日追蹤總覽</h1><p id="page-date">各科病患追蹤狀況一覽</p></div>
+        <div><h1>ä»Šæ—¥è¿½è¹¤ç¸½è¦½</h1><p id="page-date">å„ç§‘ç—…æ‚£è¿½è¹¤ç‹€æ³ä¸€è¦½</p></div>
       </div>
 
       <!-- stat cards -->
       <div class="sr">
         <div class="sc ft">
-          <div class="sct"><span class="scl">總待追蹤</span>
+          <div class="sct"><span class="scl">ç¸½å¾…è¿½è¹¤</span>
             <div class="sico" style="background:#EFF6FF">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#4aa7f7" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
             </div>
           </div>
-          <div class="sn" id="stat-pending">—</div>
-          <div class="str" id="stat-pending-sub">載入中</div>
+          <div class="sn" id="stat-pending">â€”</div>
+          <div class="str" id="stat-pending-sub">è¼‰å…¥ä¸­</div>
         </div>
         <div class="sc">
-          <div class="sct"><span class="scl">今日已聯繫</span>
+          <div class="sct"><span class="scl">ä»Šæ—¥å·²è¯ç¹«</span>
             <div class="sico" style="background:#D1FAE5">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 3.07 9.81a19.79 19.79 0 0 1-3.07-8.68A2 2 0 0 1 2 .99h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L6.09 8.91a16 16 0 0 0 6 6"/></svg>
             </div>
           </div>
-          <div class="sn" id="stat-contacted" style="color:var(--text)">—</div>
-          <div class="str" id="stat-contacted-sub" style="color:var(--sub)">已聯繫 + 已通知</div>
+          <div class="sn" id="stat-contacted" style="color:var(--text)">â€”</div>
+          <div class="str" id="stat-contacted-sub" style="color:var(--sub)">å·²è¯ç¹« + å·²é€šçŸ¥</div>
         </div>
         <div class="sc">
-          <div class="sct"><span class="scl">可申報MSPT</span>
+          <div class="sct"><span class="scl">å¯ç”³å ±MSPT</span>
             <div class="sico" style="background:#EDE9FE">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 18 15 15"/></svg>
             </div>
           </div>
-          <div class="sn" id="stat-mspt" style="color:var(--text)">—</div>
-          <div class="str" style="color:#6D28D9;font-weight:500;font-size:11.5px">今日可提交健保</div>
+          <div class="sn" id="stat-mspt" style="color:var(--text)">â€”</div>
+          <div class="str" style="color:#6D28D9;font-weight:500;font-size:11.5px">ä»Šæ—¥å¯æäº¤å¥ä¿</div>
         </div>
         <div class="sc">
-          <div class="sct"><span class="scl">暫緩中</span>
+          <div class="sct"><span class="scl">æš«ç·©ä¸­</span>
             <div class="sico" style="background:#FEF3C7">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#92400E" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             </div>
           </div>
-          <div class="sn" id="stat-hold" style="color:var(--text)">—</div>
-          <div class="str" style="color:var(--muted)">各科暫緩</div>
+          <div class="sn" id="stat-hold" style="color:var(--text)">â€”</div>
+          <div class="str" style="color:var(--muted)">å„ç§‘æš«ç·©</div>
         </div>
       </div>
 
@@ -99,45 +99,45 @@
           <div class="card">
             <div class="chd">
               <div>
-                <div class="cttl">本週聯繫活動</div>
+                <div class="cttl">æœ¬é€±è¯ç¹«æ´»å‹•</div>
                 <div class="num-row" style="margin-top:6px">
-                  <span class="big-num" id="chart-big-num">—</span>
+                  <span class="big-num" id="chart-big-num">â€”</span>
                   <span class="chip chip-g" id="chart-chip" style="display:none"></span>
                 </div>
-                <div style="font-size:12px;color:var(--sub)" id="chart-sub">今日聯繫件數</div>
+                <div style="font-size:12px;color:var(--sub)" id="chart-sub">ä»Šæ—¥è¯ç¹«ä»¶æ•¸</div>
               </div>
               <div style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--sub)">
-                <div class="leg-line" style="background:#4aa7f7"></div>本週
+                <div class="leg-line" style="background:#4aa7f7"></div>æœ¬é€±
               </div>
             </div>
             <svg class="csvg" viewBox="0 0 560 150" preserveAspectRatio="xMidYMid meet" id="chart-svg"></svg>
             <div class="cday" id="chart-days">
-              <span class="cd">一</span><span class="cd">二</span><span class="cd">三</span>
-              <span class="cd">四</span><span class="cd">五</span><span class="cd">六</span><span class="cd">日</span>
+              <span class="cd">ä¸€</span><span class="cd">äºŒ</span><span class="cd">ä¸‰</span>
+              <span class="cd">å››</span><span class="cd">äº”</span><span class="cd">å…­</span><span class="cd">æ—¥</span>
             </div>
           </div>
           <!-- chart hover tooltip (fixed, outside card) -->
           <div id="chart-htip">
             <div class="ht-date" id="ht-date"></div>
             <div class="ht-total" id="ht-total">0</div>
-            <div class="ht-total-lbl">件聯繫</div>
+            <div class="ht-total-lbl">ä»¶è¯ç¹«</div>
             <hr class="ht-div">
-            <div class="ht-row"><span class="ht-lbl">已通知</span><span class="ht-num" id="ht-c1">0</span></div>
-            <div class="ht-row"><span class="ht-lbl">已二通</span><span class="ht-num" id="ht-c2">0</span></div>
-            <div id="ht-mspt-row" class="ht-row" style="display:none"><span class="ht-lbl">收案完成</span><span class="ht-num" id="ht-mspt">0</span></div>
+            <div class="ht-row"><span class="ht-lbl">å·²é€šçŸ¥</span><span class="ht-num" id="ht-c1">0</span></div>
+            <div class="ht-row"><span class="ht-lbl">å·²äºŒé€š</span><span class="ht-num" id="ht-c2">0</span></div>
+            <div id="ht-mspt-row" class="ht-row" style="display:none"><span class="ht-lbl">æ”¶æ¡ˆå®Œæˆ</span><span class="ht-num" id="ht-mspt">0</span></div>
             <div class="ht-cats" id="ht-cats"></div>
           </div>
 
           <!-- patient table -->
           <div class="card">
             <div class="chd" style="margin-bottom:10px">
-              <div><div class="cttl">最需聯繫的病患</div><div class="csub">跨科別 · 依逾期天數排序</div></div>
-              <a href="/new/chronic" class="cab" style="margin-top:2px">查看全部</a>
+              <div><div class="cttl">æœ€éœ€è¯ç¹«çš„ç—…æ‚£</div><div class="csub">è·¨ç§‘åˆ¥ Â· ä¾é€¾æœŸå¤©æ•¸æŽ’åº</div></div>
+              <a href="/new/chronic" class="cab" style="margin-top:2px">æŸ¥çœ‹å…¨éƒ¨</a>
             </div>
             <div style="overflow-x:auto">
               <table class="ptable">
                 <thead>
-                  <tr><th>病歷號</th><th>姓名</th><th>類別</th><th>逾期天數</th><th>狀態</th><th></th></tr>
+                  <tr><th>ç—…æ­·è™Ÿ</th><th>å§“å</th><th>é¡žåˆ¥</th><th>é€¾æœŸå¤©æ•¸</th><th>ç‹€æ…‹</th><th></th></tr>
                 </thead>
                 <tbody id="table-body">
                   <tr><td><div class="skel" style="width:50px"></div></td><td><div class="skel" style="width:60px"></div></td><td><div class="skel" style="width:90px"></div></td><td><div class="skel" style="width:45px"></div></td><td><div class="skel" style="width:55px"></div></td><td></td></tr>
@@ -152,43 +152,43 @@
 
           <!-- urgent -->
           <div class="card">
-            <div class="chd" style="margin-bottom:10px"><div class="cttl">今日待處理</div></div>
+            <div class="chd" style="margin-bottom:10px"><div class="cttl">ä»Šæ—¥å¾…è™•ç†</div></div>
             <div class="urg-item">
               <div class="urg-icon" style="background:#EDE9FE">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 18 15 15"/></svg>
               </div>
-              <div><div class="urg-name">可申報MSPT</div><div class="urg-sub">血液報告已出爐</div></div>
-              <div class="urg-count" id="urg-mspt">—</div>
+              <div><div class="urg-name">å¯ç”³å ±MSPT</div><div class="urg-sub">è¡€æ¶²å ±å‘Šå·²å‡ºçˆ</div></div>
+              <div class="urg-count" id="urg-mspt">â€”</div>
             </div>
             <div class="urg-item">
               <div class="urg-icon" style="background:#EDE9FE">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               </div>
-              <div><div class="urg-name">B肝待輸入VPN</div><div class="urg-sub">近期回診未登錄</div></div>
-              <div class="urg-count" id="urg-hep">—</div>
+              <div><div class="urg-name">Bè‚å¾…è¼¸å…¥VPN</div><div class="urg-sub">è¿‘æœŸå›žè¨ºæœªç™»éŒ„</div></div>
+              <div class="urg-count" id="urg-hep">â€”</div>
             </div>
             <div class="urg-item">
               <div class="urg-icon" style="background:#E0F2FE">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0369A1" stroke-width="2" stroke-linecap="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0a3 3 0 1 0 6 0m-6 0h6m-6 0H3m12 0h6"/></svg>
               </div>
-              <div><div class="urg-name">抽血結果待確認</div><div class="urg-sub">檢驗追蹤</div></div>
-              <div class="urg-count" id="urg-blood">—</div>
+              <div><div class="urg-name">æŠ½è¡€çµæžœå¾…ç¢ºèª</div><div class="urg-sub">æª¢é©—è¿½è¹¤</div></div>
+              <div class="urg-count" id="urg-blood">â€”</div>
             </div>
           </div>
 
           <!-- gauge -->
           <div class="card">
-            <div class="chd" style="margin-bottom:10px"><div class="cttl">今日聯繫進度</div></div>
+            <div class="chd" style="margin-bottom:10px"><div class="cttl">ä»Šæ—¥è¯ç¹«é€²åº¦</div></div>
             <div class="gw">
               <svg class="gsvg" viewBox="0 0 200 108">
                 <path d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="var(--border)" stroke-width="14" stroke-linecap="round"/>
                 <path id="gauge-arc" d="M 15 100 A 85 85 0 0 1 185 100" fill="none" stroke="#4aa7f7" stroke-width="14" stroke-linecap="round" stroke-dasharray="0 267"/>
               </svg>
-              <div class="gpct" id="gauge-pct">—</div>
-              <div class="gsub" id="gauge-sub">載入中</div>
+              <div class="gpct" id="gauge-pct">â€”</div>
+              <div class="gsub" id="gauge-sub">è¼‰å…¥ä¸­</div>
               <div class="gleg">
-                <div class="gli"><div class="gld" style="background:#4aa7f7"></div>已處理</div>
-                <div class="gli"><div class="gld" style="background:var(--border)"></div>待處理</div>
+                <div class="gli"><div class="gld" style="background:#4aa7f7"></div>å·²è™•ç†</div>
+                <div class="gli"><div class="gld" style="background:var(--border)"></div>å¾…è™•ç†</div>
               </div>
             </div>
           </div>
@@ -196,10 +196,10 @@
           <!-- contact log -->
           <div class="card dk">
             <div style="display:flex;align-items:center;margin-bottom:12px">
-              <div class="cttl">今日聯繫記錄</div>
-              <span id="cl-count" style="margin-left:auto;font-size:11px;opacity:.55">0 筆</span>
+              <div class="cttl">ä»Šæ—¥è¯ç¹«è¨˜éŒ„</div>
+              <span id="cl-count" style="margin-left:auto;font-size:11px;opacity:.55">0 ç­†</span>
             </div>
-            <div id="contact-log"><div class="dk-empty">載入中…</div></div>
+            <div id="contact-log"><div class="dk-empty">è¼‰å…¥ä¸­â€¦</div></div>
           </div>
 
         </div><!-- end right col -->
@@ -209,19 +209,19 @@
   </div><!-- end main -->
 </div><!-- end app -->
 
-<script src="/static/_layout.js?v=25"></script>
+<script src="/static/_layout.js?v=26"></script>
 <script>
 (function () {
   'use strict';
   var E = Layout.escHtml, D = Layout.localDateStr, L = Layout;
 
   function renderPageDate() {
-    var d = new Date(), DOW = ['日','一','二','三','四','五','六'];
+    var d = new Date(), DOW = ['æ—¥','ä¸€','äºŒ','ä¸‰','å››','äº”','å…­'];
     document.getElementById('page-date').textContent =
-      d.getFullYear() + ' 年 ' + (d.getMonth()+1) + ' 月 ' + d.getDate() + ' 日（週' + DOW[d.getDay()] + '）';
+      d.getFullYear() + ' å¹´ ' + (d.getMonth()+1) + ' æœˆ ' + d.getDate() + ' æ—¥ï¼ˆé€±' + DOW[d.getDay()] + 'ï¼‰';
   }
 
-  // ── stats ──────────────────────────────────────────
+  // â”€â”€ stats â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function renderStats(report, bloodCount) {
     var pending = [].concat(
       report.chronic_prescriptions||[], report.mspt_followups||[],
@@ -234,32 +234,32 @@
     document.getElementById('stat-mspt').textContent      = (report.mspt_submittable||[]).length;
     document.getElementById('stat-hold').textContent      = (report.on_hold||[]).length;
     document.getElementById('stat-pending-sub').textContent =
-      '慢簽 '+(report.chronic_prescriptions||[]).length+' · MSPT '+(report.mspt_followups||[]).length+' · B肝 '+(report.hep_followups||[]).length;
+      'æ…¢ç°½ '+(report.chronic_prescriptions||[]).length+' Â· MSPT '+(report.mspt_followups||[]).length+' Â· Bè‚ '+(report.hep_followups||[]).length;
     document.getElementById('stat-contacted-sub').textContent =
-      '已通知 '+(report.contacted||[]).length+' · 已二通 '+(report.called||[]).length;
+      'å·²é€šçŸ¥ '+(report.contacted||[]).length+' Â· å·²äºŒé€š '+(report.called||[]).length;
     L.updateBadges(report, bloodCount);
     return { pending: pending, contacted: contacted };
   }
 
-  // ── patient table ──────────────────────────────────
-  var CAT_CLS  = {'慢簽':'cat-c','代謝症候群':'cat-m','B肝':'cat-h','C肝':'cat-h','慢性腎臟病':'cat-k'};
-  var CAT_HREF = {'慢簽':'/new/chronic','代謝症候群':'/new/mspt','B肝':'/new/hepatitis','C肝':'/new/hepatitis','慢性腎臟病':'/new/ckd'};
+  // â”€â”€ patient table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  var CAT_CLS  = {'æ…¢ç°½':'cat-c','ä»£è¬ç—‡å€™ç¾¤':'cat-m','Bè‚':'cat-h','Cè‚':'cat-h','æ…¢æ€§è…Žè‡Ÿç—…':'cat-k'};
+  var CAT_HREF = {'æ…¢ç°½':'/new/chronic','ä»£è¬ç—‡å€™ç¾¤':'/new/mspt','Bè‚':'/new/hepatitis','Cè‚':'/new/hepatitis','æ…¢æ€§è…Žè‡Ÿç—…':'/new/ckd'};
   function renderTable(pending) {
     var top = pending.slice().sort(function(a,b){return b.days_overdue-a.days_overdue;}).slice(0,8);
     if (!top.length) {
       document.getElementById('table-body').innerHTML =
-        '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">今日無待追蹤病患</td></tr>';
+        '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">ä»Šæ—¥ç„¡å¾…è¿½è¹¤ç—…æ‚£</td></tr>';
       return;
     }
     document.getElementById('table-body').innerHTML = top.map(function(e){
       var d = e.days_overdue, dc = d>=30?'days-hi':d>=15?'days-md':'days-lo';
-      var cat = (e.category==='代謝症候群'&&e.mspt_stage)?e.mspt_stage:e.category;
+      var cat = (e.category==='ä»£è¬ç—‡å€™ç¾¤'&&e.mspt_stage)?e.mspt_stage:e.category;
       return '<tr>'+
         '<td style="color:var(--muted);font-size:12px">#'+E(e.patient.chart_number)+'</td>'+
         '<td class="name">'+E(e.patient.name)+'</td>'+
         '<td><span class="cat-chip '+(CAT_CLS[e.category]||'cat-c')+'">'+E(cat)+'</span></td>'+
-        '<td class="days '+dc+'">'+d+' 天</td>'+
-        '<td><span class="pbadge b-pend">待聯絡</span></td>'+
+        '<td class="days '+dc+'">'+d+' å¤©</td>'+
+        '<td><span class="pbadge b-pend">å¾…è¯çµ¡</span></td>'+
         '<td><a href="'+(CAT_HREF[e.category]||'/new/chronic')+'" class="go-btn">'+
           '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">'+
           '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></td>'+
@@ -267,52 +267,52 @@
     }).join('');
   }
 
-  // ── gauge ───────────────────────────────────────────
+  // â”€â”€ gauge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function renderGauge(contactedToday, stillPending) {
     var total = contactedToday + stillPending;
     var pct = total > 0 ? Math.round(contactedToday / total * 100) : 0;
     document.getElementById('gauge-pct').textContent = pct + '%';
     document.getElementById('gauge-arc').setAttribute('stroke-dasharray', Math.round(pct/100*267)+' 267');
-    document.getElementById('gauge-sub').textContent = contactedToday+' / '+total+' 人已聯繫';
+    document.getElementById('gauge-sub').textContent = contactedToday+' / '+total+' äººå·²è¯ç¹«';
   }
 
-  // ── urgent panel ────────────────────────────────────
+  // â”€â”€ urgent panel â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function renderUrgent(report, bloodCount) {
     document.getElementById('urg-mspt').textContent  = (report.mspt_submittable||[]).length;
     document.getElementById('urg-hep').textContent   = (report.hep_returned||[]).length;
     document.getElementById('urg-blood').textContent = bloodCount;
   }
 
-  // ── contact log card ────────────────────────────────
-  var CAT_SHORT = {'慢簽':'慢簽','代謝症候群':'代謝','慢性腎臟病':'腎臟','B肝':'B肝','C肝':'C肝'};
+  // â”€â”€ contact log card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  var CAT_SHORT = {'æ…¢ç°½':'æ…¢ç°½','ä»£è¬ç—‡å€™ç¾¤':'ä»£è¬','æ…¢æ€§è…Žè‡Ÿç—…':'è…Žè‡Ÿ','Bè‚':'Bè‚','Cè‚':'Cè‚'};
   function renderContactLog(todayHistory) {
     var all = ((todayHistory&&todayHistory.contacted)||[]).concat((todayHistory&&todayHistory.called)||[]);
     var el = document.getElementById('contact-log');
     var cntEl = document.getElementById('cl-count');
-    if (cntEl) cntEl.textContent = all.length + ' 筆';
-    if (!all.length) { el.innerHTML='<div class="dk-empty">今日尚無聯繫記錄</div>'; return; }
+    if (cntEl) cntEl.textContent = all.length + ' ç­†';
+    if (!all.length) { el.innerHTML='<div class="dk-empty">ä»Šæ—¥å°šç„¡è¯ç¹«è¨˜éŒ„</div>'; return; }
     var show = all.slice(0, 8), rest = all.length - show.length;
     el.innerHTML = show.map(function(e) {
-      var name = (e.patient&&e.patient.name)||e.manual_name||'—';
+      var name = (e.patient&&e.patient.name)||e.manual_name||'â€”';
       var cat  = CAT_SHORT[e.category]||(e.category||'').slice(0,2);
-      var nurse = e.nurse ? ' · '+E(e.nurse) : '';
+      var nurse = e.nurse ? ' Â· '+E(e.nurse) : '';
       var time = e.contacted_time ? ' '+E(e.contacted_time) : '';
       return '<div class="dk-row">'+
         '<span class="dk-label">'+E(cat)+nurse+time+'</span>'+
         '<span class="dk-val">'+E(name)+'</span>'+
       '</div>';
     }).join('') +
-    (rest>0 ? '<div class="dk-row" style="margin-top:4px"><span class="dk-label" style="opacity:.4">另有 '+rest+' 筆</span></div>' : '');
+    (rest>0 ? '<div class="dk-row" style="margin-top:4px"><span class="dk-label" style="opacity:.4">å¦æœ‰ '+rest+' ç­†</span></div>' : '');
   }
 
-  // ── weekly chart ────────────────────────────────────
+  // â”€â”€ weekly chart â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function fetchDayHistory(dateStr) {
     return L.apiFetch('/api/contacts/history?target_date=' + dateStr)
       .then(function(r) {
         var c1 = (r.contacted || []).length, c2 = (r.called || []).length, mc = (r.mspt_completed || []).length;
         var cats = {};
         [].concat(r.contacted || [], r.called || []).forEach(function(e) {
-          var c = e.category || '其他'; cats[c] = (cats[c] || 0) + 1;
+          var c = e.category || 'å…¶ä»–'; cats[c] = (cats[c] || 0) + 1;
         });
         return {count: c1 + c2, contacted: c1, called: c2, mspt_completed: mc, cats: cats};
       })
@@ -332,7 +332,7 @@
     });
   }
   var _weekDataGlobal = [], _todayIdxGlobal = -1;
-  var DAY_NAMES = ['一','二','三','四','五','六','日'];
+  var DAY_NAMES = ['ä¸€','äºŒ','ä¸‰','å››','äº”','å…­','æ—¥'];
   function renderChart(weekData) {
     _weekDataGlobal = weekData;
     var counts = weekData.map(function(d){return d.count!=null?d.count:0;});
@@ -396,16 +396,16 @@
         var bigNum = document.getElementById('chart-big-num');
         if(bigNum) bigNum.textContent = cnt;
         var chip = document.getElementById('chart-chip');
-        if(chip) { chip.textContent = DAY_NAMES[idx]+'　'+d.dateStr.slice(5); chip.style.display=''; }
+        if(chip) { chip.textContent = DAY_NAMES[idx]+'ã€€'+d.dateStr.slice(5); chip.style.display=''; }
         var sub = document.getElementById('chart-sub');
-        if(sub) sub.textContent = d.isToday ? '今日聯繫件數' : '當日聯繫件數';
+        if(sub) sub.textContent = d.isToday ? 'ä»Šæ—¥è¯ç¹«ä»¶æ•¸' : 'ç•¶æ—¥è¯ç¹«ä»¶æ•¸';
         // update vertical guide line
         var vline = document.getElementById('chart-vline');
         if(vline) { vline.setAttribute('x1',30+idx*80); vline.setAttribute('x2',30+idx*80); vline.style.display=''; }
         // populate HTML tooltip
         var tip = document.getElementById('chart-htip');
         if(!tip) return;
-        document.getElementById('ht-date').textContent = '週'+DAY_NAMES[idx]+'　'+d.dateStr.slice(5);
+        document.getElementById('ht-date').textContent = 'é€±'+DAY_NAMES[idx]+'ã€€'+d.dateStr.slice(5);
         document.getElementById('ht-total').textContent = cnt;
         document.getElementById('ht-c1').textContent = d.contacted || 0;
         document.getElementById('ht-c2').textContent = d.called || 0;
@@ -419,9 +419,9 @@
         // category chips
         var catsEl = document.getElementById('ht-cats');
         var cats = d.cats || {};
-        var catOrder = ['慢簽','代謝症候群','B肝','C肝','慢性腎臟病'];
+        var catOrder = ['æ…¢ç°½','ä»£è¬ç—‡å€™ç¾¤','Bè‚','Cè‚','æ…¢æ€§è…Žè‡Ÿç—…'];
         var html = '';
-        catOrder.forEach(function(c){if(cats[c])html+='<span class="ht-cat cat-chip '+(CAT_CLS[c]||'')+'">'+c.replace('代謝症候群','代謝')+' '+cats[c]+'</span>';});
+        catOrder.forEach(function(c){if(cats[c])html+='<span class="ht-cat cat-chip '+(CAT_CLS[c]||'')+'">'+c.replace('ä»£è¬ç—‡å€™ç¾¤','ä»£è¬')+' '+cats[c]+'</span>';});
         Object.keys(cats).forEach(function(c){if(catOrder.indexOf(c)<0&&cats[c])html+='<span class="ht-cat">'+c+' '+cats[c]+'</span>';});
         catsEl.innerHTML = html;
         // position tooltip near column
@@ -445,7 +445,7 @@
         var bigNum = document.getElementById('chart-big-num');
         if(bigNum) bigNum.textContent = _todayIdxGlobal>=0&&counts[_todayIdxGlobal]!=null?counts[_todayIdxGlobal]:0;
         var sub = document.getElementById('chart-sub');
-        if(sub) sub.textContent = '今日聯繫件數';
+        if(sub) sub.textContent = 'ä»Šæ—¥è¯ç¹«ä»¶æ•¸';
         var vline = document.getElementById('chart-vline');
         if(vline) vline.style.display='none';
         var tip = document.getElementById('chart-htip');
@@ -454,7 +454,7 @@
     });
   }
 
-  // ── main load ───────────────────────────────────────
+  // â”€â”€ main load â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   function load() {
     L.hideError();
     var today = D();
@@ -468,11 +468,11 @@
       var bloodCount=0;
       if(Array.isArray(bloodData)) bloodData.forEach(function(day){(day.patients||[]).forEach(function(p){if(!p.results_back)bloodCount++;});});
       var s = renderStats(report, bloodCount);
-      // update "今日已聯繫" subtitle to show today's actual count from history
+      // update "ä»Šæ—¥å·²è¯ç¹«" subtitle to show today's actual count from history
       var todayContacted = ((todayHistory.contacted||[]).length + (todayHistory.called||[]).length);
       document.getElementById('stat-contacted').textContent = todayContacted;
       document.getElementById('stat-contacted-sub').textContent =
-        '已通知 '+(todayHistory.contacted||[]).length+'　已二通 '+(todayHistory.called||[]).length;
+        'å·²é€šçŸ¥ '+(todayHistory.contacted||[]).length+'ã€€å·²äºŒé€š '+(todayHistory.called||[]).length;
       renderTable(s.pending);
       renderGauge(todayContacted, s.pending.length);
       renderUrgent(report, bloodCount);
@@ -480,7 +480,7 @@
       renderChart(week);
       L.updateLastUpdated();
     }).catch(function(e){
-      L.showError('資料載入失敗 — '+(e.message||'請確認伺服器連線'));
+      L.showError('è³‡æ–™è¼‰å…¥å¤±æ•— â€” '+(e.message||'è«‹ç¢ºèªä¼ºæœå™¨é€£ç·š'));
     });
   }
 

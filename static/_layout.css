@@ -51,7 +51,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .nb{margin-left:auto;background:var(--border);color:var(--muted);font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:20px;line-height:1.4;min-width:18px;text-align:center;transition:opacity .2s}
 .nb.zero{opacity:.4}
 .sf{flex:1}
-.promo{background:linear-gradient(to bottom,#f6f6f6,var(--card));border-radius:11px;padding:14px;color:#111827;margin-top:12px}
+.promo{background:linear-gradient(to bottom,#EEF0F4,var(--card));border-radius:11px;padding:14px;color:var(--text);margin-top:12px;border:1px solid transparent}
 .promo-slot{margin-bottom:6px}
 .promo-slot-label{font-size:10px;opacity:.6;margin-bottom:2px}
 .promo-slot-time{font-size:13.5px;font-weight:700}
@@ -369,12 +369,12 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 /* â”€â”€ sidebar selected state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media(prefers-color-scheme:dark){
   :root:not([data-theme=light]) .ni.on{color:var(--text);background:rgba(255,255,255,.09)}
-  :root:not([data-theme=light]) .promo{background:var(--g0);color:var(--text)}
-  :root:not([data-theme=light]) .ps{color:var(--text)}
+  :root:not([data-theme=light]) .promo{background:#1A2436;border-color:var(--border)}
+  :root:not([data-theme=light]) .lm{background:var(--g0);color:var(--muted)}
 }
 :root[data-theme=dark] .ni.on{color:var(--text);background:rgba(255,255,255,.09)}
-:root[data-theme=dark] .promo{background:var(--g0);color:var(--text)}
-:root[data-theme=dark] .ps{color:var(--text)}
+:root[data-theme=dark] .promo{background:#1A2436;border-color:var(--border)}
+:root[data-theme=dark] .lm{background:var(--g0);color:var(--muted)}
 
 /* â”€â”€ copyable elements â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .pr-copy{cursor:pointer;border-radius:3px;padding:0 1px;transition:background .1s}

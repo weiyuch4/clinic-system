@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>排班表 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=25">
+<title>æŽ’ç­è¡¨ â€” è¨ºæ‰€è¿½è¹¤ç³»çµ±</title>
+<link rel="stylesheet" href="/static/_layout.css?v=26">
 <style>
 .week-nav{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .week-label{font-size:14px;font-weight:600;color:var(--text);flex:1;text-align:center}
@@ -31,7 +31,7 @@
 .sg-entry+.sg-entry{border-top:1px solid var(--border);margin-top:5px;padding-top:5px}
 .sg-time{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;letter-spacing:.01em}
 .sg-clean{font-size:10.5px;color:var(--muted)}
-.sg-clean::before{content:'清潔 '}
+.sg-clean::before{content:'æ¸…æ½” '}
 .view-toggle{display:flex;border:1.5px solid var(--border);border-radius:100px;overflow:hidden;flex-shrink:0}
 .view-toggle button{padding:5px 14px;font-size:12.5px;font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;transition:background .12s,color .12s}
 .view-toggle button.on{background:#b5d7f5;color:#111827}
@@ -50,44 +50,44 @@
       </div>
 
       <div class="ph">
-        <div><h1>排班表</h1><p id="page-date">本週護理師班表</p></div>
+        <div><h1>æŽ’ç­è¡¨</h1><p id="page-date">æœ¬é€±è­·ç†å¸«ç­è¡¨</p></div>
       </div>
 
       <div class="week-nav">
-        <button class="wn-btn" id="btn-prev" title="上週">
+        <button class="wn-btn" id="btn-prev" title="ä¸Šé€±">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
-        <span class="week-label" id="week-label">本週</span>
-        <button class="wn-btn" id="btn-next" title="下週">
+        <span class="week-label" id="week-label">æœ¬é€±</span>
+        <button class="wn-btn" id="btn-next" title="ä¸‹é€±">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
-        <button class="wn-today" id="btn-this-week">本週</button>
+        <button class="wn-today" id="btn-this-week">æœ¬é€±</button>
         <div class="view-toggle">
-          <button id="btn-view-mine" class="on" onclick="setView(false)">我的班表</button>
-          <button id="btn-view-all" onclick="setView(true)">全體班表</button>
+          <button id="btn-view-mine" class="on" onclick="setView(false)">æˆ‘çš„ç­è¡¨</button>
+          <button id="btn-view-all" onclick="setView(true)">å…¨é«”ç­è¡¨</button>
         </div>
       </div>
 
       <div id="sched-area">
-        <div style="text-align:center;padding:40px;color:var(--muted)">載入中…</div>
+        <div style="text-align:center;padding:40px;color:var(--muted)">è¼‰å…¥ä¸­â€¦</div>
       </div>
 
     </div>
   </div>
 </div>
 
-<script src="/static/_layout.js?v=25"></script>
+<script src="/static/_layout.js?v=26"></script>
 <script>
 (function () {
   'use strict';
   var L = Layout;
   var _mondayStr = L.getMondayStr();
   var TODAY = L.localDateStr();
-  var DOW = ['一','二','三','四','五','六','日'];
+  var DOW = ['ä¸€','äºŒ','ä¸‰','å››','äº”','å…­','æ—¥'];
   var SLOTS = [
-    { key: '早診', label: '早診' },
-    { key: '午診', label: '下午診' },
-    { key: '晚診', label: '晚診' },
+    { key: 'æ—©è¨º', label: 'æ—©è¨º' },
+    { key: 'åˆè¨º', label: 'ä¸‹åˆè¨º' },
+    { key: 'æ™šè¨º', label: 'æ™šè¨º' },
   ];
   var _showAll = false;
   var _lastIdx = null;  // cached schedule index for re-render without refetch
@@ -111,20 +111,20 @@
     var monYear = mon.slice(0, 4), sunYear = sun.slice(0, 4);
     var range;
     if (monYear !== sunYear) {
-      range = monYear + '/' + mon.slice(5) + ' – ' + sunYear + '/' + sun.slice(5);
+      range = monYear + '/' + mon.slice(5) + ' â€“ ' + sunYear + '/' + sun.slice(5);
     } else {
-      range = mon.slice(5) + ' – ' + sun.slice(5);
+      range = mon.slice(5) + ' â€“ ' + sun.slice(5);
     }
-    document.getElementById('week-label').textContent = monYear + '/' + mon.slice(5, 7) + ' 週（' + range + '）';
+    document.getElementById('week-label').textContent = monYear + '/' + mon.slice(5, 7) + ' é€±ï¼ˆ' + range + 'ï¼‰';
   }
 
   function entryHtml(e) {
     var h = '<div class="sg-entry"><div class="sg-name">' + L.escHtml(e.nurse) + '</div>';
     if (e.start_time || e.end_time) {
-      h += '<div class="sg-time">' + (e.start_time || '') + (e.end_time ? '–' + e.end_time : '') + '</div>';
+      h += '<div class="sg-time">' + (e.start_time || '') + (e.end_time ? 'â€“' + e.end_time : '') + '</div>';
     }
     if (e.clean_start && e.clean_end) {
-      h += '<div class="sg-clean">' + e.clean_start + '–' + e.clean_end + '</div>';
+      h += '<div class="sg-clean">' + e.clean_start + 'â€“' + e.clean_end + '</div>';
     }
     h += '</div>';
     return h;
@@ -159,7 +159,7 @@
         cells += '<div class="sg-cell sg-day' + (isToday ? ' sg-today' : '') + (isLast ? ' last-row' : '') + highlight + '">' +
           (entries.length
             ? entries.map(entryHtml).join('')
-            : '<span class="sg-empty">—</span>') +
+            : '<span class="sg-empty">â€”</span>') +
         '</div>';
       });
       return cells;
@@ -176,7 +176,7 @@
       L.updateLastUpdated();
       var area = document.getElementById('sched-area');
       if (!data.published) {
-        area.innerHTML = '<div class="unpub-banner">本週班表尚未發布</div>';
+        area.innerHTML = '<div class="unpub-banner">æœ¬é€±ç­è¡¨å°šæœªç™¼å¸ƒ</div>';
         return;
       }
       var idx = {};
@@ -193,7 +193,7 @@
       });
       renderGrid(idx);
     }).catch(function (e) {
-      L.showError('班表載入失敗 — ' + (e.message || ''));
+      L.showError('ç­è¡¨è¼‰å…¥å¤±æ•— â€” ' + (e.message || ''));
     });
   }
 

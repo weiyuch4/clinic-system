@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>代謝症候群 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=25">
+<title>ä»£è¬ç—‡å€™ç¾¤ â€” è¨ºæ‰€è¿½è¹¤ç³»çµ±</title>
+<link rel="stylesheet" href="/static/_layout.css?v=26">
 <style>
 .sub-banner{border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0;background:#EDE9FE;border:1px solid #DDD6FE}
 .warmup-banner{border-radius:10px;padding:11px 16px;display:flex;align-items:flex-start;gap:11px;flex-shrink:0;background:#FEF9C3;border:1px solid #FDE047}
@@ -42,7 +42,7 @@
       </div>
 
       <div class="ph">
-        <div><h1>代謝症候群</h1><p id="page-date">MSPT 各階段追蹤</p></div>
+        <div><h1>ä»£è¬ç—‡å€™ç¾¤</h1><p id="page-date">MSPT å„éšŽæ®µè¿½è¹¤</p></div>
       </div>
 
       <div class="sub-banner" id="sub-banner" style="display:none">
@@ -50,8 +50,8 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 18 15 15"/></svg>
         </div>
         <div>
-          <div class="sub-banner-title">今日可申報健保</div>
-          <div class="sub-banner-sub">血液報告已出爐或電話完成，可於健保署VPN系統提交</div>
+          <div class="sub-banner-title">ä»Šæ—¥å¯ç”³å ±å¥ä¿</div>
+          <div class="sub-banner-sub">è¡€æ¶²å ±å‘Šå·²å‡ºçˆæˆ–é›»è©±å®Œæˆï¼Œå¯æ–¼å¥ä¿ç½²VPNç³»çµ±æäº¤</div>
         </div>
         <div class="sub-count" id="sub-count">0</div>
       </div>
@@ -59,23 +59,23 @@
       <div class="warmup-banner" id="warmup-banner" style="display:none">
         <span class="warmup-spinner"></span>
         <div>
-          <div class="warmup-title">血液報告狀態更新中</div>
-          <div class="warmup-sub">系統啟動後需幾分鐘讀取血液報告檔案，完成後頁面將自動重新整理，追3分類屆時才準確</div>
+          <div class="warmup-title">è¡€æ¶²å ±å‘Šç‹€æ…‹æ›´æ–°ä¸­</div>
+          <div class="warmup-sub">ç³»çµ±å•Ÿå‹•å¾Œéœ€å¹¾åˆ†é˜è®€å–è¡€æ¶²å ±å‘Šæª”æ¡ˆï¼Œå®Œæˆå¾Œé é¢å°‡è‡ªå‹•é‡æ–°æ•´ç†ï¼Œè¿½3åˆ†é¡žå±†æ™‚æ‰æº–ç¢º</div>
         </div>
       </div>
 
       <div class="filter-bar" id="filter-bar">
-        <button class="filter-tab on" data-tab="return">需回診 <span class="tc-count" id="cnt-return">…</span></button>
-        <button class="filter-tab" data-tab="phone">可電話完成 <span class="tc-count" id="cnt-phone">…</span></button>
-        <button class="filter-tab" data-tab="submittable">可申報 <span class="tc-count" id="cnt-submittable">…</span></button>
+        <button class="filter-tab on" data-tab="return">éœ€å›žè¨º <span class="tc-count" id="cnt-return">â€¦</span></button>
+        <button class="filter-tab" data-tab="phone">å¯é›»è©±å®Œæˆ <span class="tc-count" id="cnt-phone">â€¦</span></button>
+        <button class="filter-tab" data-tab="submittable">å¯ç”³å ± <span class="tc-count" id="cnt-submittable">â€¦</span></button>
         <span class="filter-sep"></span>
-        <button class="filter-tab" data-tab="inactive">未複診 <span class="tc-count" id="cnt-inactive">…</span></button>
-        <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
-        <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
+        <button class="filter-tab" data-tab="inactive">æœªè¤‡è¨º <span class="tc-count" id="cnt-inactive">â€¦</span></button>
+        <button class="filter-tab" data-tab="contacted">å·²è¯ç¹« <span class="tc-count" id="cnt-contacted">â€¦</span></button>
+        <button class="filter-tab" data-tab="hold">æš«ç·©ä¸­ <span class="tc-count" id="cnt-hold">â€¦</span></button>
       </div>
 
       <div class="search-row">
-        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或病歷號…">
+        <input class="si" type="text" id="search-input" placeholder="æœå°‹å§“åæˆ–ç—…æ­·è™Ÿâ€¦">
         <span class="sr-count" id="result-count"></span>
       </div>
 
@@ -83,16 +83,16 @@
         <div id="list-return">
           <div class="tab-hint tab-hint-warn">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            <span>這些病患需要回診抽血，才能繼續下一個MSPT階段。請電話通知安排回診並抽血。</span>
+            <span>é€™äº›ç—…æ‚£éœ€è¦å›žè¨ºæŠ½è¡€ï¼Œæ‰èƒ½ç¹¼çºŒä¸‹ä¸€å€‹MSPTéšŽæ®µã€‚è«‹é›»è©±é€šçŸ¥å®‰æŽ’å›žè¨ºä¸¦æŠ½è¡€ã€‚</span>
           </div>
-          <div id="list-return-rows"><div class="sec-empty">載入中…</div></div>
+          <div id="list-return-rows"><div class="sec-empty">è¼‰å…¥ä¸­â€¦</div></div>
         </div>
         <div id="list-phone" style="display:none">
           <div class="tab-hint tab-hint-info">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 11.9 19.79 19.79 0 0 1 1.61 3.27 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/></svg>
-            <span>這些病患不需要回診抽血，電話聯繫後即可直接完成並送健保申報。</span>
+            <span>é€™äº›ç—…æ‚£ä¸éœ€è¦å›žè¨ºæŠ½è¡€ï¼Œé›»è©±è¯ç¹«å¾Œå³å¯ç›´æŽ¥å®Œæˆä¸¦é€å¥ä¿ç”³å ±ã€‚</span>
           </div>
-          <div id="list-phone-rows"><div class="sec-empty">載入中…</div></div>
+          <div id="list-phone-rows"><div class="sec-empty">è¼‰å…¥ä¸­â€¦</div></div>
         </div>
         <div id="list-submittable" style="display:none"></div>
         <div id="list-inactive" style="display:none"></div>
@@ -104,26 +104,26 @@
   </div>
 </div>
 
-<!-- Contact modal (for 需回診 tab — general contact only) -->
+<!-- Contact modal (for éœ€å›žè¨º tab â€” general contact only) -->
 <div class="modal-overlay" id="modal-contact">
   <div class="modal-box">
-    <div class="modal-title" id="modal-contact-title">聯絡病患</div>
+    <div class="modal-title" id="modal-contact-title">è¯çµ¡ç—…æ‚£</div>
     <div class="modal-sub" id="modal-contact-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">聯絡方式</label>
+      <label class="modal-label">è¯çµ¡æ–¹å¼</label>
       <select class="modal-select" id="modal-contact-type">
-        <option value="contacted">已聯繫（直接通知）</option>
-        <option value="called">已二次確認（電話通話）</option>
+        <option value="contacted">å·²è¯ç¹«ï¼ˆç›´æŽ¥é€šçŸ¥ï¼‰</option>
+        <option value="called">å·²äºŒæ¬¡ç¢ºèªï¼ˆé›»è©±é€šè©±ï¼‰</option>
       </select>
     </div>
     <div class="modal-field">
-      <label class="modal-label">備註（選填）</label>
-      <textarea class="modal-input" id="modal-contact-note" rows="2" placeholder="例：預約回診日期"></textarea>
+      <label class="modal-label">å‚™è¨»ï¼ˆé¸å¡«ï¼‰</label>
+      <textarea class="modal-input" id="modal-contact-note" rows="2" placeholder="ä¾‹ï¼šé ç´„å›žè¨ºæ—¥æœŸ"></textarea>
     </div>
     <div class="modal-error" id="contact-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-contact')">取消</button>
-      <button class="act-btn act-primary" id="btn-contact-confirm">確認送出</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-contact')">å–æ¶ˆ</button>
+      <button class="act-btn act-primary" id="btn-contact-confirm">ç¢ºèªé€å‡º</button>
     </div>
   </div>
 </div>
@@ -131,26 +131,26 @@
 <!-- Phone-complete modal -->
 <div class="modal-overlay" id="modal-phone">
   <div class="modal-box">
-    <div class="modal-title" id="modal-phone-title">電話聯繫並完成</div>
+    <div class="modal-title" id="modal-phone-title">é›»è©±è¯ç¹«ä¸¦å®Œæˆ</div>
     <div class="modal-sub" id="modal-phone-sub"></div>
     <div class="modal-field" id="modal-phone-blood-wrap" style="display:none">
       <div id="modal-phone-blood" class="modal-hint"></div>
     </div>
     <div class="modal-field">
-      <label class="modal-label">聯絡方式</label>
+      <label class="modal-label">è¯çµ¡æ–¹å¼</label>
       <select class="modal-select" id="modal-phone-type">
-        <option value="contacted">已聯繫（直接通知）</option>
-        <option value="called">已二次確認（電話通話）</option>
+        <option value="contacted">å·²è¯ç¹«ï¼ˆç›´æŽ¥é€šçŸ¥ï¼‰</option>
+        <option value="called">å·²äºŒæ¬¡ç¢ºèªï¼ˆé›»è©±é€šè©±ï¼‰</option>
       </select>
     </div>
     <div class="modal-field">
-      <label class="modal-label">備註（選填）</label>
-      <textarea class="modal-input" id="modal-phone-note" rows="2" placeholder="例：已通知病患"></textarea>
+      <label class="modal-label">å‚™è¨»ï¼ˆé¸å¡«ï¼‰</label>
+      <textarea class="modal-input" id="modal-phone-note" rows="2" placeholder="ä¾‹ï¼šå·²é€šçŸ¥ç—…æ‚£"></textarea>
     </div>
     <div class="modal-error" id="phone-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-phone')">取消</button>
-      <button class="act-btn act-primary" id="btn-phone-confirm">完成並送申報</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-phone')">å–æ¶ˆ</button>
+      <button class="act-btn act-primary" id="btn-phone-confirm">å®Œæˆä¸¦é€ç”³å ±</button>
     </div>
   </div>
 </div>
@@ -158,21 +158,21 @@
 <!-- Hold modal -->
 <div class="modal-overlay" id="modal-hold">
   <div class="modal-box">
-    <div class="modal-title">設定暫緩</div>
+    <div class="modal-title">è¨­å®šæš«ç·©</div>
     <div class="modal-sub" id="modal-hold-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">備註</label>
-      <textarea class="modal-input" id="modal-hold-note" rows="2" placeholder="例：出國旅遊，三個月後聯絡"></textarea>
+      <label class="modal-label">å‚™è¨»</label>
+      <textarea class="modal-input" id="modal-hold-note" rows="2" placeholder="ä¾‹ï¼šå‡ºåœ‹æ—…éŠï¼Œä¸‰å€‹æœˆå¾Œè¯çµ¡"></textarea>
     </div>
     <div class="modal-error" id="hold-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-hold')">取消</button>
-      <button class="act-btn act-warn" id="btn-hold-confirm">設定暫緩</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-hold')">å–æ¶ˆ</button>
+      <button class="act-btn act-warn" id="btn-hold-confirm">è¨­å®šæš«ç·©</button>
     </div>
   </div>
 </div>
 
-<script src="/static/_layout.js?v=25"></script>
+<script src="/static/_layout.js?v=26"></script>
 <script>
 (function () {
   'use strict';
@@ -194,9 +194,9 @@
       _phone  = allFollowups.filter(function (e) { return !e.needs_blood_test; });
       _submittable = r.mspt_submittable || [];
       _inactive    = r.mspt_inactive    || [];
-      _contacted   = (r.contacted || []).filter(function (e) { return e.category === '代謝症候群'; })
-                      .concat((r.called || []).filter(function (e) { return e.category === '代謝症候群'; }));
-      _hold        = (r.on_hold || []).filter(function (e) { return e.category === '代謝症候群'; });
+      _contacted   = (r.contacted || []).filter(function (e) { return e.category === 'ä»£è¬ç—‡å€™ç¾¤'; })
+                      .concat((r.called || []).filter(function (e) { return e.category === 'ä»£è¬ç—‡å€™ç¾¤'; }));
+      _hold        = (r.on_hold || []).filter(function (e) { return e.category === 'ä»£è¬ç—‡å€™ç¾¤'; });
 
       _activeMap = {};
       allFollowups.forEach(function (e) { _activeMap[e.patient.chart_number] = e; });
@@ -205,7 +205,7 @@
       _holdMap      = {}; _hold.forEach(function (e) { if (e.patient) _holdMap[e.patient.chart_number] = e; });
 
       var totalPending = allFollowups.length + _inactive.length;
-      document.getElementById('page-date').textContent = L.fmtChineseDate() + '  ·  共 ' + totalPending + ' 人待追蹤';
+      document.getElementById('page-date').textContent = L.fmtChineseDate() + '  Â·  å…± ' + totalPending + ' äººå¾…è¿½è¹¤';
       document.getElementById('cnt-return').textContent      = _return.length;
       document.getElementById('cnt-phone').textContent       = _phone.length;
       document.getElementById('cnt-submittable').textContent = _submittable.length;
@@ -220,10 +220,10 @@
       renderAll();
       L.updateBadges(r, null);
       L.updateLastUpdated();
-    }).catch(function (e) { L.showError('資料載入失敗 — ' + (e.message || '')); });
+    }).catch(function (e) { L.showError('è³‡æ–™è¼‰å…¥å¤±æ•— â€” ' + (e.message || '')); });
 
     // Check if warmup (BIO file reading) is still in progress.
-    // Until it finishes, 追3 routing may be approximate (DB-only).
+    // Until it finishes, è¿½3 routing may be approximate (DB-only).
     fetch('/warmup-status').then(function (res) { return res.json(); }).then(function (ws) {
       var wb = document.getElementById('warmup-banner');
       if (!ws.blood_status_ready) {
@@ -255,10 +255,10 @@
 
   function returnRow(e) {
     return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge b-prog">需抽血</span>'],
+      tags: ['<span class="pbadge b-prog">éœ€æŠ½è¡€</span>'],
       actions: [
-        { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-        { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+        { label: 'å·²è¯ç¹«', cls: 'act-primary', key: 'contact' },
+        { label: 'æš«ç·©',   cls: 'act-warn',    key: 'hold' },
       ],
     });
   }
@@ -266,56 +266,56 @@
   function phoneRow(e) {
     var tags = [];
     if (e.blood_draw_date) {
-      tags.push('<span class="pbadge b-done" title="可使用 ' + L.escHtml(e.blood_draw_date) + ' 血液報告">血測可用</span>');
+      tags.push('<span class="pbadge b-done" title="å¯ä½¿ç”¨ ' + L.escHtml(e.blood_draw_date) + ' è¡€æ¶²å ±å‘Š">è¡€æ¸¬å¯ç”¨</span>');
     }
     return L.patientRow({ entry: e, tags: tags, actions: [
-      { label: '完成', cls: 'act-primary', key: 'phone-complete' },
-      { label: '暫緩', cls: 'act-warn',    key: 'hold' },
+      { label: 'å®Œæˆ', cls: 'act-primary', key: 'phone-complete' },
+      { label: 'æš«ç·©', cls: 'act-warn',    key: 'hold' },
     ]});
   }
 
   function submittableRow(e) {
     var adapted = {
-      patient: e.patient, category: '代謝症候群',
+      patient: e.patient, category: 'ä»£è¬ç—‡å€™ç¾¤',
       mspt_stage: e.mspt_stage, due_date: e.blood_report_date,
       days_overdue: 0, last_visit_date: null,
     };
     return L.patientRow({ entry: adapted,
       tags: ['<span class="pbadge b-sub">' + L.escHtml(e.mspt_stage) + '</span>'],
       actions: [
-        { label: '已申報', cls: 'act-purple', key: 'submit' },
-        { label: '撤銷',   cls: '',           key: 'undo-phone' },
+        { label: 'å·²ç”³å ±', cls: 'act-purple', key: 'submit' },
+        { label: 'æ’¤éŠ·',   cls: '',           key: 'undo-phone' },
       ],
     });
   }
 
   function inactiveRow(e) {
-    var tags = ['<span class="pbadge b-hold">未複診</span>'];
-    if (e.needs_blood_test) tags.push('<span class="pbadge b-prog">需抽血</span>');
-    else if (e.blood_draw_date) tags.push('<span class="pbadge b-done">血測可用</span>');
+    var tags = ['<span class="pbadge b-hold">æœªè¤‡è¨º</span>'];
+    if (e.needs_blood_test) tags.push('<span class="pbadge b-prog">éœ€æŠ½è¡€</span>');
+    else if (e.blood_draw_date) tags.push('<span class="pbadge b-done">è¡€æ¸¬å¯ç”¨</span>');
     return L.patientRow({ entry: e, tags: tags, actions: [
-      { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-      { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+      { label: 'å·²è¯ç¹«', cls: 'act-primary', key: 'contact' },
+      { label: 'æš«ç·©',   cls: 'act-warn',    key: 'hold' },
     ]});
   }
 
   function contactedRow(e) {
     return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge b-done">已聯繫</span>'],
-      actions: [{ label: '撤銷', cls: '', key: 'undo-contact' }],
+      tags: ['<span class="pbadge b-done">å·²è¯ç¹«</span>'],
+      actions: [{ label: 'æ’¤éŠ·', cls: '', key: 'undo-contact' }],
     });
   }
 
   function holdRow(e) {
-    var note = e.note || '暫緩';
+    var note = e.note || 'æš«ç·©';
     var adapted = {
       patient: e.patient || { chart_number: 'hold-' + e.hold_id, name: e.manual_name || '?', birth_date: '' },
-      category: '代謝症候群', mspt_stage: e.mspt_stage || null,
+      category: 'ä»£è¬ç—‡å€™ç¾¤', mspt_stage: e.mspt_stage || null,
       due_date: e.due_date || null, last_visit_date: e.last_visit_date || null, days_overdue: e.days_overdue || 0,
     };
     return L.patientRow({ entry: adapted,
-      tags: ['<span class="pbadge b-hold">' + L.escHtml(note.length > 14 ? note.slice(0,14)+'…' : note) + '</span>'],
-      actions: [{ label: '解除暫緩', cls: '', key: 'undo-hold' }],
+      tags: ['<span class="pbadge b-hold">' + L.escHtml(note.length > 14 ? note.slice(0,14)+'â€¦' : note) + '</span>'],
+      actions: [{ label: 'è§£é™¤æš«ç·©', cls: '', key: 'undo-hold' }],
     });
   }
 
@@ -323,33 +323,33 @@
     var filtered = entries.filter(match);
     var el = document.getElementById(id);
     if (!filtered.length) {
-      el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件' : '目前沒有記錄') + '</div>';
+      el.innerHTML = '<div class="sec-empty">' + (entries.length ? 'æ²’æœ‰ç¬¦åˆæœå°‹æ¢ä»¶' : 'ç›®å‰æ²’æœ‰è¨˜éŒ„') + '</div>';
     } else {
       var html = L.patientTable(filtered.map(renderFn).join(''));
       if (headerFix) html = html.replace(headerFix[0], headerFix[1]);
       el.innerHTML = html;
     }
     if (_tab === id.replace('list-', ''))
-      document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
+      document.getElementById('result-count').textContent = 'å…± ' + filtered.length + ' ç­†';
   }
 
   function renderHintTab(entries, renderFn, rowsId, emptyMsg) {
     var filtered = entries.filter(match);
     var el = document.getElementById(rowsId);
     if (!filtered.length) {
-      el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件' : emptyMsg) + '</div>';
+      el.innerHTML = '<div class="sec-empty">' + (entries.length ? 'æ²’æœ‰ç¬¦åˆæœå°‹æ¢ä»¶' : emptyMsg) + '</div>';
     } else {
       el.innerHTML = L.patientTable(filtered.map(renderFn).join(''));
     }
     var tabKey = rowsId.replace('-rows', '').replace('list-', '');
     if (_tab === tabKey)
-      document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
+      document.getElementById('result-count').textContent = 'å…± ' + filtered.length + ' ç­†';
   }
 
   function renderAll() {
-    renderHintTab(_return, returnRow, 'list-return-rows', '目前沒有需要回診抽血的病患');
-    renderHintTab(_phone,  phoneRow,  'list-phone-rows',  '目前沒有可電話完成的病患');
-    renderList(_submittable, submittableRow, 'list-submittable', ['>到期日 <span', '>完成日期 <span']);
+    renderHintTab(_return, returnRow, 'list-return-rows', 'ç›®å‰æ²’æœ‰éœ€è¦å›žè¨ºæŠ½è¡€çš„ç—…æ‚£');
+    renderHintTab(_phone,  phoneRow,  'list-phone-rows',  'ç›®å‰æ²’æœ‰å¯é›»è©±å®Œæˆçš„ç—…æ‚£');
+    renderList(_submittable, submittableRow, 'list-submittable', ['>åˆ°æœŸæ—¥ <span', '>å®Œæˆæ—¥æœŸ <span']);
     renderList(_inactive,    inactiveRow,    'list-inactive');
     renderList(_contacted,   contactedRow,   'list-contacted');
     renderList(_hold,        holdRow,        'list-hold');
@@ -367,7 +367,7 @@
       return: _return, phone: _phone, submittable: _submittable,
       inactive: _inactive, contacted: _contacted, hold: _hold,
     };
-    document.getElementById('result-count').textContent = '共 ' + (counts[_tab] || []).filter(match).length + ' 筆';
+    document.getElementById('result-count').textContent = 'å…± ' + (counts[_tab] || []).filter(match).length + ' ç­†';
   });
 
   document.getElementById('search-input').addEventListener('input', function (e) { _query = e.target.value.trim(); renderAll(); });
@@ -380,9 +380,9 @@
     if (action === 'contact') {
       var entry = _activeMap[chart]; if (!entry) return;
       _modalEntry = entry;
-      document.getElementById('modal-contact-title').textContent = '聯絡 ' + entry.patient.name;
+      document.getElementById('modal-contact-title').textContent = 'è¯çµ¡ ' + entry.patient.name;
       document.getElementById('modal-contact-sub').textContent =
-        '病歷號 #' + entry.patient.chart_number + ' · 階段 ' + (entry.mspt_stage || '') + '（需通知回診抽血）';
+        'ç—…æ­·è™Ÿ #' + entry.patient.chart_number + ' Â· éšŽæ®µ ' + (entry.mspt_stage || '') + 'ï¼ˆéœ€é€šçŸ¥å›žè¨ºæŠ½è¡€ï¼‰';
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
       L.showModal('modal-contact');
@@ -390,13 +390,13 @@
     } else if (action === 'phone-complete') {
       var entry2 = _activeMap[chart]; if (!entry2) return;
       _modalEntry = entry2;
-      document.getElementById('modal-phone-title').textContent = '完成 — ' + entry2.patient.name;
+      document.getElementById('modal-phone-title').textContent = 'å®Œæˆ â€” ' + entry2.patient.name;
       document.getElementById('modal-phone-sub').textContent =
-        '病歷號 #' + entry2.patient.chart_number + ' · 階段 ' + (entry2.mspt_stage || '');
+        'ç—…æ­·è™Ÿ #' + entry2.patient.chart_number + ' Â· éšŽæ®µ ' + (entry2.mspt_stage || '');
       var bloodWrap = document.getElementById('modal-phone-blood-wrap');
       var bloodEl   = document.getElementById('modal-phone-blood');
       if (entry2.blood_draw_date) {
-        bloodEl.textContent = '✓ 使用 ' + entry2.blood_draw_date + ' 的血液報告完成此階段。';
+        bloodEl.textContent = 'âœ“ ä½¿ç”¨ ' + entry2.blood_draw_date + ' çš„è¡€æ¶²å ±å‘Šå®Œæˆæ­¤éšŽæ®µã€‚';
         bloodEl.style.background = '#f0fdf4'; bloodEl.style.borderColor = '#bbf7d0'; bloodEl.style.color = '#14532d';
         bloodWrap.style.display = '';
       } else {
@@ -409,7 +409,7 @@
     } else if (action === 'hold') {
       var entry3 = _activeMap[chart]; if (!entry3) return;
       _modalEntry = entry3;
-      document.getElementById('modal-hold-sub').textContent = entry3.patient.name + ' · ' + (entry3.mspt_stage || '');
+      document.getElementById('modal-hold-sub').textContent = entry3.patient.name + ' Â· ' + (entry3.mspt_stage || '');
       document.getElementById('modal-hold-note').value = '';
       document.getElementById('hold-error').classList.remove('show');
       L.showModal('modal-hold');
@@ -419,8 +419,8 @@
       if (!se) return;
       btn.disabled = true;
       L.apiAction('POST', '/api/submitted', se)
-        .then(function () { L.showToast('申報記錄已儲存'); load(); })
-        .catch(function (e) { L.showToast('儲存失敗：' + (e.message||''), 'error'); })
+        .then(function () { L.showToast('ç”³å ±è¨˜éŒ„å·²å„²å­˜'); load(); })
+        .catch(function (e) { L.showToast('å„²å­˜å¤±æ•—ï¼š' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
 
     } else if (action === 'undo-phone') {
@@ -428,24 +428,24 @@
       if (!se2) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/submitted', { chart_number: se2.patient.chart_number, mspt_stage: se2.mspt_stage })
-        .then(function () { L.showToast('已撤銷完成記錄'); load(); })
-        .catch(function (e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); })
+        .then(function () { L.showToast('å·²æ’¤éŠ·å®Œæˆè¨˜éŒ„'); load(); })
+        .catch(function (e) { L.showToast('æ’¤éŠ·å¤±æ•—ï¼š' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
 
     } else if (action === 'undo-contact') {
       var ce = _contactedMap[chart]; if (!ce) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/contacted', { chart_number: ce.patient.chart_number, category: ce.category, due_date: ce.due_date })
-        .then(function () { L.showToast('已撤銷聯絡記錄'); load(); })
-        .catch(function (e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); })
+        .then(function () { L.showToast('å·²æ’¤éŠ·è¯çµ¡è¨˜éŒ„'); load(); })
+        .catch(function (e) { L.showToast('æ’¤éŠ·å¤±æ•—ï¼š' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
 
     } else if (action === 'undo-hold') {
       var he = _holdMap[chart]; if (!he) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/on-hold', { hold_id: he.hold_id })
-        .then(function () { L.showToast('已解除暫緩'); load(); })
-        .catch(function (e) { L.showToast('解除失敗：' + (e.message||''), 'error'); })
+        .then(function () { L.showToast('å·²è§£é™¤æš«ç·©'); load(); })
+        .catch(function (e) { L.showToast('è§£é™¤å¤±æ•—ï¼š' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     }
   });
@@ -456,8 +456,8 @@
     var confirmBtn = this, errEl = document.getElementById('contact-error');
     errEl.classList.remove('show'); confirmBtn.disabled = true;
     L.apiAction('POST', url, { entry: entry, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-contact'); L.showToast('聯絡記錄已儲存'); load(); })
-      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .then(function () { L.hideModal('modal-contact'); L.showToast('è¯çµ¡è¨˜éŒ„å·²å„²å­˜'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || 'æ“ä½œå¤±æ•—ï¼Œè«‹å†è©¦ä¸€æ¬¡'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
 
@@ -466,19 +466,19 @@
     var confirmBtn = this, errEl = document.getElementById('phone-error');
     errEl.classList.remove('show'); confirmBtn.disabled = true;
     L.apiAction('POST', '/api/mspt-phone-complete', { entry: entry, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-phone'); L.showToast('已完成，進入可申報佇列'); load(); })
-      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .then(function () { L.hideModal('modal-phone'); L.showToast('å·²å®Œæˆï¼Œé€²å…¥å¯ç”³å ±ä½‡åˆ—'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || 'æ“ä½œå¤±æ•—ï¼Œè«‹å†è©¦ä¸€æ¬¡'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
 
   document.getElementById('btn-hold-confirm').addEventListener('click', function () {
     var entry = _modalEntry; if (!entry) return;
-    var note = document.getElementById('modal-hold-note').value.trim() || '暫緩';
+    var note = document.getElementById('modal-hold-note').value.trim() || 'æš«ç·©';
     var confirmBtn = this, errEl = document.getElementById('hold-error');
     errEl.classList.remove('show'); confirmBtn.disabled = true;
     L.apiAction('POST', '/api/on-hold', { entry: entry, note: note, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-hold'); L.showToast('已設定暫緩'); load(); })
-      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .then(function () { L.hideModal('modal-hold'); L.showToast('å·²è¨­å®šæš«ç·©'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || 'æ“ä½œå¤±æ•—ï¼Œè«‹å†è©¦ä¸€æ¬¡'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
 

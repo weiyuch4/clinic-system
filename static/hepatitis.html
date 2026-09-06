@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>B/C型肝炎 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=25">
+<title>B/Cåž‹è‚ç‚Ž â€” è¨ºæ‰€è¿½è¹¤ç³»çµ±</title>
+<link rel="stylesheet" href="/static/_layout.css?v=26">
 <style>
 .vpn-banner{background:#EDE9FE;border:1px solid #DDD6FE;border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0}
 .vpn-banner-icon{width:32px;height:32px;border-radius:8px;background:#6D28D9;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -28,7 +28,7 @@
       </div>
 
       <div class="ph">
-        <div><h1>B/C型肝炎追蹤</h1><p id="page-date">定期追蹤 — 逾期待聯繫</p></div>
+        <div><h1>B/Cåž‹è‚ç‚Žè¿½è¹¤</h1><p id="page-date">å®šæœŸè¿½è¹¤ â€” é€¾æœŸå¾…è¯ç¹«</p></div>
       </div>
 
       <div class="vpn-banner" id="vpn-banner" style="display:none">
@@ -36,26 +36,26 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
         </div>
         <div>
-          <div class="vpn-banner-title">B肝待輸入VPN</div>
-          <div class="vpn-banner-sub">近期回診病患尚未在健保署VPN系統登錄</div>
+          <div class="vpn-banner-title">Bè‚å¾…è¼¸å…¥VPN</div>
+          <div class="vpn-banner-sub">è¿‘æœŸå›žè¨ºç—…æ‚£å°šæœªåœ¨å¥ä¿ç½²VPNç³»çµ±ç™»éŒ„</div>
         </div>
         <div class="vpn-count" id="vpn-count">0</div>
       </div>
 
       <div class="filter-bar" id="filter-bar">
-        <button class="filter-tab on" data-tab="pending">待聯絡 <span class="tc-count" id="cnt-pending">…</span></button>
-        <button class="filter-tab" data-tab="returned">待登VPN <span class="tc-count" id="cnt-returned">…</span></button>
-        <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
-        <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
+        <button class="filter-tab on" data-tab="pending">å¾…è¯çµ¡ <span class="tc-count" id="cnt-pending">â€¦</span></button>
+        <button class="filter-tab" data-tab="returned">å¾…ç™»VPN <span class="tc-count" id="cnt-returned">â€¦</span></button>
+        <button class="filter-tab" data-tab="contacted">å·²è¯ç¹« <span class="tc-count" id="cnt-contacted">â€¦</span></button>
+        <button class="filter-tab" data-tab="hold">æš«ç·©ä¸­ <span class="tc-count" id="cnt-hold">â€¦</span></button>
       </div>
 
       <div class="search-row">
-        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或病歷號…">
+        <input class="si" type="text" id="search-input" placeholder="æœå°‹å§“åæˆ–ç—…æ­·è™Ÿâ€¦">
         <span class="sr-count" id="result-count"></span>
       </div>
 
       <div class="list-area" id="list-scroll">
-        <div id="list-pending"><div class="sec-empty">載入中…</div></div>
+        <div id="list-pending"><div class="sec-empty">è¼‰å…¥ä¸­â€¦</div></div>
         <div id="list-returned" style="display:none"></div>
         <div id="list-contacted" style="display:none"></div>
         <div id="list-hold" style="display:none"></div>
@@ -67,56 +67,56 @@
 
 <div class="modal-overlay" id="modal-contact">
   <div class="modal-box">
-    <div class="modal-title" id="modal-contact-title">聯絡病患</div>
+    <div class="modal-title" id="modal-contact-title">è¯çµ¡ç—…æ‚£</div>
     <div class="modal-sub" id="modal-contact-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">聯絡方式</label>
+      <label class="modal-label">è¯çµ¡æ–¹å¼</label>
       <select class="modal-select" id="modal-contact-type">
-        <option value="contacted">已聯繫（直接通知）</option>
-        <option value="called">已二次確認（電話通話）</option>
+        <option value="contacted">å·²è¯ç¹«ï¼ˆç›´æŽ¥é€šçŸ¥ï¼‰</option>
+        <option value="called">å·²äºŒæ¬¡ç¢ºèªï¼ˆé›»è©±é€šè©±ï¼‰</option>
       </select>
     </div>
     <div class="modal-field">
-      <label class="modal-label">備註（選填）</label>
-      <textarea class="modal-input" id="modal-contact-note" rows="2" placeholder="例：預約下週回診抽血"></textarea>
+      <label class="modal-label">å‚™è¨»ï¼ˆé¸å¡«ï¼‰</label>
+      <textarea class="modal-input" id="modal-contact-note" rows="2" placeholder="ä¾‹ï¼šé ç´„ä¸‹é€±å›žè¨ºæŠ½è¡€"></textarea>
     </div>
     <div class="modal-error" id="contact-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-contact')">取消</button>
-      <button class="act-btn act-primary" id="btn-contact-confirm">確認送出</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-contact')">å–æ¶ˆ</button>
+      <button class="act-btn act-primary" id="btn-contact-confirm">ç¢ºèªé€å‡º</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modal-vpn">
   <div class="modal-box">
-    <div class="modal-title" id="modal-vpn-title">確認VPN登錄</div>
-    <div class="modal-sub" id="modal-vpn-sub">確認已在健保署VPN系統完成登錄？</div>
+    <div class="modal-title" id="modal-vpn-title">ç¢ºèªVPNç™»éŒ„</div>
+    <div class="modal-sub" id="modal-vpn-sub">ç¢ºèªå·²åœ¨å¥ä¿ç½²VPNç³»çµ±å®Œæˆç™»éŒ„ï¼Ÿ</div>
     <div class="modal-error" id="vpn-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-vpn')">取消</button>
-      <button class="act-btn act-purple" id="btn-vpn-confirm">確認已登錄</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-vpn')">å–æ¶ˆ</button>
+      <button class="act-btn act-purple" id="btn-vpn-confirm">ç¢ºèªå·²ç™»éŒ„</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modal-hold">
   <div class="modal-box">
-    <div class="modal-title">設定暫緩</div>
+    <div class="modal-title">è¨­å®šæš«ç·©</div>
     <div class="modal-sub" id="modal-hold-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">備註</label>
-      <textarea class="modal-input" id="modal-hold-note" rows="2" placeholder="例：出國旅遊，三個月後聯絡"></textarea>
+      <label class="modal-label">å‚™è¨»</label>
+      <textarea class="modal-input" id="modal-hold-note" rows="2" placeholder="ä¾‹ï¼šå‡ºåœ‹æ—…éŠï¼Œä¸‰å€‹æœˆå¾Œè¯çµ¡"></textarea>
     </div>
     <div class="modal-error" id="hold-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-hold')">取消</button>
-      <button class="act-btn act-warn" id="btn-hold-confirm">設定暫緩</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-hold')">å–æ¶ˆ</button>
+      <button class="act-btn act-warn" id="btn-hold-confirm">è¨­å®šæš«ç·©</button>
     </div>
   </div>
 </div>
 
-<script src="/static/_layout.js?v=25"></script>
+<script src="/static/_layout.js?v=26"></script>
 <script>
 (function () {
   'use strict';
@@ -132,14 +132,14 @@
     L.apiFetch('/api/report?report_date=' + today).then(function (r) {
       _pending   = r.hep_followups  || [];
       _returned  = r.hep_returned   || [];
-      _contacted = (r.contacted || []).filter(function (e) { return e.category === 'B肝' || e.category === 'C肝'; })
-                    .concat((r.called || []).filter(function (e) { return e.category === 'B肝' || e.category === 'C肝'; }));
-      _hold      = (r.on_hold   || []).filter(function (e) { return e.category === 'B肝' || e.category === 'C肝'; });
+      _contacted = (r.contacted || []).filter(function (e) { return e.category === 'Bè‚' || e.category === 'Cè‚'; })
+                    .concat((r.called || []).filter(function (e) { return e.category === 'Bè‚' || e.category === 'Cè‚'; }));
+      _hold      = (r.on_hold   || []).filter(function (e) { return e.category === 'Bè‚' || e.category === 'Cè‚'; });
       _pendingMap   = {}; _pending.forEach(function (e) { _pendingMap[e.patient.chart_number]   = e; });
       _returnedMap  = {}; _returned.forEach(function (e) { _returnedMap[e.patient.chart_number]  = e; });
       _contactedMap = {}; _contacted.forEach(function (e) { _contactedMap[e.patient.chart_number] = e; });
       _holdMap      = {}; _hold.forEach(function (e) { if (e.patient) _holdMap[e.patient.chart_number] = e; });
-      document.getElementById('page-date').textContent = L.fmtChineseDate() + '  ·  共 ' + _pending.length + ' 人待聯絡';
+      document.getElementById('page-date').textContent = L.fmtChineseDate() + '  Â·  å…± ' + _pending.length + ' äººå¾…è¯çµ¡';
       document.getElementById('cnt-pending').textContent   = _pending.length;
       document.getElementById('cnt-returned').textContent  = _returned.length;
       document.getElementById('cnt-contacted').textContent = _contacted.length;
@@ -150,7 +150,7 @@
       renderAll();
       L.updateBadges(r, null);
       L.updateLastUpdated();
-    }).catch(function (e) { L.showError('資料載入失敗 — ' + (e.message || '')); });
+    }).catch(function (e) { L.showError('è³‡æ–™è¼‰å…¥å¤±æ•— â€” ' + (e.message || '')); });
   }
 
   function match(entry) {
@@ -162,32 +162,32 @@
 
   function pendingRow(e) {
     return L.patientRow({ entry: e, actions: [
-      { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-      { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+      { label: 'å·²è¯ç¹«', cls: 'act-primary', key: 'contact' },
+      { label: 'æš«ç·©',   cls: 'act-warn',    key: 'hold' },
     ]});
   }
   function returnedRow(e) {
     return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge b-sub">待登VPN</span>'],
-      actions: [{ label: '已登錄VPN', cls: 'act-purple', key: 'vpn-done' }],
+      tags: ['<span class="pbadge b-sub">å¾…ç™»VPN</span>'],
+      actions: [{ label: 'å·²ç™»éŒ„VPN', cls: 'act-purple', key: 'vpn-done' }],
     });
   }
   function contactedRow(e) {
     return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge b-done">已聯繫</span>'],
-      actions: [{ label: '撤銷', cls: '', key: 'undo-contact' }],
+      tags: ['<span class="pbadge b-done">å·²è¯ç¹«</span>'],
+      actions: [{ label: 'æ’¤éŠ·', cls: '', key: 'undo-contact' }],
     });
   }
   function holdRow(e) {
-    var note = e.note || '暫緩';
+    var note = e.note || 'æš«ç·©';
     var adapted = {
       patient: e.patient || { chart_number: 'hold-' + e.hold_id, name: e.manual_name || '?', birth_date: '' },
-      category: e.category || 'B肝', mspt_stage: null,
+      category: e.category || 'Bè‚', mspt_stage: null,
       due_date: e.due_date || null, last_visit_date: e.last_visit_date || null, days_overdue: e.days_overdue || 0,
     };
     return L.patientRow({ entry: adapted,
-      tags: ['<span class="pbadge b-hold">' + L.escHtml(note.length > 14 ? note.slice(0,14)+'…' : note) + '</span>'],
-      actions: [{ label: '解除暫緩', cls: '', key: 'undo-hold' }],
+      tags: ['<span class="pbadge b-hold">' + L.escHtml(note.length > 14 ? note.slice(0,14)+'â€¦' : note) + '</span>'],
+      actions: [{ label: 'è§£é™¤æš«ç·©', cls: '', key: 'undo-hold' }],
     });
   }
 
@@ -195,12 +195,12 @@
     var filtered = entries.filter(match);
     var el = document.getElementById(id);
     if (!filtered.length) {
-      el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件的病患' : '目前沒有記錄') + '</div>';
+      el.innerHTML = '<div class="sec-empty">' + (entries.length ? 'æ²’æœ‰ç¬¦åˆæœå°‹æ¢ä»¶çš„ç—…æ‚£' : 'ç›®å‰æ²’æœ‰è¨˜éŒ„') + '</div>';
     } else {
       el.innerHTML = L.patientTable(filtered.map(renderFn).join(''));
     }
     if (_tab === id.replace('list-', ''))
-      document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
+      document.getElementById('result-count').textContent = 'å…± ' + filtered.length + ' ç­†';
   }
   function renderAll() {
     renderList(_pending,   pendingRow,   'list-pending');
@@ -218,7 +218,7 @@
       document.getElementById('list-' + t).style.display = t === _tab ? '' : 'none';
     });
     var arr = {pending:_pending,returned:_returned,contacted:_contacted,hold:_hold}[_tab] || [];
-    document.getElementById('result-count').textContent = '共 ' + arr.filter(match).length + ' 筆';
+    document.getElementById('result-count').textContent = 'å…± ' + arr.filter(match).length + ' ç­†';
   });
 
   document.getElementById('search-input').addEventListener('input', function (e) { _query = e.target.value.trim(); renderAll(); });
@@ -229,8 +229,8 @@
     _actionChart = row.dataset.chart;
     if (action === 'contact') {
       var entry = _pendingMap[_actionChart]; if (!entry) return;
-      document.getElementById('modal-contact-title').textContent = '聯絡 ' + entry.patient.name;
-      document.getElementById('modal-contact-sub').textContent = '病歷號 #' + entry.patient.chart_number + ' · 逾期 ' + (entry.days_overdue||0) + ' 天';
+      document.getElementById('modal-contact-title').textContent = 'è¯çµ¡ ' + entry.patient.name;
+      document.getElementById('modal-contact-sub').textContent = 'ç—…æ­·è™Ÿ #' + entry.patient.chart_number + ' Â· é€¾æœŸ ' + (entry.days_overdue||0) + ' å¤©';
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
       L.showModal('modal-contact');
@@ -242,23 +242,23 @@
       L.showModal('modal-hold');
     } else if (action === 'vpn-done') {
       _actionEntry = _returnedMap[_actionChart]; if (!_actionEntry) return;
-      document.getElementById('modal-vpn-title').textContent = _actionEntry.patient.name + ' 已登錄VPN';
-      document.getElementById('modal-vpn-sub').textContent = '確認已在健保署VPN系統完成登錄？此操作不可撤銷。';
+      document.getElementById('modal-vpn-title').textContent = _actionEntry.patient.name + ' å·²ç™»éŒ„VPN';
+      document.getElementById('modal-vpn-sub').textContent = 'ç¢ºèªå·²åœ¨å¥ä¿ç½²VPNç³»çµ±å®Œæˆç™»éŒ„ï¼Ÿæ­¤æ“ä½œä¸å¯æ’¤éŠ·ã€‚';
       document.getElementById('vpn-error').classList.remove('show');
       L.showModal('modal-vpn');
     } else if (action === 'undo-contact') {
       var ce = _contactedMap[_actionChart]; if (!ce) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/contacted', { chart_number: ce.patient.chart_number, category: ce.category, due_date: ce.due_date })
-        .then(function () { L.showToast('已撤銷聯絡記錄'); load(); })
-        .catch(function (e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); })
+        .then(function () { L.showToast('å·²æ’¤éŠ·è¯çµ¡è¨˜éŒ„'); load(); })
+        .catch(function (e) { L.showToast('æ’¤éŠ·å¤±æ•—ï¼š' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     } else if (action === 'undo-hold') {
       var he = _holdMap[_actionChart]; if (!he) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/on-hold', { hold_id: he.hold_id })
-        .then(function () { L.showToast('已解除暫緩'); load(); })
-        .catch(function (e) { L.showToast('解除失敗：' + (e.message||''), 'error'); })
+        .then(function () { L.showToast('å·²è§£é™¤æš«ç·©'); load(); })
+        .catch(function (e) { L.showToast('è§£é™¤å¤±æ•—ï¼š' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     }
   });
@@ -271,8 +271,8 @@
     errEl.classList.remove('show');
     confirmBtn.disabled = true;
     L.apiAction('POST', url, { entry: entry, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-contact'); L.showToast('聯絡記錄已儲存'); load(); })
-      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .then(function () { L.hideModal('modal-contact'); L.showToast('è¯çµ¡è¨˜éŒ„å·²å„²å­˜'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || 'æ“ä½œå¤±æ•—ï¼Œè«‹å†è©¦ä¸€æ¬¡'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
 
@@ -283,21 +283,21 @@
     errEl.classList.remove('show');
     confirmBtn.disabled = true;
     L.apiAction('POST', '/api/hep-returned-completed', { entry: _actionEntry, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-vpn'); L.showToast('VPN登錄記錄已儲存'); load(); })
-      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .then(function () { L.hideModal('modal-vpn'); L.showToast('VPNç™»éŒ„è¨˜éŒ„å·²å„²å­˜'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || 'æ“ä½œå¤±æ•—ï¼Œè«‹å†è©¦ä¸€æ¬¡'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
 
   document.getElementById('btn-hold-confirm').addEventListener('click', function () {
     var entry = _pendingMap[_actionChart]; if (!entry) return;
-    var note = document.getElementById('modal-hold-note').value.trim() || '暫緩';
+    var note = document.getElementById('modal-hold-note').value.trim() || 'æš«ç·©';
     var confirmBtn = this;
     var errEl = document.getElementById('hold-error');
     errEl.classList.remove('show');
     confirmBtn.disabled = true;
     L.apiAction('POST', '/api/on-hold', { entry: entry, note: note, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-hold'); L.showToast('已設定暫緩'); load(); })
-      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .then(function () { L.hideModal('modal-hold'); L.showToast('å·²è¨­å®šæš«ç·©'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || 'æ“ä½œå¤±æ•—ï¼Œè«‹å†è©¦ä¸€æ¬¡'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
 
