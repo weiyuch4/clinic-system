@@ -6,7 +6,7 @@ MsptStage = Literal["收案", "追1", "追2", "追3", "年度追蹤"]
 
 
 class Patient(BaseModel):
-    chart_number: str  # 病歷號
+    chart_number: str  # 身份證
     name: str          # 姓名
     birth_date: date   # 出生日期
 

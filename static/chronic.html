@@ -29,7 +29,7 @@
       </div>
 
       <div class="search-row">
-        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或病歷號…">
+        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
         <span class="sr-count" id="result-count"></span>
       </div>
 
@@ -82,7 +82,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=26"></script>
+<script src="/static/_layout.js?v=27"></script>
 <script>
 (function () {
   'use strict';
@@ -181,7 +181,7 @@
     if (action === 'contact') {
       var entry = _pendingMap[_actionChart]; if (!entry) return;
       document.getElementById('modal-contact-title').textContent = '聯絡 ' + entry.patient.name;
-      document.getElementById('modal-contact-sub').textContent = '病歷號 ' + entry.patient.chart_number + ' · 逾期 ' + (entry.days_overdue||0) + ' 天';
+      document.getElementById('modal-contact-sub').textContent = '身份證 ' + entry.patient.chart_number + ' · 逾期 ' + (entry.days_overdue||0) + ' 天';
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
       L.showModal('modal-contact');

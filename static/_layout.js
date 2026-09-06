@@ -385,7 +385,7 @@
     if (!el) return;
     el.className = 'tb';
     el.innerHTML =
-      '<div class="srch">' + ICONS.search + '<input class="srch-input" type="text" placeholder="搜尋病患姓名或病歷號…" autocomplete="off"></div>' +
+      '<div class="srch">' + ICONS.search + '<input class="srch-input" type="text" placeholder="搜尋病患姓名或身份證…" autocomplete="off"></div>' +
       '<div class="tbr">' +
         '<span class="lu" id="last-updated"></span>' +
         '<button class="ib" id="btn-theme" title="切換深色模式">' + ICONS.moon + '</button>' +
@@ -586,7 +586,7 @@
     else         infoParts.push('<span class="pr-noph">無電話</span>');
     if (dobRoc)  infoParts.push('<span class="pr-copy" data-copy="' + escHtml(dobRoc) + '">' + escHtml(dobRoc) + '</span>');
     return '<tr class="pr" data-chart="' + escHtml(e.patient.chart_number) + '">' +
-      '<td class="pr-num"><span class="pr-copy" data-copy="' + escHtml(e.patient.chart_number) + '" title="點擊複製病歷號">' + escHtml(e.patient.chart_number) + '</span></td>' +
+      '<td class="pr-num"><span class="pr-copy" data-copy="' + escHtml(e.patient.chart_number) + '" title="點擊複製身份證">' + escHtml(e.patient.chart_number) + '</span></td>' +
       '<td class="pr-pt"><div class="pr-name"><span class="pr-lab" data-chart="' + escHtml(e.patient.chart_number) + '" data-name="' + escHtml(e.patient.name) + '" title="點擊查看檢驗結果">' + escHtml(e.patient.name) + '</span></div>' +
         '<div class="pr-info">' + infoParts.join(' · ') + '</div>' +
       '</td>' +
@@ -602,13 +602,13 @@
   // Wrap row-html strings in a full table with standard headers.
   // extraHeaders: optional extra <th> text to insert before the actions column.
   function patientTable(rowsHtml, extraHeaders) {
-    var cols = ['病歷號','病患','類別','逾期','到期日','上次回診','備註'];
+    var cols = ['身份證','病患','類別','逾期','到期日','上次回診','備註'];
     var extra = extraHeaders || [];
     cols = cols.concat(extra);
     cols.push('');
     var extraCols = extra.map(function () { return '<col style="width:100px">'; }).join('');
     var colgroup = '<colgroup>' +
-      '<col style="width:115px">' +   // 病歷號
+      '<col style="width:115px">' +   // 身份證
       '<col>' +                        // 病患 — fills remaining space
       '<col style="width:150px">' +   // 類別
       '<col style="width:72px">' +    // 逾期

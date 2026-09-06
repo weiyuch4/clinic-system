@@ -75,23 +75,23 @@
     <div class="ct">
 
       <div class="ph">
-        <div><h1>聯絡記錄查詢</h1><p>依病歷號或姓名查詢歷史聯絡紀錄</p></div>
+        <div><h1>聯絡記錄查詢</h1><p>依身份證或姓名查詢歷史聯絡紀錄</p></div>
       </div>
 
       <div class="hs-search-bar">
-        <input type="text" id="search-input" placeholder="輸入病歷號或姓名…" autocomplete="off">
+        <input type="text" id="search-input" placeholder="輸入身份證或姓名…" autocomplete="off">
         <button class="act-btn act-primary" id="btn-search">查詢</button>
       </div>
 
       <div id="hs-results">
-        <div class="hs-prompt">請輸入病歷號或姓名開始查詢</div>
+        <div class="hs-prompt">請輸入身份證或姓名開始查詢</div>
       </div>
 
     </div>
   </div>
 </div>
 
-<script src="/static/_layout.js?v=26"></script>
+<script src="/static/_layout.js?v=27"></script>
 <script src="/static/auth-client.js"></script>
 <script>
 (function () {
@@ -117,7 +117,7 @@
   };
 
   function showPrompt() {
-    resultsEl.innerHTML = '<div class="hs-prompt">請輸入病歷號或姓名開始查詢</div>';
+    resultsEl.innerHTML = '<div class="hs-prompt">請輸入身份證或姓名開始查詢</div>';
   }
 
   function showLoading() {
