@@ -94,7 +94,7 @@ if not contacts.get_nurses():  # first run on this DB — seed from the hardcode
 # still comes from request body fields (Option B shared-session model).
 @app.middleware("http")
 async def require_auth_for_api(request: Request, call_next):
-    if request.url.path.startswith("/api/"):
+    if request.url.path.startswith("/api/") and request.url.path != "/api/admin/login":
         token = request.headers.get("Authorization", "")
         if token.startswith("Bearer "):
             token = token[7:]
