@@ -319,7 +319,7 @@ def new_page(page: str) -> Response:
                     headers={"Cache-Control": "no-store"})
 
 
-@app.get("/api/warmup-status")
+@app.get("/warmup-status")
 def get_warmup_status():
     return {"blood_status_ready": database._blood_status_ready.is_set()}
 

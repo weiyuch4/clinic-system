@@ -230,13 +230,13 @@
 
     // Check if warmup (BIO file reading) is still in progress.
     // Until it finishes, 追3 routing may be approximate (DB-only).
-    fetch('/api/warmup-status').then(function (res) { return res.json(); }).then(function (ws) {
+    fetch('/warmup-status').then(function (res) { return res.json(); }).then(function (ws) {
       var wb = document.getElementById('warmup-banner');
       if (!ws.blood_status_ready) {
         wb.style.display = 'flex';
         if (!window._warmupPoll) {
           window._warmupPoll = setInterval(function () {
-            fetch('/api/warmup-status').then(function (r2) { return r2.json(); }).then(function (ws2) {
+            fetch('/warmup-status').then(function (r2) { return r2.json(); }).then(function (ws2) {
               if (ws2.blood_status_ready) {
                 clearInterval(window._warmupPoll);
                 window._warmupPoll = null;
