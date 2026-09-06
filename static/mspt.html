@@ -12,12 +12,19 @@
 .sr-count{font-size:12.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0}
 .list-area{flex:1;overflow-y:auto}
 .sub-banner{border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0;background:#EDE9FE;border:1px solid #DDD6FE}
+.warmup-banner{border-radius:10px;padding:11px 16px;display:flex;align-items:flex-start;gap:11px;flex-shrink:0;background:#FEF9C3;border:1px solid #FDE047}
+.warmup-title{font-size:13px;font-weight:700;color:#713F12}
+.warmup-sub{font-size:12px;color:#92400E;margin-top:2px;line-height:1.45}
+.warmup-spinner{width:18px;height:18px;border:2.5px solid #FDE047;border-top-color:#D97706;border-radius:50%;flex-shrink:0;margin-top:2px;animation:spin .9s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 .sub-banner-icon{width:30px;height:30px;border-radius:8px;background:#6D28D9;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .sub-banner-title{font-size:13px;font-weight:700;color:#4C1D95}
 .sub-banner-sub{font-size:12px;color:#6D28D9;margin-top:2px}
 .sub-count{margin-left:auto;font-size:22px;font-weight:700;color:#6D28D9;font-variant-numeric:tabular-nums;flex-shrink:0}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .sub-banner{background:#1A0B35;border-color:#4C1D95;color:#C4B5FD}}
 :root[data-theme="dark"] .sub-banner{background:#1A0B35;border-color:#4C1D95;color:#C4B5FD}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .warmup-banner{background:#1C1400;border-color:#854D0E}.warmup-title{color:#FEF08A}.warmup-sub{color:#FDE047}}
+:root[data-theme="dark"] .warmup-banner{background:#1C1400;border-color:#854D0E}
 .modal-error{display:none;color:#991b1b;font-size:12.5px;margin-top:8px;background:#fef2f2;border-radius:6px;padding:7px 10px}
 .modal-error.show{display:block}
 .tab-hint{font-size:12px;border-radius:8px;padding:9px 13px;flex-shrink:0;display:flex;align-items:flex-start;gap:8px;line-height:1.5}
@@ -54,6 +61,14 @@
           <div class="sub-banner-sub">血液報告已出爐或電話完成，可於健保署VPN系統提交</div>
         </div>
         <div class="sub-count" id="sub-count">0</div>
+      </div>
+
+      <div class="warmup-banner" id="warmup-banner" style="display:none">
+        <span class="warmup-spinner"></span>
+        <div>
+          <div class="warmup-title">血液報告狀態更新中</div>
+          <div class="warmup-sub">系統啟動後需幾分鐘讀取血液報告檔案，完成後頁面將自動重新整理，追3分類屆時才準確</div>
+        </div>
       </div>
 
       <div class="filter-bar" id="filter-bar">
@@ -212,6 +227,29 @@
       L.updateBadges(r, 0);
       L.updateLastUpdated();
     }).catch(function (e) { L.showError('資料載入失敗 — ' + (e.message || '')); });
+
+    // Check if warmup (BIO file reading) is still in progress.
+    // Until it finishes, 追3 routing may be approximate (DB-only).
+    fetch('/api/warmup-status').then(function (res) { return res.json(); }).then(function (ws) {
+      var wb = document.getElementById('warmup-banner');
+      if (!ws.blood_status_ready) {
+        wb.style.display = 'flex';
+        if (!window._warmupPoll) {
+          window._warmupPoll = setInterval(function () {
+            fetch('/api/warmup-status').then(function (r2) { return r2.json(); }).then(function (ws2) {
+              if (ws2.blood_status_ready) {
+                clearInterval(window._warmupPoll);
+                window._warmupPoll = null;
+                load();  // reload with full blood status
+              }
+            }).catch(function () {});
+          }, 30000);  // check every 30 seconds
+        }
+      } else {
+        wb.style.display = 'none';
+        if (window._warmupPoll) { clearInterval(window._warmupPoll); window._warmupPoll = null; }
+      }
+    }).catch(function () {});
   }
 
   function match(entry) {

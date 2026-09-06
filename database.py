@@ -4,6 +4,7 @@ import json
 import os
 import re
 import struct
+import threading
 from pathlib import Path
 
 import lab_results
@@ -68,6 +69,7 @@ def mspt_blood_status(
     nat_id: str,
     as_of: date,
     _used: dict[str, str] | None = None,
+    skip_lab: bool = False,
 ) -> tuple[bool, str | None]:
     """Returns (needs_blood_test, available_draw_date_iso).
 
@@ -82,6 +84,8 @@ def mspt_blood_status(
     - 年度追蹤: always needs a fresh blood test (independent cycle).
 
     Pass _used to skip the contacts DB query (use pre-fetched batch data from main.py).
+    Pass skip_lab=True to skip BIO file reads — status is based purely on mspt_blood_used
+    DB records. Used in the report path to avoid blocking on large network BIO files.
     """
     if _used is None:
         import contacts as _contacts
@@ -90,6 +94,8 @@ def mspt_blood_status(
     used_dates = set(used.values())
 
     def _avail() -> str | None:
+        if skip_lab:
+            return None
         return lab_results.get_most_recent_metabolic_panel_date(
             nat_id, as_of, MSPT_BLOOD_TEST_WINDOW_DAYS, exclude_iso_dates=used_dates
         )
@@ -150,6 +156,12 @@ _BASE_REPORT_CACHE_PATH = Path(__file__).parent / "base_report_cache.json"
 # Populated once per server start by _load_ic_dir_mtimes() via a single
 # os.scandir() call — much faster than 50 individual os.path.getmtime() calls.
 _ic_dir_mtimes: dict[str, float] = {}
+
+# Blood status cache — populated by warmup_cache() after BIO files are read into memory.
+# Keyed by "{nat_id}:{mspt_stage}" → (needs_blood_test, blood_draw_date).
+# Set by a threading.Event so apply_blood_status() in main.py can check readiness.
+_blood_status_cache: dict[str, tuple[bool, str | None]] = {}
+_blood_status_ready = threading.Event()
 
 
 def _load_ic_dir_mtimes() -> None:
@@ -264,6 +276,29 @@ def warmup_cache() -> None:
     except Exception:
         pass
     print(f"[warmup] bio_files: {time.time()-t1b:.1f}s", flush=True)
+
+    # Compute blood status for current MSPT patients now that BIO files are in memory.
+    # Stores results in _blood_status_cache; sets _blood_status_ready when done.
+    t1c = time.time()
+    try:
+        import contacts as _contacts
+        _all_blood_used = _contacts.get_all_mspt_blood_used()
+        _daily = get_daily_report(date.today())
+        _mspt_entries = list(_daily.mspt_followups) + list(_daily.mspt_inactive)
+        _cache: dict[str, tuple[bool, str | None]] = {}
+        for _e in _mspt_entries:
+            if _e.category != '代謝症候群' or not _e.mspt_stage:
+                continue
+            _nat_id = _e.patient.chart_number
+            _used = _all_blood_used.get(_nat_id, {})
+            _bt_needed, _bt_date = mspt_blood_status(_e.mspt_stage, _nat_id, date.today(), _used=_used)
+            _cache[f"{_nat_id}:{_e.mspt_stage}"] = (_bt_needed, _bt_date)
+        _blood_status_cache.update(_cache)
+        print(f"[warmup] blood_status: {len(_cache)} entries in {time.time()-t1c:.1f}s", flush=True)
+    except Exception as _exc:
+        print(f"[warmup] blood_status ERROR: {_exc}", flush=True)
+    finally:
+        _blood_status_ready.set()
 
     t2 = time.time()
     try:

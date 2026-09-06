@@ -319,6 +319,11 @@ def new_page(page: str) -> Response:
                     headers={"Cache-Control": "no-store"})
 
 
+@app.get("/api/warmup-status")
+def get_warmup_status():
+    return {"blood_status_ready": database._blood_status_ready.is_set()}
+
+
 @app.get("/api/queue")
 def get_queue() -> list[dict]:
     return database.get_queue()
@@ -674,16 +679,27 @@ def get_report(report_date: date | None = None) -> DailyReport:
         all_blood_used              = f_all_blood_used.result()
 
         def apply_blood_status(entries: list[FollowupEntry]) -> list[FollowupEntry]:
-            """Fill needs_blood_test and blood_draw_date fresh from contacts DB + lab files.
-            Must run outside the IC-file cache so it reflects current mspt_blood_used state."""
+            """Fill needs_blood_test and blood_draw_date.
+
+            Uses the BIO-based blood status cache once warmup has finished reading the
+            lab files into memory. Falls back to DB-only (no BIO reads) until then so
+            the first API response after a restart is instant rather than blocking for
+            several minutes on the network drive."""
             out = []
+            cache_ready = database._blood_status_ready.is_set()
             for e in entries:
                 if e.category != '代謝症候群' or not e.mspt_stage:
                     out.append(e)
                     continue
                 nat_id = e.patient.chart_number
                 used = all_blood_used.get(nat_id, {})
-                bt_needed, bt_date = database.mspt_blood_status(e.mspt_stage, nat_id, as_of, _used=used)
+                cache_key = f"{nat_id}:{e.mspt_stage}"
+                if cache_ready and cache_key in database._blood_status_cache:
+                    bt_needed, bt_date = database._blood_status_cache[cache_key]
+                else:
+                    bt_needed, bt_date = database.mspt_blood_status(
+                        e.mspt_stage, nat_id, as_of, _used=used, skip_lab=True
+                    )
                 updates: dict = {'needs_blood_test': bt_needed, 'blood_draw_date': bt_date}
                 if e.mspt_stage == '收案' and e.last_stage is not None:
                     updates['contact_reason'] = '需重新收案+抽血' if bt_needed else '需重新收案'
