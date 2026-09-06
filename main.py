@@ -9,7 +9,8 @@ from datetime import date, timedelta
 import tempfile
 
 from dotenv import load_dotenv
-load_dotenv(override=True)
+_env_file = ".env.dev" if os.path.exists(".env.dev") else ".env"
+load_dotenv(_env_file, override=True)
 
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile, File
@@ -72,14 +73,14 @@ if not auth.has_any_users():
     auth.bootstrap_clinic(
         clinic_slug="clinic1",
         clinic_name="診所",
-        admin_username="admin",
+        admin_username="clinic",
         admin_password=_default_pass,
         nurse_names=[],
         nurse_password="",
     )
     logger.warning(
         "No users found — bootstrapped default admin account. "
-        "Username: admin  Password: %s  (change this immediately after first login)",
+        "Username: clinic  Password: %s  (change this immediately after first login)",
         _default_pass,
     )
 
@@ -363,21 +364,21 @@ def patient_search(q: str = "") -> list[dict]:
 
 
 @app.get("/api/nurses")
-def get_nurses() -> list[str]:
-    return contacts.get_nurses()
+def get_nurses(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[str]:
+    return contacts.get_nurses(user.clinic_id)
 
 
 @app.get("/api/nurses/with-pin-status")
-def get_nurses_with_pin_status(_: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
-    return contacts.get_nurses_with_pin_status()
+def get_nurses_with_pin_status(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    return contacts.get_nurses_with_pin_status(user.clinic_id)
 
 
 @app.get("/api/history")
-def get_history(q: str = Query(..., min_length=1)):
+def get_history(q: str = Query(..., min_length=1), user: auth.CurrentUser = Depends(auth.get_current_user)):
     if not q.strip():
         raise HTTPException(status_code=422, detail="請輸入搜尋字詞")
     try:
-        events = contacts.get_contact_history(q.strip())
+        events = contacts.get_contact_history(q.strip(), user.clinic_id)
         return {"events": events}
     except Exception:
         logger.exception("get_history failed")
@@ -385,33 +386,33 @@ def get_history(q: str = Query(..., min_length=1)):
 
 
 @app.get("/api/bulletin")
-def get_bulletin(limit: int = 100) -> list[dict]:
+def get_bulletin(limit: int = 100, user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
     try:
-        return contacts.get_bulletin_notes(limit)
+        return contacts.get_bulletin_notes(limit, user.clinic_id)
     except Exception:
         logger.exception("get_bulletin failed")
         raise HTTPException(status_code=500, detail="載入留言失敗")
 
 
 @app.post("/api/bulletin")
-def add_bulletin(req: BulletinNoteRequest) -> dict:
+def add_bulletin(req: BulletinNoteRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     content = req.content.strip()
     if not content:
         raise HTTPException(status_code=400, detail="內容不可空白")
     try:
-        return contacts.add_bulletin_note(req.nurse or "（未選擇）", content)
+        return contacts.add_bulletin_note(req.nurse or "（未選擇）", content, user.clinic_id)
     except Exception:
         logger.exception("add_bulletin failed")
         raise HTTPException(status_code=500, detail="發布失敗")
 
 
 @app.delete("/api/bulletin/{note_id}")
-def delete_bulletin(note_id: int, nurse: str = "") -> None:
+def delete_bulletin(note_id: int, nurse: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        note = contacts.get_bulletin_note(note_id)
+        note = contacts.get_bulletin_note(note_id, user.clinic_id)
         if note and note["nurse"] != nurse:
             raise HTTPException(status_code=403, detail="只能刪除自己的留言")
-        contacts.delete_bulletin_note(note_id)
+        contacts.delete_bulletin_note(note_id, user.clinic_id)
     except HTTPException:
         raise
     except Exception:
@@ -420,20 +421,21 @@ def delete_bulletin(note_id: int, nurse: str = "") -> None:
 
 
 @app.get("/api/admin/salary")
-def get_salary_records(nurse: str, month: str, _: auth.CurrentUser = Depends(auth.require_admin)) -> list[dict]:
+def get_salary_records(nurse: str, month: str, admin: auth.CurrentUser = Depends(auth.require_admin)) -> list[dict]:
     try:
-        return contacts.get_salary_records(nurse, month)
+        return contacts.get_salary_records(nurse, month, admin.clinic_id)
     except Exception:
         logger.exception("get_salary_records failed")
         raise HTTPException(status_code=500, detail="載入失敗")
 
 
 @app.post("/api/admin/salary")
-def save_salary_record(req: SalaryRecordRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+def save_salary_record(req: SalaryRecordRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     try:
         return contacts.save_salary_record(
             req.nurse, req.month, req.attendance, req.performance,
             req.sat_pay, req.float_bonus, req.ot_pay, req.total, req.ot_entries,
+            admin.clinic_id,
         )
     except Exception:
         logger.exception("save_salary_record failed")
@@ -441,11 +443,12 @@ def save_salary_record(req: SalaryRecordRequest, _: auth.CurrentUser = Depends(a
 
 
 @app.put("/api/admin/salary/{record_id}")
-def update_salary_record(record_id: int, req: SalaryRecordRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def update_salary_record(record_id: int, req: SalaryRecordRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
         contacts.update_salary_record(
             record_id, req.attendance, req.performance,
             req.sat_pay, req.float_bonus, req.ot_pay, req.total, req.ot_entries,
+            admin.clinic_id,
         )
     except Exception:
         logger.exception("update_salary_record failed for id=%s", record_id)
@@ -453,21 +456,21 @@ def update_salary_record(record_id: int, req: SalaryRecordRequest, _: auth.Curre
 
 
 @app.delete("/api/admin/salary/{record_id}")
-def delete_salary_record(record_id: int, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def delete_salary_record(record_id: int, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
-        contacts.delete_salary_record(record_id)
+        contacts.delete_salary_record(record_id, admin.clinic_id)
     except Exception:
         logger.exception("delete_salary_record failed for id=%s", record_id)
         raise HTTPException(status_code=500, detail="刪除失敗")
 
 
 @app.post("/api/admin/nurses")
-def add_nurse(req: NurseNameRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def add_nurse(req: NurseNameRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     name = req.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="姓名不可空白")
     try:
-        if not contacts.add_nurse(name):
+        if not contacts.add_nurse(name, admin.clinic_id):
             raise HTTPException(status_code=400, detail="此姓名已存在")
     except HTTPException:
         raise
@@ -477,12 +480,12 @@ def add_nurse(req: NurseNameRequest, _: auth.CurrentUser = Depends(auth.require_
 
 
 @app.put("/api/admin/nurses/{name}")
-def rename_nurse(name: str, req: NurseNameRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def rename_nurse(name: str, req: NurseNameRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     new_name = req.name.strip()
     if not new_name:
         raise HTTPException(status_code=400, detail="姓名不可空白")
     try:
-        if not contacts.rename_nurse(name, new_name):
+        if not contacts.rename_nurse(name, new_name, admin.clinic_id):
             raise HTTPException(status_code=400, detail="此姓名已存在")
     except HTTPException:
         raise
@@ -492,19 +495,19 @@ def rename_nurse(name: str, req: NurseNameRequest, _: auth.CurrentUser = Depends
 
 
 @app.delete("/api/admin/nurses/{name}")
-def remove_nurse(name: str, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def remove_nurse(name: str, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
-        contacts.remove_nurse(name)
+        contacts.remove_nurse(name, admin.clinic_id)
     except Exception:
         logger.exception("remove_nurse failed for name=%s", name)
         raise HTTPException(status_code=500, detail="移除失敗")
 
 
 @app.put("/api/admin/nurses/{name}/pin")
-def set_nurse_pin(name: str, body: dict, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def set_nurse_pin(name: str, body: dict, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     pin = str(body.get("pin", "")).strip()
     try:
-        contacts.set_nurse_pin(name, pin)
+        contacts.set_nurse_pin(name, pin, admin.clinic_id)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     except Exception:
@@ -513,36 +516,36 @@ def set_nurse_pin(name: str, body: dict, _: auth.CurrentUser = Depends(auth.requ
 
 
 @app.delete("/api/admin/nurses/{name}/pin")
-def clear_nurse_pin(name: str, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def clear_nurse_pin(name: str, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
-        contacts.clear_nurse_pin(name)
+        contacts.clear_nurse_pin(name, admin.clinic_id)
     except Exception:
         logger.exception("clear_nurse_pin failed for name=%s", name)
         raise HTTPException(status_code=500, detail="清除失敗")
 
 
 @app.post("/api/auth/nurse-pin")
-def verify_nurse_pin(body: dict, _: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+def verify_nurse_pin(body: dict, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     name = str(body.get("name", "")).strip()
     pin  = str(body.get("pin",  "")).strip()
     if not name or not pin:
         raise HTTPException(status_code=422, detail="請輸入護理師名稱與 PIN")
-    if not contacts.verify_nurse_pin(name, pin):
+    if not contacts.verify_nurse_pin(name, pin, user.clinic_id):
         raise HTTPException(status_code=401, detail="PIN 不正確")
     return {"ok": True, "name": name}
 
 
 @app.post("/api/auth/nurse-pin/change")
-def change_nurse_pin(body: dict, _: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+def change_nurse_pin(body: dict, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     name    = str(body.get("name",    "")).strip()
     old_pin = str(body.get("old_pin", "")).strip()
     new_pin = str(body.get("new_pin", "")).strip()
     if not name or not old_pin or not new_pin:
         raise HTTPException(status_code=422, detail="請填寫所有欄位")
-    if not contacts.verify_nurse_pin(name, old_pin):
+    if not contacts.verify_nurse_pin(name, old_pin, user.clinic_id):
         raise HTTPException(status_code=401, detail="目前 PIN 不正確")
     try:
-        contacts.set_nurse_pin(name, new_pin)
+        contacts.set_nurse_pin(name, new_pin, user.clinic_id)
     except ValueError as e:
         raise HTTPException(status_code=422, detail=str(e))
     return {"ok": True}
@@ -564,11 +567,11 @@ def admin_stats_redirect() -> RedirectResponse:  # kept for old bookmarks
 
 
 @app.get("/api/admin/stats")
-def admin_stats_json(month: str | None = None, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+def admin_stats_json(month: str | None = None, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     if not month:
         month = date.today().strftime("%Y-%m")
     try:
-        return {"month": month, "stats": contacts.get_activity_stats(month)}
+        return {"month": month, "stats": contacts.get_activity_stats(month, admin.clinic_id)}
     except Exception:
         logger.exception("admin_stats_json failed for month=%s", month)
         raise HTTPException(status_code=500, detail="查詢失敗")
@@ -586,20 +589,20 @@ def admin_doctors_json(month: str | None = None, _: auth.CurrentUser = Depends(a
 
 
 @app.get("/api/admin/shifts")
-def get_shifts(week_start: date, _: auth.CurrentUser = Depends(auth.require_admin)) -> list[ShiftEntry]:
+def get_shifts(week_start: date, admin: auth.CurrentUser = Depends(auth.require_admin)) -> list[ShiftEntry]:
     try:
-        return contacts.get_shifts_for_week(week_start.isoformat())
+        return contacts.get_shifts_for_week(week_start.isoformat(), admin.clinic_id)
     except Exception:
         logger.exception("get_shifts failed for week_start=%s", week_start)
         raise HTTPException(status_code=500, detail="查詢排班失敗")
 
 
 @app.post("/api/admin/shifts")
-def set_shift(req: ShiftEntry, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def set_shift(req: ShiftEntry, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
         contacts.set_shift(
             req.nurse, req.shift_date.isoformat(), req.slot, req.start_time, req.end_time,
-            req.clean_start, req.clean_end,
+            req.clean_start, req.clean_end, admin.clinic_id,
         )
     except Exception:
         logger.exception("set_shift failed for nurse=%s date=%s slot=%s", req.nurse, req.shift_date, req.slot)
@@ -607,81 +610,81 @@ def set_shift(req: ShiftEntry, _: auth.CurrentUser = Depends(auth.require_admin)
 
 
 @app.post("/api/admin/shifts/copy-week")
-def copy_week(req: CopyWeekRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def copy_week(req: CopyWeekRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
-        contacts.copy_week(req.from_week_start.isoformat(), req.to_week_start.isoformat())
+        contacts.copy_week(req.from_week_start.isoformat(), req.to_week_start.isoformat(), admin.clinic_id)
     except Exception:
         logger.exception("copy_week failed from=%s to=%s", req.from_week_start, req.to_week_start)
         raise HTTPException(status_code=500, detail="複製排班失敗")
 
 
 @app.get("/api/admin/shifts/publish-status")
-def get_publish_status(week_start: date, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
-    return {"published": contacts.is_week_published(week_start.isoformat())}
+def get_publish_status(week_start: date, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    return {"published": contacts.is_week_published(week_start.isoformat(), admin.clinic_id)}
 
 
 @app.post("/api/admin/shifts/publish")
-def publish_week(req: PublishWeekRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def publish_week(req: PublishWeekRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
-        contacts.publish_week(req.week_start.isoformat())
+        contacts.publish_week(req.week_start.isoformat(), admin.clinic_id)
     except Exception:
         logger.exception("publish_week failed for week_start=%s", req.week_start)
         raise HTTPException(status_code=500, detail="發布失敗")
 
 
 @app.post("/api/admin/shifts/unpublish")
-def unpublish_week(req: PublishWeekRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def unpublish_week(req: PublishWeekRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
-        contacts.unpublish_week(req.week_start.isoformat())
+        contacts.unpublish_week(req.week_start.isoformat(), admin.clinic_id)
     except Exception:
         logger.exception("unpublish_week failed for week_start=%s", req.week_start)
         raise HTTPException(status_code=500, detail="取消發布失敗")
 
 
 @app.get("/api/schedule")
-def get_public_schedule(week_start: date) -> dict:
-    """Public, read-only — nurses view this from the main dashboard with no
-    admin login. Only returns shift data once the admin has published that
-    week; otherwise reports unpublished without leaking draft data."""
+def get_public_schedule(week_start: date, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    """Nurses view their published schedule. Only returns shift data once the admin
+    has published that week; otherwise reports unpublished without leaking draft data."""
     ws = week_start.isoformat()
-    if not contacts.is_week_published(ws):
+    if not contacts.is_week_published(ws, user.clinic_id):
         return {"published": False, "nurses": [], "shifts": []}
     try:
-        return {"published": True, "nurses": contacts.get_nurses(), "shifts": contacts.get_shifts_for_week(ws)}
+        return {"published": True, "nurses": contacts.get_nurses(user.clinic_id), "shifts": contacts.get_shifts_for_week(ws, user.clinic_id)}
     except Exception:
         logger.exception("get_public_schedule failed for week_start=%s", week_start)
         raise HTTPException(status_code=500, detail="查詢失敗")
 
 
 @app.get("/api/report")
-def get_report(report_date: date | None = None) -> DailyReport:
+def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends(auth.get_current_user)) -> DailyReport:
     try:
         as_of = report_date or date.today()
+        cid = user.clinic_id
         # All DB queries run in parallel with the IC file report to avoid
         # sequential 130ms round trips to Supabase Tokyo on every tab load.
         with ThreadPoolExecutor(max_workers=20) as exe:
             f_report               = exe.submit(database.get_daily_report, as_of)
-            f_hidden               = exe.submit(contacts.get_hidden_keys)
-            f_call_required        = exe.submit(contacts.get_call_required_keys)
-            f_submitted            = exe.submit(contacts.get_submitted_keys)
-            f_excluded_keys        = exe.submit(contacts.get_excluded_keys)
-            f_mspt_completed_keys  = exe.submit(contacts.get_mspt_completed_keys)
-            f_mspt_checkedin_keys  = exe.submit(contacts.get_mspt_checkedin_keys)
-            f_mspt_phone_keys      = exe.submit(contacts.get_mspt_phone_completed_keys)
-            f_phone_submittable    = exe.submit(contacts.get_mspt_phone_completed_submittable)
-            f_on_hold_keys         = exe.submit(contacts.get_on_hold_keys)
-            f_line_unlinked        = exe.submit(contacts.get_line_unlinked_chart_numbers)
-            f_alleypin             = exe.submit(contacts.get_alleypin_not_found_chart_numbers)
-            f_line_recently_sent   = exe.submit(contacts.get_line_recently_sent_map)
-            f_hep_returned_keys    = exe.submit(contacts.get_hep_returned_completed_keys)
-            f_manual_overrides     = exe.submit(contacts.get_mspt_manual_overrides)
-            f_contacted            = exe.submit(contacts.get_contacted_with_dates)
-            f_manual_pickup_map    = exe.submit(contacts.get_manual_pickup_map)
-            f_hep_completed_latest = exe.submit(contacts.get_hep_completed_latest_map)
-            f_excluded_entries     = exe.submit(contacts.get_excluded_entries)
-            f_auto_excluded        = exe.submit(contacts.get_auto_excluded_entries)
-            f_called_entries       = exe.submit(contacts.get_called_entries)
-            f_all_blood_used       = exe.submit(contacts.get_all_mspt_blood_used)
+            f_hidden               = exe.submit(contacts.get_hidden_keys, cid)
+            f_call_required        = exe.submit(contacts.get_call_required_keys, cid)
+            f_submitted            = exe.submit(contacts.get_submitted_keys, cid)
+            f_excluded_keys        = exe.submit(contacts.get_excluded_keys, cid)
+            f_mspt_completed_keys  = exe.submit(contacts.get_mspt_completed_keys, cid)
+            f_mspt_checkedin_keys  = exe.submit(contacts.get_mspt_checkedin_keys, cid)
+            f_mspt_phone_keys      = exe.submit(contacts.get_mspt_phone_completed_keys, cid)
+            f_phone_submittable    = exe.submit(contacts.get_mspt_phone_completed_submittable, cid)
+            f_on_hold_keys         = exe.submit(contacts.get_on_hold_keys, cid)
+            f_line_unlinked        = exe.submit(contacts.get_line_unlinked_chart_numbers, cid)
+            f_alleypin             = exe.submit(contacts.get_alleypin_not_found_chart_numbers, cid)
+            f_line_recently_sent   = exe.submit(contacts.get_line_recently_sent_map, cid)
+            f_hep_returned_keys    = exe.submit(contacts.get_hep_returned_completed_keys, cid)
+            f_manual_overrides     = exe.submit(contacts.get_mspt_manual_overrides, cid)
+            f_contacted            = exe.submit(contacts.get_contacted_with_dates, cid)
+            f_manual_pickup_map    = exe.submit(contacts.get_manual_pickup_map, cid)
+            f_hep_completed_latest = exe.submit(contacts.get_hep_completed_latest_map, cid)
+            f_excluded_entries     = exe.submit(contacts.get_excluded_entries, cid)
+            f_auto_excluded        = exe.submit(contacts.get_auto_excluded_entries, cid)
+            f_called_entries       = exe.submit(contacts.get_called_entries, cid)
+            f_all_blood_used       = exe.submit(contacts.get_all_mspt_blood_used, cid)
 
         report                      = f_report.result()
         hidden_keys                 = f_hidden.result()
@@ -896,16 +899,16 @@ def get_report(report_date: date | None = None) -> DailyReport:
                 e for e in report.hep_returned
                 if (e.patient.chart_number, e.last_visit_date.isoformat()) not in hep_returned_completed_keys
             ],
-            hep_returned_completed=contacts.get_hep_returned_completed_entries(),
+            hep_returned_completed=contacts.get_hep_returned_completed_entries(cid),
             contacted=contacted,
             called=called_filtered,
-            submitted=contacts.get_submitted_entries(),
+            submitted=contacts.get_submitted_entries(cid),
             excluded=all_excluded,
-            mspt_completed=contacts.get_mspt_completed_entries(),
-            mspt_checkedin=contacts.get_mspt_checkedin_entries(),
-            chronic_manual_pickups=contacts.get_manual_pickup_entries(),
-            on_hold=contacts.get_on_hold_entries(),
-            mspt_manual=contacts.get_mspt_manual_entries(),
+            mspt_completed=contacts.get_mspt_completed_entries(cid),
+            mspt_checkedin=contacts.get_mspt_checkedin_entries(cid),
+            chronic_manual_pickups=contacts.get_manual_pickup_entries(cid),
+            on_hold=contacts.get_on_hold_entries(cid),
+            mspt_manual=contacts.get_mspt_manual_entries(cid),
             ckd_followups=filter_followups(report.ckd_followups),
             ckd_inactive=filter_followups(report.ckd_inactive),
         )
@@ -917,40 +920,41 @@ def get_report(report_date: date | None = None) -> DailyReport:
 
 
 @app.post("/api/contacted")
-def mark_contacted(req: NurseEntryRequest) -> None:
+def mark_contacted(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.mark_contacted(req.entry, req.nurse)
+        contacts.mark_contacted(req.entry, req.nurse, user.clinic_id)
     except Exception:
         logger.exception("mark_contacted failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="聯絡記錄儲存失敗，請稍後再試")
 
 
 @app.post("/api/called")
-def mark_called(req: NurseEntryRequest) -> None:
+def mark_called(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.mark_called(req.entry, req.nurse)
+        contacts.mark_called(req.entry, req.nurse, user.clinic_id)
     except Exception:
         logger.exception("mark_called failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="二次通知記錄儲存失敗，請稍後再試")
 
 
 @app.delete("/api/contacted")
-def unmark_contacted(req: ContactRequest) -> None:
+def unmark_contacted(req: ContactRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.unmark(req.chart_number, req.category, req.due_date)
+        contacts.unmark(req.chart_number, req.category, req.due_date, user.clinic_id)
     except Exception:
         logger.exception("unmark_contacted failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
 
 
 @app.post("/api/submitted")
-def mark_submitted(entry: MsptSubmittableEntry) -> None:
+def mark_submitted(entry: MsptSubmittableEntry, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.mark_submitted(entry)
+        contacts.mark_submitted(entry, user.clinic_id)
         contacts.record_mspt_blood_used(
             entry.patient.chart_number,
             entry.mspt_stage,
             entry.blood_report_date.isoformat(),
+            user.clinic_id,
         )
     except Exception:
         logger.exception("mark_submitted failed for %s", entry.patient.chart_number)
@@ -958,27 +962,28 @@ def mark_submitted(entry: MsptSubmittableEntry) -> None:
 
 
 @app.delete("/api/submitted")
-def unmark_submitted(req: SubmitRequest) -> None:
+def unmark_submitted(req: SubmitRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.unmark_submitted(req.chart_number, req.mspt_stage)
-        contacts.clear_mspt_blood_used(req.chart_number, req.mspt_stage)
-        contacts.unmark_mspt_phone_completed(req.chart_number, req.mspt_stage)
+        contacts.unmark_submitted(req.chart_number, req.mspt_stage, user.clinic_id)
+        contacts.clear_mspt_blood_used(req.chart_number, req.mspt_stage, user.clinic_id)
+        contacts.unmark_mspt_phone_completed(req.chart_number, req.mspt_stage, user.clinic_id)
     except Exception:
         logger.exception("unmark_submitted failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷申報失敗，請稍後再試")
 
 
 @app.post("/api/mspt-phone-complete")
-def mspt_phone_complete(req: NurseEntryRequest) -> None:
+def mspt_phone_complete(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     """Mark a phone-contact-only MSPT stage as complete: records contact + queues for NHI submission."""
     try:
         blood_draw_date = req.entry.blood_draw_date
-        contacts.mark_mspt_phone_completed(req.entry, req.nurse, blood_draw_date)
+        contacts.mark_mspt_phone_completed(req.entry, req.nurse, blood_draw_date, user.clinic_id)
         if blood_draw_date:
             contacts.record_mspt_blood_used(
                 req.entry.patient.chart_number,
                 req.entry.mspt_stage,
                 blood_draw_date,
+                user.clinic_id,
             )
     except Exception:
         logger.exception("mspt_phone_complete failed for %s", req.entry.patient.chart_number)
@@ -986,107 +991,107 @@ def mspt_phone_complete(req: NurseEntryRequest) -> None:
 
 
 @app.post("/api/excluded")
-def mark_excluded(req: ExcludeRequest) -> None:
+def mark_excluded(req: ExcludeRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.mark_excluded(req.entry, req.reason, req.note, req.nurse)
+        contacts.mark_excluded(req.entry, req.reason, req.note, req.nurse, user.clinic_id)
     except Exception:
         logger.exception("mark_excluded failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="排除記錄儲存失敗，請稍後再試")
 
 
 @app.delete("/api/excluded")
-def unmark_excluded(req: UnexcludeRequest) -> None:
+def unmark_excluded(req: UnexcludeRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.unmark_excluded(req.chart_number, req.category)
+        contacts.unmark_excluded(req.chart_number, req.category, user.clinic_id)
     except Exception:
         logger.exception("unmark_excluded failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷排除失敗，請稍後再試")
 
 
 @app.post("/api/mspt-completed")
-def mark_mspt_completed(req: NurseEntryRequest) -> None:
+def mark_mspt_completed(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.mark_mspt_completed(req.entry, req.nurse)
+        contacts.mark_mspt_completed(req.entry, req.nurse, user.clinic_id)
     except Exception:
         logger.exception("mark_mspt_completed failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="完成MSPT記錄儲存失敗，請稍後再試")
 
 
 @app.delete("/api/mspt-completed")
-def unmark_mspt_completed(req: MsptCompleteRequest) -> None:
+def unmark_mspt_completed(req: MsptCompleteRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.unmark_mspt_completed(req.chart_number, req.mspt_stage, req.due_date.isoformat())
+        contacts.unmark_mspt_completed(req.chart_number, req.mspt_stage, req.due_date.isoformat(), user.clinic_id)
     except Exception:
         logger.exception("unmark_mspt_completed failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷完成MSPT失敗，請稍後再試")
 
 
 @app.post("/api/mspt-checkedin")
-def mark_mspt_checkedin(req: NurseEntryRequest) -> None:
+def mark_mspt_checkedin(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.mark_mspt_checkedin(req.entry, req.nurse)
+        contacts.mark_mspt_checkedin(req.entry, req.nurse, user.clinic_id)
     except Exception:
         logger.exception("mark_mspt_checkedin failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="待建檔記錄儲存失敗，請稍後再試")
 
 
 @app.delete("/api/mspt-checkedin")
-def unmark_mspt_checkedin(req: MsptCompleteRequest) -> None:
+def unmark_mspt_checkedin(req: MsptCompleteRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.unmark_mspt_checkedin(req.chart_number, req.mspt_stage, req.due_date.isoformat())
+        contacts.unmark_mspt_checkedin(req.chart_number, req.mspt_stage, req.due_date.isoformat(), user.clinic_id)
     except Exception:
         logger.exception("unmark_mspt_checkedin failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷待建檔失敗，請稍後再試")
 
 
 @app.post("/api/hep-returned-completed")
-def mark_hep_returned_completed(req: NurseEntryRequest) -> None:
+def mark_hep_returned_completed(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.mark_hep_returned_completed(req.entry, req.nurse)
+        contacts.mark_hep_returned_completed(req.entry, req.nurse, user.clinic_id)
     except Exception:
         logger.exception("mark_hep_returned_completed failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="完成B肝記錄儲存失敗，請稍後再試")
 
 
 @app.delete("/api/hep-returned-completed")
-def unmark_hep_returned_completed(req: HepReturnedCompleteRequest) -> None:
+def unmark_hep_returned_completed(req: HepReturnedCompleteRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.unmark_hep_returned_completed(req.chart_number, req.last_visit_date.isoformat())
+        contacts.unmark_hep_returned_completed(req.chart_number, req.last_visit_date.isoformat(), user.clinic_id)
     except Exception:
         logger.exception("unmark_hep_returned_completed failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
 
 
 @app.post("/api/manual-pickup")
-def mark_manual_pickup(req: ManualPickupRequest) -> None:
+def mark_manual_pickup(req: ManualPickupRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.mark_manual_pickup(req.entry, req.pickup_date, req.ps_days, req.nurse)
+        contacts.mark_manual_pickup(req.entry, req.pickup_date, req.ps_days, req.nurse, user.clinic_id)
     except Exception:
         logger.exception("mark_manual_pickup failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="手動取藥記錄儲存失敗，請稍後再試")
 
 
 @app.delete("/api/manual-pickup")
-def unmark_manual_pickup(req: ChartNumberRequest) -> None:
+def unmark_manual_pickup(req: ChartNumberRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.unmark_manual_pickup(req.chart_number)
+        contacts.unmark_manual_pickup(req.chart_number, user.clinic_id)
     except Exception:
         logger.exception("unmark_manual_pickup failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
 
 
 @app.post("/api/line-unlinked")
-def mark_line_unlinked(req: LineUnlinkedRequest) -> None:
+def mark_line_unlinked(req: LineUnlinkedRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.flag_line_unlinked(req.chart_number, req.name, req.nurse)
+        contacts.flag_line_unlinked(req.chart_number, req.name, req.nurse, user.clinic_id)
     except Exception:
         logger.exception("flag_line_unlinked failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="標記失敗，請稍後再試")
 
 @app.delete("/api/line-unlinked/{chart_number}")
-def clear_line_unlinked(chart_number: str) -> None:
+def clear_line_unlinked(chart_number: str, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.clear_line_unlinked(chart_number)
+        contacts.clear_line_unlinked(chart_number, user.clinic_id)
     except Exception:
         logger.exception("clear_line_unlinked failed for %s", chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
@@ -1109,7 +1114,7 @@ def _pick_line_template(entry: FollowupEntry) -> str | None:
     return None
 
 
-async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -> None:
+async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str, clinic_id: int = 1) -> None:
     import line_notify  # deferred — depends on playwright, which is optional for the rest of the app
 
     def on_result(result: dict) -> None:
@@ -1129,6 +1134,7 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -
                 detail=result.get("detail", ""),
                 dry_run=dry_run,
                 nurse=nurse,
+                clinic_id=clinic_id,
             )
         except Exception:
             logger.exception("failed to log LINE notification result for %s", target["chart_number"])
@@ -1136,32 +1142,32 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -
         if result["status"] == "sent" and not dry_run:
             try:
                 if target["call_required"]:
-                    contacts.mark_called(target["entry"], nurse)
+                    contacts.mark_called(target["entry"], nurse, clinic_id)
                 else:
-                    contacts.mark_contacted(target["entry"], nurse)
+                    contacts.mark_contacted(target["entry"], nurse, clinic_id)
             except Exception:
                 logger.exception("failed to mark %s as contacted after LINE send", target["chart_number"])
             try:
-                contacts.clear_line_unlinked(target["chart_number"])
+                contacts.clear_line_unlinked(target["chart_number"], clinic_id)
             except Exception:
                 logger.exception("failed to clear line_unlinked flag for %s", target["chart_number"])
             try:
                 contacts.record_line_sent(
                     target["chart_number"], target["template"], target["entry"].patient.name,
-                    date.today().isoformat(), nurse,
+                    date.today().isoformat(), nurse, clinic_id,
                 )
             except Exception:
                 logger.exception("failed to record send date for %s", target["chart_number"])
 
         if result["status"] == "line_not_linked":
             try:
-                contacts.flag_line_unlinked(target["chart_number"], target["entry"].patient.name, nurse)
+                contacts.flag_line_unlinked(target["chart_number"], target["entry"].patient.name, nurse, clinic_id)
             except Exception:
                 logger.exception("failed to flag %s as line_unlinked", target["chart_number"])
 
         if result["status"] == "not_found":
             try:
-                contacts.flag_alleypin_not_found(target["chart_number"], target["entry"].patient.name, nurse)
+                contacts.flag_alleypin_not_found(target["chart_number"], target["entry"].patient.name, nurse, clinic_id)
             except Exception:
                 logger.exception("failed to flag %s as alleypin_not_found", target["chart_number"])
         elif result["status"] != "error":
@@ -1169,7 +1175,7 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -
             # ("error" is ambiguous — it can happen during the search itself,
             # so it's left alone rather than assumed to mean "found").
             try:
-                contacts.clear_alleypin_not_found(target["chart_number"])
+                contacts.clear_alleypin_not_found(target["chart_number"], clinic_id)
             except Exception:
                 logger.exception("failed to clear alleypin_not_found flag for %s", target["chart_number"])
 
@@ -1177,7 +1183,7 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -
             try:
                 contacts.record_line_sent(
                     target["chart_number"], target["template"], target["entry"].patient.name,
-                    result["last_sent_at"], nurse,
+                    result["last_sent_at"], nurse, clinic_id,
                 )
             except Exception:
                 logger.exception("failed to record send date for %s", target["chart_number"])
@@ -1204,7 +1210,7 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str) -
 
 
 @app.post("/api/send-line-notifications")
-async def send_line_notifications(req: SendLineNotificationsRequest) -> dict:
+async def send_line_notifications(req: SendLineNotificationsRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     try:
         import line_notify  # noqa: F401 — just checking it (and playwright) is installed
     except ImportError:
@@ -1213,7 +1219,7 @@ async def send_line_notifications(req: SendLineNotificationsRequest) -> dict:
     if _line_batch_state["running"]:
         raise HTTPException(status_code=409, detail="已有一個批次發送正在進行中，請稍候")
 
-    report_data = get_report(report_date=None)
+    report_data = get_report(report_date=None, user=user)
     source = {
         "慢簽": report_data.chronic_prescriptions,
         "代謝症候群": report_data.mspt_followups,
@@ -1247,7 +1253,7 @@ async def send_line_notifications(req: SendLineNotificationsRequest) -> dict:
         "total": len(targets), "results": [], "error": None,
     })
     global _line_batch_task
-    _line_batch_task = asyncio.create_task(_run_line_batch_task(targets, req.dry_run, req.nurse))
+    _line_batch_task = asyncio.create_task(_run_line_batch_task(targets, req.dry_run, req.nurse, user.clinic_id))
     return {"started": True, "total": len(targets)}
 
 
@@ -1283,13 +1289,13 @@ async def cancel_line_notifications() -> dict:
 
 
 @app.get("/api/admin/line-notification-log")
-def get_line_notification_log(_: auth.CurrentUser = Depends(auth.require_admin)) -> list:
-    return contacts.get_line_notification_log()
+def get_line_notification_log(admin: auth.CurrentUser = Depends(auth.require_admin)) -> list:
+    return contacts.get_line_notification_log(clinic_id=admin.clinic_id)
 
 
 @app.post("/api/admin/line-notification-log/{log_id}/undo")
-async def undo_line_notification(log_id: int, req: UndoLineNotificationRequest, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
-    entry = contacts.get_line_notification_log_entry(log_id)
+async def undo_line_notification(log_id: int, req: UndoLineNotificationRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    entry = contacts.get_line_notification_log_entry(log_id, admin.clinic_id)
     if entry is None:
         raise HTTPException(status_code=404, detail="找不到此記錄")
     if entry["status"] != "sent":
@@ -1315,7 +1321,7 @@ async def undo_line_notification(log_id: int, req: UndoLineNotificationRequest, 
         raise HTTPException(status_code=500, detail=f"復原失敗：{e}")
 
     if result["status"] == "sent":
-        contacts.mark_line_notification_undone(log_id, req.nurse)
+        contacts.mark_line_notification_undone(log_id, req.nurse, admin.clinic_id)
     return result
 
 
@@ -1360,10 +1366,10 @@ def get_notice() -> dict:
 
 
 @app.get("/api/contacts/history")
-def get_contacts_history(target_date: str | None = None) -> dict:
+def get_contacts_history(target_date: str | None = None, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     target = target_date or date.today().isoformat()
     try:
-        history = contacts.get_print_history(target)
+        history = contacts.get_print_history(target, user.clinic_id)
         return {
             "contacted": [e.model_dump(mode="json") for e in history["contacted"]],
             "called": [e.model_dump(mode="json") for e in history["called"]],
@@ -1377,9 +1383,9 @@ def get_contacts_history(target_date: str | None = None) -> dict:
 
 
 @app.post("/api/on-hold")
-def mark_on_hold(req: OnHoldRequest) -> dict:
+def mark_on_hold(req: OnHoldRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     try:
-        hold_id = contacts.mark_on_hold(req.entry, req.note, req.nurse)
+        hold_id = contacts.mark_on_hold(req.entry, req.note, req.nurse, user.clinic_id)
         return {"hold_id": hold_id}
     except Exception:
         logger.exception("mark_on_hold failed for %s", req.entry.patient.chart_number)
@@ -1387,9 +1393,9 @@ def mark_on_hold(req: OnHoldRequest) -> dict:
 
 
 @app.post("/api/on-hold/manual")
-def mark_on_hold_manual(req: ManualOnHoldRequest) -> dict:
+def mark_on_hold_manual(req: ManualOnHoldRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     try:
-        hold_id = contacts.mark_on_hold_manual(req.name, req.note, req.nurse, req.category)
+        hold_id = contacts.mark_on_hold_manual(req.name, req.note, req.nurse, req.category, user.clinic_id)
         return {"hold_id": hold_id}
     except Exception:
         logger.exception("mark_on_hold_manual failed for %s", req.name)
@@ -1397,16 +1403,16 @@ def mark_on_hold_manual(req: ManualOnHoldRequest) -> dict:
 
 
 @app.delete("/api/on-hold")
-def remove_on_hold(req: OnHoldRemoveRequest) -> None:
+def remove_on_hold(req: OnHoldRemoveRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.remove_on_hold(req.hold_id)
+        contacts.remove_on_hold(req.hold_id, user.clinic_id)
     except Exception:
         logger.exception("remove_on_hold failed for id=%s", req.hold_id)
         raise HTTPException(status_code=500, detail="撤銷暫緩失敗，請稍後再試")
 
 
 @app.post("/api/mspt-manual")
-def mark_mspt_manual(req: MsptManualRequest) -> None:
+def mark_mspt_manual(req: MsptManualRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.mark_mspt_manual(
             req.entry.patient.chart_number,
@@ -1415,6 +1421,7 @@ def mark_mspt_manual(req: MsptManualRequest) -> None:
             req.mspt_stage,
             req.completed_date,
             req.nurse,
+            user.clinic_id,
         )
     except Exception:
         logger.exception("mark_mspt_manual failed for %s", req.entry.patient.chart_number)
@@ -1422,9 +1429,9 @@ def mark_mspt_manual(req: MsptManualRequest) -> None:
 
 
 @app.delete("/api/mspt-manual")
-def unmark_mspt_manual(req: MsptManualRemoveRequest) -> None:
+def unmark_mspt_manual(req: MsptManualRemoveRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        contacts.unmark_mspt_manual(req.chart_number)
+        contacts.unmark_mspt_manual(req.chart_number, user.clinic_id)
     except Exception:
         logger.exception("unmark_mspt_manual failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷手動標記失敗，請稍後再試")
@@ -1440,7 +1447,7 @@ def get_lab_results(national_id: str) -> dict:
 @app.post("/api/admin/lab-report")
 async def upload_lab_report(
     file: UploadFile = File(...),
-    _: auth.CurrentUser = Depends(auth.require_admin),
+    admin: auth.CurrentUser = Depends(auth.require_admin),
 ) -> dict:
     if not file.filename.lower().endswith('.xlsx'):
         raise HTTPException(status_code=400, detail="請上傳 .xlsx 檔案")
@@ -1448,7 +1455,7 @@ async def upload_lab_report(
         with tempfile.NamedTemporaryFile(suffix='.xlsx', delete=False) as tmp:
             tmp.write(await file.read())
             tmp_path = tmp.name
-        report_id = lab_report.save_report(tmp_path, file.filename)
+        report_id = lab_report.save_report(tmp_path, file.filename, admin.clinic_id)
         return {"id": report_id}
     except Exception:
         logger.exception("upload_lab_report failed for %s", file.filename)
@@ -1461,18 +1468,18 @@ async def upload_lab_report(
 
 
 @app.get("/api/admin/lab-reports")
-def list_lab_reports(_: auth.CurrentUser = Depends(auth.require_admin)) -> list:
+def list_lab_reports(admin: auth.CurrentUser = Depends(auth.require_admin)) -> list:
     try:
-        return lab_report.list_reports()
+        return lab_report.list_reports(admin.clinic_id)
     except Exception:
         logger.exception("list_lab_reports failed")
         raise HTTPException(status_code=500, detail="查詢失敗")
 
 
 @app.get("/api/admin/lab-report/{report_id}")
-def get_lab_report(report_id: int, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+def get_lab_report(report_id: int, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     try:
-        data = lab_report.get_report(report_id)
+        data = lab_report.get_report(report_id, admin.clinic_id)
         if data is None:
             raise HTTPException(status_code=404, detail="找不到此報告")
         return data
@@ -1484,9 +1491,9 @@ def get_lab_report(report_id: int, _: auth.CurrentUser = Depends(auth.require_ad
 
 
 @app.delete("/api/admin/lab-report/{report_id}")
-def delete_lab_report(report_id: int, _: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+def delete_lab_report(report_id: int, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     try:
-        if not lab_report.delete_report(report_id):
+        if not lab_report.delete_report(report_id, admin.clinic_id):
             raise HTTPException(status_code=404, detail="找不到此報告")
     except HTTPException:
         raise
@@ -1537,20 +1544,20 @@ def get_lab_code_catalog(_: auth.CurrentUser = Depends(auth.require_admin)) -> d
 
 
 @app.get("/api/directory")
-def list_clinic_contacts() -> list:
+def list_clinic_contacts(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list:
     try:
-        return directory.list_contacts()
+        return directory.list_contacts(user.clinic_id)
     except Exception:
         logger.exception("list_clinic_contacts failed")
         raise HTTPException(status_code=500, detail="查詢失敗")
 
 
 @app.post("/api/directory")
-def add_clinic_contact(req: ClinicContactRequest) -> dict:
+def add_clinic_contact(req: ClinicContactRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     if not req.name.strip():
         raise HTTPException(status_code=400, detail="名稱不可空白")
     try:
-        new_id = directory.add_contact(req.name.strip(), req.category.strip(), req.phone.strip(), req.note.strip(), req.nurse)
+        new_id = directory.add_contact(req.name.strip(), req.category.strip(), req.phone.strip(), req.note.strip(), req.nurse, user.clinic_id)
         return {"id": new_id}
     except Exception:
         logger.exception("add_clinic_contact failed")
@@ -1558,11 +1565,11 @@ def add_clinic_contact(req: ClinicContactRequest) -> dict:
 
 
 @app.put("/api/directory/{contact_id}")
-def update_clinic_contact(contact_id: int, req: ClinicContactRequest) -> None:
+def update_clinic_contact(contact_id: int, req: ClinicContactRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     if not req.name.strip():
         raise HTTPException(status_code=400, detail="名稱不可空白")
     try:
-        if not directory.update_contact(contact_id, req.name.strip(), req.category.strip(), req.phone.strip(), req.note.strip()):
+        if not directory.update_contact(contact_id, req.name.strip(), req.category.strip(), req.phone.strip(), req.note.strip(), user.clinic_id):
             raise HTTPException(status_code=404, detail="找不到此聯絡人")
     except HTTPException:
         raise
@@ -1572,9 +1579,9 @@ def update_clinic_contact(contact_id: int, req: ClinicContactRequest) -> None:
 
 
 @app.delete("/api/directory/{contact_id}")
-def delete_clinic_contact(contact_id: int) -> None:
+def delete_clinic_contact(contact_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
-        if not directory.delete_contact(contact_id):
+        if not directory.delete_contact(contact_id, user.clinic_id):
             raise HTTPException(status_code=404, detail="找不到此聯絡人")
     except HTTPException:
         raise

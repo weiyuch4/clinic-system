@@ -138,7 +138,7 @@ def parse(path: str) -> dict:
 
 # ── Storage ───────────────────────────────────────────────────────────────────
 
-def save_report(tmp_path: str, original_filename: str) -> int:
+def save_report(tmp_path: str, original_filename: str, clinic_id: int = 1) -> int:
     """Parse + store a report. Returns new row id."""
     stats = parse(tmp_path)
 
@@ -152,8 +152,8 @@ def save_report(tmp_path: str, original_filename: str) -> int:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO lab_reports
-                   (filename, period, clinic_name, clinic_code, stats_json, file_path, uploaded_at)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s)
+                   (filename, period, clinic_name, clinic_code, stats_json, file_path, uploaded_at, clinic_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
                    RETURNING id""",
                 (
                     original_filename,
@@ -163,16 +163,18 @@ def save_report(tmp_path: str, original_filename: str) -> int:
                     json.dumps(stats, ensure_ascii=False),
                     dest,
                     datetime.now().isoformat(timespec='seconds'),
+                    clinic_id,
                 ),
             )
             return cur.fetchone()["id"]
 
 
-def list_reports() -> list[dict]:
+def list_reports(clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, filename, period, clinic_name, uploaded_at FROM lab_reports ORDER BY id DESC"
+                "SELECT id, filename, period, clinic_name, uploaded_at FROM lab_reports WHERE clinic_id = %s ORDER BY id DESC",
+                (clinic_id,),
             )
             return [
                 {'id': r["id"], 'filename': r["filename"], 'period': r["period"],
@@ -181,12 +183,12 @@ def list_reports() -> list[dict]:
             ]
 
 
-def get_report(report_id: int) -> dict | None:
+def get_report(report_id: int, clinic_id: int = 1) -> dict | None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, filename, period, clinic_name, uploaded_at, stats_json FROM lab_reports WHERE id=%s",
-                (report_id,),
+                "SELECT id, filename, period, clinic_name, uploaded_at, stats_json FROM lab_reports WHERE id=%s AND clinic_id=%s",
+                (report_id, clinic_id),
             )
             row = cur.fetchone()
     if not row:
@@ -198,14 +200,20 @@ def get_report(report_id: int) -> dict | None:
     }
 
 
-def delete_report(report_id: int) -> bool:
+def delete_report(report_id: int, clinic_id: int = 1) -> bool:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT file_path FROM lab_reports WHERE id=%s", (report_id,))
+            cur.execute(
+                "SELECT file_path FROM lab_reports WHERE id=%s AND clinic_id=%s",
+                (report_id, clinic_id),
+            )
             row = cur.fetchone()
             if not row:
                 return False
-            cur.execute("DELETE FROM lab_reports WHERE id=%s", (report_id,))
+            cur.execute(
+                "DELETE FROM lab_reports WHERE id=%s AND clinic_id=%s",
+                (report_id, clinic_id),
+            )
             file_path = row["file_path"]
     try:
         os.remove(file_path)

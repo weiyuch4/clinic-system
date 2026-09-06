@@ -41,3 +41,4 @@ tmp_*.txt
 
 # Environment variables (contain DB credentials)
 .env
+.env.dev

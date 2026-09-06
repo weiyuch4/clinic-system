@@ -366,48 +366,48 @@ def _followup_to_row(entry: FollowupEntry, attempt: int, nurse: str = "") -> tup
     )
 
 
-def mark_contacted(entry: FollowupEntry, nurse: str = "") -> None:
+def mark_contacted(entry: FollowupEntry, nurse: str = "", clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO contacts
                    (chart_number, category, due_date, name, birth_date, disease_name,
                     days_overdue, mspt_stage, contact_reason, last_visit_date, attempt, contacted_at,
-                    contacted_time, nurse)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    contacted_time, nurse, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT(chart_number, category, due_date) DO UPDATE SET
                        attempt=1, contacted_at=EXCLUDED.contacted_at,
                        contacted_time=EXCLUDED.contacted_time, nurse=EXCLUDED.nurse""",
-                _followup_to_row(entry, 1, nurse),
+                _followup_to_row(entry, 1, nurse) + (clinic_id,),
             )
 
 
-def mark_called(entry: FollowupEntry, nurse: str = "") -> None:
+def mark_called(entry: FollowupEntry, nurse: str = "", clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO contacts
                    (chart_number, category, due_date, name, birth_date, disease_name,
                     days_overdue, mspt_stage, contact_reason, last_visit_date, attempt, contacted_at,
-                    contacted_time, nurse)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    contacted_time, nurse, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT(chart_number, category, due_date) DO UPDATE SET
                        attempt=2, contacted_at=EXCLUDED.contacted_at,
                        contacted_time=EXCLUDED.contacted_time, nurse=EXCLUDED.nurse""",
-                _followup_to_row(entry, 2, nurse),
+                _followup_to_row(entry, 2, nurse) + (clinic_id,),
             )
 
 
-def unmark(chart_number: str, category: str, due_date: date) -> None:
+def unmark(chart_number: str, category: str, due_date: date, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM contacts WHERE chart_number=%s AND category=%s AND due_date=%s",
-                (chart_number, category, due_date.isoformat()),
+                "DELETE FROM contacts WHERE chart_number=%s AND category=%s AND due_date=%s AND clinic_id=%s",
+                (chart_number, category, due_date.isoformat(), clinic_id),
             )
 
 
-def get_hidden_keys() -> set[tuple[str, str, str]]:
+def get_hidden_keys(clinic_id: int = 1) -> set[tuple[str, str, str]]:
     """Keys to exclude from the pending list entirely.
     Includes: attempt=2 (permanent) and attempt=1 within the 7-day window."""
     cutoff = (date.today() - timedelta(days=RECONTACT_DAYS)).isoformat()
@@ -415,21 +415,21 @@ def get_hidden_keys() -> set[tuple[str, str, str]]:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT chart_number, category, due_date FROM contacts
-                   WHERE attempt=2 OR (attempt=1 AND contacted_at > %s)""",
-                (cutoff,),
+                   WHERE clinic_id=%s AND (attempt=2 OR (attempt=1 AND contacted_at > %s))""",
+                (clinic_id, cutoff),
             )
             rows = cur.fetchall()
     return {(r["chart_number"], r["category"], r["due_date"]) for r in rows}
 
 
-def get_call_required_keys() -> set[tuple[str, str, str]]:
+def get_call_required_keys(clinic_id: int = 1) -> set[tuple[str, str, str]]:
     """Keys of attempt=1 contacts that have expired — re-surface with call flag."""
     cutoff = (date.today() - timedelta(days=RECONTACT_DAYS)).isoformat()
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT chart_number, category, due_date FROM contacts WHERE attempt=1 AND contacted_at <= %s",
-                (cutoff,),
+                "SELECT chart_number, category, due_date FROM contacts WHERE clinic_id=%s AND attempt=1 AND contacted_at <= %s",
+                (clinic_id, cutoff),
             )
             rows = cur.fetchall()
     return {(r["chart_number"], r["category"], r["due_date"]) for r in rows}
@@ -455,7 +455,7 @@ def _rows_to_followup_entries(rows: list) -> list[FollowupEntry]:
     ]
 
 
-def get_contacted_with_dates() -> list[tuple[FollowupEntry, date]]:
+def get_contacted_with_dates(clinic_id: int = 1) -> list[tuple[FollowupEntry, date]]:
     """Entries in the 7-day window paired with their contacted_at date, for return-visit filtering."""
     cutoff = (date.today() - timedelta(days=RECONTACT_DAYS)).isoformat()
     with _conn() as conn:
@@ -464,8 +464,8 @@ def get_contacted_with_dates() -> list[tuple[FollowupEntry, date]]:
                 """SELECT chart_number, name, birth_date, disease_name, category, due_date,
                           days_overdue, mspt_stage, contact_reason, last_visit_date, contacted_at,
                           contacted_time
-                   FROM contacts WHERE attempt=1 AND contacted_at > %s""",
-                (cutoff,),
+                   FROM contacts WHERE clinic_id=%s AND attempt=1 AND contacted_at > %s""",
+                (clinic_id, cutoff),
             )
             rows = cur.fetchall()
     return [
@@ -479,18 +479,18 @@ def get_contacted_with_dates() -> list[tuple[FollowupEntry, date]]:
     ]
 
 
-def get_contacted_entries() -> list[FollowupEntry]:
+def get_contacted_entries(clinic_id: int = 1) -> list[FollowupEntry]:
     """Entries currently in the 7-day hiding window (attempt=1, recent)."""
-    return [e for e, _ in get_contacted_with_dates()]
+    return [e for e, _ in get_contacted_with_dates(clinic_id)]
 
 
-def mark_submitted(entry: MsptSubmittableEntry) -> None:
+def mark_submitted(entry: MsptSubmittableEntry, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO submitted
-                   (chart_number, mspt_stage, name, birth_date, blood_report_date, days_since_last_stage, submitted_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)
+                   (chart_number, mspt_stage, name, birth_date, blood_report_date, days_since_last_stage, submitted_at, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (chart_number, mspt_stage) DO UPDATE SET
                        name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
                        blood_report_date=EXCLUDED.blood_report_date,
@@ -504,36 +504,38 @@ def mark_submitted(entry: MsptSubmittableEntry) -> None:
                     entry.blood_report_date.isoformat(),
                     entry.days_since_last_stage,
                     date.today().isoformat(),
+                    clinic_id,
                 ),
             )
 
 
-def unmark_submitted(chart_number: str, mspt_stage: str) -> None:
+def unmark_submitted(chart_number: str, mspt_stage: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM submitted WHERE chart_number=%s AND mspt_stage=%s",
-                (chart_number, mspt_stage),
+                "DELETE FROM submitted WHERE chart_number=%s AND mspt_stage=%s AND clinic_id=%s",
+                (chart_number, mspt_stage, clinic_id),
             )
 
 
-def get_mspt_blood_used(nat_id: str) -> dict[str, str]:
+def get_mspt_blood_used(nat_id: str, clinic_id: int = 1) -> dict[str, str]:
     """Return {stage: draw_date_iso} for all blood draws recorded for this patient."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT stage, draw_date FROM mspt_blood_used WHERE nat_id = %s AND clinic_id = 1",
-                (nat_id,),
+                "SELECT stage, draw_date FROM mspt_blood_used WHERE nat_id = %s AND clinic_id = %s",
+                (nat_id, clinic_id),
             )
             return {row["stage"]: row["draw_date"] for row in cur.fetchall()}
 
 
-def get_all_mspt_blood_used() -> dict[str, dict[str, str]]:
+def get_all_mspt_blood_used(clinic_id: int = 1) -> dict[str, dict[str, str]]:
     """Return {nat_id: {stage: draw_date_iso}} for all patients — one query for the whole clinic."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT nat_id, stage, draw_date FROM mspt_blood_used WHERE clinic_id = 1",
+                "SELECT nat_id, stage, draw_date FROM mspt_blood_used WHERE clinic_id = %s",
+                (clinic_id,),
             )
             result: dict[str, dict[str, str]] = {}
             for row in cur.fetchall():
@@ -541,45 +543,48 @@ def get_all_mspt_blood_used() -> dict[str, dict[str, str]]:
             return result
 
 
-def record_mspt_blood_used(nat_id: str, stage: str, draw_iso_date: str) -> None:
+def record_mspt_blood_used(nat_id: str, stage: str, draw_iso_date: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO mspt_blood_used (nat_id, stage, draw_date, recorded_at, clinic_id)
-                   VALUES (%s, %s, %s, %s, 1)
+                   VALUES (%s, %s, %s, %s, %s)
                    ON CONFLICT (nat_id, stage) DO UPDATE
                    SET draw_date = EXCLUDED.draw_date, recorded_at = EXCLUDED.recorded_at""",
-                (nat_id, stage, draw_iso_date, datetime.now().isoformat()),
+                (nat_id, stage, draw_iso_date, datetime.now().isoformat(), clinic_id),
             )
 
 
-def clear_mspt_blood_used(nat_id: str, stage: str) -> None:
+def clear_mspt_blood_used(nat_id: str, stage: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM mspt_blood_used WHERE nat_id = %s AND stage = %s AND clinic_id = 1",
-                (nat_id, stage),
+                "DELETE FROM mspt_blood_used WHERE nat_id = %s AND stage = %s AND clinic_id = %s",
+                (nat_id, stage, clinic_id),
             )
 
 
-def get_submitted_keys() -> set[tuple[str, str]]:
+def get_submitted_keys(clinic_id: int = 1) -> set[tuple[str, str]]:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT chart_number, mspt_stage FROM submitted")
+            cur.execute(
+                "SELECT chart_number, mspt_stage FROM submitted WHERE clinic_id = %s",
+                (clinic_id,),
+            )
             rows = cur.fetchall()
     return {(r["chart_number"], r["mspt_stage"]) for r in rows}
 
 
-def mark_mspt_phone_completed(entry: FollowupEntry, nurse: str = "", blood_draw_date: str | None = None) -> None:
+def mark_mspt_phone_completed(entry: FollowupEntry, nurse: str = "", blood_draw_date: str | None = None, clinic_id: int = 1) -> None:
     """Record a phone-contact completion: marks entry as contacted AND adds to phone_completed
     so it flows into 可申報 without needing a clinic visit."""
-    mark_contacted(entry, nurse)
+    mark_contacted(entry, nurse, clinic_id)
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO mspt_phone_completed
                    (chart_number, mspt_stage, due_date, name, birth_date, blood_draw_date, completed_at, nurse, clinic_id)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, 1)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (chart_number, mspt_stage, due_date) DO UPDATE SET
                        blood_draw_date = EXCLUDED.blood_draw_date,
                        completed_at = EXCLUDED.completed_at,
@@ -587,19 +592,20 @@ def mark_mspt_phone_completed(entry: FollowupEntry, nurse: str = "", blood_draw_
                 (
                     entry.patient.chart_number, entry.mspt_stage, entry.due_date.isoformat(),
                     entry.patient.name, entry.patient.birth_date.isoformat(),
-                    blood_draw_date, date.today().isoformat(), nurse,
+                    blood_draw_date, date.today().isoformat(), nurse, clinic_id,
                 ),
             )
 
 
-def get_mspt_phone_completed_submittable() -> list:
+def get_mspt_phone_completed_submittable(clinic_id: int = 1) -> list:
     """Return phone-completed entries as MsptSubmittableEntry objects for the 可申報 queue."""
     from models import MsptSubmittableEntry, Patient
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT chart_number, mspt_stage, due_date, name, birth_date, blood_draw_date, completed_at
-                   FROM mspt_phone_completed WHERE clinic_id = 1""",
+                   FROM mspt_phone_completed WHERE clinic_id = %s""",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     results = []
@@ -622,27 +628,28 @@ def get_mspt_phone_completed_submittable() -> list:
     return results
 
 
-def get_mspt_phone_completed_keys() -> set[tuple[str, str, str]]:
+def get_mspt_phone_completed_keys(clinic_id: int = 1) -> set[tuple[str, str, str]]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT chart_number, mspt_stage, due_date FROM mspt_phone_completed WHERE clinic_id = 1",
+                "SELECT chart_number, mspt_stage, due_date FROM mspt_phone_completed WHERE clinic_id = %s",
+                (clinic_id,),
             )
             return {(r["chart_number"], r["mspt_stage"], r["due_date"]) for r in cur.fetchall()}
 
 
-def unmark_mspt_phone_completed(chart_number: str, mspt_stage: str) -> None:
+def unmark_mspt_phone_completed(chart_number: str, mspt_stage: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM mspt_phone_completed WHERE chart_number = %s AND mspt_stage = %s AND clinic_id = 1",
-                (chart_number, mspt_stage),
+                "DELETE FROM mspt_phone_completed WHERE chart_number = %s AND mspt_stage = %s AND clinic_id = %s",
+                (chart_number, mspt_stage, clinic_id),
             )
 
 
 # ── Called entries split: recent vs auto-excluded ────────────────────────────
 
-def get_called_entries() -> list[FollowupEntry]:
+def get_called_entries(clinic_id: int = 1) -> list[FollowupEntry]:
     """Entries in 已二次通知 that are still within AUTO_EXCLUDE_DAYS."""
     cutoff = (date.today() - timedelta(days=AUTO_EXCLUDE_DAYS)).isoformat()
     with _conn() as conn:
@@ -651,8 +658,8 @@ def get_called_entries() -> list[FollowupEntry]:
                 """SELECT chart_number, name, birth_date, disease_name, category, due_date,
                           days_overdue, mspt_stage, contact_reason, last_visit_date, contacted_at,
                           contacted_time
-                   FROM contacts WHERE attempt=2 AND contacted_at > %s""",
-                (cutoff,),
+                   FROM contacts WHERE clinic_id=%s AND attempt=2 AND contacted_at > %s""",
+                (clinic_id, cutoff),
             )
             rows = cur.fetchall()
     return [
@@ -666,7 +673,7 @@ def get_called_entries() -> list[FollowupEntry]:
     ]
 
 
-def get_auto_excluded_entries() -> list[ExcludedEntry]:
+def get_auto_excluded_entries(clinic_id: int = 1) -> list[ExcludedEntry]:
     """Called entries older than AUTO_EXCLUDE_DAYS → shown as auto-excluded."""
     cutoff = (date.today() - timedelta(days=AUTO_EXCLUDE_DAYS)).isoformat()
     with _conn() as conn:
@@ -674,8 +681,8 @@ def get_auto_excluded_entries() -> list[ExcludedEntry]:
             cur.execute(
                 """SELECT chart_number, name, birth_date, disease_name, category, due_date,
                           days_overdue, mspt_stage, contact_reason, last_visit_date, contacted_at
-                   FROM contacts WHERE attempt=2 AND contacted_at <= %s""",
-                (cutoff,),
+                   FROM contacts WHERE clinic_id=%s AND attempt=2 AND contacted_at <= %s""",
+                (clinic_id, cutoff),
             )
             rows = cur.fetchall()
     result = []
@@ -696,14 +703,14 @@ def get_auto_excluded_entries() -> list[ExcludedEntry]:
 
 # ── Manual exclusion ──────────────────────────────────────────────────────────
 
-def mark_excluded(entry: FollowupEntry, reason: str, note: str = '', nurse: str = '') -> None:
+def mark_excluded(entry: FollowupEntry, reason: str, note: str = '', nurse: str = '', clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO excluded
                    (chart_number, category, name, birth_date, mspt_stage, due_date,
-                    last_visit_date, last_stage, reason, note, excluded_at, nurse)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    last_visit_date, last_stage, reason, note, excluded_at, nurse, clinic_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (chart_number, category) DO UPDATE SET
                        name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
                        mspt_stage=EXCLUDED.mspt_stage, due_date=EXCLUDED.due_date,
@@ -716,35 +723,39 @@ def mark_excluded(entry: FollowupEntry, reason: str, note: str = '', nurse: str 
                     entry.mspt_stage,
                     entry.due_date.isoformat() if entry.due_date else None,
                     entry.last_visit_date.isoformat() if entry.last_visit_date else None,
-                    entry.last_stage, reason, note, date.today().isoformat(), nurse,
+                    entry.last_stage, reason, note, date.today().isoformat(), nurse, clinic_id,
                 ),
             )
 
 
-def unmark_excluded(chart_number: str, category: str) -> None:
+def unmark_excluded(chart_number: str, category: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM excluded WHERE chart_number=%s AND category=%s",
-                (chart_number, category),
+                "DELETE FROM excluded WHERE chart_number=%s AND category=%s AND clinic_id=%s",
+                (chart_number, category, clinic_id),
             )
 
 
-def get_excluded_keys() -> set[tuple[str, str]]:
+def get_excluded_keys(clinic_id: int = 1) -> set[tuple[str, str]]:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT chart_number, category FROM excluded")
+            cur.execute(
+                "SELECT chart_number, category FROM excluded WHERE clinic_id=%s",
+                (clinic_id,),
+            )
             rows = cur.fetchall()
     return {(r["chart_number"], r["category"]) for r in rows}
 
 
-def get_excluded_entries() -> list[ExcludedEntry]:
+def get_excluded_entries(clinic_id: int = 1) -> list[ExcludedEntry]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT chart_number, category, name, birth_date, mspt_stage, due_date,
                           last_visit_date, last_stage, reason, note, excluded_at
-                   FROM excluded ORDER BY excluded_at DESC""",
+                   FROM excluded WHERE clinic_id=%s ORDER BY excluded_at DESC""",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     result = []
@@ -766,14 +777,14 @@ def get_excluded_entries() -> list[ExcludedEntry]:
 
 # ── MSPT completed (完成MSPT) ──────────────────────────────────────────────
 
-def mark_mspt_completed(entry: FollowupEntry, nurse: str = '') -> None:
+def mark_mspt_completed(entry: FollowupEntry, nurse: str = '', clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO mspt_completed
                    (chart_number, mspt_stage, due_date, name, birth_date,
-                    last_visit_date, last_stage, days_overdue, completed_at, completed_time, nurse)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    last_visit_date, last_stage, days_overdue, completed_at, completed_time, nurse, clinic_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (chart_number, mspt_stage, due_date) DO UPDATE SET
                        name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
                        last_visit_date=EXCLUDED.last_visit_date, last_stage=EXCLUDED.last_stage,
@@ -785,37 +796,40 @@ def mark_mspt_completed(entry: FollowupEntry, nurse: str = '') -> None:
                     entry.patient.name, entry.patient.birth_date.isoformat(),
                     entry.last_visit_date.isoformat() if entry.last_visit_date else None,
                     entry.last_stage, entry.days_overdue, date.today().isoformat(),
-                    datetime.now().strftime('%H:%M'), nurse,
+                    datetime.now().strftime('%H:%M'), nurse, clinic_id,
                 ),
             )
 
 
-def unmark_mspt_completed(chart_number: str, mspt_stage: str, due_date: str) -> None:
+def unmark_mspt_completed(chart_number: str, mspt_stage: str, due_date: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM mspt_completed WHERE chart_number=%s AND mspt_stage=%s AND due_date=%s",
-                (chart_number, mspt_stage, due_date),
+                "DELETE FROM mspt_completed WHERE chart_number=%s AND mspt_stage=%s AND due_date=%s AND clinic_id=%s",
+                (chart_number, mspt_stage, due_date, clinic_id),
             )
 
 
-def get_mspt_completed_keys() -> set[tuple[str, str, str]]:
+def get_mspt_completed_keys(clinic_id: int = 1) -> set[tuple[str, str, str]]:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT chart_number, mspt_stage, due_date FROM mspt_completed")
+            cur.execute(
+                "SELECT chart_number, mspt_stage, due_date FROM mspt_completed WHERE clinic_id=%s",
+                (clinic_id,),
+            )
             rows = cur.fetchall()
     return {(r["chart_number"], r["mspt_stage"], r["due_date"]) for r in rows}
 
 
-def mark_mspt_checkedin(entry: FollowupEntry, nurse: str = '') -> None:
+def mark_mspt_checkedin(entry: FollowupEntry, nurse: str = '', clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO mspt_checkedin
                    (chart_number, mspt_stage, due_date, name, birth_date,
                     last_visit_date, last_stage, days_overdue, contact_reason,
-                    checkedin_at, checkedin_time, nurse)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    checkedin_at, checkedin_time, nurse, clinic_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (chart_number, mspt_stage, due_date) DO UPDATE SET
                        name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
                        last_visit_date=EXCLUDED.last_visit_date, last_stage=EXCLUDED.last_stage,
@@ -828,36 +842,40 @@ def mark_mspt_checkedin(entry: FollowupEntry, nurse: str = '') -> None:
                     entry.patient.name, entry.patient.birth_date.isoformat(),
                     entry.last_visit_date.isoformat() if entry.last_visit_date else None,
                     entry.last_stage, entry.days_overdue, entry.contact_reason,
-                    date.today().isoformat(), datetime.now().strftime('%H:%M'), nurse,
+                    date.today().isoformat(), datetime.now().strftime('%H:%M'), nurse, clinic_id,
                 ),
             )
 
 
-def unmark_mspt_checkedin(chart_number: str, mspt_stage: str, due_date: str) -> None:
+def unmark_mspt_checkedin(chart_number: str, mspt_stage: str, due_date: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM mspt_checkedin WHERE chart_number=%s AND mspt_stage=%s AND due_date=%s",
-                (chart_number, mspt_stage, due_date),
+                "DELETE FROM mspt_checkedin WHERE chart_number=%s AND mspt_stage=%s AND due_date=%s AND clinic_id=%s",
+                (chart_number, mspt_stage, due_date, clinic_id),
             )
 
 
-def get_mspt_checkedin_keys() -> set[tuple[str, str, str]]:
+def get_mspt_checkedin_keys(clinic_id: int = 1) -> set[tuple[str, str, str]]:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT chart_number, mspt_stage, due_date FROM mspt_checkedin")
+            cur.execute(
+                "SELECT chart_number, mspt_stage, due_date FROM mspt_checkedin WHERE clinic_id=%s",
+                (clinic_id,),
+            )
             rows = cur.fetchall()
     return {(r["chart_number"], r["mspt_stage"], r["due_date"]) for r in rows}
 
 
-def get_mspt_checkedin_entries() -> list[FollowupEntry]:
+def get_mspt_checkedin_entries(clinic_id: int = 1) -> list[FollowupEntry]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT chart_number, mspt_stage, due_date, name, birth_date,
                           last_visit_date, last_stage, days_overdue, contact_reason,
                           checkedin_at, checkedin_time, nurse
-                   FROM mspt_checkedin ORDER BY checkedin_at DESC, checkedin_time DESC""",
+                   FROM mspt_checkedin WHERE clinic_id=%s ORDER BY checkedin_at DESC, checkedin_time DESC""",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     return [
@@ -879,14 +897,14 @@ def get_mspt_checkedin_entries() -> list[FollowupEntry]:
     ]
 
 
-def mark_hep_returned_completed(entry: FollowupEntry, nurse: str = '') -> None:
+def mark_hep_returned_completed(entry: FollowupEntry, nurse: str = '', clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO hep_returned_completed
                    (chart_number, last_visit_date, name, birth_date, disease_name,
-                    days_overdue, completed_at, completed_time, nurse)
-                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                    days_overdue, completed_at, completed_time, nurse, clinic_id)
+                   VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                    ON CONFLICT (chart_number, last_visit_date) DO UPDATE SET
                        name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
                        disease_name=EXCLUDED.disease_name, days_overdue=EXCLUDED.days_overdue,
@@ -897,47 +915,52 @@ def mark_hep_returned_completed(entry: FollowupEntry, nurse: str = '') -> None:
                     entry.last_visit_date.isoformat(),
                     entry.patient.name, entry.patient.birth_date.isoformat(),
                     entry.disease_name, entry.days_overdue,
-                    date.today().isoformat(), datetime.now().strftime('%H:%M'), nurse,
+                    date.today().isoformat(), datetime.now().strftime('%H:%M'), nurse, clinic_id,
                 ),
             )
 
 
-def unmark_hep_returned_completed(chart_number: str, last_visit_date: str) -> None:
+def unmark_hep_returned_completed(chart_number: str, last_visit_date: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM hep_returned_completed WHERE chart_number=%s AND last_visit_date=%s",
-                (chart_number, last_visit_date),
+                "DELETE FROM hep_returned_completed WHERE chart_number=%s AND last_visit_date=%s AND clinic_id=%s",
+                (chart_number, last_visit_date, clinic_id),
             )
 
 
-def get_hep_returned_completed_keys() -> set[tuple[str, str]]:
+def get_hep_returned_completed_keys(clinic_id: int = 1) -> set[tuple[str, str]]:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT chart_number, last_visit_date FROM hep_returned_completed")
+            cur.execute(
+                "SELECT chart_number, last_visit_date FROM hep_returned_completed WHERE clinic_id=%s",
+                (clinic_id,),
+            )
             rows = cur.fetchall()
     return {(r["chart_number"], r["last_visit_date"]) for r in rows}
 
 
-def get_hep_completed_latest_map() -> dict[str, str]:
+def get_hep_completed_latest_map(clinic_id: int = 1) -> dict[str, str]:
     """Returns {chart_number: most recent completed last_visit_date} for
     suppressing 待聯絡 entries a nurse has manually marked 完成B肝 on."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT chart_number, MAX(last_visit_date) AS max_date FROM hep_returned_completed GROUP BY chart_number"
+                "SELECT chart_number, MAX(last_visit_date) AS max_date FROM hep_returned_completed WHERE clinic_id=%s GROUP BY chart_number",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     return {r["chart_number"]: r["max_date"] for r in rows}
 
 
-def get_hep_returned_completed_entries() -> list[FollowupEntry]:
+def get_hep_returned_completed_entries(clinic_id: int = 1) -> list[FollowupEntry]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT chart_number, last_visit_date, name, birth_date, disease_name,
                           days_overdue, completed_at, completed_time, nurse
-                   FROM hep_returned_completed ORDER BY completed_at DESC, completed_time DESC""",
+                   FROM hep_returned_completed WHERE clinic_id=%s ORDER BY completed_at DESC, completed_time DESC""",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     return [
@@ -958,124 +981,136 @@ def get_hep_returned_completed_entries() -> list[FollowupEntry]:
 
 def log_line_notification(
     chart_number: str, name: str, birth_date: str, category: str, template: str,
-    status: str, detail: str, dry_run: bool, nurse: str = '',
+    status: str, detail: str, dry_run: bool, nurse: str = '', clinic_id: int = 1,
 ) -> int:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO line_notification_log
                    (chart_number, name, birth_date, category, template, status, detail,
-                    dry_run, nurse, sent_at, sent_time)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    dry_run, nurse, sent_at, sent_time, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    RETURNING id""",
                 (chart_number, name, birth_date, category, template, status, detail,
-                 int(dry_run), nurse, date.today().isoformat(), datetime.now().strftime('%H:%M')),
+                 int(dry_run), nurse, date.today().isoformat(), datetime.now().strftime('%H:%M'), clinic_id),
             )
             return cur.fetchone()["id"]
 
 
-def get_line_notification_log(limit: int = 300) -> list[dict]:
+def get_line_notification_log(limit: int = 300, clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, chart_number, name, birth_date, category, template, status, detail,
                           dry_run, nurse, sent_at, sent_time, undone_at, undone_by
-                   FROM line_notification_log ORDER BY id DESC LIMIT %s""",
-                (limit,),
+                   FROM line_notification_log WHERE clinic_id=%s ORDER BY id DESC LIMIT %s""",
+                (clinic_id, limit),
             )
             return [dict(r) for r in cur.fetchall()]
 
 
-def get_line_notification_log_entry(log_id: int) -> dict | None:
+def get_line_notification_log_entry(log_id: int, clinic_id: int = 1) -> dict | None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, chart_number, name, birth_date, category, template, status, detail,
                           dry_run, nurse, sent_at, sent_time, undone_at, undone_by
-                   FROM line_notification_log WHERE id = %s""",
-                (log_id,),
+                   FROM line_notification_log WHERE id = %s AND clinic_id = %s""",
+                (log_id, clinic_id),
             )
             row = cur.fetchone()
     return dict(row) if row is not None else None
 
 
-def mark_line_notification_undone(log_id: int, nurse: str = '') -> None:
+def mark_line_notification_undone(log_id: int, nurse: str = '', clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "UPDATE line_notification_log SET undone_at = %s, undone_by = %s WHERE id = %s",
-                (datetime.now().strftime('%Y-%m-%d %H:%M'), nurse, log_id),
+                "UPDATE line_notification_log SET undone_at = %s, undone_by = %s WHERE id = %s AND clinic_id = %s",
+                (datetime.now().strftime('%Y-%m-%d %H:%M'), nurse, log_id, clinic_id),
             )
 
 
-def flag_line_unlinked(chart_number: str, name: str, nurse: str = '') -> None:
+def flag_line_unlinked(chart_number: str, name: str, nurse: str = '', clinic_id: int = 1) -> None:
     """Mark a patient as having no LINE account linked to Alleypin, so the
     main dashboard can tag them in their existing pending list (across
     whichever categories they appear in) to contact by phone instead."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """INSERT INTO line_unlinked (chart_number, name, flagged_at, nurse)
-                   VALUES (%s, %s, %s, %s)
+                """INSERT INTO line_unlinked (chart_number, name, flagged_at, nurse, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s)
                    ON CONFLICT(chart_number) DO UPDATE SET
                        flagged_at=EXCLUDED.flagged_at, nurse=EXCLUDED.nurse""",
-                (chart_number, name, date.today().isoformat(), nurse),
+                (chart_number, name, date.today().isoformat(), nurse, clinic_id),
             )
 
 
-def clear_line_unlinked(chart_number: str) -> None:
+def clear_line_unlinked(chart_number: str, clinic_id: int = 1) -> None:
     """Called when a later send to this patient actually succeeds — their
     LINE is evidently linked now, so the flag no longer applies."""
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM line_unlinked WHERE chart_number = %s", (chart_number,))
+            cur.execute(
+                "DELETE FROM line_unlinked WHERE chart_number = %s AND clinic_id = %s",
+                (chart_number, clinic_id),
+            )
 
 
-def get_line_unlinked_chart_numbers() -> set[str]:
+def get_line_unlinked_chart_numbers(clinic_id: int = 1) -> set[str]:
     """Bulk-fetch flagged chart numbers for applying the tag while building
     a report, instead of querying once per patient."""
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT chart_number FROM line_unlinked")
+            cur.execute(
+                "SELECT chart_number FROM line_unlinked WHERE clinic_id = %s",
+                (clinic_id,),
+            )
             rows = cur.fetchall()
     return {r["chart_number"] for r in rows}
 
 
-def flag_alleypin_not_found(chart_number: str, name: str, nurse: str = '') -> None:
+def flag_alleypin_not_found(chart_number: str, name: str, nurse: str = '', clinic_id: int = 1) -> None:
     """Mark a patient as not found in Alleypin's own patient list at all
     (distinct from line_unlinked — found but not LINE-linked), so the main
     dashboard can tag them to contact by phone instead."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """INSERT INTO alleypin_not_found (chart_number, name, flagged_at, nurse)
-                   VALUES (%s, %s, %s, %s)
+                """INSERT INTO alleypin_not_found (chart_number, name, flagged_at, nurse, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s)
                    ON CONFLICT(chart_number) DO UPDATE SET
                        flagged_at=EXCLUDED.flagged_at, nurse=EXCLUDED.nurse""",
-                (chart_number, name, date.today().isoformat(), nurse),
+                (chart_number, name, date.today().isoformat(), nurse, clinic_id),
             )
 
 
-def clear_alleypin_not_found(chart_number: str) -> None:
+def clear_alleypin_not_found(chart_number: str, clinic_id: int = 1) -> None:
     """Called whenever a later attempt actually finds this patient on
     Alleypin (sent, line_not_linked, or recently_sent all imply they were
     found this time) — the flag no longer applies."""
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM alleypin_not_found WHERE chart_number = %s", (chart_number,))
+            cur.execute(
+                "DELETE FROM alleypin_not_found WHERE chart_number = %s AND clinic_id = %s",
+                (chart_number, clinic_id),
+            )
 
 
-def get_alleypin_not_found_chart_numbers() -> set[str]:
+def get_alleypin_not_found_chart_numbers(clinic_id: int = 1) -> set[str]:
     """Bulk-fetch flagged chart numbers for applying the tag while building
     a report, instead of querying once per patient."""
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT chart_number FROM alleypin_not_found")
+            cur.execute(
+                "SELECT chart_number FROM alleypin_not_found WHERE clinic_id = %s",
+                (clinic_id,),
+            )
             rows = cur.fetchall()
     return {r["chart_number"] for r in rows}
 
 
-def record_line_sent(chart_number: str, template: str, name: str, last_sent_at: str, nurse: str = '') -> None:
+def record_line_sent(chart_number: str, template: str, name: str, last_sent_at: str, nurse: str = '', clinic_id: int = 1) -> None:
     """Record the most recent known send date for a (patient, template) pair —
     called whether a send just succeeded (last_sent_at = today) or was skipped
     as a recent duplicate (last_sent_at = whatever Alleypin already showed).
@@ -1083,32 +1118,36 @@ def record_line_sent(chart_number: str, template: str, name: str, last_sent_at: 
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """INSERT INTO line_recently_sent (chart_number, template, name, last_sent_at, nurse)
-                   VALUES (%s, %s, %s, %s, %s)
+                """INSERT INTO line_recently_sent (chart_number, template, name, last_sent_at, nurse, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s)
                    ON CONFLICT(chart_number, template) DO UPDATE SET
                        name=EXCLUDED.name, last_sent_at=EXCLUDED.last_sent_at, nurse=EXCLUDED.nurse""",
-                (chart_number, template, name, last_sent_at, nurse),
+                (chart_number, template, name, last_sent_at, nurse, clinic_id),
             )
 
 
-def get_line_recently_sent_map() -> dict[tuple[str, str], str]:
+def get_line_recently_sent_map(clinic_id: int = 1) -> dict[tuple[str, str], str]:
     """Bulk-fetch {(chart_number, template): last_sent_at} so a report can
     compute "days since" freshly against today, rather than baking in a
     stale day-count at write time."""
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT chart_number, template, last_sent_at FROM line_recently_sent")
+            cur.execute(
+                "SELECT chart_number, template, last_sent_at FROM line_recently_sent WHERE clinic_id = %s",
+                (clinic_id,),
+            )
             rows = cur.fetchall()
     return {(r["chart_number"], r["template"]): r["last_sent_at"] for r in rows}
 
 
-def get_mspt_completed_entries() -> list[FollowupEntry]:
+def get_mspt_completed_entries(clinic_id: int = 1) -> list[FollowupEntry]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT chart_number, mspt_stage, due_date, name, birth_date,
                           last_visit_date, last_stage, days_overdue, completed_at
-                   FROM mspt_completed ORDER BY completed_at DESC""",
+                   FROM mspt_completed WHERE clinic_id=%s ORDER BY completed_at DESC""",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     return [
@@ -1127,7 +1166,7 @@ def get_mspt_completed_entries() -> list[FollowupEntry]:
     ]
 
 
-def get_print_history(target_date_iso: str) -> dict:
+def get_print_history(target_date_iso: str, clinic_id: int = 1) -> dict:
     """Return all contacts recorded on a given date, split by attempt (1=contacted, 2=called)
     plus any MSPT completions recorded on the same date."""
     with _conn() as conn:
@@ -1136,30 +1175,30 @@ def get_print_history(target_date_iso: str) -> dict:
                 """SELECT chart_number, name, birth_date, disease_name, category, due_date,
                           days_overdue, mspt_stage, contact_reason, last_visit_date,
                           contacted_at, contacted_time, attempt, nurse
-                   FROM contacts WHERE contacted_at = %s
+                   FROM contacts WHERE clinic_id=%s AND contacted_at = %s
                    ORDER BY contacted_time NULLS LAST""",
-                (target_date_iso,),
+                (clinic_id, target_date_iso),
             )
             contact_rows = cur.fetchall()
             cur.execute(
                 """SELECT chart_number, mspt_stage, due_date, name, birth_date,
                           last_visit_date, last_stage, days_overdue, completed_at, completed_time, nurse
-                   FROM mspt_completed WHERE completed_at = %s
+                   FROM mspt_completed WHERE clinic_id=%s AND completed_at = %s
                    ORDER BY completed_time NULLS LAST""",
-                (target_date_iso,),
+                (clinic_id, target_date_iso),
             )
             mc_rows = cur.fetchall()
             cur.execute(
                 """SELECT chart_number, name, birth_date, category, mspt_stage,
                           due_date, last_visit_date, last_stage, reason, note, nurse
-                   FROM excluded WHERE excluded_at = %s""",
-                (target_date_iso,),
+                   FROM excluded WHERE clinic_id=%s AND excluded_at = %s""",
+                (clinic_id, target_date_iso),
             )
             excl_rows = cur.fetchall()
             cur.execute(
                 """SELECT chart_number, name, birth_date, pickup_date, ps_days, nurse
-                   FROM manual_pickups WHERE recorded_at = %s""",
-                (target_date_iso,),
+                   FROM manual_pickups WHERE clinic_id=%s AND recorded_at = %s""",
+                (clinic_id, target_date_iso),
             )
             pickup_rows = cur.fetchall()
 
@@ -1220,13 +1259,13 @@ def get_print_history(target_date_iso: str) -> dict:
     }
 
 
-def mark_manual_pickup(entry: FollowupEntry, pickup_date: date, ps_days: int, nurse: str = '') -> None:
+def mark_manual_pickup(entry: FollowupEntry, pickup_date: date, ps_days: int, nurse: str = '', clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO manual_pickups
-                   (chart_number, name, birth_date, pickup_date, ps_days, recorded_at, nurse)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)
+                   (chart_number, name, birth_date, pickup_date, ps_days, recorded_at, nurse, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (chart_number) DO UPDATE SET
                        name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
                        pickup_date=EXCLUDED.pickup_date, ps_days=EXCLUDED.ps_days,
@@ -1239,30 +1278,38 @@ def mark_manual_pickup(entry: FollowupEntry, pickup_date: date, ps_days: int, nu
                     ps_days,
                     date.today().isoformat(),
                     nurse,
+                    clinic_id,
                 ),
             )
 
 
-def unmark_manual_pickup(chart_number: str) -> None:
+def unmark_manual_pickup(chart_number: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM manual_pickups WHERE chart_number = %s", (chart_number,))
+            cur.execute(
+                "DELETE FROM manual_pickups WHERE chart_number = %s AND clinic_id = %s",
+                (chart_number, clinic_id),
+            )
 
 
-def get_manual_pickup_map() -> dict[str, tuple[str, int]]:
+def get_manual_pickup_map(clinic_id: int = 1) -> dict[str, tuple[str, int]]:
     """Returns {chart_number: (pickup_date_iso, ps_days)} for suppression filtering."""
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT chart_number, pickup_date, ps_days FROM manual_pickups")
+            cur.execute(
+                "SELECT chart_number, pickup_date, ps_days FROM manual_pickups WHERE clinic_id = %s",
+                (clinic_id,),
+            )
             rows = cur.fetchall()
     return {r["chart_number"]: (r["pickup_date"], r["ps_days"]) for r in rows}
 
 
-def get_manual_pickup_entries() -> list[ManualPickupEntry]:
+def get_manual_pickup_entries(clinic_id: int = 1) -> list[ManualPickupEntry]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT chart_number, name, birth_date, pickup_date, ps_days FROM manual_pickups ORDER BY recorded_at DESC"
+                "SELECT chart_number, name, birth_date, pickup_date, ps_days FROM manual_pickups WHERE clinic_id = %s ORDER BY recorded_at DESC",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     return [
@@ -1279,43 +1326,50 @@ def get_manual_pickup_entries() -> list[ManualPickupEntry]:
 
 
 def mark_mspt_manual(chart_number: str, name: str, birth_date: date, mspt_stage: str,
-                     completed_date: date, nurse: str = '') -> None:
+                     completed_date: date, nurse: str = '', clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO mspt_manual
-                   (chart_number, name, birth_date, mspt_stage, completed_date, nurse, marked_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s)
+                   (chart_number, name, birth_date, mspt_stage, completed_date, nurse, marked_at, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (chart_number) DO UPDATE SET
                        name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
                        mspt_stage=EXCLUDED.mspt_stage, completed_date=EXCLUDED.completed_date,
                        nurse=EXCLUDED.nurse, marked_at=EXCLUDED.marked_at""",
                 (chart_number, name, birth_date.isoformat(), mspt_stage,
-                 completed_date.isoformat(), nurse, date.today().isoformat()),
+                 completed_date.isoformat(), nurse, date.today().isoformat(), clinic_id),
             )
 
 
-def unmark_mspt_manual(chart_number: str) -> None:
+def unmark_mspt_manual(chart_number: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM mspt_manual WHERE chart_number = %s", (chart_number,))
+            cur.execute(
+                "DELETE FROM mspt_manual WHERE chart_number = %s AND clinic_id = %s",
+                (chart_number, clinic_id),
+            )
 
 
-def get_mspt_manual_overrides() -> dict[str, dict]:
+def get_mspt_manual_overrides(clinic_id: int = 1) -> dict[str, dict]:
     """Returns {chart_number: {'stage': str, 'date': date}} for post-processing in get_report."""
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT chart_number, mspt_stage, completed_date FROM mspt_manual")
+            cur.execute(
+                "SELECT chart_number, mspt_stage, completed_date FROM mspt_manual WHERE clinic_id = %s",
+                (clinic_id,),
+            )
             rows = cur.fetchall()
     return {r["chart_number"]: {'stage': r["mspt_stage"], 'date': date.fromisoformat(r["completed_date"])} for r in rows}
 
 
-def get_mspt_manual_entries() -> list[MsptManualEntry]:
+def get_mspt_manual_entries(clinic_id: int = 1) -> list[MsptManualEntry]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT chart_number, name, birth_date, mspt_stage, completed_date, nurse, marked_at
-                   FROM mspt_manual ORDER BY marked_at DESC"""
+                   FROM mspt_manual WHERE clinic_id = %s ORDER BY marked_at DESC""",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     return [
@@ -1328,26 +1382,26 @@ def get_mspt_manual_entries() -> list[MsptManualEntry]:
     ]
 
 
-def get_activity_stats(month: str) -> dict[str, dict[str, int]]:
+def get_activity_stats(month: str, clinic_id: int = 1) -> dict[str, dict[str, int]]:
     """month: 'YYYY-MM'. Returns {nurse: {contacted, called, mspt, excluded, pickup}}."""
     prefix = month + "-%"
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT nurse, attempt, COUNT(*) AS cnt FROM contacts WHERE contacted_at LIKE %s GROUP BY nurse, attempt",
-                (prefix,))
+                "SELECT nurse, attempt, COUNT(*) AS cnt FROM contacts WHERE clinic_id=%s AND contacted_at LIKE %s GROUP BY nurse, attempt",
+                (clinic_id, prefix))
             c_rows = cur.fetchall()
             cur.execute(
-                "SELECT nurse, COUNT(*) AS cnt FROM mspt_completed WHERE completed_at LIKE %s GROUP BY nurse",
-                (prefix,))
+                "SELECT nurse, COUNT(*) AS cnt FROM mspt_completed WHERE clinic_id=%s AND completed_at LIKE %s GROUP BY nurse",
+                (clinic_id, prefix))
             m_rows = cur.fetchall()
             cur.execute(
-                "SELECT nurse, COUNT(*) AS cnt FROM excluded WHERE excluded_at LIKE %s GROUP BY nurse",
-                (prefix,))
+                "SELECT nurse, COUNT(*) AS cnt FROM excluded WHERE clinic_id=%s AND excluded_at LIKE %s GROUP BY nurse",
+                (clinic_id, prefix))
             ex_rows = cur.fetchall()
             cur.execute(
-                "SELECT nurse, COUNT(*) AS cnt FROM manual_pickups WHERE recorded_at LIKE %s GROUP BY nurse",
-                (prefix,))
+                "SELECT nurse, COUNT(*) AS cnt FROM manual_pickups WHERE clinic_id=%s AND recorded_at LIKE %s GROUP BY nurse",
+                (clinic_id, prefix))
             pk_rows = cur.fetchall()
 
     stats: dict[str, dict[str, int]] = {}
@@ -1374,14 +1428,14 @@ def get_activity_stats(month: str) -> dict[str, dict[str, int]]:
     return stats
 
 
-def mark_on_hold(entry: FollowupEntry, note: str, nurse: str = '') -> int:
+def mark_on_hold(entry: FollowupEntry, note: str, nurse: str = '', clinic_id: int = 1) -> int:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO on_hold
                    (chart_number, category, due_date, name, birth_date, disease_name,
-                    days_overdue, mspt_stage, last_stage, last_visit_date, note, held_at, nurse, is_manual)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0)
+                    days_overdue, mspt_stage, last_stage, last_visit_date, note, held_at, nurse, is_manual, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s)
                    RETURNING id""",
                 (
                     entry.patient.chart_number,
@@ -1397,47 +1451,53 @@ def mark_on_hold(entry: FollowupEntry, note: str, nurse: str = '') -> int:
                     note,
                     date.today().isoformat(),
                     nurse,
+                    clinic_id,
                 ),
             )
             return cur.fetchone()["id"]
 
 
-def mark_on_hold_manual(name: str, note: str, nurse: str = '', category: str | None = None) -> int:
+def mark_on_hold_manual(name: str, note: str, nurse: str = '', category: str | None = None, clinic_id: int = 1) -> int:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """INSERT INTO on_hold (name, category, note, held_at, nurse, is_manual)
-                   VALUES (%s, %s, %s, %s, %s, 1)
+                """INSERT INTO on_hold (name, category, note, held_at, nurse, is_manual, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, 1, %s)
                    RETURNING id""",
-                (name, category, note, date.today().isoformat(), nurse),
+                (name, category, note, date.today().isoformat(), nurse, clinic_id),
             )
             return cur.fetchone()["id"]
 
 
-def remove_on_hold(hold_id: int) -> None:
+def remove_on_hold(hold_id: int, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM on_hold WHERE id = %s", (hold_id,))
+            cur.execute(
+                "DELETE FROM on_hold WHERE id = %s AND clinic_id = %s",
+                (hold_id, clinic_id),
+            )
 
 
-def get_on_hold_keys() -> set[tuple[str, str, str]]:
+def get_on_hold_keys(clinic_id: int = 1) -> set[tuple[str, str, str]]:
     """(chart_number, category, due_date) for non-manual entries — used to filter the main list."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT chart_number, category, due_date FROM on_hold WHERE is_manual = 0 AND chart_number IS NOT NULL"
+                "SELECT chart_number, category, due_date FROM on_hold WHERE clinic_id=%s AND is_manual = 0 AND chart_number IS NOT NULL",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     return {(r["chart_number"], r["category"], r["due_date"]) for r in rows}
 
 
-def get_on_hold_entries() -> list[OnHoldEntry]:
+def get_on_hold_entries(clinic_id: int = 1) -> list[OnHoldEntry]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, chart_number, category, due_date, name, birth_date, disease_name,
                           days_overdue, mspt_stage, last_stage, last_visit_date, note, held_at, nurse, is_manual
-                   FROM on_hold ORDER BY held_at DESC"""
+                   FROM on_hold WHERE clinic_id=%s ORDER BY held_at DESC""",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     result = []
@@ -1466,12 +1526,13 @@ def get_on_hold_entries() -> list[OnHoldEntry]:
     return result
 
 
-def get_submitted_entries() -> list[MsptSubmittableEntry]:
+def get_submitted_entries(clinic_id: int = 1) -> list[MsptSubmittableEntry]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT chart_number, name, birth_date, mspt_stage, blood_report_date, days_since_last_stage
-                   FROM submitted""",
+                   FROM submitted WHERE clinic_id = %s""",
+                (clinic_id,),
             )
             rows = cur.fetchall()
     return [
@@ -1485,215 +1546,258 @@ def get_submitted_entries() -> list[MsptSubmittableEntry]:
     ]
 
 
-def get_shifts_for_week(week_start: str) -> list[dict]:
+def get_shifts_for_week(week_start: str, clinic_id: int = 1) -> list[dict]:
     week_end = (date.fromisoformat(week_start) + timedelta(days=6)).isoformat()
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT nurse, shift_date, slot, start_time, end_time, clean_start, clean_end FROM shifts
-                   WHERE shift_date BETWEEN %s AND %s""",
-                (week_start, week_end),
+                   WHERE clinic_id=%s AND shift_date BETWEEN %s AND %s""",
+                (clinic_id, week_start, week_end),
             )
             return [dict(r) for r in cur.fetchall()]
 
 
 def set_shift(
     nurse: str, shift_date: str, slot: str, start_time: str | None, end_time: str | None,
-    clean_start: str | None = None, clean_end: str | None = None,
+    clean_start: str | None = None, clean_end: str | None = None, clinic_id: int = 1,
 ) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             if start_time is None and end_time is None:
                 cur.execute(
-                    "DELETE FROM shifts WHERE nurse = %s AND shift_date = %s AND slot = %s",
-                    (nurse, shift_date, slot),
+                    "DELETE FROM shifts WHERE nurse = %s AND shift_date = %s AND slot = %s AND clinic_id = %s",
+                    (nurse, shift_date, slot, clinic_id),
                 )
             else:
                 cur.execute(
-                    """INSERT INTO shifts (nurse, shift_date, slot, start_time, end_time, clean_start, clean_end)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """INSERT INTO shifts (nurse, shift_date, slot, start_time, end_time, clean_start, clean_end, clinic_id)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                        ON CONFLICT(nurse, shift_date, slot) DO UPDATE SET
                            start_time=EXCLUDED.start_time, end_time=EXCLUDED.end_time,
                            clean_start=EXCLUDED.clean_start, clean_end=EXCLUDED.clean_end""",
-                    (nurse, shift_date, slot, start_time, end_time, clean_start, clean_end),
+                    (nurse, shift_date, slot, start_time, end_time, clean_start, clean_end, clinic_id),
                 )
 
 
-def copy_week(from_week_start: str, to_week_start: str) -> None:
+def copy_week(from_week_start: str, to_week_start: str, clinic_id: int = 1) -> None:
     """Copies every shift entry in from_week_start's week to the same weekday in
     to_week_start's week, overwriting any existing entries there."""
     day_delta = (date.fromisoformat(to_week_start) - date.fromisoformat(from_week_start)).days
-    rows = get_shifts_for_week(from_week_start)
+    rows = get_shifts_for_week(from_week_start, clinic_id)
     with _conn() as conn:
         with conn.cursor() as cur:
             for r in rows:
                 new_date = (date.fromisoformat(r['shift_date']) + timedelta(days=day_delta)).isoformat()
                 cur.execute(
-                    """INSERT INTO shifts (nurse, shift_date, slot, start_time, end_time, clean_start, clean_end)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    """INSERT INTO shifts (nurse, shift_date, slot, start_time, end_time, clean_start, clean_end, clinic_id)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                        ON CONFLICT(nurse, shift_date, slot) DO UPDATE SET
                            start_time=EXCLUDED.start_time, end_time=EXCLUDED.end_time,
                            clean_start=EXCLUDED.clean_start, clean_end=EXCLUDED.clean_end""",
-                    (r['nurse'], new_date, r['slot'], r['start_time'], r['end_time'], r['clean_start'], r['clean_end']),
+                    (r['nurse'], new_date, r['slot'], r['start_time'], r['end_time'], r['clean_start'], r['clean_end'], clinic_id),
                 )
 
 
-def get_nurses() -> list[str]:
-    with _conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT name FROM nurses ORDER BY sort_order, id")
-            return [r["name"] for r in cur.fetchall()]
-
-
-def get_nurses_with_pin_status() -> list[dict]:
+def get_nurses(clinic_id: int = 1) -> list[str]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT name, (pin_hash IS NOT NULL) AS has_pin FROM nurses ORDER BY sort_order, id"
+                "SELECT name FROM nurses WHERE clinic_id = %s ORDER BY sort_order, id",
+                (clinic_id,),
+            )
+            return [r["name"] for r in cur.fetchall()]
+
+
+def get_nurses_with_pin_status(clinic_id: int = 1) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT name, (pin_hash IS NOT NULL) AS has_pin FROM nurses WHERE clinic_id = %s ORDER BY sort_order, id",
+                (clinic_id,),
             )
             return [{"name": r["name"], "has_pin": bool(r["has_pin"])} for r in cur.fetchall()]
 
 
-def set_nurse_pin(name: str, pin: str) -> None:
+def set_nurse_pin(name: str, pin: str, clinic_id: int = 1) -> None:
     import bcrypt
     if not pin.isdigit() or len(pin) != 4:
         raise ValueError("PIN 必須是 4 位數字")
     pin_hash = bcrypt.hashpw(pin.encode(), bcrypt.gensalt(10)).decode()
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("UPDATE nurses SET pin_hash = %s WHERE name = %s", (pin_hash, name))
+            cur.execute(
+                "UPDATE nurses SET pin_hash = %s WHERE name = %s AND clinic_id = %s",
+                (pin_hash, name, clinic_id),
+            )
 
 
-def clear_nurse_pin(name: str) -> None:
+def clear_nurse_pin(name: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("UPDATE nurses SET pin_hash = NULL WHERE name = %s", (name,))
+            cur.execute(
+                "UPDATE nurses SET pin_hash = NULL WHERE name = %s AND clinic_id = %s",
+                (name, clinic_id),
+            )
 
 
-def verify_nurse_pin(name: str, pin: str) -> bool:
+def verify_nurse_pin(name: str, pin: str, clinic_id: int = 1) -> bool:
     import bcrypt
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT pin_hash FROM nurses WHERE name = %s", (name,))
+            cur.execute(
+                "SELECT pin_hash FROM nurses WHERE name = %s AND clinic_id = %s",
+                (name, clinic_id),
+            )
             row = cur.fetchone()
     if not row or not row["pin_hash"]:
         return False
     return bcrypt.checkpw(pin.encode(), row["pin_hash"].encode())
 
 
-def add_nurse(name: str) -> bool:
+def add_nurse(name: str, clinic_id: int = 1) -> bool:
     """Returns False (no-op) if the name already exists."""
+    import bcrypt
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM nurses WHERE name = %s", (name,))
+            cur.execute(
+                "SELECT 1 FROM nurses WHERE name = %s AND clinic_id = %s",
+                (name, clinic_id),
+            )
             if cur.fetchone():
                 return False
-            cur.execute("SELECT COALESCE(MAX(sort_order), -1) AS max_order FROM nurses")
+            cur.execute(
+                "SELECT COALESCE(MAX(sort_order), -1) AS max_order FROM nurses WHERE clinic_id = %s",
+                (clinic_id,),
+            )
             max_order = cur.fetchone()["max_order"]
             default_pin = bcrypt.hashpw(b'0000', bcrypt.gensalt(10)).decode()
             cur.execute(
-                "INSERT INTO nurses (name, sort_order, pin_hash) VALUES (%s, %s, %s)",
-                (name, max_order + 1, default_pin)
+                "INSERT INTO nurses (name, sort_order, pin_hash, clinic_id) VALUES (%s, %s, %s, %s)",
+                (name, max_order + 1, default_pin, clinic_id)
             )
     return True
 
 
-def remove_nurse(name: str) -> None:
+def remove_nurse(name: str, clinic_id: int = 1) -> None:
     """Removes the nurse from the roster. Past shift/contact records under
     this name are left untouched — only the active roster shrinks."""
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM nurses WHERE name = %s", (name,))
+            cur.execute(
+                "DELETE FROM nurses WHERE name = %s AND clinic_id = %s",
+                (name, clinic_id),
+            )
 
 
-def rename_nurse(old_name: str, new_name: str) -> bool:
+def rename_nurse(old_name: str, new_name: str, clinic_id: int = 1) -> bool:
     """Returns False (no-op) if new_name is already used by a different entry.
     Updates the roster and this week's-and-future shifts table so the renamed
     person's schedule carries over; older historical logs elsewhere (contacts,
     activity stats, etc.) keep the name as it was recorded at the time."""
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM nurses WHERE name = %s AND name != %s", (new_name, old_name))
+            cur.execute(
+                "SELECT 1 FROM nurses WHERE name = %s AND name != %s AND clinic_id = %s",
+                (new_name, old_name, clinic_id),
+            )
             if cur.fetchone():
                 return False
-            cur.execute("UPDATE nurses SET name = %s WHERE name = %s", (new_name, old_name))
-            cur.execute("UPDATE shifts SET nurse = %s WHERE nurse = %s", (new_name, old_name))
+            cur.execute(
+                "UPDATE nurses SET name = %s WHERE name = %s AND clinic_id = %s",
+                (new_name, old_name, clinic_id),
+            )
+            cur.execute(
+                "UPDATE shifts SET nurse = %s WHERE nurse = %s AND clinic_id = %s",
+                (new_name, old_name, clinic_id),
+            )
     return True
 
 
-def publish_week(week_start: str) -> None:
+def publish_week(week_start: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO published_weeks (week_start) VALUES (%s) ON CONFLICT(week_start) DO NOTHING",
-                (week_start,),
+                "INSERT INTO published_weeks (week_start, clinic_id) VALUES (%s, %s) ON CONFLICT(week_start) DO NOTHING",
+                (week_start, clinic_id),
             )
 
 
-def unpublish_week(week_start: str) -> None:
+def unpublish_week(week_start: str, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM published_weeks WHERE week_start = %s", (week_start,))
+            cur.execute(
+                "DELETE FROM published_weeks WHERE week_start = %s AND clinic_id = %s",
+                (week_start, clinic_id),
+            )
 
 
-def is_week_published(week_start: str) -> bool:
+def is_week_published(week_start: str, clinic_id: int = 1) -> bool:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT 1 FROM published_weeks WHERE week_start = %s", (week_start,))
+            cur.execute(
+                "SELECT 1 FROM published_weeks WHERE week_start = %s AND clinic_id = %s",
+                (week_start, clinic_id),
+            )
             return cur.fetchone() is not None
 
 
-def add_bulletin_note(nurse: str, content: str) -> dict:
+def add_bulletin_note(nurse: str, content: str, clinic_id: int = 1) -> dict:
     created_at = datetime.now().strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO bulletin_notes (nurse, content, created_at) VALUES (%s, %s, %s) RETURNING id",
-                (nurse, content, created_at),
+                "INSERT INTO bulletin_notes (nurse, content, created_at, clinic_id) VALUES (%s, %s, %s, %s) RETURNING id",
+                (nurse, content, created_at, clinic_id),
             )
             note_id = cur.fetchone()["id"]
     return {"id": note_id, "nurse": nurse, "content": content, "created_at": created_at}
 
 
-def get_bulletin_notes(limit: int = 100) -> list[dict]:
+def get_bulletin_notes(limit: int = 100, clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, nurse, content, created_at FROM bulletin_notes ORDER BY id DESC LIMIT %s",
-                (limit,),
+                "SELECT id, nurse, content, created_at FROM bulletin_notes WHERE clinic_id = %s ORDER BY id DESC LIMIT %s",
+                (clinic_id, limit),
             )
             return [dict(r) for r in cur.fetchall()]
 
 
-def get_bulletin_note(note_id: int) -> dict | None:
+def get_bulletin_note(note_id: int, clinic_id: int = 1) -> dict | None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, nurse, content, created_at FROM bulletin_notes WHERE id = %s", (note_id,)
+                "SELECT id, nurse, content, created_at FROM bulletin_notes WHERE id = %s AND clinic_id = %s",
+                (note_id, clinic_id),
             )
             row = cur.fetchone()
     return dict(row) if row is not None else None
 
 
-def delete_bulletin_note(note_id: int) -> None:
+def delete_bulletin_note(note_id: int, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM bulletin_notes WHERE id = %s", (note_id,))
+            cur.execute(
+                "DELETE FROM bulletin_notes WHERE id = %s AND clinic_id = %s",
+                (note_id, clinic_id),
+            )
 
 
 def save_salary_record(
     nurse: str, month: str, attendance: int, performance: int,
     sat_pay: int, float_bonus: int, ot_pay: int, total: int, ot_entries: str,
+    clinic_id: int = 1,
 ) -> dict:
     created_at = datetime.now().strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO salary_records
-                   (nurse, month, attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, created_at)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                   (nurse, month, attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, created_at, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    RETURNING id""",
-                (nurse, month, attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, created_at),
+                (nurse, month, attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, created_at, clinic_id),
             )
             record_id = cur.fetchone()["id"]
     return {'id': record_id, 'nurse': nurse, 'month': month, 'attendance': attendance,
@@ -1701,14 +1805,14 @@ def save_salary_record(
             'ot_pay': ot_pay, 'total': total, 'ot_entries': ot_entries, 'created_at': created_at}
 
 
-def get_salary_records(nurse: str, month: str) -> list[dict]:
+def get_salary_records(nurse: str, month: str, clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, nurse, month, attendance, performance, sat_pay, float_bonus,
                           ot_pay, total, ot_entries, created_at
-                   FROM salary_records WHERE nurse = %s AND month = %s ORDER BY id DESC""",
-                (nurse, month),
+                   FROM salary_records WHERE clinic_id = %s AND nurse = %s AND month = %s ORDER BY id DESC""",
+                (clinic_id, nurse, month),
             )
             return [dict(r) for r in cur.fetchall()]
 
@@ -1716,21 +1820,25 @@ def get_salary_records(nurse: str, month: str) -> list[dict]:
 def update_salary_record(
     record_id: int, attendance: int, performance: int,
     sat_pay: int, float_bonus: int, ot_pay: int, total: int, ot_entries: str,
+    clinic_id: int = 1,
 ) -> None:
     updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """UPDATE salary_records SET attendance=%s, performance=%s, sat_pay=%s, float_bonus=%s,
-                   ot_pay=%s, total=%s, ot_entries=%s, created_at=%s WHERE id=%s""",
-                (attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, updated_at, record_id),
+                   ot_pay=%s, total=%s, ot_entries=%s, created_at=%s WHERE id=%s AND clinic_id=%s""",
+                (attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, updated_at, record_id, clinic_id),
             )
 
 
-def delete_salary_record(record_id: int) -> None:
+def delete_salary_record(record_id: int, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM salary_records WHERE id = %s", (record_id,))
+            cur.execute(
+                "DELETE FROM salary_records WHERE id = %s AND clinic_id = %s",
+                (record_id, clinic_id),
+            )
 
 
 def get_contact_history(q: str, clinic_id: int = 1) -> list[dict]:

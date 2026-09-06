@@ -27,39 +27,43 @@ def init() -> None:
             cur.execute(_CREATE_CLINIC_CONTACTS)
 
 
-def list_contacts() -> list[dict]:
+def list_contacts(clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT id, name, category, phone, note, created_at, nurse FROM clinic_contacts "
-                "ORDER BY category, name"
+                "WHERE clinic_id = %s ORDER BY category, name",
+                (clinic_id,),
             )
             return [dict(r) for r in cur.fetchall()]
 
 
-def add_contact(name: str, category: str, phone: str, note: str, nurse: str = '') -> int:
+def add_contact(name: str, category: str, phone: str, note: str, nurse: str = '', clinic_id: int = 1) -> int:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "INSERT INTO clinic_contacts (name, category, phone, note, created_at, nurse) "
-                "VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
-                (name, category, phone, note, date.today().isoformat(), nurse),
+                "INSERT INTO clinic_contacts (name, category, phone, note, created_at, nurse, clinic_id) "
+                "VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (name, category, phone, note, date.today().isoformat(), nurse, clinic_id),
             )
             return cur.fetchone()["id"]
 
 
-def update_contact(contact_id: int, name: str, category: str, phone: str, note: str) -> bool:
+def update_contact(contact_id: int, name: str, category: str, phone: str, note: str, clinic_id: int = 1) -> bool:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "UPDATE clinic_contacts SET name=%s, category=%s, phone=%s, note=%s WHERE id=%s",
-                (name, category, phone, note, contact_id),
+                "UPDATE clinic_contacts SET name=%s, category=%s, phone=%s, note=%s WHERE id=%s AND clinic_id=%s",
+                (name, category, phone, note, contact_id, clinic_id),
             )
             return cur.rowcount > 0
 
 
-def delete_contact(contact_id: int) -> bool:
+def delete_contact(contact_id: int, clinic_id: int = 1) -> bool:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute("DELETE FROM clinic_contacts WHERE id = %s", (contact_id,))
+            cur.execute(
+                "DELETE FROM clinic_contacts WHERE id = %s AND clinic_id = %s",
+                (contact_id, clinic_id),
+            )
             return cur.rowcount > 0
