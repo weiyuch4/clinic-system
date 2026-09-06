@@ -339,9 +339,15 @@
 
   // ── Sidebar ──────────────────────────────────────────
   function _navItem(item) {
-    var badge = item.badge
-      ? '<span class="nb zero" id="badge-' + item.id + '">…</span>'
-      : '';
+    var badge = '';
+    if (item.badge) {
+      var cached = null;
+      try { cached = localStorage.getItem('badge_' + item.id); } catch(e) {}
+      var n = cached !== null ? parseInt(cached, 10) : NaN;
+      var txt = isNaN(n) ? '…' : n;
+      var cls = (isNaN(n) || n === 0) ? 'nb zero' : 'nb';
+      badge = '<span class="' + cls + '" id="badge-' + item.id + '">' + txt + '</span>';
+    }
     return '<a href="' + item.href + '" class="ni' + (item.id === _activePage ? ' on' : '') + '">' +
       (ICONS[item.id] || '') + escHtml(item.label) + badge + '</a>';
   }
@@ -417,6 +423,7 @@
       if (!el) return;
       el.textContent = n;
       el.classList.toggle('zero', n === 0);
+      try { localStorage.setItem('badge_' + id, n); } catch(e) {}
     }
     if (!report) return;
     set('chronic',   (report.chronic_prescriptions || []).length);
