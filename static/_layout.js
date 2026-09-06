@@ -83,6 +83,12 @@
     return localDateStr(d);
   }
 
+  var _DOW_ZH = ['日','一','二','三','四','五','六'];
+  function fmtChineseDate(d) {
+    var D = d || new Date();
+    return D.getFullYear()+'年'+(D.getMonth()+1)+'月'+D.getDate()+'日（週'+_DOW_ZH[D.getDay()]+'）';
+  }
+
   function _authHeaders(extra) {
     var t = localStorage.getItem('clinic_token');
     var h = Object.assign({}, extra || {});
@@ -661,9 +667,9 @@
       return;
     }
     el.innerHTML = mine.map(function (s) {
-      return '<div style="margin-bottom:6px">' +
-        '<div style="font-size:10px;opacity:.6;margin-bottom:2px">' + (_SLOT_LABEL[s.slot] || s.slot) + '</div>' +
-        '<div style="font-size:13.5px;font-weight:700">' + s.start_time + ' – ' + s.end_time + '</div>' +
+      return '<div class="promo-slot">' +
+        '<div class="promo-slot-label">' + (_SLOT_LABEL[s.slot] || s.slot) + '</div>' +
+        '<div class="promo-slot-time">' + s.start_time + ' – ' + s.end_time + '</div>' +
       '</div>';
     }).join('');
   }
@@ -932,6 +938,7 @@
     localDateStr:      localDateStr,
     getMondayStr:      getMondayStr,
     addDays:           addDays,
+    fmtChineseDate:    fmtChineseDate,
     apiFetch:          apiFetch,
     apiAction:         apiAction,
     ICONS:             ICONS,

@@ -5,15 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>慢簽追蹤 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=25">
-<style>
-.search-row{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.si{flex:1;border:1.5px solid var(--border);border-radius:9px;padding:8px 13px;font-size:13.5px;background:var(--bg);color:var(--text);outline:none;font-family:inherit}
-.si:focus{border-color:#b5d7f5}
-.sr-count{font-size:12.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0}
-.list-area{flex:1;overflow-y:auto}
-.modal-error{display:none;color:#991b1b;font-size:12.5px;margin-top:8px;background:#fef2f2;border-radius:6px;padding:7px 10px}
-.modal-error.show{display:block}
-</style>
 </head>
 <body>
 <div class="app">
@@ -111,7 +102,7 @@
       _pendingMap = {}; _pending.forEach(function (e) { _pendingMap[e.patient.chart_number] = e; });
       _contactedMap = {}; _contacted.forEach(function (e) { _contactedMap[e.patient.chart_number] = e; });
       _holdMap = {}; _hold.forEach(function (e) { if (e.patient) _holdMap[e.patient.chart_number] = e; });
-      document.getElementById('page-date').textContent = L.localDateStr() + '  ·  共 ' + _pending.length + ' 人待聯絡';
+      document.getElementById('page-date').textContent = L.fmtChineseDate() + '  ·  共 ' + _pending.length + ' 人待聯絡';
       document.getElementById('cnt-pending').textContent   = _pending.length;
       document.getElementById('cnt-contacted').textContent = _contacted.length;
       document.getElementById('cnt-hold').textContent      = _hold.length;
