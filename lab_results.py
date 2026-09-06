@@ -14,12 +14,14 @@ Returns structured JSON-ready dicts for the frontend modal.
 """
 
 import glob as _glob
+import json
 import os
 import re
 import struct
 import time
 import unicodedata
 from datetime import date, timedelta
+from pathlib import Path
 
 import config
 
@@ -179,16 +181,58 @@ _CACHE_TTL_SECONDS = 4 * 3600  # long enough that database.warmup_cache()'s star
                                 # enough that a same-day new lab entry isn't stale for
                                 # more than half a shift
 
+# Disk cache for BIO DBF rows: persists across restarts so large network files
+# (bioc.dbf, BIO2C.DBF, CBCC.DBF) are only re-read when their mtime changes.
+_BIO_DISK_CACHE_DIR = Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / "clinic-bio-cache"
+
 
 def _cached_rows(path: str) -> list[dict]:
-    """Parse a DBF file and cache the rows briefly. has_recent_metabolic_panel()
-    calls into this once per 追2/追3 MSPT entry (hundreds per report) — without
-    this, that's hundreds of full-file rescans of bioc.dbf per request."""
+    """Parse a DBF file, with two-level caching: in-memory (fast) + disk (survives restarts).
+
+    The disk cache is keyed by file mtime, so it auto-invalidates when the lab
+    system writes new results. bioc.dbf and BIO2C.DBF can be 10-30 MB on a
+    network drive — a single cold read can take 30-60 s; the disk cache brings
+    this down to <1 s on subsequent server starts."""
     now = time.time()
     cached = _dbf_rows_cache.get(path)
     if cached and (now - cached[0]) < _CACHE_TTL_SECONDS:
         return cached[1]
-    rows = list(_iter_rows(path))
+
+    # Try disk cache (survives server restarts).
+    rows: list[dict] | None = None
+    mtime: float | None = None
+    stem = Path(path).stem.lower()
+    try:
+        mtime = os.path.getmtime(path)
+        cache_file = _BIO_DISK_CACHE_DIR / f"{stem}_{mtime:.0f}.json"
+        if cache_file.exists():
+            rows = json.loads(cache_file.read_text(encoding='utf-8'))
+    except Exception:
+        pass
+
+    if rows is None:
+        rows = list(_iter_rows(path))
+        # Persist to disk for the next restart.
+        try:
+            if mtime is None:
+                mtime = os.path.getmtime(path)
+            _BIO_DISK_CACHE_DIR.mkdir(exist_ok=True)
+            stem = Path(path).stem.lower()
+            cache_file = _BIO_DISK_CACHE_DIR / f"{stem}_{mtime:.0f}.json"
+            tmp = str(cache_file) + '.tmp'
+            with open(tmp, 'w', encoding='utf-8') as f:
+                json.dump(rows, f, ensure_ascii=False)
+            os.replace(tmp, str(cache_file))
+            # Remove stale cache files for the same stem (different mtime = old data).
+            for old in _BIO_DISK_CACHE_DIR.glob(f"{stem}_*.json"):
+                if old != cache_file:
+                    try:
+                        old.unlink()
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+
     _dbf_rows_cache[path] = (now, rows)
     return rows
 

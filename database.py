@@ -251,6 +251,20 @@ def warmup_cache() -> None:
         pass
     print(f"[warmup] get_daily_report: {time.time()-t1:.1f}s  cache={_cache_stats}", flush=True)
 
+    # Pre-warm BIO file disk cache so blood-status checks on first API call are fast.
+    # bioc.dbf / BIO2C.DBF can be large (10-30 MB) on the network drive; _cached_rows
+    # will write a disk cache on first read so future restarts skip the slow parse.
+    t1b = time.time()
+    try:
+        import os as _os
+        for fname in ('bioc.dbf', 'BIO2C.DBF', 'CBCC.DBF'):
+            p = _os.path.join(lab_results.ZZ_DIR, fname)
+            if _os.path.isfile(p):
+                lab_results._cached_rows(p)
+    except Exception:
+        pass
+    print(f"[warmup] bio_files: {time.time()-t1b:.1f}s", flush=True)
+
     t2 = time.time()
     try:
         _load_patdb()
