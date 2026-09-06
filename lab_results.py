@@ -176,11 +176,14 @@ def _iter_rows(path: str):
 
 
 _dbf_rows_cache: dict[str, tuple[float, list[dict]]] = {}  # path -> (cached_at, rows)
-_CACHE_TTL_SECONDS = 4 * 3600
+# 5-minute TTL so lab results added during the day are visible within one poll cycle.
+# The delta disk cache makes re-checks cheap (4-byte header read + new records only).
+_CACHE_TTL_SECONDS = 5 * 60
 
 # Disk cache for BIO DBF rows.  Keyed by total record count (not mtime) so that
 # appending new lab results only requires reading the new records, not the whole file.
 _BIO_DISK_CACHE_DIR = Path(os.environ.get('LOCALAPPDATA', str(Path.home()))) / "clinic-bio-cache"
+_bio_disk_write_lock = __import__('threading').Lock()  # prevents concurrent .tmp corruption
 
 
 def _read_dbf_header(f) -> tuple[int, int, int, list]:
@@ -231,7 +234,8 @@ def _parse_dbf_records(f, header_size: int, record_size: int, fields: list,
             val = unicodedata.normalize('NFKC', val)
             if val and '\x00' not in val:
                 row[name] = val
-        rows.append(row)
+        if row:  # skip fully-empty records to avoid bloating the disk cache
+            rows.append(row)
     return rows
 
 
@@ -267,10 +271,15 @@ def _cached_rows(path: str) -> list[dict]:
     try:
         with open(path, 'rb') as f:
             file_count, header_size, record_size, fields = _read_dbf_header(f)
-            if file_count == 0 or not fields:
-                pass                          # unreadable — keep whatever we have
+            if not fields:
+                pass                          # unreadable header — keep whatever we have
+            elif file_count == 0 and disk_count > 0:
+                # file_count=0 while disk_count>0 is almost always the lab software
+                # mid-write (it zeroes the header before flushing).  Keep stale data;
+                # the next poll (5 min later) will see the correct count.
+                pass
             elif file_count < disk_count:
-                # File was rebuilt from scratch — full re-read.
+                # File was rebuilt from scratch with fewer records — full re-read.
                 rows = _parse_dbf_records(f, header_size, record_size, fields)
                 disk_count = file_count
                 wrote_cache = True
@@ -287,21 +296,22 @@ def _cached_rows(path: str) -> list[dict]:
         pass
 
     if wrote_cache or (rows and disk_count and not cache_file.exists()):
-        try:
-            _BIO_DISK_CACHE_DIR.mkdir(exist_ok=True)
-            tmp = str(cache_file) + '.tmp'
-            with open(tmp, 'w', encoding='utf-8') as f:
-                json.dump({'record_count': disk_count, 'records': rows},
-                          f, ensure_ascii=False)
-            os.replace(tmp, str(cache_file))
-            # Remove old mtime-keyed files left over from the previous cache format.
-            for old in _BIO_DISK_CACHE_DIR.glob(f"{stem}_*.json"):
-                try:
-                    old.unlink()
-                except Exception:
-                    pass
-        except Exception:
-            pass
+        with _bio_disk_write_lock:
+            try:
+                _BIO_DISK_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+                tmp = str(cache_file) + '.tmp'
+                with open(tmp, 'w', encoding='utf-8') as f:
+                    json.dump({'record_count': disk_count, 'records': rows},
+                              f, ensure_ascii=False)
+                os.replace(tmp, str(cache_file))
+                # Remove old mtime-keyed files left over from the previous cache format.
+                for old in _BIO_DISK_CACHE_DIR.glob(f"{stem}_*.json"):
+                    try:
+                        old.unlink()
+                    except Exception:
+                        pass
+            except Exception:
+                pass
 
     _dbf_rows_cache[path] = (now, rows)
     return rows
