@@ -753,10 +753,14 @@
         '</div>' +
       '</div>';
     document.body.appendChild(d1.firstChild);
-    document.getElementById('pin-modal-input').addEventListener('keydown', function (e) {
-      if (e.key === 'Enter') _submitPin();
-      if (e.key === 'Escape') _closePinModal();
-    });
+    (function () {
+      var inp = document.getElementById('pin-modal-input');
+      inp.addEventListener('keydown', function (e) { if (e.key === 'Escape') _closePinModal(); });
+      inp.addEventListener('input', function () {
+        inp.value = inp.value.replace(/\D/g, '');
+        if (inp.value.length === 4) _submitPin();
+      });
+    })();
 
     // Change-PIN modal (self-service)
     if (!document.getElementById('change-pin-modal')) {
@@ -779,14 +783,20 @@
           '</div>' +
         '</div>';
       document.body.appendChild(d2.firstChild);
-      document.getElementById('change-pin-old').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') document.getElementById('change-pin-new').focus();
-        if (e.key === 'Escape') _closeChangePinModal();
-      });
-      document.getElementById('change-pin-new').addEventListener('keydown', function (e) {
-        if (e.key === 'Enter') _submitChangePinModal();
-        if (e.key === 'Escape') _closeChangePinModal();
-      });
+      (function () {
+        var old = document.getElementById('change-pin-old');
+        var nw  = document.getElementById('change-pin-new');
+        old.addEventListener('keydown', function (e) { if (e.key === 'Escape') _closeChangePinModal(); });
+        old.addEventListener('input', function () {
+          old.value = old.value.replace(/\D/g, '');
+          if (old.value.length === 4) nw.focus();
+        });
+        nw.addEventListener('keydown', function (e) { if (e.key === 'Escape') _closeChangePinModal(); });
+        nw.addEventListener('input', function () {
+          nw.value = nw.value.replace(/\D/g, '');
+          if (nw.value.length === 4) _submitChangePinModal();
+        });
+      })();
     }
     _updateChangePinBtn();
   }
