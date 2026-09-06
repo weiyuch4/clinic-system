@@ -5,108 +5,32 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>管理員後台</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+<link rel="stylesheet" href="/static/_layout.css?v=29">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
+/* Map _layout.css tokens → admin variable names */
 :root {
-  --bg:           #F1F5F9;
-  --surface:      #FFFFFF;
-  --border:       #E2E8F0;
-  --border-mid:   #CBD5E1;
-  --text-1:       #0F172A;
-  --text-2:       #475569;
-  --text-3:       #94A3B8;
-  --blue:         #2563EB;
-  --blue-bg:      #EFF6FF;
-  --emerald:      #059669;
-  --amber:        #D97706;
-  --red:          #DC2626;
-  --header:       #0F172A;
-  --radius-s:     6px;
-  --radius:       10px;
-  --radius-l:     14px;
-  --shadow-s:     0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
-  --shadow:       0 4px 16px rgba(0,0,0,.06), 0 1px 4px rgba(0,0,0,.04);
-  --font:         -apple-system, 'Microsoft JhengHei', 'Segoe UI', system-ui, sans-serif;
+  --surface:    var(--card);
+  --text-1:     var(--text);
+  --text-2:     var(--sub);
+  --text-3:     var(--muted);
+  --border-mid: #D1D5DB;
+  --shadow-s:   var(--shadow);
+  --blue:       #2563EB;
+  --blue-bg:    #EFF6FF;
+  --emerald:    #059669;
+  --amber:      #D97706;
+  --red:        #DC2626;
+  --radius-s:   6px;
+  --radius:     10px;
+  --radius-l:   var(--r);
+  --font:       system-ui, -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
 }
-@media(prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) {
-    --bg: #0f1117;
-    --surface: #1a1d27;
-    --text-1: #f3f4f6;
-    --text-2: #9ca3af;
-    --text-3: #6b7280;
-    --border: #2d3148;
-    --border-mid: #3d4466;
-    --header: #0f1117;
-  }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) { --border-mid: #374558; --blue-bg: rgba(37,99,235,.12); }
 }
-:root[data-theme="dark"] {
-  --bg: #0f1117;
-  --surface: #1a1d27;
-  --text-1: #f3f4f6;
-  --text-2: #9ca3af;
-  --text-3: #6b7280;
-  --border: #2d3148;
-  --border-mid: #3d4466;
-  --header: #0f1117;
-}
-
-body {
-  font-family: var(--font);
-  background: var(--bg);
-  color: var(--text-1);
-  min-height: 100vh;
-  font-size: 14px;
-  line-height: 1.5;
-  -webkit-font-smoothing: antialiased;
-}
-
-/* ── Top bar ─────────────────────────────────────────────────────────────── */
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 100;
-  background: var(--header);
-  height: 56px;
-  padding: 0 32px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  text-decoration: none;
-}
-.brand-icon {
-  width: 30px; height: 30px;
-  background: var(--blue);
-  border-radius: 7px;
-  display: grid;
-  place-items: center;
-  font-size: 13px;
-  font-weight: 800;
-  color: #fff;
-  flex-shrink: 0;
-}
-.brand-name {
-  font-size: 14px;
-  font-weight: 600;
-  color: rgba(255,255,255,.9);
-  white-space: nowrap;
-}
-.topbar-divider {
-  width: 1px;
-  height: 18px;
-  background: rgba(255,255,255,.12);
-}
-.topbar-sub {
-  font-size: 12px;
-  color: rgba(255,255,255,.35);
-  white-space: nowrap;
-}
+:root[data-theme=dark] { --border-mid: #374558; --blue-bg: rgba(37,99,235,.12); }
 
 /* month picker (light, inside sections) */
 .section-bar {
@@ -150,10 +74,8 @@ body {
 
 /* ── Tab bar ─────────────────────────────────────────────────────────────── */
 .tabbar {
-  position: sticky;
-  top: 56px;
-  z-index: 99;
-  background: var(--surface);
+  flex-shrink: 0;
+  background: var(--card);
   border-bottom: 1px solid var(--border);
   padding: 0 32px;
   display: flex;
@@ -176,8 +98,6 @@ body {
 /* ── Layout ──────────────────────────────────────────────────────────────── */
 main {
   padding: 28px 32px 48px;
-  max-width: 1280px;
-  margin: 0 auto;
 }
 .section { display: none; }
 .section.active { display: block; animation: fadeUp .2s ease both; }
@@ -279,7 +199,7 @@ table {
 }
 thead th {
   padding: 10px 20px;
-  background: #FAFBFC;
+  background: var(--bg);
   border-bottom: 1px solid var(--border);
   color: var(--text-2);
   font-size: 11px;
@@ -293,22 +213,22 @@ thead th {
 thead th.l { text-align: left; }
 tbody td {
   padding: 13px 20px;
-  border-bottom: 1px solid #F1F5F9;
+  border-bottom: 1px solid var(--border);
   text-align: right;
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
 }
 tbody td.l { text-align: left; }
 tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover td { background: #F7F9FF; }
+tbody tr:hover td { background: rgba(0,0,0,.025); }
 .total-row td {
-  background: #F8FAFC;
+  background: var(--bg);
   border-top: 1px solid var(--border-mid);
   border-bottom: none;
   font-weight: 700;
   color: var(--text-1);
 }
-.total-row:hover td { background: #F8FAFC; }
+.total-row:hover td { background: var(--bg); }
 .zero { color: var(--text-3); }
 
 /* nurse name chip */
@@ -381,7 +301,7 @@ tbody tr:hover td { background: #F7F9FF; }
   to   { background-position:  500px 0; }
 }
 .shim {
-  background: linear-gradient(90deg, #EEF2F7 25%, #E2E8F0 50%, #EEF2F7 75%);
+  background: linear-gradient(90deg, var(--bg) 25%, var(--border) 50%, var(--bg) 75%);
   background-size: 500px 100%;
   animation: shimmer 1.3s infinite linear;
   border-radius: 4px;
@@ -400,7 +320,7 @@ tbody tr:hover td { background: #F7F9FF; }
   border-top: 1px solid var(--border);
   font-size: 11.5px;
   color: var(--text-3);
-  background: #FAFBFC;
+  background: var(--bg);
 }
 
 /* ── Lab report tab ──────────────────────────────────────────────────────── */
@@ -411,7 +331,7 @@ tbody tr:hover td { background: #F7F9FF; }
   text-align: center;
   cursor: pointer;
   transition: border-color .15s, background .15s;
-  background: #FAFBFC;
+  background: var(--bg);
   margin-bottom: 22px;
 }
 .upload-zone:hover, .upload-zone.drag { border-color: var(--blue); background: var(--blue-bg); }
@@ -447,7 +367,7 @@ tbody tr:hover td { background: #F7F9FF; }
   box-shadow: var(--shadow-s);
   overflow: hidden;
   position: sticky;
-  top: 116px;
+  top: 28px;
 }
 .rp-header {
   padding: 13px 16px;
@@ -883,7 +803,7 @@ tbody tr:hover td { background: #F7F9FF; }
   color: var(--text-2);
   white-space: nowrap;
 }
-.sched-mini tbody tr:not(:last-child) td { border-bottom: 1px solid #F1F5F9; }
+.sched-mini tbody tr:not(:last-child) td { border-bottom: 1px solid var(--border); }
 .sched-day-head .dow { display: block; font-size: 11px; }
 .sched-day-head .dnum { display: block; font-size: 9.5px; color: var(--text-3); font-weight: 600; margin-top: 1px; }
 .sched-time-btn {
@@ -1042,7 +962,7 @@ tbody tr:hover td { background: #F7F9FF; }
   position: relative;
   flex: 1;
   height: 18px;
-  background: #FAFBFC;
+  background: var(--bg);
   border-radius: 4px;
   border: 1px solid var(--border);
 }
@@ -1195,7 +1115,7 @@ tbody tr:hover td { background: #F7F9FF; }
      every colored badge/bar in the schedule views would print plain white */
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
-  .topbar, .tabbar, #back-to-top, .bonus-toolbar:not(.sched-toolbar) { display: none !important; }
+  .app > .main > #topbar, .tabbar, #back-to-top, .bonus-toolbar:not(.sched-toolbar) { display: none !important; }
   main { padding: 0; max-width: none; }
   .section { display: none !important; }
   .section.active { display: block !important; }
@@ -1241,47 +1161,43 @@ tbody tr:hover td { background: #F7F9FF; }
 .ln-progress-bar { background: var(--blue); height: 100%; width: 0%; transition: width .3s; }
 .ln-detail { font-size: 11px; color: var(--text-3); }
 </style>
+<script src="/static/_layout.js?v=29"></script>
 <script src="/static/admin-auth.js?v=1"></script>
 </head>
 <body>
 
 <!-- Admin login overlay — shown when sessionStorage has no valid admin token -->
-<div id="adm-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0f1117;align-items:center;justify-content:center">
-  <div style="background:#1a1d27;border:1px solid #2d3148;border-radius:14px;padding:40px;width:360px;max-width:90vw">
+<div id="adm-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0D1117;align-items:center;justify-content:center">
+  <div style="background:#161B27;border:1px solid #262F3E;border-radius:14px;padding:40px;width:360px;max-width:90vw">
     <div style="font-size:22px;font-weight:700;color:#f3f4f6;margin-bottom:6px">管理員後台</div>
     <div style="font-size:13px;color:#6b7280;margin-bottom:28px;line-height:1.5">關閉視窗後登入狀態自動清除，不留任何痕跡。</div>
     <form id="adm-login-form">
       <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">帳號</label>
-      <input id="adm-u" type="text" autocomplete="username" style="display:block;width:100%;padding:10px 12px;border:1.5px solid #2d3148;border-radius:8px;background:#0f1117;color:#f3f4f6;font-size:14px;font-family:inherit;outline:none;margin-bottom:16px">
+      <input id="adm-u" type="text" autocomplete="username" style="display:block;width:100%;padding:10px 12px;border:1.5px solid #262F3E;border-radius:8px;background:#0D1117;color:#f3f4f6;font-size:14px;font-family:inherit;outline:none;margin-bottom:16px">
       <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">密碼</label>
-      <input id="adm-p" type="password" autocomplete="current-password" style="display:block;width:100%;padding:10px 12px;border:1.5px solid #2d3148;border-radius:8px;background:#0f1117;color:#f3f4f6;font-size:14px;font-family:inherit;outline:none;margin-bottom:20px">
+      <input id="adm-p" type="password" autocomplete="current-password" style="display:block;width:100%;padding:10px 12px;border:1.5px solid #262F3E;border-radius:8px;background:#0D1117;color:#f3f4f6;font-size:14px;font-family:inherit;outline:none;margin-bottom:20px">
       <div id="adm-err" style="display:none;color:#fca5a5;font-size:12.5px;background:#2A0A0F;border-radius:6px;padding:8px 11px;margin-bottom:14px"></div>
       <button type="submit" style="width:100%;padding:11px;background:#2563EB;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">登入</button>
     </form>
   </div>
 </div>
 
-<header class="topbar">
-  <div class="brand">
-    <div class="brand-icon">診</div>
-    <span class="brand-name">診所管理後台</span>
-  </div>
-  <div class="topbar-divider"></div>
-  <span class="topbar-sub">管理員專用</span>
-  <button onclick="exitAdminMode()" style="margin-left:auto;font-size:12px;color:rgba(255,255,255,.55);background:none;border:none;cursor:pointer;padding:0;white-space:nowrap;font-family:inherit" onmouseover="this.style.color='rgba(255,255,255,.85)'" onmouseout="this.style.color='rgba(255,255,255,.55)'">← 離開管理員模式</button>
-</header>
-
-<div class="tabbar">
-  <button class="tab active" data-section="nurses">護理師統計</button>
-  <button class="tab"        data-section="doctors">醫師回診率</button>
-  <button class="tab"        data-section="labreport">代檢對帳單</button>
-  <button class="tab"        data-section="bonus">不定期獎金</button>
-  <button class="tab"        data-section="linenotify">LINE 通知</button>
-  <button class="tab"        data-section="schedule">排班表</button>
-  <button class="tab"        data-section="salary">薪資計算</button>
-  <button class="tab"        data-section="labcodes">代碼設定</button>
-</div>
-
+<div class="app">
+  <aside id="sidebar"></aside>
+  <div class="main" style="display:flex;flex-direction:column">
+    <div id="topbar"></div>
+    <div class="tabbar">
+      <button class="tab active" data-section="nurses">護理師統計</button>
+      <button class="tab"        data-section="doctors">醫師回診率</button>
+      <button class="tab"        data-section="labreport">代檢對帳單</button>
+      <button class="tab"        data-section="bonus">不定期獎金</button>
+      <button class="tab"        data-section="linenotify">LINE 通知</button>
+      <button class="tab"        data-section="schedule">排班表</button>
+      <button class="tab"        data-section="salary">薪資計算</button>
+      <button class="tab"        data-section="labcodes">代碼設定</button>
+      <button class="btn-sm" style="margin-left:auto;align-self:center;margin-right:8px" onclick="exitAdminMode()">退出</button>
+    </div>
+    <div class="ct" id="admin-ct" style="padding:0">
 <main>
 
   <!-- ── Nurses ── -->
@@ -1560,6 +1476,9 @@ tbody tr:hover td { background: #F7F9FF; }
   </section>
 
 </main>
+    </div><!-- /.ct -->
+  </div><!-- /.main -->
+</div><!-- /.app -->
 
 <div class="sched-time-popover" id="sched-time-popover"></div>
 
@@ -1575,7 +1494,7 @@ tbody tr:hover td { background: #F7F9FF; }
   </div>
 </div>
 
-<button id="back-to-top" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="回到頂端">
+<button id="back-to-top" onclick="document.getElementById('admin-ct').scrollTo({top:0,behavior:'smooth'})" title="回到頂端">
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
     <path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z"/>
   </svg>
@@ -1583,6 +1502,8 @@ tbody tr:hover td { background: #F7F9FF; }
 
 <script>
 'use strict';
+
+Layout.init({ activePage: '' });
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const today = new Date();
@@ -3487,8 +3408,8 @@ function refresh() {
   load(activeSection);
 }
 
-window.addEventListener('scroll', () => {
-  document.getElementById('back-to-top').classList.toggle('visible', window.scrollY > 300);
+document.getElementById('admin-ct').addEventListener('scroll', () => {
+  document.getElementById('back-to-top').classList.toggle('visible', document.getElementById('admin-ct').scrollTop > 300);
 });
 
 const _savedAdminTab = localStorage.getItem('admin_tab');
