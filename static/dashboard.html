@@ -22,6 +22,16 @@
 .urg-name{font-size:13px;font-weight:600;color:var(--text)}
 .urg-sub{font-size:11px;color:var(--sub)}
 .urg-count{margin-left:auto;font-size:15px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+#chart-htip{position:fixed;z-index:999;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:9px;box-shadow:0 6px 22px rgba(0,0,0,.13);padding:10px 13px;min-width:152px;font-size:12px;line-height:1.4;display:none}
+.ht-date{font-size:10.5px;color:var(--muted);font-weight:600;margin-bottom:5px;letter-spacing:.2px}
+.ht-total{font-size:22px;font-weight:700;color:var(--text);line-height:1;font-variant-numeric:tabular-nums}
+.ht-total-lbl{font-size:11px;color:var(--muted);margin-bottom:7px}
+.ht-div{border:none;border-top:1px solid var(--border);margin:6px 0}
+.ht-row{display:flex;justify-content:space-between;gap:14px;margin-bottom:3px}
+.ht-lbl{color:var(--sub);font-size:11.5px}
+.ht-num{font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
+.ht-cats{display:flex;flex-wrap:wrap;gap:3px;margin-top:7px}
+.ht-cat{font-size:10px;padding:2px 6px;border-radius:10px;font-weight:600;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -94,7 +104,7 @@
                   <span class="big-num" id="chart-big-num">—</span>
                   <span class="chip chip-g" id="chart-chip" style="display:none"></span>
                 </div>
-                <div style="font-size:12px;color:var(--sub)">今日聯繫件數</div>
+                <div style="font-size:12px;color:var(--sub)" id="chart-sub">今日聯繫件數</div>
               </div>
               <div style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--sub)">
                 <div class="leg-line" style="background:#4aa7f7"></div>本週
@@ -105,6 +115,17 @@
               <span class="cd">一</span><span class="cd">二</span><span class="cd">三</span>
               <span class="cd">四</span><span class="cd">五</span><span class="cd">六</span><span class="cd">日</span>
             </div>
+          </div>
+          <!-- chart hover tooltip (fixed, outside card) -->
+          <div id="chart-htip">
+            <div class="ht-date" id="ht-date"></div>
+            <div class="ht-total" id="ht-total">0</div>
+            <div class="ht-total-lbl">件聯繫</div>
+            <hr class="ht-div">
+            <div class="ht-row"><span class="ht-lbl">已通知</span><span class="ht-num" id="ht-c1">0</span></div>
+            <div class="ht-row"><span class="ht-lbl">已二通</span><span class="ht-num" id="ht-c2">0</span></div>
+            <div id="ht-mspt-row" class="ht-row" style="display:none"><span class="ht-lbl">收案完成</span><span class="ht-num" id="ht-mspt">0</span></div>
+            <div class="ht-cats" id="ht-cats"></div>
           </div>
 
           <!-- patient table -->
@@ -285,18 +306,27 @@
 
   // ── weekly chart ────────────────────────────────────
   function fetchDayHistory(dateStr) {
-    return L.apiFetch('/api/contacts/history?target_date='+dateStr)
-      .then(function(r){return (r.contacted?r.contacted.length:0)+(r.called?r.called.length:0);})
-      .catch(function(){return 0;});
+    return L.apiFetch('/api/contacts/history?target_date=' + dateStr)
+      .then(function(r) {
+        var c1 = (r.contacted || []).length, c2 = (r.called || []).length, mc = (r.mspt_completed || []).length;
+        var cats = {};
+        [].concat(r.contacted || [], r.called || []).forEach(function(e) {
+          var c = e.category || '其他'; cats[c] = (cats[c] || 0) + 1;
+        });
+        return {count: c1 + c2, contacted: c1, called: c2, mspt_completed: mc, cats: cats};
+      })
+      .catch(function() { return {count: 0, contacted: 0, called: 0, mspt_completed: 0, cats: {}}; });
   }
   function fetchWeekHistory() {
     var monday = L.getMondayStr(), today = D();
     var dates = [], i; for(i=0;i<7;i++) dates.push(L.addDays(monday,i));
     var todayIdx = dates.indexOf(today);
     var upto = todayIdx>=0 ? todayIdx+1 : 7;
-    return Promise.all(dates.slice(0,upto).map(fetchDayHistory)).then(function(counts){
+    return Promise.all(dates.slice(0,upto).map(fetchDayHistory)).then(function(data){
       return dates.map(function(d,i){
-        return {dateStr:d, count:i<upto?counts[i]:null, isToday:d===today, isFuture:todayIdx>=0&&i>todayIdx};
+        var dd = i < upto ? data[i] : null;
+        return {dateStr:d, count:dd?dd.count:null, contacted:dd?dd.contacted:0, called:dd?dd.called:0,
+          mspt_completed:dd?dd.mspt_completed:0, cats:dd?dd.cats:{}, isToday:d===today, isFuture:todayIdx>=0&&i>todayIdx};
       });
     });
   }
@@ -327,6 +357,8 @@
       '<stop offset="0%" stop-color="#4aa7f7" stop-opacity=".18"/>'+
       '<stop offset="100%" stop-color="#4aa7f7" stop-opacity="0"/>'+
       '</linearGradient></defs>';
+    // vertical hover guide (hidden by default)
+    svgH+='<line id="chart-vline" x1="30" y1="16" x2="30" y2="140" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3,3" style="display:none"/>';
     [0,yStep,yStep*2,yStep*3].filter(function(v){return v<=maxVal+yStep;}).forEach(function(v){
       var y=Math.round(140-(v/maxVal)*118);
       svgH+='<line x1="25" y1="'+y+'" x2="545" y2="'+y+'" stroke="var(--border)" stroke-width="1"'+(v>0?' stroke-dasharray="4,4"':'')+'/>';
@@ -344,14 +376,6 @@
       var x = 30+i*80, w = 80;
       svgH+='<rect x="'+(x-40)+'" y="0" width="'+w+'" height="150" fill="transparent" class="day-hit" data-idx="'+i+'" style="cursor:'+(d.isFuture?'default':'pointer')+'"/>';
     });
-    // tooltip group (hidden by default)
-    svgH+='<g id="chart-tip" style="display:none">'+
-      '<rect id="chart-tip-bg" x="0" y="0" width="115" height="38" rx="7" fill="var(--card)" filter="drop-shadow(0 2px 6px rgba(0,0,0,.12))"/>'+
-      '<rect id="chart-tip-bd" x="0" y="0" width="115" height="38" rx="7" fill="none" stroke="var(--border)" stroke-width="1"/>'+
-      '<text id="chart-tip-lbl" x="12" y="16" font-size="10" font-weight="700" fill="var(--text)">—</text>'+
-      '<circle id="chart-tip-dot" cx="12" cy="27" r="3" fill="#4aa7f7"/>'+
-      '<text id="chart-tip-val" x="20" y="31" font-size="10" fill="var(--text)" font-weight="700">—</text>'+
-    '</g>';
     document.getElementById('chart-svg').innerHTML = svgH;
     document.getElementById('chart-days').innerHTML = DAY_NAMES.map(function(l,i){
       var iT=i===todayIdx, iF=todayIdx>=0&&i>todayIdx;
@@ -359,6 +383,14 @@
     }).join('');
     document.getElementById('chart-big-num').textContent = todayIdx>=0&&counts[todayIdx]!=null?counts[todayIdx]:0;
 
+    // category chip colors for tooltip
+    var CAT_CHIP_STYLE = {
+      '慢簽':    'background:#DBEAFE;color:#1e40af',
+      '代謝症候群':'background:#D1FAE5;color:#065f46',
+      'B肝':     'background:#FEF3C7;color:#92400e',
+      'C肝':     'background:#FEF3C7;color:#92400e',
+      '慢性腎臟病':'background:#FEF9C3;color:#854d0e'
+    };
     // attach hover listeners
     var svg = document.getElementById('chart-svg');
     svg.querySelectorAll('.day-hit').forEach(function(rect) {
@@ -366,37 +398,64 @@
         var idx = parseInt(rect.dataset.idx, 10);
         var d = _weekDataGlobal[idx];
         if (!d || d.isFuture) return;
+        var cnt = d.count != null ? d.count : 0;
+        // update big number + chip in card header
         var bigNum = document.getElementById('chart-big-num');
-        if(bigNum) bigNum.textContent = d.count != null ? d.count : 0;
+        if(bigNum) bigNum.textContent = cnt;
         var chip = document.getElementById('chart-chip');
         if(chip) { chip.textContent = DAY_NAMES[idx]+'　'+d.dateStr.slice(5); chip.style.display=''; }
-        // show tooltip
-        var px = 30+idx*80;
-        var py = _weekDataGlobal.reduce(function(acc,dd,ii){return ii===idx?Math.round(140-((dd.count!=null?dd.count:0)/maxVal)*118):acc;},120);
-        var ttx = px+15; if(ttx+115>550) ttx=px-130;
-        var tty = Math.min(py-50,98); if(tty<5) tty=5;
-        var tip=document.getElementById('chart-tip');
+        var sub = document.getElementById('chart-sub');
+        if(sub) sub.textContent = d.isToday ? '今日聯繫件數' : '當日聯繫件數';
+        // update vertical guide line
+        var vline = document.getElementById('chart-vline');
+        if(vline) { vline.setAttribute('x1',30+idx*80); vline.setAttribute('x2',30+idx*80); vline.style.display=''; }
+        // populate HTML tooltip
+        var tip = document.getElementById('chart-htip');
         if(!tip) return;
-        tip.style.display='';
-        document.getElementById('chart-tip-bg').setAttribute('x',ttx);
-        document.getElementById('chart-tip-bg').setAttribute('y',tty);
-        document.getElementById('chart-tip-bd').setAttribute('x',ttx);
-        document.getElementById('chart-tip-bd').setAttribute('y',tty);
-        document.getElementById('chart-tip-lbl').setAttribute('x',ttx+12);
-        document.getElementById('chart-tip-lbl').setAttribute('y',tty+16);
-        document.getElementById('chart-tip-lbl').textContent = DAY_NAMES[idx]+'　'+d.dateStr.slice(5);
-        document.getElementById('chart-tip-dot').setAttribute('cx',ttx+12);
-        document.getElementById('chart-tip-dot').setAttribute('cy',tty+27);
-        document.getElementById('chart-tip-val').setAttribute('x',ttx+20);
-        document.getElementById('chart-tip-val').setAttribute('y',tty+31);
-        document.getElementById('chart-tip-val').textContent = (d.count!=null?d.count:0)+' 件';
+        document.getElementById('ht-date').textContent = '週'+DAY_NAMES[idx]+'　'+d.dateStr.slice(5);
+        document.getElementById('ht-total').textContent = cnt;
+        document.getElementById('ht-c1').textContent = d.contacted || 0;
+        document.getElementById('ht-c2').textContent = d.called || 0;
+        var msptRow = document.getElementById('ht-mspt-row');
+        if(d.mspt_completed > 0) {
+          document.getElementById('ht-mspt').textContent = d.mspt_completed;
+          msptRow.style.display = '';
+        } else {
+          msptRow.style.display = 'none';
+        }
+        // category chips
+        var catsEl = document.getElementById('ht-cats');
+        var cats = d.cats || {};
+        var catOrder = ['慢簽','代謝症候群','B肝','C肝','慢性腎臟病'];
+        var html = '';
+        catOrder.forEach(function(c){if(cats[c])html+='<span class="ht-cat" style="'+(CAT_CHIP_STYLE[c]||'background:#f3f4f6;color:#374151')+'">'+c.replace('代謝症候群','代謝')+' '+cats[c]+'</span>';});
+        Object.keys(cats).forEach(function(c){if(catOrder.indexOf(c)<0&&cats[c])html+='<span class="ht-cat" style="background:#f3f4f6;color:#374151">'+c+' '+cats[c]+'</span>';});
+        catsEl.innerHTML = html;
+        // position tooltip near column
+        var svgRect = svg.getBoundingClientRect();
+        var colFrac = (30 + idx * 80) / 560;
+        var colScreenX = svgRect.left + colFrac * svgRect.width;
+        var py = Math.round(140 - (cnt / maxVal) * 118);
+        var dotScreenY = svgRect.top + (py / 150) * svgRect.height;
+        var tipW = 164, tipH = 150 + (d.mspt_completed > 0 ? 20 : 0) + (html ? 28 : 0);
+        var tipX = colScreenX - tipW / 2;
+        tipX = Math.max(8, Math.min(tipX, window.innerWidth - tipW - 8));
+        var tipY = dotScreenY - tipH - 12;
+        if(tipY < 8) tipY = dotScreenY + 16;
+        tip.style.left = tipX + 'px';
+        tip.style.top  = tipY + 'px';
+        tip.style.display = '';
       });
       rect.addEventListener('mouseleave', function() {
         var chip = document.getElementById('chart-chip');
         if(chip) chip.style.display='none';
         var bigNum = document.getElementById('chart-big-num');
         if(bigNum) bigNum.textContent = _todayIdxGlobal>=0&&counts[_todayIdxGlobal]!=null?counts[_todayIdxGlobal]:0;
-        var tip=document.getElementById('chart-tip');
+        var sub = document.getElementById('chart-sub');
+        if(sub) sub.textContent = '今日聯繫件數';
+        var vline = document.getElementById('chart-vline');
+        if(vline) vline.style.display='none';
+        var tip = document.getElementById('chart-htip');
         if(tip) tip.style.display='none';
       });
     });
