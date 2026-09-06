@@ -125,7 +125,7 @@
           <div class="card">
             <div class="chd" style="margin-bottom:10px">
               <div><div class="cttl">最需聯繫的病患</div><div class="csub">跨科別 · 依逾期天數排序</div></div>
-              <a href="/new/chronic" class="cab" style="margin-top:2px">查看全部</a>
+              <a href="/chronic" class="cab" style="margin-top:2px">查看全部</a>
             </div>
             <div style="overflow-x:auto">
               <table class="ptable">
@@ -236,7 +236,7 @@
 
   // ── patient table ──────────────────────────────────
   var CAT_CLS  = {'慢簽':'cat-c','代謝症候群':'cat-m','B肝':'cat-h','C肝':'cat-h','慢性腎臟病':'cat-k'};
-  var CAT_HREF = {'慢簽':'/new/chronic','代謝症候群':'/new/mspt','B肝':'/new/hepatitis','C肝':'/new/hepatitis','慢性腎臟病':'/new/ckd'};
+  var CAT_HREF = {'慢簽':'/chronic','代謝症候群':'/mspt','B肝':'/hepatitis','C肝':'/hepatitis','慢性腎臟病':'/ckd'};
   function renderTable(pending) {
     var top = pending.slice().sort(function(a,b){return b.days_overdue-a.days_overdue;}).slice(0,8);
     if (!top.length) {
@@ -253,7 +253,7 @@
         '<td><span class="cat-chip '+(CAT_CLS[e.category]||'cat-c')+'">'+E(cat)+'</span></td>'+
         '<td class="days '+dc+'">'+d+' 天</td>'+
         '<td><span class="pbadge b-pend">待聯絡</span></td>'+
-        '<td><a href="'+(CAT_HREF[e.category]||'/new/chronic')+'" class="go-btn">'+
+        '<td><a href="'+(CAT_HREF[e.category]||'/chronic')+'" class="go-btn">'+
           '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">'+
           '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></td>'+
         '</tr>';

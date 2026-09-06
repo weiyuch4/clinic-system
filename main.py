@@ -314,8 +314,8 @@ def doctor_page() -> Response:
                     headers={"Cache-Control": "no-store"})
 
 
-@app.get("/new")
-def new_dashboard() -> Response:
+@app.get("/dashboard")
+def dashboard_page() -> Response:
     try:
         content = open("static/dashboard.html", "rb").read()
     except OSError:
@@ -324,8 +324,8 @@ def new_dashboard() -> Response:
                     headers={"Cache-Control": "no-store"})
 
 
-@app.get("/new/{page}")
-def new_page(page: str) -> Response:
+@app.get("/{page}")
+def app_page(page: str) -> Response:
     if not _re.fullmatch(r"[a-z0-9_-]{1,40}", page):
         raise HTTPException(status_code=404, detail="頁面不存在")
     try:
@@ -334,6 +334,21 @@ def new_page(page: str) -> Response:
         raise HTTPException(status_code=404, detail="頁面不存在")
     return Response(content=content, media_type="text/html",
                     headers={"Cache-Control": "no-store"})
+
+
+# Legacy /new/* redirects — keeps old bookmarks working
+@app.get("/new")
+def legacy_new_dashboard():
+    from fastapi.responses import RedirectResponse
+    return RedirectResponse(url="/dashboard", status_code=301)
+
+
+@app.get("/new/{page}")
+def legacy_new_page(page: str):
+    from fastapi.responses import RedirectResponse
+    if not _re.fullmatch(r"[a-z0-9_-]{1,40}", page):
+        raise HTTPException(status_code=404, detail="頁面不存在")
+    return RedirectResponse(url=f"/{page}", status_code=301)
 
 
 @app.get("/warmup-status")
