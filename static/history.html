@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>è¯çµ¡è¨˜éŒ„ â€” è¨ºæ‰€è¿½è¹¤ç³»çµ±</title>
+<title>聯絡記錄 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=26">
 <style>
 .hs-search-bar{display:flex;gap:8px;align-items:center}
@@ -33,7 +33,7 @@
 .hs-chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:5px;white-space:nowrap}
 .hs-cat{display:inline-block;font-size:11px;padding:2px 7px;border-radius:5px;white-space:nowrap;background:var(--bg);color:var(--sub);border:1px solid var(--border)}
 
-/* Event type chip colors â€” light mode */
+/* Event type chip colors — light mode */
 .chip-contacted{background:#DBEAFE;color:#1D4ED8}
 .chip-called{background:#FEF3C7;color:#92400E}
 .chip-line{background:#D1FAE5;color:#065F46}
@@ -43,7 +43,7 @@
 .chip-checkedin{background:#CCFBF1;color:#0F766E}
 .chip-hep_completed{background:#E0E7FF;color:#3730A3}
 
-/* Dark mode overrides â€” guard mirrors _layout.css convention */
+/* Dark mode overrides — guard mirrors _layout.css convention */
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme=light]) .chip-contacted{background:#1e3a5f;color:#93c5fd}
   :root:not([data-theme=light]) .chip-called{background:#451a03;color:#fcd34d}
@@ -75,16 +75,16 @@
     <div class="ct">
 
       <div class="ph">
-        <div><h1>è¯çµ¡è¨˜éŒ„æŸ¥è©¢</h1><p>ä¾ç—…æ­·è™Ÿæˆ–å§“åæŸ¥è©¢æ­·å²è¯çµ¡ç´€éŒ„</p></div>
+        <div><h1>聯絡記錄查詢</h1><p>依病歷號或姓名查詢歷史聯絡紀錄</p></div>
       </div>
 
       <div class="hs-search-bar">
-        <input type="text" id="search-input" placeholder="è¼¸å…¥ç—…æ­·è™Ÿæˆ–å§“åâ€¦" autocomplete="off">
-        <button class="act-btn act-primary" id="btn-search">æŸ¥è©¢</button>
+        <input type="text" id="search-input" placeholder="輸入病歷號或姓名…" autocomplete="off">
+        <button class="act-btn act-primary" id="btn-search">查詢</button>
       </div>
 
       <div id="hs-results">
-        <div class="hs-prompt">è«‹è¼¸å…¥ç—…æ­·è™Ÿæˆ–å§“åé–‹å§‹æŸ¥è©¢</div>
+        <div class="hs-prompt">請輸入病歷號或姓名開始查詢</div>
       </div>
 
     </div>
@@ -106,31 +106,31 @@
   var debounceTimer;
 
   var CHIP_LABELS = {
-    contacted:      'ä¸€æ¬¡é€šçŸ¥',
-    called:         'äºŒæ¬¡é€šçŸ¥',
-    line:           'LINEè¨Šæ¯',
-    hold:           'æš«ç·©',
-    excluded:       'æŽ’é™¤',
-    mspt_completed: 'MSPTå®Œæˆ',
-    checkedin:      'MSPTå›žè¨º',
-    hep_completed:  'è‚ç‚Žå›žè¨º',
+    contacted:      '一次通知',
+    called:         '二次通知',
+    line:           'LINE訊息',
+    hold:           '暫緩',
+    excluded:       '排除',
+    mspt_completed: 'MSPT完成',
+    checkedin:      'MSPT回診',
+    hep_completed:  '肝炎回診',
   };
 
   function showPrompt() {
-    resultsEl.innerHTML = '<div class="hs-prompt">è«‹è¼¸å…¥ç—…æ­·è™Ÿæˆ–å§“åé–‹å§‹æŸ¥è©¢</div>';
+    resultsEl.innerHTML = '<div class="hs-prompt">請輸入病歷號或姓名開始查詢</div>';
   }
 
   function showLoading() {
-    resultsEl.innerHTML = '<div class="hs-loading">æŸ¥è©¢ä¸­â€¦</div>';
+    resultsEl.innerHTML = '<div class="hs-loading">查詢中…</div>';
   }
 
   function showError() {
-    resultsEl.innerHTML = '<div class="hs-error">æŸ¥è©¢å¤±æ•—ï¼Œè«‹ç¨å¾Œå†è©¦</div>';
+    resultsEl.innerHTML = '<div class="hs-error">查詢失敗，請稍後再試</div>';
   }
 
   function renderEvents(events) {
     if (!events || !events.length) {
-      resultsEl.innerHTML = '<div class="hs-empty">æŸ¥ç„¡ç›¸é—œç´€éŒ„</div>';
+      resultsEl.innerHTML = '<div class="hs-empty">查無相關紀錄</div>';
       return;
     }
 

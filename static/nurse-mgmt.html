@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>å¸³è™Ÿç®¡ç† â€” è¨ºæ‰€è¿½è¹¤ç³»çµ±</title>
+<title>帳號管理 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=26">
 <style>
 .nm-toolbar{display:flex;align-items:center;gap:10px}
@@ -52,34 +52,34 @@
       </div>
 
       <div class="ph">
-        <div><h1>å¸³è™Ÿç®¡ç†</h1><p>è­·ç†å¸«å¸³è™Ÿèˆ‡æ¬Šé™è¨­å®š</p></div>
+        <div><h1>帳號管理</h1><p>護理師帳號與權限設定</p></div>
         <div class="nm-toolbar">
-          <button class="act-btn act-primary" id="btn-add" style="display:none">ï¼‹ æ–°å¢žå¸³è™Ÿ</button>
+          <button class="act-btn act-primary" id="btn-add" style="display:none">＋ 新增帳號</button>
         </div>
       </div>
 
       <div class="nm-table-wrap">
         <table class="nmtable" id="nm-table">
           <thead><tr>
-            <th>å§“å</th><th>å¸³è™Ÿ</th><th>è§’è‰²</th><th>ç‹€æ…‹</th><th></th>
+            <th>姓名</th><th>帳號</th><th>角色</th><th>狀態</th><th></th>
           </tr></thead>
           <tbody id="nm-body">
-            <tr><td colspan="5" class="nm-empty">è¼‰å…¥ä¸­â€¦</td></tr>
+            <tr><td colspan="5" class="nm-empty">載入中…</td></tr>
           </tbody>
         </table>
       </div>
 
       <!-- PIN management section -->
       <div class="ph" style="margin-top:12px" id="pin-section">
-        <div><h2 class="section-title">è­·ç†å¸« PIN è¨­å®š</h2><p>æ¯ä½è­·ç†å¸«éœ€è¨­å®š 4 ä½æ•¸ PINï¼Œåˆ‡æ›èº«ä»½æ™‚ä½¿ç”¨</p></div>
+        <div><h2 class="section-title">護理師 PIN 設定</h2><p>每位護理師需設定 4 位數 PIN，切換身份時使用</p></div>
       </div>
       <div class="nm-table-wrap" id="pin-table-wrap">
         <table class="nmtable" id="pin-table">
-          <thead><tr><th>è­·ç†å¸«</th><th>PIN ç‹€æ…‹</th><th></th></tr></thead>
-          <tbody id="pin-body"><tr><td colspan="3" class="nm-empty">è¼‰å…¥ä¸­â€¦</td></tr></tbody>
+          <thead><tr><th>護理師</th><th>PIN 狀態</th><th></th></tr></thead>
+          <tbody id="pin-body"><tr><td colspan="3" class="nm-empty">載入中…</td></tr></tbody>
         </table>
       </div>
-      <div id="pin-no-access" style="display:none;padding:24px;color:var(--muted);font-size:14px;text-align:center">æ­¤åŠŸèƒ½éœ€è¦ç®¡ç†å“¡æ¬Šé™</div>
+      <div id="pin-no-access" style="display:none;padding:24px;color:var(--muted);font-size:14px;text-align:center">此功能需要管理員權限</div>
 
     </div>
   </div>
@@ -88,37 +88,37 @@
 <!-- create user modal -->
 <div class="modal-overlay" id="modal-create">
   <div class="modal-box">
-    <div class="modal-title">æ–°å¢žå¸³è™Ÿ</div>
+    <div class="modal-title">新增帳號</div>
     <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">
       <div class="field-row">
         <div class="form-field">
-          <label>é¡¯ç¤ºåç¨±ï¼ˆè­·ç†å¸«å§“åï¼‰</label>
-          <input type="text" id="f-display" placeholder="ä¾‹ï¼šåª›æ·©" autocomplete="off">
+          <label>顯示名稱（護理師姓名）</label>
+          <input type="text" id="f-display" placeholder="例：媛淩" autocomplete="off">
         </div>
         <div class="form-field">
-          <label>å¸³è™Ÿï¼ˆç™»å…¥ç”¨ï¼‰</label>
-          <input type="text" id="f-username" placeholder="ä¾‹ï¼šyuanling" autocomplete="off" autocapitalize="none">
+          <label>帳號（登入用）</label>
+          <input type="text" id="f-username" placeholder="例：yuanling" autocomplete="off" autocapitalize="none">
         </div>
       </div>
       <div class="field-row">
         <div class="form-field">
-          <label>è§’è‰²</label>
+          <label>角色</label>
           <select id="f-role">
-            <option value="nurse">è­·ç†å¸«</option>
-            <option value="admin">ç®¡ç†å“¡</option>
+            <option value="nurse">護理師</option>
+            <option value="admin">管理員</option>
           </select>
         </div>
         <div class="form-field">
-          <label>åˆå§‹å¯†ç¢¼</label>
-          <input type="password" id="f-pass" placeholder="è‡³å°‘ 6 å€‹å­—å…ƒ" autocomplete="new-password">
-          <span class="form-note">è­·ç†å¸«é¦–æ¬¡ç™»å…¥æ™‚é ˆæ›´æ”¹å¯†ç¢¼</span>
+          <label>初始密碼</label>
+          <input type="password" id="f-pass" placeholder="至少 6 個字元" autocomplete="new-password">
+          <span class="form-note">護理師首次登入時須更改密碼</span>
         </div>
       </div>
     </div>
     <div class="modal-error" id="create-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-create')">å–æ¶ˆ</button>
-      <button class="act-btn act-primary" id="btn-create-confirm">æ–°å¢ž</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-create')">取消</button>
+      <button class="act-btn act-primary" id="btn-create-confirm">新增</button>
     </div>
   </div>
 </div>
@@ -126,16 +126,16 @@
 <!-- rename username modal -->
 <div class="modal-overlay" id="modal-rename">
   <div class="modal-box">
-    <div class="modal-title">ä¿®æ”¹å¸³è™Ÿ</div>
+    <div class="modal-title">修改帳號</div>
     <div class="modal-sub" id="rename-sub"></div>
     <div style="margin-top:12px" class="form-field">
-      <label>æ–°å¸³è™Ÿ</label>
-      <input type="text" id="f-new-username" placeholder="è‹±æ•¸å­—ï¼Œä¸å«ç©ºæ ¼" autocomplete="off" autocapitalize="none">
+      <label>新帳號</label>
+      <input type="text" id="f-new-username" placeholder="英數字，不含空格" autocomplete="off" autocapitalize="none">
     </div>
     <div class="modal-error" id="rename-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-rename')">å–æ¶ˆ</button>
-      <button class="act-btn act-primary" id="btn-rename-confirm">å„²å­˜</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-rename')">取消</button>
+      <button class="act-btn act-primary" id="btn-rename-confirm">儲存</button>
     </div>
   </div>
 </div>
@@ -143,17 +143,17 @@
 <!-- reset password modal -->
 <div class="modal-overlay" id="modal-reset">
   <div class="modal-box">
-    <div class="modal-title">é‡è¨­å¯†ç¢¼</div>
+    <div class="modal-title">重設密碼</div>
     <div class="modal-sub" id="reset-sub"></div>
     <div style="margin-top:12px" class="form-field">
-      <label>æ–°å¯†ç¢¼</label>
-      <input type="password" id="f-new-pass" placeholder="è‡³å°‘ 6 å€‹å­—å…ƒ" autocomplete="new-password">
-      <span class="form-note">è­·ç†å¸«ä¸‹æ¬¡ç™»å…¥å¾Œå¯è‡ªè¡Œæ›´æ”¹</span>
+      <label>新密碼</label>
+      <input type="password" id="f-new-pass" placeholder="至少 6 個字元" autocomplete="new-password">
+      <span class="form-note">護理師下次登入後可自行更改</span>
     </div>
     <div class="modal-error" id="reset-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-reset')">å–æ¶ˆ</button>
-      <button class="act-btn act-primary" id="btn-reset-confirm">å„²å­˜</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-reset')">取消</button>
+      <button class="act-btn act-primary" id="btn-reset-confirm">儲存</button>
     </div>
   </div>
 </div>
@@ -161,19 +161,19 @@
 <!-- set PIN modal -->
 <div class="modal-overlay" id="modal-set-pin">
   <div class="modal-box" style="max-width:340px">
-    <div class="modal-title">è¨­å®š PIN</div>
+    <div class="modal-title">設定 PIN</div>
     <div class="modal-sub" id="set-pin-sub"></div>
     <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">
       <div class="form-field">
-        <label>æ–° PINï¼ˆ4 ä½æ•¸å­—ï¼‰</label>
-        <input type="password" inputmode="numeric" maxlength="4" id="set-pin-val" placeholder="ä¾‹ï¼š1234" autocomplete="off"
+        <label>新 PIN（4 位數字）</label>
+        <input type="password" inputmode="numeric" maxlength="4" id="set-pin-val" placeholder="例：1234" autocomplete="off"
           style="letter-spacing:6px;text-align:center;font-size:20px">
       </div>
       <div class="modal-error" id="set-pin-err"></div>
     </div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-set-pin')">å–æ¶ˆ</button>
-      <button class="act-btn act-primary" id="btn-set-pin-confirm">å„²å­˜ PIN</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-set-pin')">取消</button>
+      <button class="act-btn act-primary" id="btn-set-pin-confirm">儲存 PIN</button>
     </div>
   </div>
 </div>
@@ -181,11 +181,11 @@
 <!-- deactivate confirm modal -->
 <div class="modal-overlay" id="modal-deact">
   <div class="modal-box">
-    <div class="modal-title">åœç”¨å¸³è™Ÿ</div>
+    <div class="modal-title">停用帳號</div>
     <div class="modal-sub" id="deact-sub"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-deact')">å–æ¶ˆ</button>
-      <button class="act-btn act-danger" id="btn-deact-confirm">åœç”¨</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-deact')">取消</button>
+      <button class="act-btn act-danger" id="btn-deact-confirm">停用</button>
     </div>
   </div>
 </div>
@@ -211,7 +211,7 @@
   var role = getRole();
   if (role !== 'admin') {
     document.getElementById('nm-body').innerHTML =
-      '<tr><td colspan="5" class="nm-empty">æ­¤é é¢éœ€è¦ç®¡ç†å“¡æ¬Šé™</td></tr>';
+      '<tr><td colspan="5" class="nm-empty">此頁面需要管理員權限</td></tr>';
   } else {
     document.getElementById('btn-add').style.display = '';
     document.getElementById('btn-add').addEventListener('click', openCreate);
@@ -227,7 +227,7 @@
       renderTable(rows);
     }).catch(function () {
       document.getElementById('nm-body').innerHTML =
-        '<tr><td colspan="5" class="nm-empty">è¼‰å…¥å¤±æ•—</td></tr>';
+        '<tr><td colspan="5" class="nm-empty">載入失敗</td></tr>';
     });
   }
 
@@ -235,25 +235,25 @@
     var tbody = document.getElementById('nm-body');
     if (!tbody) return;
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="5" class="nm-empty">å°šç„¡å¸³è™Ÿ</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="nm-empty">尚無帳號</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(function (u) {
       var inactive = !u.is_active;
       var trCls = inactive ? ' class="nm-inactive"' : '';
       var roleLabel = u.role === 'admin'
-        ? '<span class="nm-role admin">ç®¡ç†å“¡</span>'
-        : '<span class="nm-role">è­·ç†å¸«</span>';
+        ? '<span class="nm-role admin">管理員</span>'
+        : '<span class="nm-role">護理師</span>';
       var statusEl = inactive
-        ? '<span class="nm-status inactive">å·²åœç”¨</span>'
-        : '<span class="nm-status active">ä½¿ç”¨ä¸­</span>';
+        ? '<span class="nm-status inactive">已停用</span>'
+        : '<span class="nm-status active">使用中</span>';
       var actions = '';
       if (!inactive) {
-        actions += '<button class="act-btn nm-rename" data-id="' + u.id + '" data-name="' + L.escHtml(u.display_name) + '" data-username="' + L.escHtml(u.username) + '">æ”¹å¸³è™Ÿ</button>';
-        actions += '<button class="act-btn act-warn nm-reset" data-id="' + u.id + '" data-name="' + L.escHtml(u.display_name) + '">é‡è¨­å¯†ç¢¼</button>';
-        actions += '<button class="act-btn act-danger nm-deact" data-id="' + u.id + '" data-name="' + L.escHtml(u.display_name) + '">åœç”¨</button>';
+        actions += '<button class="act-btn nm-rename" data-id="' + u.id + '" data-name="' + L.escHtml(u.display_name) + '" data-username="' + L.escHtml(u.username) + '">改帳號</button>';
+        actions += '<button class="act-btn act-warn nm-reset" data-id="' + u.id + '" data-name="' + L.escHtml(u.display_name) + '">重設密碼</button>';
+        actions += '<button class="act-btn act-danger nm-deact" data-id="' + u.id + '" data-name="' + L.escHtml(u.display_name) + '">停用</button>';
       } else {
-        actions += '<button class="act-btn nm-react" data-id="' + u.id + '">é‡æ–°å•Ÿç”¨</button>';
+        actions += '<button class="act-btn nm-react" data-id="' + u.id + '">重新啟用</button>';
       }
       return '<tr' + trCls + '>'
         + '<td class="nm-name">' + L.escHtml(u.display_name) + '</td>'
@@ -265,7 +265,7 @@
     }).join('');
   }
 
-  // â”€â”€ Create â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Create ──────────────────────────────────────────────────────────────────
   function openCreate() {
     document.getElementById('f-display').value = '';
     document.getElementById('f-username').value = '';
@@ -284,15 +284,15 @@
     var errEl    = document.getElementById('create-error');
     errEl.classList.remove('show');
 
-    if (!display || !username || !pass) { errEl.textContent = 'è«‹å¡«å¯«æ‰€æœ‰æ¬„ä½'; errEl.classList.add('show'); return; }
-    if (pass.length < 6) { errEl.textContent = 'å¯†ç¢¼è‡³å°‘éœ€è¦ 6 å€‹å­—å…ƒ'; errEl.classList.add('show'); return; }
+    if (!display || !username || !pass) { errEl.textContent = '請填寫所有欄位'; errEl.classList.add('show'); return; }
+    if (pass.length < 6) { errEl.textContent = '密碼至少需要 6 個字元'; errEl.classList.add('show'); return; }
 
     L.apiAction('POST', '/api/admin/users', { username: username, display_name: display, role: role, initial_password: pass })
       .then(function () {
         L.hideModal('modal-create');
         loadUsers();
       }).catch(function (e) {
-        errEl.textContent = e.message || 'æ–°å¢žå¤±æ•—';
+        errEl.textContent = e.message || '新增失敗';
         errEl.classList.add('show');
       });
   });
@@ -309,10 +309,10 @@
     else if (btn.classList.contains('nm-react')) doReactivate(id);
   });
 
-  // â”€â”€ Rename username â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Rename username ─────────────────────────────────────────────────────────
   function openRename(id, name, currentUsername) {
     _selectedId = id;
-    document.getElementById('rename-sub').textContent = 'ç‚ºã€Œ' + name + 'ã€ä¿®æ”¹ç™»å…¥å¸³è™Ÿï¼ˆç›®å‰ï¼š' + currentUsername + 'ï¼‰';
+    document.getElementById('rename-sub').textContent = '為「' + name + '」修改登入帳號（目前：' + currentUsername + '）';
     document.getElementById('f-new-username').value = currentUsername;
     document.getElementById('rename-error').classList.remove('show');
     L.showModal('modal-rename');
@@ -323,17 +323,17 @@
     var username = document.getElementById('f-new-username').value.trim();
     var errEl = document.getElementById('rename-error');
     errEl.classList.remove('show');
-    if (!username) { errEl.textContent = 'å¸³è™Ÿä¸èƒ½ç‚ºç©º'; errEl.classList.add('show'); return; }
+    if (!username) { errEl.textContent = '帳號不能為空'; errEl.classList.add('show'); return; }
 
     L.apiAction('PATCH', '/api/admin/users/' + _selectedId + '/username', { new_username: username })
       .then(function () { L.hideModal('modal-rename'); loadUsers(); })
-      .catch(function (e) { errEl.textContent = e.message || 'ä¿®æ”¹å¤±æ•—'; errEl.classList.add('show'); });
+      .catch(function (e) { errEl.textContent = e.message || '修改失敗'; errEl.classList.add('show'); });
   });
 
-  // â”€â”€ Reset password â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Reset password ──────────────────────────────────────────────────────────
   function openReset(id, name) {
     _selectedId = id;
-    document.getElementById('reset-sub').textContent = 'ç‚ºã€Œ' + name + 'ã€è¨­å®šæ–°å¯†ç¢¼';
+    document.getElementById('reset-sub').textContent = '為「' + name + '」設定新密碼';
     document.getElementById('f-new-pass').value = '';
     document.getElementById('reset-error').classList.remove('show');
     L.showModal('modal-reset');
@@ -344,57 +344,57 @@
     var pass  = document.getElementById('f-new-pass').value;
     var errEl = document.getElementById('reset-error');
     errEl.classList.remove('show');
-    if (pass.length < 6) { errEl.textContent = 'å¯†ç¢¼è‡³å°‘éœ€è¦ 6 å€‹å­—å…ƒ'; errEl.classList.add('show'); return; }
+    if (pass.length < 6) { errEl.textContent = '密碼至少需要 6 個字元'; errEl.classList.add('show'); return; }
 
     L.apiAction('PATCH', '/api/admin/users/' + _selectedId + '/password', { new_password: pass })
       .then(function () { L.hideModal('modal-reset'); })
-      .catch(function (e) { errEl.textContent = e.message || 'é‡è¨­å¤±æ•—'; errEl.classList.add('show'); });
+      .catch(function (e) { errEl.textContent = e.message || '重設失敗'; errEl.classList.add('show'); });
   });
 
-  // â”€â”€ Deactivate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Deactivate ──────────────────────────────────────────────────────────────
   function openDeact(id, name) {
     _selectedId = id;
-    document.getElementById('deact-sub').textContent = 'åœç”¨å¾Œã€Œ' + name + 'ã€å°‡ç„¡æ³•ç™»å…¥ï¼Œå¯éš¨æ™‚é‡æ–°å•Ÿç”¨ã€‚';
+    document.getElementById('deact-sub').textContent = '停用後「' + name + '」將無法登入，可隨時重新啟用。';
     L.showModal('modal-deact');
   }
 
   document.getElementById('btn-deact-confirm').addEventListener('click', function () {
     L.apiAction('DELETE', '/api/admin/users/' + _selectedId)
       .then(function () { L.hideModal('modal-deact'); loadUsers(); })
-      .catch(function (e) { L.showToast(e.message || 'æ“ä½œå¤±æ•—', 'error'); });
+      .catch(function (e) { L.showToast(e.message || '操作失敗', 'error'); });
   });
 
-  // â”€â”€ Reactivate â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Reactivate ──────────────────────────────────────────────────────────────
   function doReactivate(id) {
     L.apiAction('POST', '/api/admin/users/' + id + '/reactivate')
       .then(function () { loadUsers(); })
-      .catch(function (e) { L.showToast(e.message || 'æ“ä½œå¤±æ•—', 'error'); });
+      .catch(function (e) { L.showToast(e.message || '操作失敗', 'error'); });
   }
 
-  // â”€â”€ PIN management â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── PIN management ──────────────────────────────────────────────────────────
   var _pinTargetName = '';
 
   function loadPins() {
     L.apiFetch('/api/nurses/with-pin-status').then(function (nurses) {
       var tbody = document.getElementById('pin-body');
       if (!nurses.length) {
-        tbody.innerHTML = '<tr><td colspan="3" class="nm-empty">å°šç„¡è­·ç†å¸«è¨˜éŒ„</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="nm-empty">尚無護理師記錄</td></tr>';
         return;
       }
       tbody.innerHTML = nurses.map(function (n) {
         var hasPin = n.has_pin;
         var status = hasPin
-          ? '<span class="nm-status active">å·²è¨­å®š</span>'
-          : '<span class="nm-status" style="color:#B45309">æœªè¨­å®š</span>';
-        var actions = '<button class="act-btn nm-set-pin" data-name="' + L.escHtml(n.name) + '">' + (hasPin ? 'é‡è¨­ PIN' : 'è¨­å®š PIN') + '</button>';
-        if (hasPin) actions += '<button class="act-btn act-danger nm-clear-pin" data-name="' + L.escHtml(n.name) + '">æ¸…é™¤ PIN</button>';
+          ? '<span class="nm-status active">已設定</span>'
+          : '<span class="nm-status" style="color:#B45309">未設定</span>';
+        var actions = '<button class="act-btn nm-set-pin" data-name="' + L.escHtml(n.name) + '">' + (hasPin ? '重設 PIN' : '設定 PIN') + '</button>';
+        if (hasPin) actions += '<button class="act-btn act-danger nm-clear-pin" data-name="' + L.escHtml(n.name) + '">清除 PIN</button>';
         return '<tr><td class="nm-name">' + L.escHtml(n.name) + '</td><td>' + status + '</td><td><div class="nm-actions">' + actions + '</div></td></tr>';
       }).join('');
 
       document.querySelectorAll('.nm-set-pin').forEach(function (btn) {
         btn.addEventListener('click', function () {
           _pinTargetName = btn.dataset.name;
-          document.getElementById('set-pin-sub').textContent = 'ç‚º ' + _pinTargetName + ' è¨­å®šæ–°çš„ PIN';
+          document.getElementById('set-pin-sub').textContent = '為 ' + _pinTargetName + ' 設定新的 PIN';
           document.getElementById('set-pin-val').value = '';
           document.getElementById('set-pin-err').classList.remove('show');
           L.showModal('modal-set-pin');
@@ -406,12 +406,12 @@
         btn.addEventListener('click', function () {
           var name = btn.dataset.name;
           L.apiAction('DELETE', '/api/admin/nurses/' + encodeURIComponent(name) + '/pin')
-            .then(function () { L.showToast(name + ' çš„ PIN å·²æ¸…é™¤'); loadPins(); })
-            .catch(function (e) { L.showToast(e.message || 'æ¸…é™¤å¤±æ•—', 'error'); });
+            .then(function () { L.showToast(name + ' 的 PIN 已清除'); loadPins(); })
+            .catch(function (e) { L.showToast(e.message || '清除失敗', 'error'); });
         });
       });
     }).catch(function (e) {
-      document.getElementById('pin-body').innerHTML = '<tr><td colspan="3" class="nm-empty">è¼‰å…¥å¤±æ•—</td></tr>';
+      document.getElementById('pin-body').innerHTML = '<tr><td colspan="3" class="nm-empty">載入失敗</td></tr>';
     });
   }
 
@@ -420,18 +420,18 @@
     var errEl = document.getElementById('set-pin-err');
     errEl.classList.remove('show');
     if (!/^\d{4}$/.test(pin)) {
-      errEl.textContent = 'PIN å¿…é ˆæ˜¯ 4 ä½æ•¸å­—';
+      errEl.textContent = 'PIN 必須是 4 位數字';
       errEl.classList.add('show');
       return;
     }
     L.apiAction('PUT', '/api/admin/nurses/' + encodeURIComponent(_pinTargetName) + '/pin', { pin: pin })
       .then(function () {
         L.hideModal('modal-set-pin');
-        L.showToast(_pinTargetName + ' çš„ PIN å·²è¨­å®š');
+        L.showToast(_pinTargetName + ' 的 PIN 已設定');
         loadPins();
       })
       .catch(function (e) {
-        errEl.textContent = e.message || 'è¨­å®šå¤±æ•—';
+        errEl.textContent = e.message || '設定失敗';
         errEl.classList.add('show');
       });
   });
