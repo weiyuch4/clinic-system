@@ -51,7 +51,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .nb{margin-left:auto;background:var(--border);color:var(--muted);font-size:9.5px;font-weight:700;padding:2px 6px;border-radius:20px;line-height:1.4;min-width:18px;text-align:center;transition:opacity .2s}
 .nb.zero{opacity:.4}
 .sf{flex:1}
-.promo{background:linear-gradient(to bottom,#EEF0F4,var(--card));border-radius:11px;padding:14px;color:var(--text);margin-top:12px;border:1px solid transparent}
+.promo{background:#F0F4F8;border-radius:11px;padding:14px;color:var(--text);margin-top:12px;border:1px solid var(--border)}
 .promo-slot{margin-bottom:6px}
 .promo-slot-label{font-size:10px;opacity:.6;margin-bottom:2px}
 .promo-slot-time{font-size:13.5px;font-weight:700}
