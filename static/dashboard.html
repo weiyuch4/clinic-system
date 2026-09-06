@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>今日總覽 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=28">
+<link rel="stylesheet" href="/static/_layout.css?v=29">
 <style>
 /* ── dashboard-specific ─────────────────────────────── */
 .big-num{font-size:34px;font-weight:700;color:var(--text);line-height:1;margin-bottom:6px;font-variant-numeric:tabular-nums}
@@ -209,7 +209,7 @@
   </div><!-- end main -->
 </div><!-- end app -->
 
-<script src="/static/_layout.js?v=29"></script>
+<script src="/static/_layout.js?v=30"></script>
 <script>
 (function () {
   'use strict';
@@ -459,7 +459,7 @@
     L.hideError();
     var today = D();
     Promise.all([
-      L.apiFetch('/api/report?report_date='+today),
+      L.getReport(today),
       L.apiFetch('/api/blood-pending').catch(function(){return [];}),
       fetchWeekHistory(),
       L.apiFetch('/api/contacts/history?target_date='+today).catch(function(){return {contacted:[],called:[]};})

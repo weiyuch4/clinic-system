@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>慢性腎臟病 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=28">
+<link rel="stylesheet" href="/static/_layout.css?v=29">
 <style>
 .ckd-inactive-banner{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0}
 .ckd-bi{width:32px;height:32px;border-radius:8px;background:#0369A1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -104,7 +104,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=29"></script>
+<script src="/static/_layout.js?v=30"></script>
 <script>
 (function () {
   'use strict';
@@ -117,7 +117,7 @@
   function load() {
     L.hideError();
     var today = L.localDateStr();
-    L.apiFetch('/api/report?report_date=' + today).then(function (r) {
+    L.getReport(today).then(function (r) {
       _pending   = r.ckd_followups  || [];
       _inactive  = r.ckd_inactive   || [];
       _contacted = (r.contacted || []).filter(function (e) { return e.category === '慢性腎臟病'; })

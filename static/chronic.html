@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>慢簽追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=28">
+<link rel="stylesheet" href="/static/_layout.css?v=29">
 </head>
 <body>
 <div class="app">
@@ -82,7 +82,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=29"></script>
+<script src="/static/_layout.js?v=30"></script>
 <script>
 (function () {
   'use strict';
@@ -94,7 +94,7 @@
 
   function load() {
     L.hideError();
-    L.apiFetch('/api/report?report_date=' + L.localDateStr()).then(function (r) {
+    L.getReport().then(function (r) {
       _pending   = r.chronic_prescriptions || [];
       _contacted = (r.contacted || []).filter(function (e) { return e.category === '慢簽'; })
                     .concat((r.called || []).filter(function (e) { return e.category === '慢簽'; }));

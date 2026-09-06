@@ -148,6 +148,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .b-done{background:#D1FAE5;color:#065F46}
 .b-hold{background:#E0F2FE;color:#0369A1}
 .b-sub{background:#EDE9FE;color:#6D28D9}
+.b-call{background:#FFEDD5;color:#C2410C}
 
 /* â”€â”€ days overdue badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .days{font-weight:700;font-variant-numeric:tabular-nums}
@@ -337,6 +338,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   :root:not([data-theme=light]) .b-done{background:#042B18;color:#6EE7B7}
   :root:not([data-theme=light]) .b-hold{background:#062236;color:#7DD3FC}
   :root:not([data-theme=light]) .b-sub{background:#1A0B35;color:#C4B5FD}
+  :root:not([data-theme=light]) .b-call{background:#1C0A00;color:#FB923C}
   :root:not([data-theme=light]) .chip-g{background:#042B18;color:#6EE7B7}
   :root:not([data-theme=light]) .chip-a{background:#2A1600;color:#FBD38D}
   :root:not([data-theme=light]) .chip-r{background:#2A0A0F;color:#FCA5A5}
@@ -366,6 +368,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 :root[data-theme=dark] .b-done{background:#042B18;color:#6EE7B7}
 :root[data-theme=dark] .b-hold{background:#062236;color:#7DD3FC}
 :root[data-theme=dark] .b-sub{background:#1A0B35;color:#C4B5FD}
+:root[data-theme=dark] .b-call{background:#1C0A00;color:#FB923C}
 :root[data-theme=dark] .chip-g{background:#042B18;color:#6EE7B7}
 :root[data-theme=dark] .chip-a{background:#2A1600;color:#FBD38D}
 :root[data-theme=dark] .chip-r{background:#2A0A0F;color:#FCA5A5}

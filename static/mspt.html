@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>代謝症候群 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=28">
+<link rel="stylesheet" href="/static/_layout.css?v=29">
 <style>
 .sub-banner{border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0;background:#EDE9FE;border:1px solid #DDD6FE}
 .warmup-banner{border-radius:10px;padding:11px 16px;display:flex;align-items:flex-start;gap:11px;flex-shrink:0;background:#FEF9C3;border:1px solid #FDE047}
@@ -172,7 +172,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=29"></script>
+<script src="/static/_layout.js?v=30"></script>
 <script>
 (function () {
   'use strict';
@@ -188,7 +188,7 @@
   function load() {
     L.hideError();
     var today = L.localDateStr();
-    L.apiFetch('/api/report?report_date=' + today).then(function (r) {
+    L.getReport(today).then(function (r) {
       var allFollowups = r.mspt_followups || [];
       _return = allFollowups.filter(function (e) { return e.needs_blood_test; });
       _phone  = allFollowups.filter(function (e) { return !e.needs_blood_test; });
@@ -254,8 +254,10 @@
   }
 
   function returnRow(e) {
-    return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge b-prog">需抽血</span>'],
+    var tags = [];
+    if (e.call_required) tags.push('<span class="pbadge b-call">第2次</span>');
+    tags.push('<span class="pbadge b-prog">需抽血</span>');
+    return L.patientRow({ entry: e, tags: tags,
       actions: [
         { label: '已聯繫', cls: 'act-primary', key: 'contact' },
         { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
@@ -265,6 +267,7 @@
 
   function phoneRow(e) {
     var tags = [];
+    if (e.call_required) tags.push('<span class="pbadge b-call">第2次</span>');
     if (e.blood_draw_date) {
       tags.push('<span class="pbadge b-done" title="可使用 ' + L.escHtml(e.blood_draw_date) + ' 血液報告">血測可用</span>');
     }
@@ -290,7 +293,9 @@
   }
 
   function inactiveRow(e) {
-    var tags = ['<span class="pbadge b-hold">未複診</span>'];
+    var tags = [];
+    if (e.call_required) tags.push('<span class="pbadge b-call">第2次</span>');
+    tags.push('<span class="pbadge b-hold">未複診</span>');
     if (e.needs_blood_test) tags.push('<span class="pbadge b-prog">需抽血</span>');
     else if (e.blood_draw_date) tags.push('<span class="pbadge b-done">血測可用</span>');
     return L.patientRow({ entry: e, tags: tags, actions: [

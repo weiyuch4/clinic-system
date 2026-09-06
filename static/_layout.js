@@ -112,6 +112,25 @@
     });
   }
 
+  // Cached /api/report — avoids re-fetching when switching between sidebar tabs.
+  // sessionStorage survives page navigations within the same browser tab.
+  var _RPT_TTL = 60000; // 60 seconds
+  function getReport(dateStr) {
+    var key = 'clinic_rpt_' + (dateStr || localDateStr());
+    try {
+      var raw = sessionStorage.getItem(key);
+      if (raw) {
+        var hit = JSON.parse(raw);
+        if (Date.now() - hit.ts < _RPT_TTL) return Promise.resolve(hit.data);
+      }
+    } catch(e) {}
+    return apiFetch('/api/report?report_date=' + (dateStr || localDateStr()))
+      .then(function(data) {
+        try { sessionStorage.setItem(key, JSON.stringify({ data: data, ts: Date.now() })); } catch(e) {}
+        return data;
+      });
+  }
+
   // Generic mutating API call (POST / DELETE / PUT)
   function apiAction(method, url, body) {
     return fetch(url, {
@@ -952,6 +971,7 @@
     fmtChineseDate:    fmtChineseDate,
     apiFetch:          apiFetch,
     apiAction:         apiAction,
+    getReport:         getReport,
     ICONS:             ICONS,
   };
 })();

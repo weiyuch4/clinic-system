@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>檢驗追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=28">
+<link rel="stylesheet" href="/static/_layout.css?v=29">
 <style>
 .lab-group{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;flex-shrink:0}
 .lab-ghead{display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid var(--border)}
@@ -102,7 +102,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=29"></script>
+<script src="/static/_layout.js?v=30"></script>
 <script>
 (function () {
   'use strict';
@@ -113,7 +113,7 @@
     L.hideError();
     Promise.all([
       L.apiFetch('/api/blood-pending'),
-      L.apiFetch('/api/report?report_date=' + L.localDateStr()),
+      L.getReport(),
     ]).then(function (results) {
       var days = results[0], report = results[1];
       L.updateLastUpdated();
