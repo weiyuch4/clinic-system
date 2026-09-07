@@ -76,7 +76,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .lu{font-size:11.5px;color:var(--muted)}
 .ib{width:32px;height:32px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;color:var(--sub);flex-shrink:0}
 .ib:hover{color:var(--text)}
-.av{width:32px;height:32px;border-radius:50%;background:#4B5563;color:white;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.av{width:32px;height:32px;border-radius:50%;background:var(--sub);color:white;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .av{background:#4A5568}}
 :root[data-theme=dark] .av{background:#4A5568}
 .nurse-wrap{position:relative;display:flex;align-items:center}
@@ -212,7 +212,8 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .act-purple:hover{background:#DDD6FE;color:#6D28D9;border-color:#8B5CF6}
 .act-blue{background:#DBEAFE;color:#1D4ED8;border-color:#b5d7f5}
 .act-blue:hover{background:#BFDBFE;color:#1D4ED8;border-color:#8fc5f0}
-.ni:focus-visible,.act-btn:focus-visible,.filter-tab:focus-visible,.pb:focus-visible,.bp:focus-visible,.bo:focus-visible,.ib:focus-visible,.nurse-btn:focus-visible,.nurse-opt:focus-visible,.go-btn:focus-visible,.cab:focus-visible,.dk-link:focus-visible{outline:2.5px solid #4aa7f7;outline-offset:2px}
+.ni:focus-visible,.act-btn:focus-visible,.filter-tab:focus-visible,.pb:focus-visible,.bp:focus-visible,.bo:focus-visible,.ib:focus-visible,.nurse-btn:focus-visible,.nurse-opt:focus-visible,.go-btn:focus-visible,.cab:focus-visible,.dk-link:focus-visible,.wn-btn:focus-visible,.wn-today:focus-visible,.view-toggle button:focus-visible,.lab-tab:focus-visible,.contacted-undo:focus-visible{outline:2.5px solid #4aa7f7;outline-offset:2px}
+.si:focus-visible,.modal-input:focus-visible,.modal-select:focus-visible{outline:2px solid #4aa7f7;outline-offset:0}
 
 /* â”€â”€ patient table rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ptbl-wrap{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
