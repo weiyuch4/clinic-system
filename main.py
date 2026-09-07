@@ -70,7 +70,10 @@ contacts.init()
 directory.init()
 lab_report.init()
 backup.run()
-threading.Thread(target=database.warmup_cache, daemon=True).start()
+if CLOUD_MODE:
+    database._blood_status_ready.set()  # no BIO files on cloud — skip warmup
+else:
+    threading.Thread(target=database.warmup_cache, daemon=True).start()
 
 if not auth.has_any_users():
     _default_pass = os.environ.get("BOOTSTRAP_ADMIN_PASS", "ClinicAdmin2026!")
