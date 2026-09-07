@@ -295,6 +295,24 @@ _CREATE_SALARY_RECORDS = """
     )
 """
 
+_CREATE_SYNCED_CANDIDATES = """
+    CREATE TABLE IF NOT EXISTS synced_candidates (
+        clinic_id       INTEGER NOT NULL,
+        chart_number    TEXT NOT NULL,
+        category        TEXT NOT NULL,
+        name            TEXT NOT NULL,
+        birth_date      TEXT NOT NULL,
+        disease_name    TEXT NOT NULL,
+        due_date        TEXT NOT NULL,
+        days_overdue    INTEGER NOT NULL,
+        mspt_stage      TEXT,
+        contact_reason  TEXT,
+        last_visit_date TEXT,
+        synced_at       TEXT NOT NULL,
+        PRIMARY KEY (clinic_id, chart_number, category, due_date)
+    )
+"""
+
 
 def init() -> None:
     with _conn() as conn:
@@ -319,6 +337,7 @@ def init() -> None:
             cur.execute(_CREATE_PUBLISHED_WEEKS)
             cur.execute(_CREATE_BULLETIN_NOTES)
             cur.execute(_CREATE_SALARY_RECORDS)
+            cur.execute(_CREATE_SYNCED_CANDIDATES)
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
                 cur.execute(f"ALTER TABLE contacts ADD COLUMN IF NOT EXISTS {col}")
@@ -1991,3 +2010,44 @@ def get_contact_history(q: str, clinic_id: int = 1) -> list[dict]:
 
     events.sort(key=lambda e: (e["date"] or "", e["time"] or ""), reverse=True)
     return events
+
+
+def get_synced_candidates(clinic_id: int = 1) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT chart_number, category, name, birth_date, disease_name,
+                          due_date, days_overdue, mspt_stage, contact_reason,
+                          last_visit_date, synced_at
+                   FROM synced_candidates WHERE clinic_id = %s""",
+                (clinic_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def upsert_synced_candidates(candidates: list[dict], clinic_id: int = 1) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM synced_candidates WHERE clinic_id = %s", (clinic_id,))
+            for c in candidates:
+                cur.execute(
+                    """INSERT INTO synced_candidates
+                       (clinic_id, chart_number, category, name, birth_date, disease_name,
+                        due_date, days_overdue, mspt_stage, contact_reason, last_visit_date, synced_at)
+                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                       ON CONFLICT (clinic_id, chart_number, category, due_date) DO UPDATE SET
+                           name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
+                           disease_name=EXCLUDED.disease_name,
+                           days_overdue=EXCLUDED.days_overdue,
+                           mspt_stage=EXCLUDED.mspt_stage,
+                           contact_reason=EXCLUDED.contact_reason,
+                           last_visit_date=EXCLUDED.last_visit_date,
+                           synced_at=EXCLUDED.synced_at""",
+                    (
+                        clinic_id,
+                        c["chart_number"], c["category"], c["name"], c["birth_date"],
+                        c["disease_name"], c["due_date"], int(c["days_overdue"]),
+                        c.get("mspt_stage"), c.get("contact_reason"), c.get("last_visit_date"),
+                        c["synced_at"],
+                    ),
+                )

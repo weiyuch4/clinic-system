@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 import re as _re
+import secrets
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
@@ -45,6 +46,9 @@ CLINIC_NAME = "魏宏杰診所"
 # ── Edit this list to match your clinic's nurse names ──────────────────────────
 NURSE_NAMES: list[str] = ["媛淩", "巧潔", "巧菱", "惠茗"]
 # ───────────────────────────────────────────────────────────────────────────────
+
+CLOUD_MODE = os.environ.get("CLOUD_MODE", "").lower() in ("1", "true", "yes")
+_SYNC_TOKEN = os.environ.get("SYNC_TOKEN", "")
 
 
 logging.basicConfig(
@@ -95,7 +99,8 @@ if not contacts.get_nurses():  # first run on this DB — seed from the hardcode
 # still comes from request body fields (Option B shared-session model).
 @app.middleware("http")
 async def require_auth_for_api(request: Request, call_next):
-    if request.url.path.startswith("/api/") and request.url.path != "/api/admin/login":
+    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/status"}
+    if request.url.path.startswith("/api/") and request.url.path not in _sync_exempt:
         token = request.headers.get("Authorization", "")
         if token.startswith("Bearer "):
             token = token[7:]
@@ -655,6 +660,70 @@ def get_public_schedule(week_start: date, user: auth.CurrentUser = Depends(auth.
         raise HTTPException(status_code=500, detail="查詢失敗")
 
 
+def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
+    from models import Patient
+    chronic, mspt, hep, ckd = [], [], [], []
+    for c in synced:
+        e = FollowupEntry(
+            patient=Patient(
+                chart_number=c["chart_number"],
+                name=c["name"],
+                birth_date=date.fromisoformat(c["birth_date"]),
+            ),
+            disease_name=c["disease_name"],
+            category=c["category"],
+            due_date=date.fromisoformat(c["due_date"]),
+            days_overdue=c["days_overdue"],
+            mspt_stage=c.get("mspt_stage"),
+            contact_reason=c.get("contact_reason"),
+            last_visit_date=date.fromisoformat(c["last_visit_date"]) if c.get("last_visit_date") else None,
+        )
+        cat = c["category"]
+        if cat == '慢簽':
+            chronic.append(e)
+        elif cat == '代謝症候群':
+            mspt.append(e)
+        elif cat == 'B肝':
+            hep.append(e)
+        elif cat == '慢性腎臟病':
+            ckd.append(e)
+    return DailyReport(
+        report_date=as_of,
+        chronic_prescriptions=chronic,
+        mspt_followups=mspt,
+        mspt_inactive=[],
+        mspt_submittable=[],
+        mspt_waiting=[],
+        hep_followups=hep,
+        hep_inactive=[],
+        hep_returned=[],
+        ckd_followups=ckd,
+        ckd_inactive=[],
+    )
+
+
+@app.post("/api/sync/push")
+async def sync_push(request: Request) -> dict:
+    token = request.headers.get("X-Sync-Token", "")
+    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    body = await request.json()
+    clinic_id = int(body.get("clinic_id", 1))
+    candidates = body.get("candidates", [])
+    contacts.upsert_synced_candidates(candidates, clinic_id)
+    return {"ok": True, "count": len(candidates)}
+
+
+@app.get("/api/sync/status")
+def sync_status(request: Request) -> dict:
+    token = request.headers.get("X-Sync-Token", "")
+    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    rows = contacts.get_synced_candidates(1)
+    synced_at = max((r["synced_at"] for r in rows), default=None)
+    return {"synced_at": synced_at, "count": len(rows)}
+
+
 @app.get("/api/report")
 def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends(auth.get_current_user)) -> DailyReport:
     try:
@@ -663,7 +732,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
         # All DB queries run in parallel with the IC file report to avoid
         # sequential 130ms round trips to Supabase Tokyo on every tab load.
         with ThreadPoolExecutor(max_workers=20) as exe:
-            f_report               = exe.submit(database.get_daily_report, as_of)
+            f_report               = exe.submit(contacts.get_synced_candidates, cid) if CLOUD_MODE else exe.submit(database.get_daily_report, as_of)
             f_hidden               = exe.submit(contacts.get_hidden_keys, cid)
             f_call_required        = exe.submit(contacts.get_call_required_keys, cid)
             f_submitted            = exe.submit(contacts.get_submitted_keys, cid)
@@ -686,7 +755,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             f_called_entries       = exe.submit(contacts.get_called_entries, cid)
             f_all_blood_used       = exe.submit(contacts.get_all_mspt_blood_used, cid)
 
-        report                      = f_report.result()
+        report                      = _build_cloud_report(f_report.result(), as_of) if CLOUD_MODE else f_report.result()
         hidden_keys                 = f_hidden.result()
         call_required_keys          = f_call_required.result()
         submitted_keys              = f_submitted.result()
