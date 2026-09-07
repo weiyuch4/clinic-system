@@ -1646,8 +1646,9 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
             nat_id = r.get('ID',     '').strip()
             name   = r.get('NAME',   '').strip()
             fee    = r.get('FEE',    '').strip()
+            birth  = _roc_to_date(r.get('BIRTH', ''))
             if cf and nat_id and name:
-                visits[cf] = {'name': name, 'nat_id': nat_id}
+                visits[cf] = {'name': name, 'nat_id': nat_id, 'birth_date': birth.isoformat() if birth else None}
                 cf_fee[cf] = fee
 
         if not visits:
@@ -1671,7 +1672,7 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
             if nat_id in by_nat_id:
                 by_nat_id[nat_id]['draw_codes'].extend(codes)
             else:
-                by_nat_id[nat_id] = {'name': info['name'], 'nat_id': nat_id, 'draw_codes': list(codes)}
+                by_nat_id[nat_id] = {'name': info['name'], 'nat_id': nat_id, 'birth_date': info.get('birth_date'), 'draw_codes': list(codes)}
 
         patients = [
             {

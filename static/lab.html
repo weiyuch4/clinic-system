@@ -12,7 +12,12 @@
 .lab-gcount{font-size:11px;background:var(--border);color:var(--muted);border-radius:10px;padding:2px 8px;font-weight:600}
 .lab-row{display:flex;align-items:center;gap:12px;padding:11px 17px;border-bottom:1px solid var(--border)}
 .lab-row:last-child{border-bottom:none}
-.lab-name{font-size:14px;font-weight:600;color:var(--text);min-width:60px}
+.lab-pt{display:flex;flex-direction:column;gap:2px}
+.lab-name{font-size:14px;font-weight:600;color:var(--text)}
+.lab-meta{display:flex;gap:6px;align-items:center}
+.lab-meta .pr-copy{font-size:11.5px;color:var(--muted);cursor:pointer;border-radius:3px;padding:0 2px;transition:background .1s,color .1s}
+.lab-meta .pr-copy:hover{background:var(--border);color:var(--text)}
+.lab-meta-sep{font-size:11px;color:var(--border)}
 .lab-codes{font-size:12px;color:var(--sub);flex:1;flex-wrap:wrap;display:flex;gap:5px}
 .lab-code-chip{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 7px;font-size:11.5px;color:var(--sub)}
 .lab-status{margin-left:auto;flex-shrink:0}
@@ -99,8 +104,12 @@
             var statusHtml = p.results_back
               ? '<div class="lab-back"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已出報告</div>'
               : '<div class="lab-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>待出報告</div>';
+            var metaParts = [];
+            if (p.nat_id) metaParts.push('<span class="pr-copy" data-copy="' + L.escHtml(p.nat_id) + '" title="點擊複製身份證">' + L.escHtml(p.nat_id) + '</span>');
+            if (p.birth_date) metaParts.push('<span class="pr-copy" data-copy="' + L.escHtml(p.birth_date) + '" title="點擊複製生日">' + L.escHtml(p.birth_date) + '</span>');
+            var metaHtml = metaParts.length ? '<div class="lab-meta">' + metaParts.join('<span class="lab-meta-sep">·</span>') + '</div>' : '';
             return '<div class="lab-row">' +
-              '<span class="lab-name">' + L.escHtml(p.name) + '</span>' +
+              '<div class="lab-pt"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + metaHtml + '</div>' +
               allergyHtml +
               '<div class="lab-codes">' + codeHtml + '</div>' +
               '<div class="lab-status">' + statusHtml + '</div>' +
