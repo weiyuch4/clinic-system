@@ -686,7 +686,7 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                 continue  # LONG=1 confirmed during scan but PS absent — skip
             total_ps = ps
         else:
-            total_ps = sum(ps_lookup.get(cf, 28) for cf in v['code_fs']) if v['code_fs'] else 28
+            total_ps = max((ps_lookup.get(cf, 28) for cf in v['code_fs']), default=28) if v['code_fs'] else 28
 
         due_date     = v['date'] + timedelta(days=total_ps)
         days_overdue = (as_of - due_date).days
