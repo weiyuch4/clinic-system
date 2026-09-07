@@ -662,7 +662,7 @@ def get_public_schedule(week_start: date, user: auth.CurrentUser = Depends(auth.
 
 def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
     from models import Patient
-    chronic, mspt, hep, ckd = [], [], [], []
+    chronic, mspt, mspt_inactive, hep, hep_inactive, ckd, ckd_inactive = [], [], [], [], [], [], []
     for c in synced:
         e = FollowupEntry(
             patient=Patient(
@@ -683,22 +683,28 @@ def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
             chronic.append(e)
         elif cat == '代謝症候群':
             mspt.append(e)
+        elif cat == '代謝症候群_inactive':
+            mspt_inactive.append(e)
         elif cat == 'B肝':
             hep.append(e)
+        elif cat == 'B肝_inactive':
+            hep_inactive.append(e)
         elif cat == '慢性腎臟病':
             ckd.append(e)
+        elif cat == '慢性腎臟病_inactive':
+            ckd_inactive.append(e)
     return DailyReport(
         report_date=as_of,
         chronic_prescriptions=chronic,
         mspt_followups=mspt,
-        mspt_inactive=[],
+        mspt_inactive=mspt_inactive,
         mspt_submittable=[],
         mspt_waiting=[],
         hep_followups=hep,
-        hep_inactive=[],
+        hep_inactive=hep_inactive,
         hep_returned=[],
         ckd_followups=ckd,
-        ckd_inactive=[],
+        ckd_inactive=ckd_inactive,
     )
 
 
