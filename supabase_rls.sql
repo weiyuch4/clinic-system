@@ -42,7 +42,9 @@ DECLARE
         'salary_records',
         'synced_candidates',
         'lab_reports',
-        'clinic_contacts'
+        'clinic_contacts',
+        'blood_dismissed',
+        'synced_blood_pending'
     ];
 BEGIN
     FOREACH tbl IN ARRAY data_tables LOOP

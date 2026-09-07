@@ -393,6 +393,12 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 :root[data-theme=dark] .modal-error{background:#2A0A0F;color:#FCA5A5}
 :root[data-theme=dark] .act-primary{background:#1E3A5F;color:#93C5FD;border-color:#1E3A5F}
 :root[data-theme=dark] .act-primary:hover{background:#254A76;color:#93C5FD;border-color:#254A76}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .filter-tab.on{background:#1E3A5F;color:#93C5FD}
+  :root:not([data-theme=light]) .filter-tab.on .tc-count{background:rgba(147,197,253,.18);color:#93C5FD}
+}
+:root[data-theme=dark] .filter-tab.on{background:#1E3A5F;color:#93C5FD}
+:root[data-theme=dark] .filter-tab.on .tc-count{background:rgba(147,197,253,.18);color:#93C5FD}
 
 /* â”€â”€ sidebar selected state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media(prefers-color-scheme:dark){

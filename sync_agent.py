@@ -49,6 +49,29 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
+# ── DB pool ───────────────────────────────────────────────────────────────────
+
+_db_pool_ready = False
+
+
+def _ensure_db_pool() -> bool:
+    """Initialize DB pool if not done yet. Returns True when ready."""
+    global _db_pool_ready
+    if _db_pool_ready:
+        return True
+    try:
+        import db as _db
+        import contacts as _contacts
+        _db.init_pool()
+        _contacts.init()
+        _db_pool_ready = True
+        log.info("DB pool initialized (lazy retry)")
+        return True
+    except Exception as exc:
+        log.warning("DB pool init failed: %s", exc)
+        return False
+
+
 # ── Sync logic ────────────────────────────────────────────────────────────────
 
 def _entry_to_dict(entry, category: str) -> dict:
@@ -108,18 +131,19 @@ def do_sync() -> None:
 
     # Blood pending sync (reads IC + BIO files, writes result JSONB to Supabase)
     try:
-        import database as _db
-        import lab_results as _lab
-        import contacts as _contacts
-        days = _db.get_blood_draw_patients(date.today())
-        for day in days:
-            draw_d = date.fromisoformat(day['date'])
-            for p in day['patients']:
-                found, result_date = _lab.has_results_since(p['nat_id'], draw_d)
-                p['results_back'] = found
-                p['results_date'] = result_date
-        _contacts.upsert_synced_blood_pending(days)
-        log.info("Synced blood pending (%d days)", len(days))
+        if _ensure_db_pool():
+            import database as _db
+            import lab_results as _lab
+            import contacts as _contacts
+            days = _db.get_blood_draw_patients(date.today())
+            for day in days:
+                draw_d = date.fromisoformat(day['date'])
+                for p in day['patients']:
+                    found, result_date = _lab.has_results_since(p['nat_id'], draw_d)
+                    p['results_back'] = found
+                    p['results_date'] = result_date
+            _contacts.upsert_synced_blood_pending(days)
+            log.info("Synced blood pending (%d days)", len(days))
     except Exception as exc:
         log.error("Blood pending sync failed: %s", exc)
 
@@ -159,14 +183,14 @@ def _start_watcher() -> None:
 
         observer = Observer()
         observer.schedule(handler, path=config.IC_DATA_PATH, recursive=False)
-        observer.daemon = True
-        observer.start()
-        log.info("Watching for file changes in: %s", config.IC_DATA_PATH)
-
         # Also watch BIO/lab result files so cloud updates within 5s when results arrive
         zz_dir = getattr(config, 'ZZ_DIR', None)
         if zz_dir and os.path.isdir(zz_dir):
             observer.schedule(handler, path=zz_dir, recursive=False)
+        observer.daemon = True
+        observer.start()
+        log.info("Watching for file changes in: %s", config.IC_DATA_PATH)
+        if zz_dir and os.path.isdir(zz_dir):
             log.info("Watching for lab result changes in: %s", zz_dir)
     except Exception as exc:
         log.warning("File watcher could not start (%s) — relying on 30-min poll only", exc)
@@ -178,14 +202,7 @@ if __name__ == "__main__":
     log.info("Sync agent started. Cloud URL: %s", CLOUD_URL)
 
     # DB pool needed for blood-pending sync (reads/writes Supabase directly)
-    try:
-        import db as _db
-        import contacts as _contacts
-        _db.init_pool()
-        _contacts.init()
-        log.info("DB pool initialized")
-    except Exception as exc:
-        log.warning("DB pool init failed — blood-pending sync will be skipped: %s", exc)
+    _ensure_db_pool()
 
     _start_watcher()
 

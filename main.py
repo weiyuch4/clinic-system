@@ -159,7 +159,7 @@ def login(body: LoginRequest) -> JSONResponse:
     response.set_cookie(
         key=_REFRESH_COOKIE, value=refresh_token,
         max_age=_COOKIE_MAX_AGE, httponly=True,
-        samesite="strict", secure=False,  # set secure=True once on HTTPS
+        samesite="strict", secure=True,
     )
     return response
 
@@ -181,7 +181,7 @@ def refresh_token(request: Request) -> JSONResponse:
     response.set_cookie(
         key=_REFRESH_COOKIE, value=new_raw,
         max_age=_COOKIE_MAX_AGE, httponly=True,
-        samesite="strict", secure=False,
+        samesite="strict", secure=True,
     )
     return response
 
@@ -668,7 +668,7 @@ def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
     chronic, mspt, mspt_inactive, hep, hep_inactive, ckd, ckd_inactive = [], [], [], [], [], [], []
     for c in synced:
         cat = c["category"]
-        base_cat = cat.replace("_inactive", "")
+        base_cat = cat.removesuffix("_inactive")
         e = FollowupEntry(
             patient=Patient(
                 chart_number=c["chart_number"],
@@ -697,6 +697,8 @@ def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
             ckd.append(e)
         elif cat == '慢性腎臟病_inactive':
             ckd_inactive.append(e)
+        else:
+            logger.warning("_build_cloud_report: unknown category %r — dropped for %s", cat, c.get("chart_number"))
     return DailyReport(
         report_date=as_of,
         chronic_prescriptions=chronic,
@@ -1407,13 +1409,13 @@ async def undo_line_notification(log_id: int, req: UndoLineNotificationRequest, 
 
 
 @app.get("/api/blood-pending")
-def get_blood_pending() -> list[dict]:
+def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
     """Patients with external lab orders in the last 5 days, with result status.
     Returns [{date, patients: [{name, nat_id, draw_codes, is_allergy,
     results_back, results_date}]}], most recent day first."""
     try:
         if CLOUD_MODE:
-            return contacts.get_synced_blood_pending(1)
+            return contacts.get_synced_blood_pending(user.clinic_id)
         days = database.get_blood_draw_patients(date.today())
         for day in days:
             draw_date = date.fromisoformat(day['date'])
@@ -1429,10 +1431,10 @@ def get_blood_pending() -> list[dict]:
 
 
 @app.post("/api/blood-dismiss")
-def post_blood_dismiss(req: BloodDismissRequest):
+def post_blood_dismiss(req: BloodDismissRequest, user: auth.CurrentUser = Depends(auth.get_current_user)):
     """Manually remove a patient from the 檢驗追蹤 list for a specific draw date."""
     try:
-        database.dismiss_blood_patient(req.nat_id, req.draw_date, req.name, req.reason)
+        database.dismiss_blood_patient(req.nat_id, req.draw_date, req.name, req.reason, user.clinic_id)
         return {"ok": True}
     except Exception:
         logger.exception("blood-dismiss failed")

@@ -1638,24 +1638,27 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
 
         # Visits on draw_date: CODE_F → {name, nat_id}
         visits: dict[str, dict] = {}
+        cf_fee: dict[str, str] = {}
         for r in _parse_dbf_cached(ic_main):
             if r.get('DATE', '').strip() != target_roc:
                 continue
             cf     = r.get('CODE_F', '').strip()
             nat_id = r.get('ID',     '').strip()
             name   = r.get('NAME',   '').strip()
+            fee    = r.get('FEE',    '').strip()
             if cf and nat_id and name:
                 visits[cf] = {'name': name, 'nat_id': nat_id}
+                cf_fee[cf] = fee
 
         if not visits:
             continue
 
-        # Lab codes per CODE_F
+        # Lab codes per CODE_F (skip draft visits with empty FEE — billing not finalized)
         cf_codes: dict[str, list[str]] = {}
         for r in _parse_dbf_cached(ic_p):
             cf   = r.get('CODE_F',  '').strip()
             drug = r.get('DRUG_NO', '').strip()
-            if cf in visits and _is_lab_order(drug, lab_code_set):
+            if cf in visits and cf_fee.get(cf) and _is_lab_order(drug, lab_code_set):
                 cf_codes.setdefault(cf, []).append(drug)
 
         # Merge multiple visits on same day for the same patient
@@ -1693,8 +1696,11 @@ def _load_blood_dismissed() -> list[dict]:
     try:
         import contacts as _contacts
         return _contacts.get_blood_dismissed()
+    except (ImportError, AttributeError):
+        pass  # contacts module not available in this process
     except Exception:
-        pass
+        import logging as _log
+        _log.getLogger(__name__).warning("_load_blood_dismissed DB read failed — falling back to local file")
     # Fallback to local file (e.g., before DB pool is ready)
     if _BLOOD_DISMISSED_FILE.exists():
         try:

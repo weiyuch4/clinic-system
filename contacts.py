@@ -383,17 +383,33 @@ def upsert_synced_blood_pending(payload: list[dict], clinic_id: int = 1) -> None
 
 
 def patch_blood_pending_dismiss(nat_id: str, draw_date: str, clinic_id: int = 1) -> None:
-    """Remove one patient from the stored payload immediately so dismiss is instant on cloud."""
-    payload = get_synced_blood_pending(clinic_id)
-    patched = []
-    for day in payload:
-        if day.get('date') == draw_date:
-            patients = [p for p in day.get('patients', []) if p.get('nat_id') != nat_id]
-            if patients:
-                patched.append({**day, 'patients': patients})
-        else:
-            patched.append(day)
-    upsert_synced_blood_pending(patched, clinic_id)
+    """Remove one patient from the stored payload atomically (single SQL, no read-modify-write race)."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE synced_blood_pending
+                SET payload = (
+                    SELECT COALESCE(jsonb_agg(day_out), '[]'::jsonb)
+                    FROM (
+                        SELECT
+                            CASE WHEN src->>'date' = %s
+                                 THEN jsonb_set(src, '{patients}',
+                                      COALESCE((SELECT jsonb_agg(p)
+                                                FROM jsonb_array_elements(src->'patients') p
+                                                WHERE p->>'nat_id' != %s),
+                                               '[]'::jsonb))
+                                 ELSE src
+                            END AS day_out
+                        FROM jsonb_array_elements(payload) src
+                    ) t
+                    WHERE jsonb_array_length(day_out->'patients') > 0
+                ),
+                synced_at = %s
+                WHERE clinic_id = %s
+                """,
+                (draw_date, nat_id, datetime.now().isoformat(timespec='seconds'), clinic_id),
+            )
 
 
 def init() -> None:
