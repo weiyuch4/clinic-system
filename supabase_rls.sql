@@ -66,15 +66,12 @@ BEGIN
         -- Allow rows only when clinic_id matches the session variable.
         -- current_setting(..., true) returns NULL (not an error) when the
         -- variable is not set — NULL = int is false, so no rows leak.
-        EXECUTE format($$
-            CREATE POLICY clinic_isolation ON %I
-            USING (
-                clinic_id = current_setting('app.clinic_id', true)::int
-            )
-            WITH CHECK (
-                clinic_id = current_setting('app.clinic_id', true)::int
-            )
-        $$, tbl);
+        EXECUTE format(
+            'CREATE POLICY clinic_isolation ON %I '
+            'USING (clinic_id = current_setting(''app.clinic_id'', true)::int) '
+            'WITH CHECK (clinic_id = current_setting(''app.clinic_id'', true)::int)',
+            tbl
+        );
 
         RAISE NOTICE 'RLS enabled on %', tbl;
     END LOOP;
