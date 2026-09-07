@@ -741,6 +741,7 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
     for ic_path in _ic_files_since(since):
         month_cf_to_id: dict[str, str]  = {}
         month_cf_dates: dict[str, date] = {}
+        month_cf_fee:   dict[str, str]  = {}
 
         try:
             for r in _parse_dbf_cached(ic_path):
@@ -754,6 +755,7 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
 
                 month_cf_to_id[cf] = nat_id
                 month_cf_dates[cf] = v_date
+                month_cf_fee[cf]   = r.get('FEE', '').strip()
 
                 name  = r.get('NAME', '').strip()
                 birth = _roc_to_date(r.get('BIRTH', ''))
@@ -778,6 +780,8 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
                 nat_id = month_cf_to_id.get(cf)
                 if not nat_id:
                     continue
+                if not month_cf_fee.get(cf):
+                    continue  # IC main FEE is empty → visit was never completed/submitted
                 stage  = _MSPT_CODE_MAP.get(r.get('DRUG_NO', '').strip())
                 v_date = month_cf_dates.get(cf)
                 if not stage or not v_date or v_date > as_of:
