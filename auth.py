@@ -386,12 +386,15 @@ def get_current_user(
     except JWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED,
                             detail="憑證無效或已過期，請重新登入")
-    return CurrentUser(
+    user = CurrentUser(
         user_id=int(payload["sub"]),
         clinic_id=payload["clinic_id"],
         role=payload["role"],
         display_name=payload["display_name"],
     )
+    import db as _db
+    _db.set_clinic_id(user.clinic_id)
+    return user
 
 
 def require_admin(user: CurrentUser = Depends(get_current_user)) -> CurrentUser:

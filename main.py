@@ -709,6 +709,7 @@ async def sync_push(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Invalid sync token")
     body = await request.json()
     clinic_id = int(body.get("clinic_id", 1))
+    db.set_clinic_id(clinic_id)
     candidates = body.get("candidates", [])
     contacts.upsert_synced_candidates(candidates, clinic_id)
     return {"ok": True, "count": len(candidates)}
@@ -719,6 +720,7 @@ def sync_status(request: Request) -> dict:
     token = request.headers.get("X-Sync-Token", "")
     if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
         raise HTTPException(status_code=401, detail="Invalid sync token")
+    db.set_clinic_id(1)
     rows = contacts.get_synced_candidates(1)
     synced_at = max((r["synced_at"] for r in rows), default=None)
     return {"synced_at": synced_at, "count": len(rows)}
