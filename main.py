@@ -664,6 +664,8 @@ def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
     from models import Patient
     chronic, mspt, mspt_inactive, hep, hep_inactive, ckd, ckd_inactive = [], [], [], [], [], [], []
     for c in synced:
+        cat = c["category"]
+        base_cat = cat.replace("_inactive", "")
         e = FollowupEntry(
             patient=Patient(
                 chart_number=c["chart_number"],
@@ -671,14 +673,13 @@ def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
                 birth_date=date.fromisoformat(c["birth_date"]),
             ),
             disease_name=c["disease_name"],
-            category=c["category"],
+            category=base_cat,
             due_date=date.fromisoformat(c["due_date"]),
             days_overdue=c["days_overdue"],
             mspt_stage=c.get("mspt_stage"),
             contact_reason=c.get("contact_reason"),
             last_visit_date=date.fromisoformat(c["last_visit_date"]) if c.get("last_visit_date") else None,
         )
-        cat = c["category"]
         if cat == '慢簽':
             chronic.append(e)
         elif cat == '代謝症候群':
