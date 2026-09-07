@@ -116,7 +116,8 @@
   // If cached data exists: return it instantly, then fetch fresh in background and call onUpdate(freshData).
   // If cache is very fresh (< 15 s): skip background fetch entirely.
   // If no cache: block until fetch completes (first load of the day).
-  var _RPT_MIN_AGE = 15000; // skip background fetch if cache is this fresh
+  var _RPT_MIN_AGE = 15000;   // serve from cache if this fresh (ms)
+  var _RPT_MAX_AGE = 300000;  // always fetch fresh beyond this age (5 min)
   function getReport(dateStr, onUpdate) {
     var key = 'clinic_rpt_' + (dateStr || localDateStr());
     var cached = null, cacheAge = Infinity;
@@ -137,14 +138,14 @@
         });
     }
 
-    if (cached) {
+    if (cached && cacheAge < _RPT_MAX_AGE) {
       if (cacheAge >= _RPT_MIN_AGE && onUpdate) {
         // Stale-while-revalidate: serve cache now, refresh silently
         _fetchFresh().then(onUpdate).catch(function() {});
       }
       return Promise.resolve(cached);
     }
-    // No cache — must wait for fresh data
+    // No cache or cache too old — fetch fresh
     return _fetchFresh();
   }
 
