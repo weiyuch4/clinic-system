@@ -2026,15 +2026,17 @@ def get_synced_candidates(clinic_id: int = 1) -> list[dict]:
 
 
 def upsert_synced_candidates(candidates: list[dict], clinic_id: int = 1) -> None:
+    from psycopg2.extras import execute_values
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute("DELETE FROM synced_candidates WHERE clinic_id = %s", (clinic_id,))
-            for c in candidates:
-                cur.execute(
+            if candidates:
+                execute_values(
+                    cur,
                     """INSERT INTO synced_candidates
                        (clinic_id, chart_number, category, name, birth_date, disease_name,
                         due_date, days_overdue, mspt_stage, contact_reason, last_visit_date, synced_at)
-                       VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                       VALUES %s
                        ON CONFLICT (clinic_id, chart_number, category, due_date) DO UPDATE SET
                            name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
                            disease_name=EXCLUDED.disease_name,
@@ -2043,11 +2045,14 @@ def upsert_synced_candidates(candidates: list[dict], clinic_id: int = 1) -> None
                            contact_reason=EXCLUDED.contact_reason,
                            last_visit_date=EXCLUDED.last_visit_date,
                            synced_at=EXCLUDED.synced_at""",
-                    (
-                        clinic_id,
-                        c["chart_number"], c["category"], c["name"], c["birth_date"],
-                        c["disease_name"], c["due_date"], int(c["days_overdue"]),
-                        c.get("mspt_stage"), c.get("contact_reason"), c.get("last_visit_date"),
-                        c["synced_at"],
-                    ),
+                    [
+                        (
+                            clinic_id,
+                            c["chart_number"], c["category"], c["name"], c["birth_date"],
+                            c["disease_name"], c["due_date"], int(c["days_overdue"]),
+                            c.get("mspt_stage"), c.get("contact_reason"), c.get("last_visit_date"),
+                            c["synced_at"],
+                        )
+                        for c in candidates
+                    ],
                 )
