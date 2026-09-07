@@ -52,6 +52,15 @@ for ic_path in db._ic_files_since(since):
             if stage:
                 print(f"MSPT hit in {os.path.basename(p_path)}")
                 print(f"  CODE_F={cf}  DRUG_NO={drug}  stage={stage}  date={v_date}")
+                # Also dump the IC main file record to confirm the ID mapping
+                ic_name = os.path.basename(ic_path)
+                print(f"  Confirming from {ic_name}: looking for CODE_F={cf}")
+                for ic_r in db._parse_dbf_cached(ic_path):
+                    if ic_r.get('CODE_F', '').strip() == cf:
+                        print(f"    IC main record: ID={ic_r.get('ID','').strip()}  "
+                              f"NAME={ic_r.get('NAME','').strip()}  "
+                              f"DATE={ic_r.get('DATE','').strip()}  "
+                              f"KIND={ic_r.get('KIND','').strip()}")
     except Exception as e:
         print(f"  Error reading {p_path}: {e}")
 
