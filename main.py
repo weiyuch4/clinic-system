@@ -1408,6 +1408,8 @@ def get_blood_pending() -> list[dict]:
     Returns [{date, patients: [{name, nat_id, draw_codes, is_allergy,
     results_back, results_date}]}], most recent day first."""
     try:
+        if CLOUD_MODE:
+            return contacts.get_synced_blood_pending(1)
         days = database.get_blood_draw_patients(date.today())
         for day in days:
             draw_date = date.fromisoformat(day['date'])

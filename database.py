@@ -1690,6 +1690,12 @@ _BLOOD_DISMISSED_FILE = Path(__file__).parent / "blood_dismissed.json"
 
 
 def _load_blood_dismissed() -> list[dict]:
+    try:
+        import contacts as _contacts
+        return _contacts.get_blood_dismissed()
+    except Exception:
+        pass
+    # Fallback to local file (e.g., before DB pool is ready)
     if _BLOOD_DISMISSED_FILE.exists():
         try:
             return json.loads(_BLOOD_DISMISSED_FILE.read_text(encoding='utf-8'))
@@ -1698,19 +1704,10 @@ def _load_blood_dismissed() -> list[dict]:
     return []
 
 
-def dismiss_blood_patient(nat_id: str, draw_date: str, name: str, reason: str) -> None:
-    dismissed = _load_blood_dismissed()
-    dismissed = [d for d in dismissed if not (d['nat_id'] == nat_id and d['draw_date'] == draw_date)]
-    dismissed.append({
-        'nat_id': nat_id,
-        'draw_date': draw_date,
-        'name': name,
-        'reason': reason,
-        'dismissed_at': date.today().isoformat(),
-    })
-    _BLOOD_DISMISSED_FILE.write_text(
-        json.dumps(dismissed, ensure_ascii=False, indent=2), encoding='utf-8'
-    )
+def dismiss_blood_patient(nat_id: str, draw_date: str, name: str, reason: str, clinic_id: int = 1) -> None:
+    import contacts as _contacts
+    _contacts.add_blood_dismissed(nat_id, draw_date, name, reason, clinic_id)
+    _contacts.patch_blood_pending_dismiss(nat_id, draw_date, clinic_id)
 
 
 def rescan_blood_draw_files(lookback_days: int = 5) -> None:

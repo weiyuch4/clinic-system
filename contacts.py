@@ -314,6 +314,88 @@ _CREATE_SYNCED_CANDIDATES = """
 """
 
 
+_CREATE_BLOOD_DISMISSED = """
+    CREATE TABLE IF NOT EXISTS blood_dismissed (
+        clinic_id    INTEGER NOT NULL DEFAULT 1,
+        nat_id       TEXT NOT NULL,
+        draw_date    TEXT NOT NULL,
+        name         TEXT NOT NULL DEFAULT '',
+        reason       TEXT NOT NULL DEFAULT '',
+        dismissed_at TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (clinic_id, nat_id, draw_date)
+    )
+"""
+
+_CREATE_SYNCED_BLOOD_PENDING = """
+    CREATE TABLE IF NOT EXISTS synced_blood_pending (
+        clinic_id  INTEGER PRIMARY KEY,
+        payload    JSONB NOT NULL DEFAULT '[]'::jsonb,
+        synced_at  TEXT NOT NULL DEFAULT ''
+    )
+"""
+
+
+def get_blood_dismissed(clinic_id: int = 1) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT nat_id, draw_date, name, reason, dismissed_at FROM blood_dismissed WHERE clinic_id = %s",
+                (clinic_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def add_blood_dismissed(nat_id: str, draw_date: str, name: str, reason: str, clinic_id: int = 1) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO blood_dismissed (clinic_id, nat_id, draw_date, name, reason, dismissed_at)
+                   VALUES (%s, %s, %s, %s, %s, %s)
+                   ON CONFLICT (clinic_id, nat_id, draw_date) DO UPDATE SET
+                       reason=EXCLUDED.reason, dismissed_at=EXCLUDED.dismissed_at""",
+                (clinic_id, nat_id, draw_date, name, reason, datetime.now().isoformat(timespec='seconds')),
+            )
+
+
+def get_synced_blood_pending(clinic_id: int = 1) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT payload FROM synced_blood_pending WHERE clinic_id = %s",
+                (clinic_id,),
+            )
+            row = cur.fetchone()
+            return row['payload'] if row else []
+
+
+def upsert_synced_blood_pending(payload: list[dict], clinic_id: int = 1) -> None:
+    import json as _json
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO synced_blood_pending (clinic_id, payload, synced_at)
+                   VALUES (%s, %s::jsonb, %s)
+                   ON CONFLICT (clinic_id) DO UPDATE SET
+                       payload=EXCLUDED.payload, synced_at=EXCLUDED.synced_at""",
+                (clinic_id, _json.dumps(payload, ensure_ascii=False, default=str),
+                 datetime.now().isoformat(timespec='seconds')),
+            )
+
+
+def patch_blood_pending_dismiss(nat_id: str, draw_date: str, clinic_id: int = 1) -> None:
+    """Remove one patient from the stored payload immediately so dismiss is instant on cloud."""
+    payload = get_synced_blood_pending(clinic_id)
+    patched = []
+    for day in payload:
+        if day.get('date') == draw_date:
+            patients = [p for p in day.get('patients', []) if p.get('nat_id') != nat_id]
+            if patients:
+                patched.append({**day, 'patients': patients})
+        else:
+            patched.append(day)
+    upsert_synced_blood_pending(patched, clinic_id)
+
+
 def init() -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
@@ -338,6 +420,8 @@ def init() -> None:
             cur.execute(_CREATE_BULLETIN_NOTES)
             cur.execute(_CREATE_SALARY_RECORDS)
             cur.execute(_CREATE_SYNCED_CANDIDATES)
+            cur.execute(_CREATE_BLOOD_DISMISSED)
+            cur.execute(_CREATE_SYNCED_BLOOD_PENDING)
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
                 cur.execute(f"ALTER TABLE contacts ADD COLUMN IF NOT EXISTS {col}")

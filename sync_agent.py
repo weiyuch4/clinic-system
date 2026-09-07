@@ -106,6 +106,23 @@ def do_sync() -> None:
     except Exception as exc:
         log.error("Failed to push to cloud: %s", exc)
 
+    # Blood pending sync (reads IC + BIO files, writes result JSONB to Supabase)
+    try:
+        import database as _db
+        import lab_results as _lab
+        import contacts as _contacts
+        days = _db.get_blood_draw_patients(date.today())
+        for day in days:
+            draw_d = date.fromisoformat(day['date'])
+            for p in day['patients']:
+                found, result_date = _lab.has_results_since(p['nat_id'], draw_d)
+                p['results_back'] = found
+                p['results_date'] = result_date
+        _contacts.upsert_synced_blood_pending(days)
+        log.info("Synced blood pending (%d days)", len(days))
+    except Exception as exc:
+        log.error("Blood pending sync failed: %s", exc)
+
 
 # ── File watcher ──────────────────────────────────────────────────────────────
 
@@ -134,17 +151,23 @@ def _start_watcher() -> None:
         from watchdog.events import FileSystemEventHandler
         import config
 
-        watch_path = config.IC_DATA_PATH
-
         class _Handler(FileSystemEventHandler):
             def on_modified(self, event):  _on_file_change(event)
             def on_created(self,  event):  _on_file_change(event)
 
+        handler = _Handler()
+
         observer = Observer()
-        observer.schedule(_Handler(), path=watch_path, recursive=False)
+        observer.schedule(handler, path=config.IC_DATA_PATH, recursive=False)
         observer.daemon = True
         observer.start()
-        log.info("Watching for file changes in: %s", watch_path)
+        log.info("Watching for file changes in: %s", config.IC_DATA_PATH)
+
+        # Also watch BIO/lab result files so cloud updates within 5s when results arrive
+        zz_dir = getattr(config, 'ZZ_DIR', None)
+        if zz_dir and os.path.isdir(zz_dir):
+            observer.schedule(handler, path=zz_dir, recursive=False)
+            log.info("Watching for lab result changes in: %s", zz_dir)
     except Exception as exc:
         log.warning("File watcher could not start (%s) — relying on 30-min poll only", exc)
 
@@ -153,6 +176,16 @@ def _start_watcher() -> None:
 
 if __name__ == "__main__":
     log.info("Sync agent started. Cloud URL: %s", CLOUD_URL)
+
+    # DB pool needed for blood-pending sync (reads/writes Supabase directly)
+    try:
+        import db as _db
+        import contacts as _contacts
+        _db.init_pool()
+        _contacts.init()
+        log.info("DB pool initialized")
+    except Exception as exc:
+        log.warning("DB pool init failed — blood-pending sync will be skipped: %s", exc)
 
     _start_watcher()
 
