@@ -1051,17 +1051,19 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   color: var(--text-1); min-width: 130px;
 }
 .sal-date-input:focus { outline: none; border-color: var(--blue); }
-/* 24-hour time selects replacing native <input type=time> */
-.sal-time-sel {
+.sal-time-inp {
   border: 1px solid var(--border-mid); border-radius: var(--radius-s);
-  padding: 6px 4px; font: 700 14px/1 var(--font); font-variant-numeric: tabular-nums;
-  background: var(--surface); color: var(--text-1); cursor: pointer; text-align: center;
+  padding: 6px 8px; font: 700 13px/1 var(--font); font-variant-numeric: tabular-nums;
+  background: var(--surface); color: var(--text-1); width: 100px;
 }
-.sal-time-sel:focus { outline: none; border-color: var(--blue); }
-.sal-time-sel-h { width: 60px; }
-.sal-time-sel-m { width: 54px; }
-.sal-time-colon { font: 800 16px/1 var(--font); color: var(--text-2); padding: 0 1px; user-select: none; }
+.sal-time-inp:focus { outline: none; border-color: var(--blue); }
 .sal-time-sep { color: var(--text-3); font-size: 13px; padding: 0 2px; }
+.sal-batch-panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-s); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
+.sal-batch-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.sal-batch-field { display: flex; flex-direction: column; gap: 5px; }
+.sal-batch-lbl { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+.sal-day-btn { padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border-mid); background: var(--surface); color: var(--text-2); font: 600 12px/1 var(--font); cursor: pointer; transition: background .1s, color .1s, border-color .1s; }
+.sal-day-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
 .sal-ot-tag {
   font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
   white-space: nowrap;
@@ -1407,6 +1409,40 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <div class="sal-section-head" style="margin-top:18px">
           加班記錄
           <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addOtRow()">＋ 新增</button>
+          <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px" onclick="toggleBatchPanel()">批量新增</button>
+        </div>
+        <div class="sal-batch-panel" id="sal-batch-panel" style="display:none;margin-top:8px">
+          <div class="sal-batch-row">
+            <div class="sal-batch-field">
+              <span class="sal-batch-lbl">日期範圍</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="date" id="bi-batch-from" class="sal-date-input">
+                <span style="color:var(--text-3)">~</span>
+                <input type="date" id="bi-batch-to" class="sal-date-input">
+              </div>
+            </div>
+            <div class="sal-batch-field">
+              <span class="sal-batch-lbl">時間</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="time" id="bi-batch-start" class="sal-time-inp" value="18:00">
+                <span class="sal-time-sep">—</span>
+                <input type="time" id="bi-batch-end" class="sal-time-inp" value="20:00">
+              </div>
+            </div>
+          </div>
+          <div class="sal-batch-row">
+            <span class="sal-batch-lbl">星期幾</span>
+            <div style="display:flex;gap:4px">
+              <button class="sal-day-btn active" data-day="1" onclick="this.classList.toggle('active')">一</button>
+              <button class="sal-day-btn active" data-day="2" onclick="this.classList.toggle('active')">二</button>
+              <button class="sal-day-btn active" data-day="3" onclick="this.classList.toggle('active')">三</button>
+              <button class="sal-day-btn active" data-day="4" onclick="this.classList.toggle('active')">四</button>
+              <button class="sal-day-btn active" data-day="5" onclick="this.classList.toggle('active')">五</button>
+              <button class="sal-day-btn" data-day="6" onclick="this.classList.toggle('active')">六</button>
+              <button class="sal-day-btn" data-day="0" onclick="this.classList.toggle('active')">日</button>
+            </div>
+            <button class="btn-sm" style="margin-left:auto;font-size:11px;padding:4px 12px" onclick="applyBatch()">批量新增</button>
+          </div>
         </div>
         <div class="sal-ot-list" id="sal-ot-list" style="margin-bottom:12px"></div>
 
@@ -3290,12 +3326,51 @@ async function deleteSalaryRecord(id) {
 
 
 function addOtRow() {
-  // default date to first day of selected month (or today if no month)
   const monthVal = $('sal-month').value;
   const defaultDate = monthVal ? monthVal + '-01' : new Date().toISOString().slice(0, 10);
-  _salOtRows.push({date: defaultDate, start: '18:00', end: '20:00', isOt: false});
+  const prev = _salOtRows.length ? _salOtRows[_salOtRows.length - 1] : null;
+  _salOtRows.push({ date: defaultDate, start: prev ? prev.start : '18:00', end: prev ? prev.end : '20:00', isOt: false });
   renderOtRows();
   recalcSalary();
+}
+
+function toggleBatchPanel() {
+  const p = $('sal-batch-panel');
+  const opening = p.style.display === 'none';
+  p.style.display = opening ? '' : 'none';
+  if (opening) {
+    const mv = $('sal-month').value;
+    if (mv) {
+      const [y, m] = mv.split('-').map(Number);
+      const last = new Date(y, m, 0).getDate();
+      $('bi-batch-from').value = mv + '-01';
+      $('bi-batch-to').value   = mv + '-' + String(last).padStart(2, '0');
+    }
+  }
+}
+
+function applyBatch() {
+  const from  = $('bi-batch-from').value;
+  const to    = $('bi-batch-to').value;
+  const start = $('bi-batch-start').value;
+  const end   = $('bi-batch-end').value;
+  if (!from || !to || !start || !end) return;
+  const activeDays = new Set(
+    [...document.querySelectorAll('#sal-batch-panel .sal-day-btn.active')].map(b => parseInt(b.dataset.day))
+  );
+  const cur  = new Date(from + 'T00:00:00');
+  const last = new Date(to   + 'T00:00:00');
+  while (cur <= last) {
+    if (activeDays.has(cur.getDay())) {
+      const d = cur.toISOString().slice(0, 10);
+      if (!_salOtRows.some(r => r.date === d && r.start === start && r.end === end))
+        _salOtRows.push({ date: d, start, end, isOt: false });
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  _salOtRows.sort((a, b) => a.date.localeCompare(b.date));
+  renderOtRows();
+  $('sal-batch-panel').style.display = 'none';
 }
 
 function removeOtRow(i) {
@@ -3429,39 +3504,19 @@ function toggleBatchBonus() {
   if (open && $('bonus-grid').children.length === 0) loadBonus();
 }
 
-function makeTimeSel(i, field, val) {
-  const hv = val ? val.slice(0, 2) : '08';
-  const mv = val ? val.slice(3, 5) : '00';
-  const hOpts = Array.from({length: 24}, (_, h) => {
-    const v = String(h).padStart(2, '0');
-    return `<option value="${v}"${v === hv ? ' selected' : ''}>${v}</option>`;
-  }).join('');
-  const mOpts = ['00', '15', '30', '45'].map(m =>
-    `<option value="${m}"${m === mv ? ' selected' : ''}>${m}</option>`
-  ).join('');
-  return `<select id="sal-ot-${field}-${i}-h" class="sal-time-sel sal-time-sel-h"
-            onchange="updateRowTime(${i},'${field}')">${hOpts}</select><span class="sal-time-colon">:</span><select id="sal-ot-${field}-${i}-m" class="sal-time-sel sal-time-sel-m"
-            onchange="updateRowTime(${i},'${field}')">${mOpts}</select>`;
-}
-
-function updateRowTime(i, field) {
-  const h = document.getElementById(`sal-ot-${field}-${i}-h`).value;
-  const m = document.getElementById(`sal-ot-${field}-${i}-m`).value;
-  _salOtRows[i][field] = `${h}:${m}`;
-  recalcSalary();
-}
-
 function renderOtRows() {
-  // Only called when rows are ADDED or REMOVED — never on input change,
-  // because re-rendering destroys the native date-picker mid-navigation.
+  // Only called when rows are ADDED or REMOVED — not on input change,
+  // because re-rendering destroys a date-picker mid-navigation.
   const isPart = _salMode === 'part';
   $('sal-ot-list').innerHTML = _salOtRows.map((r, i) => `
     <div class="sal-ot-entry">
       <input type="date" class="sal-date-input" value="${r.date}"
         onchange="_salOtRows[${i}].date=this.value;recalcSalary()">
-      ${makeTimeSel(i, 'start', r.start)}
+      <input type="time" class="sal-time-inp" value="${r.start || '18:00'}"
+        onchange="_salOtRows[${i}].start=this.value;recalcSalary()">
       <span class="sal-time-sep">—</span>
-      ${makeTimeSel(i, 'end', r.end)}
+      <input type="time" class="sal-time-inp" value="${r.end || '20:00'}"
+        onchange="_salOtRows[${i}].end=this.value;recalcSalary()">
       ${isPart
         ? `<label class="sal-part-ot-chk"><input type="checkbox" id="sal-ot-isot-${i}"${r.isOt ? ' checked' : ''}
              onchange="_salOtRows[${i}].isOt=this.checked;recalcSalary()"> 加班</label>`
