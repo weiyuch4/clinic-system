@@ -1608,8 +1608,12 @@ def search_patients(q: str, limit: int = 20) -> list[dict]:
 
 # ── Blood draw tracking ───────────────────────────────────────────────────────
 
+# Rapid antigen tests performed in-clinic — not sent to external labs.
+_IN_CLINIC_RAPID = frozenset({'14065C', '14066C', '14084C'})
+
+
 def _is_lab_order(code: str, code_set: frozenset) -> bool:
-    return code in code_set
+    return code in code_set and code not in _IN_CLINIC_RAPID
 
 
 def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int = 1) -> list[dict]:
