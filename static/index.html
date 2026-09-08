@@ -2311,7 +2311,7 @@
     }
   }
 
-  function buildChronicDoneRow(e, undoFn) {
+  function buildChronicDoneRow(e, undoFn, srcBodyId = null) {
     const key = followupKey(e);
     followupStore.set(key, e);
     const notifiedAt = e.contacted_at || todayIso;
@@ -2322,6 +2322,13 @@
     tr.className = "done";
     tr.dataset.key = key;
     tr.dataset.search = patientSearchStr(e.patient);
+    const moreHtml = srcBodyId ? `
+      <div class="more-actions-wrapper">
+        <button class="btn-more" title="更多操作">•••</button>
+        <div class="dropdown-menu">
+          <button class="dropdown-item item-danger" data-act="exclude">排除病患…</button>
+        </div>
+      </div>` : '';
     tr.innerHTML = `
       <td><div class="patient-name">${e.patient.name}</div><div class="chart-number">${e.patient.chart_number}</div></td>
       <td>${e.disease_name || "—"}</td>
@@ -2330,9 +2337,22 @@
       <td class="mono" style="color:var(--text-sub)">${fmt(e.due_date)}</td>
       <td class="mono" style="color:var(--text-sub)">${fmt(notifiedAt)}</td>
       <td><span style="color:var(--text-sub)">${daysSince(notifiedAt)} 天</span></td>
-      <td><button class="btn-undo">撤銷</button></td>
+      <td><div class="action-cell"><button class="btn-undo">撤銷</button>${moreHtml}</div></td>
     `;
     tr.querySelector(".btn-undo").onclick = undoFn;
+    if (srcBodyId) {
+      const moreBtn = tr.querySelector(".btn-more");
+      const dropdown = tr.querySelector(".dropdown-menu");
+      moreBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        document.querySelectorAll(".dropdown-menu.open").forEach(d => { if (d !== dropdown) d.classList.remove("open"); });
+        dropdown.classList.toggle("open");
+      });
+      tr.querySelector("[data-act='exclude']").onclick = () => {
+        dropdown.classList.remove("open");
+        openExcludeModal(e, srcBodyId, null);
+      };
+    }
     return tr;
   }
 
@@ -2342,7 +2362,7 @@
     let tr;
     if (e.category === "慢簽") {
       tr = buildChronicDoneRow(e, (ev) =>
-        undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId));
+        undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId), contactedRowsId);
     } else if (e.category === "B肝") {
       tr = buildHepDoneRow(e, (ev) =>
         undoContacted(ev.currentTarget, key, contactedRowsId, contactedCountId, pendingBodyId, pendingBadgeId));
@@ -2510,7 +2530,7 @@
     tbody.innerHTML = "";
     entries.forEach(e => {
       tbody.appendChild(buildChronicDoneRow(e, (ev) =>
-        undoContacted(ev.currentTarget, followupKey(e), "chronic-contacted-rows", "chronic-contacted-count", "chronic-body", "chronic-badge")));
+        undoContacted(ev.currentTarget, followupKey(e), "chronic-contacted-rows", "chronic-contacted-count", "chronic-body", "chronic-badge"), "chronic-contacted-rows"));
     });
     updateCountLabel("chronic-contacted-count", "chronic-contacted-rows");
   }
@@ -2520,7 +2540,7 @@
     tbody.innerHTML = "";
     entries.forEach(e => {
       const tr = buildChronicDoneRow(e, (ev) =>
-        undoCalled(ev.currentTarget, followupKey(e), "chronic-called-rows", "chronic-called-count"));
+        undoCalled(ev.currentTarget, followupKey(e), "chronic-called-rows", "chronic-called-count"), "chronic-called-rows");
       tr.className = "done-final";
       tbody.appendChild(tr);
     });
