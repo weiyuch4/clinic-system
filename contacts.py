@@ -1,4 +1,6 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
+
+_TW = timezone(timedelta(hours=8))
 
 from db import _conn
 from models import ExcludedEntry, FollowupEntry, ManualPickupEntry, MsptManualEntry, MsptStage, MsptSubmittableEntry, OnHoldEntry, Patient
@@ -484,7 +486,7 @@ def _followup_to_row(entry: FollowupEntry, attempt: int, nurse: str = "") -> tup
         entry.last_visit_date.isoformat() if entry.last_visit_date else None,
         attempt,
         date.today().isoformat(),
-        datetime.now().strftime('%H:%M'),
+        datetime.now(_TW).strftime('%H:%M'),
         nurse,
     )
 
@@ -919,7 +921,7 @@ def mark_mspt_completed(entry: FollowupEntry, nurse: str = '', clinic_id: int = 
                     entry.patient.name, entry.patient.birth_date.isoformat(),
                     entry.last_visit_date.isoformat() if entry.last_visit_date else None,
                     entry.last_stage, entry.days_overdue, date.today().isoformat(),
-                    datetime.now().strftime('%H:%M'), nurse, clinic_id,
+                    datetime.now(_TW).strftime('%H:%M'), nurse, clinic_id,
                 ),
             )
 

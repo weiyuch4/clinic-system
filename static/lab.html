@@ -106,7 +106,12 @@
               : '<div class="lab-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>待出報告</div>';
             var metaParts = [];
             if (p.nat_id) metaParts.push('<span class="pr-copy" data-copy="' + L.escHtml(p.nat_id) + '" title="點擊複製身份證">' + L.escHtml(p.nat_id) + '</span>');
-            if (p.birth_date) metaParts.push('<span class="pr-copy" data-copy="' + L.escHtml(p.birth_date) + '" title="點擊複製生日">' + L.escHtml(p.birth_date) + '</span>');
+            if (p.birth_date) {
+              var bParts = p.birth_date.split('-');
+              var rocYear = bParts.length === 3 ? (parseInt(bParts[0], 10) - 1911) : '';
+              var rocDisplay = rocYear ? ('民' + rocYear + '/' + bParts[1] + '/' + bParts[2]) : p.birth_date;
+              metaParts.push('<span class="pr-copy" data-copy="' + L.escHtml(p.birth_date) + '" title="點擊複製生日（ISO）">' + L.escHtml(rocDisplay) + '</span>');
+            }
             var metaHtml = metaParts.length ? '<div class="lab-meta">' + metaParts.join('<span class="lab-meta-sep">·</span>') + '</div>' : '';
             return '<div class="lab-row">' +
               '<div class="lab-pt"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + metaHtml + '</div>' +

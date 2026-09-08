@@ -41,7 +41,10 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .app{display:flex;height:100%}
 
 /* â”€â”€ sidebar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-.sb{width:210px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:18px 12px;height:100%;overflow-y:auto}
+.sb{width:210px;flex-shrink:0;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:18px 12px;height:100%;overflow:hidden}
+.sb-nav{flex:1;overflow-y:auto;min-height:0;scrollbar-width:none}
+.sb-nav::-webkit-scrollbar{display:none}
+.sb-bot{flex-shrink:0;padding-top:10px;margin-top:6px;border-top:1px solid var(--border)}
 .logo{display:flex;align-items:center;gap:9px;padding:0 4px;margin-bottom:24px}
 .lm{width:28px;height:28px;background:#F3F4F6;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#374151}
 .ln{font-size:14.5px;font-weight:700;color:var(--text)}
