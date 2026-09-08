@@ -109,7 +109,7 @@
             if (p.birth_date) {
               var bParts = p.birth_date.split('-');
               var rocYear = bParts.length === 3 ? (parseInt(bParts[0], 10) - 1911) : '';
-              var rocDisplay = rocYear ? ('民' + rocYear + '/' + bParts[1] + '/' + bParts[2]) : p.birth_date;
+              var rocDisplay = rocYear ? (rocYear + '/' + bParts[1] + '/' + bParts[2]) : p.birth_date;
               metaParts.push('<span class="pr-copy" data-copy="' + L.escHtml(p.birth_date) + '" title="點擊複製生日（ISO）">' + L.escHtml(rocDisplay) + '</span>');
             }
             var metaHtml = metaParts.length ? '<div class="lab-meta">' + metaParts.join('<span class="lab-meta-sep">·</span>') + '</div>' : '';
