@@ -6,7 +6,7 @@
 <title>加班紀錄</title>
 <link rel="stylesheet" href="/static/_layout.css?v=33">
 <style>
-/* ── month nav ─────────────────────────────────────────────────────────── */
+/* ── month nav (page header) ───────────────────────────────────────────── */
 .month-nav { display:flex; align-items:center; gap:6px; }
 .month-nav-btn {
   width:28px; height:28px; border:1.5px solid var(--border); border-radius:7px;
@@ -15,54 +15,18 @@
   transition:border-color .12s, color .12s;
 }
 .month-nav-btn:hover { border-color:var(--sub); color:var(--text); }
-.month-display {
-  font-size:14px; font-weight:700; color:var(--text);
-  min-width:96px; text-align:center; letter-spacing:.02em;
-}
+.month-display { font-size:14px; font-weight:700; color:var(--text); min-width:96px; text-align:center; }
 
 /* ── summary tiles ─────────────────────────────────────────────────────── */
 .ot-summary { display:flex; gap:12px; flex-wrap:wrap; }
-.ot-tile {
-  background:var(--card); border-radius:12px; padding:14px 18px;
-  box-shadow:var(--shadow); flex:1; min-width:140px;
-}
-.ot-tile-val {
-  font-size:22px; font-weight:700; color:var(--text);
-  font-variant-numeric:tabular-nums; line-height:1.2;
-}
+.ot-tile { background:var(--card); border-radius:12px; padding:14px 18px; box-shadow:var(--shadow); flex:1; min-width:140px; }
+.ot-tile-val { font-size:22px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; line-height:1.2; }
 .ot-tile-lbl { font-size:11.5px; color:var(--muted); margin-top:3px; }
 
 /* ── add form ─────────────────────────────────────────────────────────── */
 .add-form { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
-.add-field { display:flex; flex-direction:column; gap:5px; }
+.add-field { display:flex; flex-direction:column; gap:5px; position:relative; }
 .add-lbl { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
-
-/* shared input base */
-.ot-inp {
-  border:1.5px solid var(--border); border-radius:8px;
-  background:var(--card); color:var(--text);
-  font:600 13px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;
-  padding:8px 10px; outline:none;
-  transition:border-color .12s, box-shadow .12s;
-  -webkit-appearance:none; appearance:none;
-}
-.ot-inp:focus {
-  border-color:var(--g5);
-  box-shadow:0 0 0 3px rgba(107,114,128,.12);
-}
-/* webkit calendar icon subtle */
-.ot-inp::-webkit-calendar-picker-indicator {
-  opacity:.45; cursor:pointer; filter:var(--cal-icon-filter, none);
-}
-@media(prefers-color-scheme:dark){
-  :root:not([data-theme=light]) { --cal-icon-filter:invert(1); }
-}
-:root[data-theme=dark] { --cal-icon-filter:invert(1); }
-
-input[type=date].ot-inp  { min-width:140px; }
-input[type=time].ot-inp  { width:108px; }
-input[type=text].ot-inp  { min-width:180px; }
-
 .add-btn {
   background:#b5d7f5; color:#111827; border:none; border-radius:8px;
   padding:9px 20px; font:600 13px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;
@@ -71,12 +35,93 @@ input[type=text].ot-inp  { min-width:180px; }
 .add-btn:hover { background:#8fc5f0; }
 .add-btn:disabled { opacity:.5; cursor:default; }
 
+/* ── custom picker trigger ─────────────────────────────────────────────── */
+.pick-trigger {
+  display:inline-flex; align-items:center; gap:8px;
+  border:1.5px solid var(--border); border-radius:8px;
+  background:var(--card); color:var(--text);
+  font:600 13px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;
+  padding:8px 12px; cursor:pointer; text-align:left; white-space:nowrap;
+  transition:border-color .12s, box-shadow .12s; user-select:none;
+}
+.pick-trigger:hover { border-color:var(--sub); }
+.pick-trigger.open  { border-color:var(--g5); box-shadow:0 0 0 3px rgba(107,114,128,.12); }
+.pick-trigger svg   { width:14px; height:14px; color:var(--muted); flex-shrink:0; }
+.pick-trigger-val   { font-variant-numeric:tabular-nums; }
+
+/* ── picker dropdown shell ─────────────────────────────────────────────── */
+.pick-drop {
+  position:absolute; top:calc(100% + 6px); left:0; z-index:600;
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  box-shadow:0 8px 28px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.07);
+  overflow:hidden; animation:pick-in .12s ease;
+}
+@keyframes pick-in { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .pick-drop { box-shadow:0 8px 28px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.25); }
+}
+:root[data-theme=dark] .pick-drop { box-shadow:0 8px 28px rgba(0,0,0,.45), 0 2px 6px rgba(0,0,0,.25); }
+
+/* ── calendar picker ───────────────────────────────────────────────────── */
+.cal-drop { padding:14px; width:248px; }
+.cal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.cal-nav-btn {
+  width:26px; height:26px; border:none; border-radius:6px; background:var(--bg);
+  color:var(--sub); cursor:pointer; font-size:14px;
+  display:flex; align-items:center; justify-content:center; transition:background .1s, color .1s;
+}
+.cal-nav-btn:hover { background:var(--g0); color:var(--text); }
+.cal-month-lbl { font-size:13.5px; font-weight:700; color:var(--text); }
+.cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
+.cal-dow {
+  font-size:10px; font-weight:700; text-align:center; color:var(--muted);
+  padding:0 0 8px; letter-spacing:.04em;
+}
+.cal-day {
+  height:30px; border:none; border-radius:6px; background:transparent;
+  font-size:12.5px; color:var(--text); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .1s; font-variant-numeric:tabular-nums;
+}
+.cal-day:hover:not(:disabled)     { background:var(--g0); }
+.cal-day.cal-today                 { font-weight:700; color:#2563EB; }
+.cal-day.cal-sel                   { background:#2563EB; color:#fff; font-weight:700; }
+.cal-day.cal-sel:hover             { background:#1D4ED8; }
+.cal-day.cal-other                 { color:var(--muted); }
+.cal-day:disabled                  { opacity:.25; cursor:default; }
+
+/* ── time picker ───────────────────────────────────────────────────────── */
+.time-drop { display:flex; width:160px; height:190px; }
+.time-col {
+  flex:1; overflow-y:auto; scroll-behavior:smooth;
+  scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+  padding:4px;
+}
+.time-col::-webkit-scrollbar { width:4px; }
+.time-col::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+.time-sep { display:flex; align-items:center; padding:0 4px; font-weight:800; color:var(--muted); font-size:16px; }
+.time-opt {
+  display:flex; align-items:center; justify-content:center;
+  height:34px; border-radius:7px; font-size:13px;
+  font-variant-numeric:tabular-nums; color:var(--text); cursor:pointer;
+  transition:background .1s; letter-spacing:.04em;
+}
+.time-opt:hover    { background:var(--g0); }
+.time-opt.t-sel    { background:#2563EB; color:#fff; font-weight:700; }
+
+/* ── note text input ───────────────────────────────────────────────────── */
+.note-inp {
+  border:1.5px solid var(--border); border-radius:8px; background:var(--card);
+  color:var(--text); font:400 13px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;
+  padding:8px 12px; outline:none; min-width:180px; flex:1;
+  transition:border-color .12s, box-shadow .12s;
+}
+.note-inp:focus { border-color:var(--g5); box-shadow:0 0 0 3px rgba(107,114,128,.12); }
+.note-inp::placeholder { color:var(--muted); font-weight:400; }
+
 /* ── log table ────────────────────────────────────────────────────────── */
 .ot-table-wrap { overflow-x:auto; margin:0 -2px; }
-.ot-table {
-  width:100%; border-collapse:collapse; font-size:13px;
-  font-variant-numeric:tabular-nums;
-}
+.ot-table { width:100%; border-collapse:collapse; font-size:13px; font-variant-numeric:tabular-nums; }
 .ot-table th {
   text-align:left; font-size:10.5px; font-weight:700; letter-spacing:.07em;
   text-transform:uppercase; color:var(--muted); padding:0 12px 10px;
@@ -86,10 +131,7 @@ input[type=text].ot-inp  { min-width:180px; }
 .ot-table td { padding:10px 12px; border-bottom:1px solid var(--border); color:var(--text); }
 .ot-table tr:last-child td { border-bottom:none; }
 .ot-table tr:hover td { background:var(--bg); }
-.ot-dow {
-  display:inline-block; font-size:11px; font-weight:700;
-  padding:2px 7px; border-radius:5px; margin-left:6px;
-}
+.ot-dow { display:inline-block; font-size:11px; font-weight:700; padding:2px 7px; border-radius:5px; margin-left:6px; }
 .dow-sat { background:#EFF6FF; color:#1D4ED8; }
 .dow-sun { background:#F3E8FF; color:#7C3AED; }
 .dow-wkd { background:var(--g0); color:var(--muted); }
@@ -100,13 +142,10 @@ input[type=text].ot-inp  { min-width:180px; }
 :root[data-theme=dark] .dow-sat { background:#1e3a5f; color:#93c5fd; }
 :root[data-theme=dark] .dow-sun { background:#2e1065; color:#c4b5fd; }
 .ot-hours { font-weight:700; color:var(--g7); }
-.ot-note { color:var(--sub); font-size:12px; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.ot-del {
-  background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer;
-  padding:2px 6px; border-radius:5px; transition:color .1s, background .1s; line-height:1;
-}
+.ot-note  { color:var(--sub); font-size:12px; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ot-del   { background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer; padding:2px 6px; border-radius:5px; transition:color .1s, background .1s; line-height:1; }
 .ot-del:hover { color:#DC2626; background:var(--red-hover); }
-.ot-empty { text-align:center; padding:36px; color:var(--muted); font-size:13px; }
+.ot-empty   { text-align:center; padding:36px; color:var(--muted); font-size:13px; }
 .ot-loading { text-align:center; padding:36px; color:var(--muted); }
 .ot-err-msg { background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; border-radius:8px; padding:10px 14px; font-size:13px; margin-top:10px; }
 
@@ -118,9 +157,9 @@ input[type=text].ot-inp  { min-width:180px; }
   padding:7px 14px; cursor:pointer; transition:border-color .12s, color .12s;
 }
 .print-btn:hover { border-color:var(--sub); color:var(--text); }
-.print-btn svg { width:14px; height:14px; flex-shrink:0; }
+.print-btn svg { width:14px; height:14px; }
 
-/* ── print layout ─────────────────────────────────────────────────────── */
+/* ── print ────────────────────────────────────────────────────────────── */
 @media print {
   .app, .main { display:block !important; overflow:visible !important; }
   .sb, #topbar, .ph .phb, .ot-summary, .card:has(.add-form), .ot-del, .print-btn { display:none !important; }
@@ -136,8 +175,7 @@ input[type=text].ot-inp  { min-width:180px; }
 #print-header, #print-footer { display:none; }
 #print-header { margin-bottom:18px; }
 #print-header h2 { font-size:18pt; font-weight:700; margin-bottom:4px; }
-#print-header p { font-size:11pt; color:#444; }
-#print-footer { border-top:1px solid #ccc; padding-top:20px; }
+#print-header p  { font-size:11pt; color:#444; }
 .print-sig-row { display:flex; gap:60px; margin-top:12px; }
 .print-sig { display:flex; flex-direction:column; gap:28px; font-size:11pt; }
 .print-sig-line { border-bottom:1px solid #555; width:160px; }
@@ -150,7 +188,7 @@ input[type=text].ot-inp  { min-width:180px; }
     <div id="topbar"></div>
     <div class="ct">
 
-      <!-- Print-only header (hidden on screen) -->
+      <!-- Print-only header -->
       <div id="print-header">
         <h2>加班紀錄</h2>
         <p id="print-meta"></p>
@@ -177,37 +215,45 @@ input[type=text].ot-inp  { min-width:180px; }
 
       <!-- Summary tiles -->
       <div class="ot-summary">
-        <div class="ot-tile">
-          <div class="ot-tile-val" id="tile-hours">—</div>
-          <div class="ot-tile-lbl">本月總工時</div>
-        </div>
-        <div class="ot-tile">
-          <div class="ot-tile-val" id="tile-count">—</div>
-          <div class="ot-tile-lbl">本月筆數</div>
-        </div>
+        <div class="ot-tile"><div class="ot-tile-val" id="tile-hours">—</div><div class="ot-tile-lbl">本月總工時</div></div>
+        <div class="ot-tile"><div class="ot-tile-val" id="tile-count">—</div><div class="ot-tile-lbl">本月筆數</div></div>
       </div>
 
       <!-- Add entry -->
       <div class="card">
-        <div class="chd" style="margin-bottom:12px">
-          <span class="cttl">新增加班紀錄</span>
-        </div>
+        <div class="chd" style="margin-bottom:14px"><span class="cttl">新增加班紀錄</span></div>
         <div class="add-form">
-          <div class="add-field">
+          <!-- Date picker -->
+          <div class="add-field" id="dp-wrap">
             <span class="add-lbl">日期</span>
-            <input type="date" id="add-date" class="ot-inp">
+            <button type="button" class="pick-trigger" id="dp-trigger" onclick="togglePicker('dp')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span class="pick-trigger-val" id="dp-display" style="min-width:102px">選擇日期</span>
+            </button>
+            <div class="pick-drop cal-drop" id="dp-drop" style="display:none"></div>
           </div>
-          <div class="add-field">
+          <!-- Start time picker -->
+          <div class="add-field" id="tp-start-wrap">
             <span class="add-lbl">開始時間</span>
-            <input type="time" id="add-start" class="ot-inp" value="18:00">
+            <button type="button" class="pick-trigger" id="tp-start-trigger" onclick="togglePicker('tp-start')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 15"/></svg>
+              <span class="pick-trigger-val" id="tp-start-display" style="min-width:42px">18:00</span>
+            </button>
+            <div class="pick-drop time-drop" id="tp-start-drop" style="display:none"></div>
           </div>
-          <div class="add-field">
+          <!-- End time picker -->
+          <div class="add-field" id="tp-end-wrap">
             <span class="add-lbl">結束時間</span>
-            <input type="time" id="add-end" class="ot-inp" value="20:00">
+            <button type="button" class="pick-trigger" id="tp-end-trigger" onclick="togglePicker('tp-end')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 15"/></svg>
+              <span class="pick-trigger-val" id="tp-end-display" style="min-width:42px">20:00</span>
+            </button>
+            <div class="pick-drop time-drop" id="tp-end-drop" style="display:none"></div>
           </div>
+          <!-- Note -->
           <div class="add-field" style="flex:1;min-width:160px">
             <span class="add-lbl">備註（選填）</span>
-            <input type="text" id="add-note" class="ot-inp" placeholder="例：月底加班" maxlength="80">
+            <input type="text" id="add-note" class="note-inp" placeholder="例：月底加班" maxlength="80">
           </div>
           <button class="add-btn" id="add-btn" onclick="addEntry()">新增</button>
         </div>
@@ -216,47 +262,28 @@ input[type=text].ot-inp  { min-width:180px; }
 
       <!-- Log table -->
       <div class="card">
-        <div class="chd" style="margin-bottom:12px">
-          <span class="cttl" id="log-card-title">加班紀錄</span>
-        </div>
+        <div class="chd" style="margin-bottom:12px"><span class="cttl" id="log-card-title">加班紀錄</span></div>
         <div class="ot-table-wrap">
           <div id="log-state" class="ot-loading">載入中…</div>
           <table class="ot-table" id="log-table" style="display:none">
-            <thead>
-              <tr>
-                <th>日期</th>
-                <th>時間</th>
-                <th>工時</th>
-                <th>備註</th>
-                <th></th>
-              </tr>
-            </thead>
+            <thead><tr><th>日期</th><th>時間</th><th>工時</th><th>備註</th><th></th></tr></thead>
             <tbody id="log-body"></tbody>
           </table>
         </div>
       </div>
 
-      <!-- Print footer (hidden on screen) -->
+      <!-- Print footer -->
       <div id="print-footer">
         <div class="print-sig-row">
-          <div class="print-sig">
-            <span>護理師簽名</span>
-            <div class="print-sig-line"></div>
-          </div>
-          <div class="print-sig">
-            <span>主管確認</span>
-            <div class="print-sig-line"></div>
-          </div>
-          <div class="print-sig">
-            <span>日期</span>
-            <div class="print-sig-line"></div>
-          </div>
+          <div class="print-sig"><span>護理師簽名</span><div class="print-sig-line"></div></div>
+          <div class="print-sig"><span>主管確認</span><div class="print-sig-line"></div></div>
+          <div class="print-sig"><span>日期</span><div class="print-sig-line"></div></div>
         </div>
       </div>
 
-    </div><!-- .ct -->
-  </div><!-- .main -->
-</div><!-- .app -->
+    </div>
+  </div>
+</div>
 
 <script src="/static/_layout.js?v=33"></script>
 <script src="/static/auth-client.js"></script>
@@ -266,73 +293,188 @@ input[type=text].ot-inp  { min-width:180px; }
   var L = Layout;
   L.init({ activePage: 'nurse-ot' });
 
+  /* ── picker state ─────────────────────────────────────────────────────── */
+  var _openPicker = null;   // 'dp' | 'tp-start' | 'tp-end' | null
+
+  // date picker state
+  var _dpYear = 0, _dpMon = 0, _dpDay = 0;
+  var _dpNavYear = 0, _dpNavMon = 0;
+
+  // time picker states: { h, m }
+  var _tp = { 'tp-start': { h: 18, m: 0 }, 'tp-end': { h: 20, m: 0 } };
+
+  /* ── page state ───────────────────────────────────────────────────────── */
   var _nurseName   = '';
-  var _currentYear = 0;
-  var _currentMon  = 0;       // 1-based
+  var _currentYear = 0, _currentMon = 0;
   var _logs        = [];
 
   var DOW_ZH = ['日','一','二','三','四','五','六'];
   var MON_ZH = ['','1','2','3','4','5','6','7','8','9','10','11','12'];
 
-  function monthStr(y, m) {
-    return y + '-' + String(m).padStart(2, '0');
+  /* ── helpers ──────────────────────────────────────────────────────────── */
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function monthStr(y, m) { return y + '-' + pad2(m); }
+  function todayParts() { var d = new Date(); return [d.getFullYear(), d.getMonth()+1, d.getDate()]; }
+  function calcMins(sh, sm, eh, em) { return (eh*60+em) - (sh*60+sm); }
+  function fmtHours(totalMins) {
+    if (totalMins <= 0) return '0h';
+    var h = Math.floor(totalMins/60), m = totalMins%60;
+    return m ? h+'h '+m+'m' : h+'h';
   }
 
+  /* ── date picker ──────────────────────────────────────────────────────── */
+  function dpRender() {
+    var drop = document.getElementById('dp-drop');
+    var today = todayParts();
+    var daysInMon = new Date(_dpNavYear, _dpNavMon, 0).getDate();
+    var firstDow  = new Date(_dpNavYear, _dpNavMon-1, 1).getDay();
+    var label = _dpNavYear + ' 年 ' + MON_ZH[_dpNavMon] + ' 月';
+
+    var cells = '';
+    // leading blanks
+    for (var b = 0; b < firstDow; b++) cells += '<button class="cal-day cal-other" disabled></button>';
+    // days
+    for (var d = 1; d <= daysInMon; d++) {
+      var cls = 'cal-day';
+      var isTod = (_dpNavYear===today[0] && _dpNavMon===today[1] && d===today[2]);
+      var isSel = (_dpYear===_dpNavYear && _dpMon===_dpNavMon && _dpDay===d);
+      if (isSel) cls += ' cal-sel';
+      else if (isTod) cls += ' cal-today';
+      cells += '<button class="'+cls+'" onclick="dpSelect('+d+')">'+d+'</button>';
+    }
+
+    drop.innerHTML =
+      '<div class="cal-head">' +
+        '<button class="cal-nav-btn" onclick="dpNav(-1)">‹</button>' +
+        '<span class="cal-month-lbl">'+label+'</span>' +
+        '<button class="cal-nav-btn" onclick="dpNav(1)">›</button>' +
+      '</div>' +
+      '<div class="cal-grid">' +
+        ['日','一','二','三','四','五','六'].map(function(d){return '<div class="cal-dow">'+d+'</div>';}).join('') +
+        cells +
+      '</div>';
+  }
+
+  window.dpNav = function(dir) {
+    _dpNavMon += dir;
+    if (_dpNavMon > 12) { _dpNavMon = 1;  _dpNavYear++; }
+    if (_dpNavMon < 1)  { _dpNavMon = 12; _dpNavYear--; }
+    dpRender();
+  };
+
+  window.dpSelect = function(day) {
+    _dpYear = _dpNavYear; _dpMon = _dpNavMon; _dpDay = day;
+    var val = _dpYear + '-' + pad2(_dpMon) + '-' + pad2(_dpDay);
+    document.getElementById('dp-display').textContent = val;
+    closePicker();
+  };
+
+  /* ── time picker ──────────────────────────────────────────────────────── */
+  function tpRender(id) {
+    var drop = document.getElementById(id+'-drop');
+    var st   = _tp[id];
+    var hCells = '', mCells = '';
+
+    for (var h = 0; h < 24; h++) {
+      var hCls = (h === st.h) ? 'time-opt t-sel' : 'time-opt';
+      hCells += '<div class="'+hCls+'" onclick="tpSelH(\''+id+'\','+h+')">'+pad2(h)+'</div>';
+    }
+    for (var mi = 0; mi < 60; mi += 5) {
+      var mCls = (mi === st.m) ? 'time-opt t-sel' : 'time-opt';
+      mCells += '<div class="'+mCls+'" onclick="tpSelM(\''+id+'\','+mi+')">'+pad2(mi)+'</div>';
+    }
+
+    drop.innerHTML =
+      '<div class="time-col" id="'+id+'-hcol">'+hCells+'</div>' +
+      '<div class="time-sep">:</div>' +
+      '<div class="time-col" id="'+id+'-mcol">'+mCells+'</div>';
+
+    // scroll selected into view after render
+    requestAnimationFrame(function() {
+      var hSel = drop.querySelector('.t-sel');
+      if (hSel) hSel.scrollIntoView({ block:'center' });
+      var mSel = drop.querySelectorAll('.t-sel')[1];
+      if (mSel) mSel.scrollIntoView({ block:'center' });
+    });
+  }
+
+  function tpUpdate(id) {
+    var st = _tp[id];
+    document.getElementById(id+'-display').textContent = pad2(st.h) + ':' + pad2(st.m);
+    tpRender(id);
+  }
+
+  window.tpSelH = function(id, h) {
+    _tp[id].h = h;
+    tpUpdate(id);
+  };
+  window.tpSelM = function(id, m) {
+    _tp[id].m = m;
+    tpUpdate(id);
+    // close after picking minute
+    closePicker();
+  };
+
+  /* ── picker open/close ────────────────────────────────────────────────── */
+  function openPicker(id) {
+    _openPicker = id;
+    // initialize nav state for date picker
+    if (id === 'dp') {
+      var today = todayParts();
+      _dpNavYear = _dpYear || today[0];
+      _dpNavMon  = _dpMon  || today[1];
+      dpRender();
+    } else {
+      tpRender(id);
+    }
+    document.getElementById(id+'-drop').style.display = '';
+    document.getElementById(id+'-trigger').classList.add('open');
+  }
+
+  function closePicker() {
+    if (!_openPicker) return;
+    document.getElementById(_openPicker+'-drop').style.display = 'none';
+    document.getElementById(_openPicker+'-trigger').classList.remove('open');
+    _openPicker = null;
+  }
+
+  window.togglePicker = function(id) {
+    if (_openPicker === id) { closePicker(); return; }
+    closePicker();
+    openPicker(id);
+  };
+
+  // close on outside click
+  document.addEventListener('mousedown', function(e) {
+    if (!_openPicker) return;
+    var wrap = document.getElementById(_openPicker+'-wrap') ||
+               document.getElementById(_openPicker.replace('tp-','tp-').replace('tp-','').replace('tp-start','tp-start').replace('tp-end','tp-end'));
+    // find the wrapping .add-field
+    var trigger = document.getElementById(_openPicker+'-trigger');
+    var drop    = document.getElementById(_openPicker+'-drop');
+    if (trigger && !trigger.contains(e.target) && drop && !drop.contains(e.target)) {
+      closePicker();
+    }
+  }, true);
+
+  /* ── page month nav ───────────────────────────────────────────────────── */
   function updateMonthDisplay() {
     document.getElementById('month-display').textContent =
       _currentYear + ' 年 ' + MON_ZH[_currentMon] + ' 月';
   }
 
-  function initCurrentMonth() {
-    var d = new Date();
-    _currentYear = d.getFullYear();
-    _currentMon  = d.getMonth() + 1;
-    updateMonthDisplay();
-  }
+  window.stepMonth = function(dir) {
+    _currentMon += dir;
+    if (_currentMon > 12) { _currentMon = 1;  _currentYear++; }
+    if (_currentMon < 1)  { _currentMon = 12; _currentYear--; }
+    loadLogs();
+  };
 
-  function localDateStr() {
-    var d = new Date();
-    return d.getFullYear() + '-' +
-      String(d.getMonth() + 1).padStart(2, '0') + '-' +
-      String(d.getDate()).padStart(2, '0');
-  }
-
-  function calcMins(start, end) {
-    if (!start || !end) return 0;
-    var sp = start.split(':').map(Number), ep = end.split(':').map(Number);
-    return (ep[0] * 60 + ep[1]) - (sp[0] * 60 + sp[1]);
-  }
-
-  function fmtHours(totalMins) {
-    if (totalMins <= 0) return '0h';
-    var h = Math.floor(totalMins / 60), m = totalMins % 60;
-    return m ? h + 'h ' + m + 'm' : h + 'h';
-  }
-
-  function dowInfo(dateStr) {
-    var p = dateStr.split('-').map(Number);
-    var dow = new Date(p[0], p[1] - 1, p[2]).getDay();
-    var cls = dow === 0 ? 'dow-sun' : dow === 6 ? 'dow-sat' : 'dow-wkd';
-    return { label: DOW_ZH[dow], cls: cls };
-  }
-
-  function showErr(msg) {
-    var el = document.getElementById('add-err');
-    el.className = 'ot-err-msg';
-    el.textContent = msg;
-    el.style.display = '';
-  }
-
-  function clearErr() {
-    document.getElementById('add-err').style.display = 'none';
-  }
-
+  /* ── log loading ──────────────────────────────────────────────────────── */
   function renderRows(logs) {
     _logs = logs;
     var stateEl = document.getElementById('log-state');
     var tableEl = document.getElementById('log-table');
-    var tbodyEl = document.getElementById('log-body');
-    var titleEl = document.getElementById('log-card-title');
     var label   = _currentYear + ' 年 ' + MON_ZH[_currentMon] + ' 月';
 
     stateEl.style.display = 'none';
@@ -344,28 +486,34 @@ input[type=text].ot-inp  { min-width:180px; }
       stateEl.style.display = '';
       document.getElementById('tile-hours').textContent = '0h';
       document.getElementById('tile-count').textContent = '0 筆';
-      titleEl.textContent = label + ' 加班紀錄';
+      document.getElementById('log-card-title').textContent = label + ' 加班紀錄';
       document.getElementById('print-btn').style.display = 'none';
       return;
     }
 
-    var totalMins = logs.reduce(function (s, r) {
-      return s + Math.max(0, calcMins(r.start_time, r.end_time));
+    var totalMins = logs.reduce(function(s, r) {
+      var sp = (r.start_time||'00:00').split(':').map(Number);
+      var ep = (r.end_time  ||'00:00').split(':').map(Number);
+      return s + Math.max(0, calcMins(sp[0],sp[1],ep[0],ep[1]));
     }, 0);
     document.getElementById('tile-hours').textContent = fmtHours(totalMins);
     document.getElementById('tile-count').textContent = logs.length + ' 筆';
-    titleEl.textContent = label + ' 加班紀錄（' + logs.length + ' 筆）';
+    document.getElementById('log-card-title').textContent = label + ' 加班紀錄（' + logs.length + ' 筆）';
     document.getElementById('print-btn').style.display = '';
 
-    tbodyEl.innerHTML = logs.map(function (r) {
-      var mins = Math.max(0, calcMins(r.start_time, r.end_time));
-      var di   = dowInfo(r.date);
+    document.getElementById('log-body').innerHTML = logs.map(function(r) {
+      var sp = (r.start_time||'00:00').split(':').map(Number);
+      var ep = (r.end_time  ||'00:00').split(':').map(Number);
+      var mins = Math.max(0, calcMins(sp[0],sp[1],ep[0],ep[1]));
+      var p = r.date.split('-').map(Number);
+      var dow = new Date(p[0],p[1]-1,p[2]).getDay();
+      var dowCls = dow===0?'dow-sun':dow===6?'dow-sat':'dow-wkd';
       return '<tr>' +
-        '<td>' + r.date + '<span class="ot-dow ' + di.cls + '">週' + di.label + '</span></td>' +
-        '<td>' + r.start_time + ' — ' + r.end_time + '</td>' +
-        '<td class="ot-hours">' + (mins > 0 ? fmtHours(mins) : '—') + '</td>' +
-        '<td class="ot-note">' + L.escHtml(r.note || '') + '</td>' +
-        '<td><button class="ot-del" onclick="deleteEntry(' + r.id + ')" title="刪除">×</button></td>' +
+        '<td>'+r.date+'<span class="ot-dow '+dowCls+'">週'+DOW_ZH[dow]+'</span></td>' +
+        '<td>'+r.start_time+' — '+r.end_time+'</td>' +
+        '<td class="ot-hours">'+(mins>0?fmtHours(mins):'—')+'</td>' +
+        '<td class="ot-note">'+L.escHtml(r.note||'')+'</td>' +
+        '<td><button class="ot-del" onclick="deleteEntry('+r.id+')" title="刪除">×</button></td>' +
       '</tr>';
     }).join('');
     tableEl.style.display = '';
@@ -374,85 +522,92 @@ input[type=text].ot-inp  { min-width:180px; }
   function loadLogs() {
     updateMonthDisplay();
     var stateEl = document.getElementById('log-state');
-    var tableEl = document.getElementById('log-table');
+    document.getElementById('log-table').style.display = 'none';
+    document.getElementById('print-btn').style.display = 'none';
     stateEl.className = 'ot-loading';
     stateEl.textContent = '載入中…';
     stateEl.style.display = '';
-    tableEl.style.display = 'none';
-    document.getElementById('print-btn').style.display = 'none';
 
-    var month = monthStr(_currentYear, _currentMon);
-    L.apiFetch('/api/nurse/ot-logs?month=' + encodeURIComponent(month))
-      .then(function (logs) { renderRows(logs); })
-      .catch(function () {
+    L.apiFetch('/api/nurse/ot-logs?month=' + encodeURIComponent(monthStr(_currentYear, _currentMon)))
+      .then(function(logs) { renderRows(logs); })
+      .catch(function() {
         stateEl.className = 'ot-err-msg';
         stateEl.textContent = '載入失敗，請重新整理';
         stateEl.style.display = '';
       });
   }
 
-  window.stepMonth = function (dir) {
-    _currentMon += dir;
-    if (_currentMon > 12) { _currentMon = 1;  _currentYear++; }
-    if (_currentMon < 1)  { _currentMon = 12; _currentYear--; }
-    loadLogs();
-  };
+  /* ── add / delete ─────────────────────────────────────────────────────── */
+  function showErr(msg) {
+    var el = document.getElementById('add-err');
+    el.className = 'ot-err-msg'; el.textContent = msg; el.style.display = '';
+  }
 
-  window.addEntry = function () {
-    clearErr();
-    var date  = document.getElementById('add-date').value;
-    var start = document.getElementById('add-start').value;
-    var end   = document.getElementById('add-end').value;
-    var note  = document.getElementById('add-note').value;
-    if (!date)          { showErr('請選擇日期'); return; }
-    if (!start || !end) { showErr('請填寫開始與結束時間'); return; }
-    if (calcMins(start, end) <= 0) { showErr('結束時間必須晚於開始時間'); return; }
+  window.addEntry = function() {
+    document.getElementById('add-err').style.display = 'none';
+    var dateVal = _dpYear ? (_dpYear+'-'+pad2(_dpMon)+'-'+pad2(_dpDay)) : '';
+    var st = _tp['tp-start'], et = _tp['tp-end'];
+    if (!dateVal)   { showErr('請選擇日期'); return; }
+    if (calcMins(st.h,st.m,et.h,et.m) <= 0) { showErr('結束時間必須晚於開始時間'); return; }
 
     var btn = document.getElementById('add-btn');
     btn.disabled = true; btn.textContent = '新增中…';
-    L.apiAction('POST', '/api/nurse/ot-logs', { date: date, start_time: start, end_time: end, note: note })
-      .then(function () {
-        document.getElementById('add-note').value = '';
-        // jump to the month of the added entry if it differs
-        var ep = date.split('-').map(Number);
-        _currentYear = ep[0]; _currentMon = ep[1];
-        loadLogs();
-      })
-      .catch(function () { showErr('新增失敗，請再試一次'); })
-      .finally(function () { btn.disabled = false; btn.textContent = '新增'; });
+    L.apiAction('POST', '/api/nurse/ot-logs', {
+      date: dateVal,
+      start_time: pad2(st.h)+':'+pad2(st.m),
+      end_time:   pad2(et.h)+':'+pad2(et.m),
+      note: document.getElementById('add-note').value,
+    })
+    .then(function() {
+      document.getElementById('add-note').value = '';
+      var ep = dateVal.split('-').map(Number);
+      _currentYear = ep[0]; _currentMon = ep[1];
+      loadLogs();
+    })
+    .catch(function() { showErr('新增失敗，請再試一次'); })
+    .finally(function() { btn.disabled = false; btn.textContent = '新增'; });
   };
 
-  window.deleteEntry = function (id) {
+  window.deleteEntry = function(id) {
     if (!confirm('確定刪除這筆記錄？')) return;
-    L.apiAction('DELETE', '/api/nurse/ot-logs/' + id)
-      .then(function () { loadLogs(); })
-      .catch(function () { alert('刪除失敗'); });
+    L.apiAction('DELETE', '/api/nurse/ot-logs/'+id)
+      .then(function() { loadLogs(); })
+      .catch(function() { alert('刪除失敗'); });
   };
 
-  window.printSheet = function () {
+  /* ── print ────────────────────────────────────────────────────────────── */
+  window.printSheet = function() {
     var label = _currentYear + ' 年 ' + MON_ZH[_currentMon] + ' 月';
-    var totalMins = _logs.reduce(function (s, r) {
-      return s + Math.max(0, calcMins(r.start_time, r.end_time));
+    var totalMins = _logs.reduce(function(s,r) {
+      var sp=(r.start_time||'00:00').split(':').map(Number);
+      var ep=(r.end_time  ||'00:00').split(':').map(Number);
+      return s+Math.max(0,calcMins(sp[0],sp[1],ep[0],ep[1]));
     }, 0);
     document.getElementById('print-meta').textContent =
       _nurseName + '　' + label + '　共 ' + _logs.length + ' 筆，合計 ' + fmtHours(totalMins);
     window.print();
   };
 
-  // ── Init ──────────────────────────────────────────────────────────────────
-  initCurrentMonth();
-  document.getElementById('add-date').value = localDateStr();
+  /* ── init ─────────────────────────────────────────────────────────────── */
+  (function init() {
+    var d = new Date();
+    _currentYear = d.getFullYear(); _currentMon = d.getMonth()+1;
+    // default date picker to today
+    _dpNavYear = _currentYear; _dpNavMon = _currentMon;
+    // don't pre-select today — let nurse pick
+    updateMonthDisplay();
 
-  L.apiFetch('/api/me')
-    .then(function (me) {
-      _nurseName = me.display_name || '';
-      document.getElementById('page-sub').textContent =
-        _nurseName + '　自行記錄加班時間，供薪資計算參考';
-      loadLogs();
-    })
-    .catch(function () {
-      document.getElementById('page-sub').textContent = '身份驗證失敗';
-    });
+    L.apiFetch('/api/me')
+      .then(function(me) {
+        _nurseName = me.display_name || '';
+        document.getElementById('page-sub').textContent =
+          _nurseName + '　自行記錄加班時間，供薪資計算參考';
+        loadLogs();
+      })
+      .catch(function() {
+        document.getElementById('page-sub').textContent = '身份驗證失敗';
+      });
+  })();
 })();
 </script>
 </body>
