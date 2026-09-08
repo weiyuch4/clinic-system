@@ -71,7 +71,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 /* â”€â”€ topbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
 .tb{background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;padding:11px 20px;flex-shrink:0}
-.srch{display:flex;align-items:center;gap:7px;background:var(--bg);border-radius:9px;padding:7px 12px;flex:1;max-width:260px;color:var(--muted);font-size:13px}
+.srch{display:flex;align-items:center;gap:7px;background:var(--bg);border-radius:9px;padding:7px 12px;flex:1;max-width:260px;color:var(--muted);font-size:13px;position:relative}
 .srch svg{width:15px;height:15px;flex-shrink:0}
 .srch-input{border:none;background:transparent;outline:none;color:var(--text);font-size:13px;font-family:inherit;width:100%;min-width:0}
 .srch-input::placeholder{color:var(--muted)}
@@ -439,3 +439,18 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
 .th-sort:hover{color:var(--sub)}
 .sort-icon{margin-left:3px;opacity:.45;font-size:9px;vertical-align:middle}
+
+
+/* ── patient search dropdown ───────────────────────────── */
+.srch-dd{position:absolute;top:calc(100% + 6px);left:-12px;width:320px;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 6px 20px rgba(0,0,0,.12);z-index:9999;overflow:hidden}
+.srch-dd-item{display:flex;align-items:center;gap:10px;padding:9px 13px;cursor:pointer;transition:background .08s;border-bottom:1px solid var(--border)}
+.srch-dd-item:last-child{border-bottom:none}
+.srch-dd-item:hover,.srch-dd-item.focused{background:var(--g0)}
+.srch-dd-name{font-size:13px;font-weight:600;color:var(--text);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srch-dd-chart{font-size:11px;color:var(--muted);font-family:monospace;flex-shrink:0}
+.srch-dd-cats{display:flex;gap:4px;flex-wrap:wrap;margin-top:2px}
+.srch-dd-cat{font-size:10.5px;padding:1px 6px;border-radius:4px;background:var(--bg);color:var(--sub);border:1px solid var(--border)}
+.srch-dd-meta{flex:1;min-width:0}
+.srch-dd-empty{padding:14px 13px;font-size:13px;color:var(--muted);text-align:center}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .srch-dd{box-shadow:0 6px 20px rgba(0,0,0,.35)}}
+:root[data-theme=dark] .srch-dd{box-shadow:0 6px 20px rgba(0,0,0,.35)}

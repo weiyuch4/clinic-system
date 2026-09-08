@@ -371,6 +371,29 @@ def patient_search(q: str = "") -> list[dict]:
     return database.search_patients(q)
 
 
+@app.get("/api/patients/search")
+def search_patients_api(q: str = Query("", min_length=1), user: auth.CurrentUser = Depends(auth.get_current_user)):
+    try:
+        return {"patients": contacts.search_patients_cloud(q.strip(), user.clinic_id)}
+    except Exception:
+        logger.exception("search_patients_api failed")
+        raise HTTPException(status_code=500, detail="搜尋失敗")
+
+
+@app.get("/api/patient-profile/{chart_number}")
+def get_patient_profile_api(chart_number: str, user: auth.CurrentUser = Depends(auth.get_current_user)):
+    try:
+        profile = contacts.get_patient_profile(chart_number, user.clinic_id)
+        if not profile:
+            raise HTTPException(status_code=404, detail="找不到病患資料")
+        return profile
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("get_patient_profile_api failed")
+        raise HTTPException(status_code=500, detail="載入失敗")
+
+
 @app.get("/api/nurses")
 def get_nurses(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[str]:
     return contacts.get_nurses(user.clinic_id)

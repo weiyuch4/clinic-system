@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>病患資料 — 診所追蹤系統</title>
+<link rel="stylesheet" href="/static/_layout.css?v=32">
+<style>
+.pt-hero{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;display:flex;align-items:flex-start;gap:18px;margin-bottom:20px}
+.pt-av{width:52px;height:52px;border-radius:50%;background:var(--g0);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--sub);flex-shrink:0;border:2px solid var(--border)}
+.pt-info{flex:1;min-width:0}
+.pt-name{font-size:20px;font-weight:700;color:var(--text);margin-bottom:6px}
+.pt-meta-row{display:flex;flex-wrap:wrap;gap:14px;font-size:13px;color:var(--sub)}
+.pt-meta-item{display:flex;align-items:center;gap:5px}
+.pt-meta-label{font-size:11.5px;color:var(--muted)}
+.pt-chart{font-family:monospace;font-size:12px;color:var(--muted);margin-top:3px}
+
+.pt-section{margin-bottom:20px}
+.pt-section-title{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:10px;padding:0 2px}
+
+.fu-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.fu-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:15px 17px;display:flex;flex-direction:column;gap:5px}
+.fu-card-cat{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:2px 8px;border-radius:5px;display:inline-flex;align-items:center;width:fit-content;margin-bottom:3px}
+.fu-card-disease{font-size:13px;font-weight:600;color:var(--text)}
+.fu-card-detail{font-size:12px;color:var(--sub)}
+.fu-card-overdue{font-size:12px;font-weight:600}
+.fu-card-overdue.ok{color:#059669}
+.fu-card-overdue.warn{color:#D97706}
+.fu-card-overdue.late{color:#DC2626}
+
+.cat-chronic{background:#DBEAFE;color:#1E40AF}
+.cat-mspt{background:#EDE9FE;color:#5B21B6}
+.cat-hep{background:#D1FAE5;color:#065F46}
+.cat-meta{background:#FEF3C7;color:#92400E}
+.cat-ckd{background:#FEE2E2;color:#991B1B}
+.cat-default{background:var(--bg);color:var(--sub)}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .cat-chronic{background:#1e3a5f;color:#93c5fd}
+  :root:not([data-theme=light]) .cat-mspt{background:#2e1065;color:#c4b5fd}
+  :root:not([data-theme=light]) .cat-hep{background:#052e16;color:#6ee7b7}
+  :root:not([data-theme=light]) .cat-meta{background:#451a03;color:#fcd34d}
+  :root:not([data-theme=light]) .cat-ckd{background:#450a0a;color:#fca5a5}
+}
+:root[data-theme=dark] .cat-chronic{background:#1e3a5f;color:#93c5fd}
+:root[data-theme=dark] .cat-mspt{background:#2e1065;color:#c4b5fd}
+:root[data-theme=dark] .cat-hep{background:#052e16;color:#6ee7b7}
+:root[data-theme=dark] .cat-meta{background:#451a03;color:#fcd34d}
+:root[data-theme=dark] .cat-ckd{background:#450a0a;color:#fca5a5}
+
+.hist-list{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.hist-row{display:grid;grid-template-columns:100px 1fr auto;gap:10px;padding:10px 16px;border-bottom:1px solid var(--border);align-items:start}
+.hist-row:last-child{border-bottom:none}
+.hist-date{font-size:12px;color:var(--muted)}
+.hist-time{font-size:11px;color:var(--muted)}
+.hist-body{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.hist-detail{font-size:12.5px;color:var(--sub);flex-basis:100%}
+.hist-nurse{font-size:12px;color:var(--muted);white-space:nowrap}
+.hist-chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:5px;white-space:nowrap}
+.hist-cat{display:inline-block;font-size:11px;padding:2px 7px;border-radius:5px;white-space:nowrap;background:var(--bg);color:var(--sub);border:1px solid var(--border)}
+.chip-contacted{background:#DBEAFE;color:#1D4ED8}
+.chip-called{background:#FEF3C7;color:#92400E}
+.chip-line{background:#D1FAE5;color:#065F46}
+.chip-hold{background:#FEF9C3;color:#713F12}
+.chip-excluded{background:#FEE2E2;color:#991B1B}
+.chip-mspt_completed{background:#EDE9FE;color:#5B21B6}
+.chip-checkedin{background:#CCFBF1;color:#0F766E}
+.chip-hep_completed{background:#E0E7FF;color:#3730A3}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .chip-contacted{background:#1e3a5f;color:#93c5fd}
+  :root:not([data-theme=light]) .chip-called{background:#451a03;color:#fcd34d}
+  :root:not([data-theme=light]) .chip-line{background:#052e16;color:#6ee7b7}
+  :root:not([data-theme=light]) .chip-hold{background:#3b2000;color:#fde68a}
+  :root:not([data-theme=light]) .chip-excluded{background:#450a0a;color:#fca5a5}
+  :root:not([data-theme=light]) .chip-mspt_completed{background:#2e1065;color:#c4b5fd}
+  :root:not([data-theme=light]) .chip-checkedin{background:#042f2e;color:#5eead4}
+  :root:not([data-theme=light]) .chip-hep_completed{background:#1e1b4b;color:#a5b4fc}
+}
+:root[data-theme=dark] .chip-contacted{background:#1e3a5f;color:#93c5fd}
+:root[data-theme=dark] .chip-called{background:#451a03;color:#fcd34d}
+:root[data-theme=dark] .chip-line{background:#052e16;color:#6ee7b7}
+:root[data-theme=dark] .chip-hold{background:#3b2000;color:#fde68a}
+:root[data-theme=dark] .chip-excluded{background:#450a0a;color:#fca5a5}
+:root[data-theme=dark] .chip-mspt_completed{background:#2e1065;color:#c4b5fd}
+:root[data-theme=dark] .chip-checkedin{background:#042f2e;color:#5eead4}
+:root[data-theme=dark] .chip-hep_completed{background:#1e1b4b;color:#a5b4fc}
+
+.pt-loading{text-align:center;padding:60px;color:var(--muted)}
+.pt-error{text-align:center;padding:60px;color:#991b1b}
+.hist-empty{padding:28px;text-align:center;color:var(--muted);font-size:13px}
+
+.back-link{display:inline-flex;align-items:center;gap:5px;font-size:13px;color:var(--sub);text-decoration:none;margin-bottom:16px;padding:6px 10px;border-radius:7px;transition:background .1s}
+.back-link:hover{background:var(--g0);color:var(--text)}
+.back-link svg{width:14px;height:14px}
+
+.phone-copy{cursor:pointer;border-radius:3px;padding:1px 3px;transition:background .1s}
+.phone-copy:hover{background:var(--border)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar"></aside>
+  <div class="main">
+    <div id="topbar"></div>
+    <div class="ct">
+      <div id="pt-root"><div class="pt-loading">載入中…</div></div>
+    </div>
+  </div>
+</div>
+
+<script src="/static/_layout.js?v=32"></script>
+<script src="/static/auth-client.js"></script>
+<script>
+(function () {
+  'use strict';
+  var L = Layout;
+  L.init({ activePage: '' });
+
+  var root = document.getElementById('pt-root');
+
+  var CAT_CLASS = {
+    '慢簽': 'cat-chronic',
+    '代謝症候群': 'cat-meta',
+    'MSPT': 'cat-mspt',
+    '肝炎': 'cat-hep',
+  };
+
+  var CHIP_LABELS = {
+    contacted: '一次通知', called: '二次通知', line: 'LINE訊息',
+    hold: '暫緩', excluded: '排除', mspt_completed: 'MSPT完成',
+    checkedin: 'MSPT回診', hep_completed: '肝炎回診',
+  };
+
+  function rocDate(iso) {
+    if (!iso) return '';
+    var p = iso.split('-');
+    if (p.length !== 3) return iso;
+    return (parseInt(p[0], 10) - 1911) + '/' + p[1] + '/' + p[2];
+  }
+
+  function overdueCls(d) {
+    if (d == null) return '';
+    if (d < 0) return 'ok';
+    if (d <= 7) return 'warn';
+    return 'late';
+  }
+
+  function overdueText(d, dueDate) {
+    if (d == null) return '';
+    if (d < 0) return '提前 ' + Math.abs(d) + ' 天';
+    if (d === 0) return '今日到期（' + dueDate + '）';
+    return '逾期 ' + d + ' 天（' + dueDate + '）';
+  }
+
+  function render(p) {
+    var initials = (p.name || '?').slice(0, 1);
+    var dobDisplay = rocDate(p.birth_date);
+    var phone = p.phone || '';
+    var mobile = p.mobile || '';
+
+    var metaItems = [];
+    if (dobDisplay) metaItems.push(
+      '<span class="pt-meta-item"><span class="pt-meta-label">生日</span>' + L.escHtml(dobDisplay) + '</span>'
+    );
+    if (phone) metaItems.push(
+      '<span class="pt-meta-item"><span class="pt-meta-label">電話</span>' +
+      '<span class="phone-copy pr-copy" data-copy="' + L.escHtml(phone) + '" title="點擊複製">' + L.escHtml(phone) + '</span></span>'
+    );
+    if (mobile) metaItems.push(
+      '<span class="pt-meta-item"><span class="pt-meta-label">手機</span>' +
+      '<span class="phone-copy pr-copy" data-copy="' + L.escHtml(mobile) + '" title="點擊複製">' + L.escHtml(mobile) + '</span></span>'
+    );
+
+    var fuCards = (p.followups || []).map(function (f) {
+      var cls = CAT_CLASS[f.category] || 'cat-default';
+      var details = [];
+      if (f.disease_name) details.push(f.disease_name);
+      if (f.mspt_stage) details.push('階段 ' + f.mspt_stage);
+      if (f.contact_reason) details.push(f.contact_reason);
+      if (f.last_visit_date) details.push('最後就診 ' + f.last_visit_date);
+      var od = f.days_overdue;
+      var odText = overdueText(od, f.due_date);
+      var odCls = overdueCls(od);
+      return '<div class="fu-card">' +
+        '<span class="fu-card-cat ' + L.escHtml(cls) + '">' + L.escHtml(f.category) + '</span>' +
+        (details.length ? '<div class="fu-card-disease">' + L.escHtml(details[0]) + '</div>' : '') +
+        (details.slice(1).length ? '<div class="fu-card-detail">' + L.escHtml(details.slice(1).join('・')) + '</div>' : '') +
+        (odText ? '<div class="fu-card-overdue ' + odCls + '">' + L.escHtml(odText) + '</div>' : '') +
+      '</div>';
+    }).join('');
+
+    var histRows = (p.history || []).map(function (ev) {
+      var chipCls = 'hist-chip chip-' + L.escHtml(ev.type || '');
+      var chipLabel = L.escHtml(CHIP_LABELS[ev.type] || ev.type);
+      var catHtml = ev.category ? '<span class="hist-cat">' + L.escHtml(ev.category) + '</span>' : '';
+      var detailHtml = ev.detail ? '<span class="hist-detail">' + L.escHtml(ev.detail) + '</span>' : '';
+      var timeHtml = ev.time ? '<div class="hist-time">' + L.escHtml(ev.time) + '</div>' : '';
+      return '<div class="hist-row">' +
+        '<div class="hist-date"><div>' + L.escHtml(ev.date || '') + '</div>' + timeHtml + '</div>' +
+        '<div class="hist-body"><span class="' + chipCls + '">' + chipLabel + '</span>' + catHtml + detailHtml + '</div>' +
+        '<div class="hist-nurse">' + L.escHtml(ev.nurse || '') + '</div>' +
+      '</div>';
+    }).join('');
+
+    root.innerHTML =
+      '<a class="back-link" href="javascript:history.back()">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>' +
+        '返回' +
+      '</a>' +
+      '<div class="pt-hero">' +
+        '<div class="pt-av">' + L.escHtml(initials) + '</div>' +
+        '<div class="pt-info">' +
+          '<div class="pt-name">' + L.escHtml(p.name) + '</div>' +
+          (metaItems.length ? '<div class="pt-meta-row">' + metaItems.join('') + '</div>' : '') +
+          '<div class="pt-chart">' + L.escHtml(p.chart_number) + '</div>' +
+        '</div>' +
+      '</div>' +
+      (fuCards ? '<div class="pt-section"><div class="pt-section-title">追蹤項目</div><div class="fu-cards">' + fuCards + '</div></div>' : '') +
+      '<div class="pt-section"><div class="pt-section-title">聯絡記錄</div>' +
+        '<div class="hist-list">' +
+          (histRows || '<div class="hist-empty">尚無聯絡記錄</div>') +
+        '</div>' +
+      '</div>';
+
+    // wire up copy clicks
+    root.querySelectorAll('.pr-copy').forEach(function (el) {
+      el.addEventListener('click', function () {
+        var text = el.dataset.copy || el.textContent;
+        navigator.clipboard.writeText(text).then(function () {
+          L.showToast('已複製：' + text);
+        }).catch(function () {});
+      });
+    });
+  }
+
+  var chartNumber = new URLSearchParams(location.search).get('chart');
+  if (!chartNumber) {
+    root.innerHTML = '<div class="pt-error">未指定病患</div>';
+  } else {
+    L.apiFetch('/api/patient-profile/' + encodeURIComponent(chartNumber))
+      .then(function (data) { render(data); })
+      .catch(function (err) {
+        root.innerHTML = '<div class="pt-error">載入失敗' + (err.message === '404' ? '：找不到病患' : '') + '</div>';
+      });
+  }
+})();
+</script>
+</body>
+</html>

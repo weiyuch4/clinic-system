@@ -2118,6 +2118,87 @@ def get_contact_history(q: str, clinic_id: int = 1) -> list[dict]:
     return events
 
 
+def search_patients_cloud(q: str, clinic_id: int = 1, limit: int = 8) -> list[dict]:
+    """Search synced_candidates by name or chart_number; returns deduplicated patients."""
+    escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    like = f"%{escaped}%"
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT chart_number, MAX(name) AS name, MAX(phone) AS phone,
+                          MAX(mobile) AS mobile, MAX(birth_date) AS birth_date,
+                          array_agg(DISTINCT category) AS categories
+                   FROM synced_candidates
+                   WHERE clinic_id = %s AND (name ILIKE %s OR chart_number ILIKE %s)
+                   GROUP BY chart_number
+                   ORDER BY MAX(name)
+                   LIMIT %s""",
+                (clinic_id, like, like, limit),
+            )
+            rows = []
+            for r in cur.fetchall():
+                bd = r["birth_date"]
+                rows.append({
+                    "chart_number": r["chart_number"],
+                    "name": r["name"],
+                    "phone": r["phone"] or "",
+                    "mobile": r["mobile"] or "",
+                    "birth_date": bd.isoformat() if hasattr(bd, "isoformat") else (bd or ""),
+                    "categories": sorted(r["categories"]),
+                })
+            return rows
+
+
+def get_patient_profile(chart_number: str, clinic_id: int = 1) -> dict | None:
+    """Return full patient data: basic info, follow-up entries, and contact history."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT chart_number, name, birth_date, phone, mobile,
+                          category, disease_name, due_date, days_overdue,
+                          mspt_stage, contact_reason, last_visit_date, synced_at
+                   FROM synced_candidates
+                   WHERE clinic_id = %s AND chart_number = %s
+                   ORDER BY category""",
+                (clinic_id, chart_number),
+            )
+            rows = cur.fetchall()
+
+    if not rows:
+        return None
+
+    first = rows[0]
+    bd = first["birth_date"]
+    sat = first["synced_at"]
+
+    followups = []
+    for r in rows:
+        dd = r["due_date"]
+        lv = r["last_visit_date"]
+        followups.append({
+            "category": r["category"],
+            "disease_name": r["disease_name"] or "",
+            "due_date": dd.isoformat() if hasattr(dd, "isoformat") else (dd or ""),
+            "days_overdue": r["days_overdue"],
+            "mspt_stage": r["mspt_stage"] or "",
+            "contact_reason": r["contact_reason"] or "",
+            "last_visit_date": lv.isoformat() if hasattr(lv, "isoformat") else (lv or ""),
+        })
+
+    history = get_contact_history(chart_number, clinic_id)
+
+    return {
+        "chart_number": first["chart_number"],
+        "name": first["name"],
+        "birth_date": bd.isoformat() if hasattr(bd, "isoformat") else (bd or ""),
+        "phone": first["phone"] or "",
+        "mobile": first["mobile"] or "",
+        "synced_at": sat.isoformat() if hasattr(sat, "isoformat") else (sat or ""),
+        "followups": followups,
+        "history": history,
+    }
+
+
 def get_synced_candidates(clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
         with conn.cursor() as cur:

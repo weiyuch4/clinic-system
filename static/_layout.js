@@ -456,18 +456,99 @@
     _updateThemeBtn();
     var srchInput = el.querySelector('.srch-input');
     if (srchInput) {
+      // Inject dropdown container inside .srch
+      var srchWrap = srchInput.closest('.srch');
+      var ddEl = document.createElement('div');
+      ddEl.className = 'srch-dd';
+      ddEl.style.display = 'none';
+      srchWrap.appendChild(ddEl);
+
+      var _ddTimer = null;
+      var _ddFocused = -1;
+      var _ddItems = [];
+
+      var CAT_LABEL = { '慢簽': '慢簽', '代謝症候群': '代謝', 'MSPT': 'MSPT', '肝炎': 'B肝' };
+
+      function _ddClose() {
+        ddEl.style.display = 'none';
+        _ddFocused = -1;
+        _ddItems = [];
+      }
+
+      function _ddRender(patients) {
+        _ddItems = patients;
+        _ddFocused = -1;
+        if (!patients.length) {
+          ddEl.innerHTML = '<div class="srch-dd-empty">找不到相符病患</div>';
+          ddEl.style.display = 'block';
+          return;
+        }
+        ddEl.innerHTML = patients.map(function (p, i) {
+          var cats = (p.categories || []).map(function (c) {
+            return '<span class="srch-dd-cat">' + escHtml(CAT_LABEL[c] || c) + '</span>';
+          }).join('');
+          return '<div class="srch-dd-item" data-idx="' + i + '" data-chart="' + escHtml(p.chart_number) + '">' +
+            '<div class="srch-dd-meta">' +
+              '<div class="srch-dd-name">' + escHtml(p.name) + '</div>' +
+              (cats ? '<div class="srch-dd-cats">' + cats + '</div>' : '') +
+            '</div>' +
+            '<span class="srch-dd-chart">' + escHtml(p.chart_number) + '</span>' +
+          '</div>';
+        }).join('');
+        ddEl.style.display = 'block';
+        ddEl.querySelectorAll('.srch-dd-item').forEach(function (row) {
+          row.addEventListener('mousedown', function (ev) {
+            ev.preventDefault();
+            location.href = '/patient?chart=' + encodeURIComponent(row.dataset.chart);
+          });
+        });
+      }
+
+      function _ddFetch(q) {
+        apiFetch('/api/patients/search?q=' + encodeURIComponent(q))
+          .then(function (data) { _ddRender(data.patients || []); })
+          .catch(function () { _ddClose(); });
+      }
+
+      function _ddMoveFocus(dir) {
+        var items = ddEl.querySelectorAll('.srch-dd-item');
+        if (!items.length) return;
+        items[_ddFocused] && items[_ddFocused].classList.remove('focused');
+        _ddFocused = Math.max(0, Math.min(items.length - 1, _ddFocused + dir));
+        items[_ddFocused].classList.add('focused');
+      }
+
       srchInput.addEventListener('input', function () {
         var target = document.getElementById('search-input') || document.getElementById('dir-search');
-        if (!target) return;
-        target.value = srchInput.value;
-        target.dispatchEvent(new Event('input', { bubbles: true }));
+        if (target) {
+          target.value = srchInput.value;
+          target.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+        clearTimeout(_ddTimer);
+        var q = srchInput.value.trim();
+        if (q.length < 1) { _ddClose(); return; }
+        _ddTimer = setTimeout(function () { _ddFetch(q); }, 250);
       });
+
       srchInput.addEventListener('keydown', function (e) {
+        if (ddEl.style.display !== 'none') {
+          if (e.key === 'ArrowDown') { e.preventDefault(); _ddMoveFocus(1); return; }
+          if (e.key === 'ArrowUp')   { e.preventDefault(); _ddMoveFocus(-1); return; }
+          if (e.key === 'Escape')    { _ddClose(); return; }
+          if (e.key === 'Enter') {
+            var focused = ddEl.querySelector('.srch-dd-item.focused');
+            if (focused) { e.preventDefault(); location.href = '/patient?chart=' + encodeURIComponent(focused.dataset.chart); return; }
+          }
+        }
         if (e.key !== 'Enter') return;
         var target = document.getElementById('search-input') || document.getElementById('dir-search');
-        if (target) return; // let page handle it
+        if (target) return;
         var q = srchInput.value.trim();
         if (q) location.href = '/history?q=' + encodeURIComponent(q);
+      });
+
+      srchInput.addEventListener('blur', function () {
+        setTimeout(_ddClose, 150);
       });
     }
   }
