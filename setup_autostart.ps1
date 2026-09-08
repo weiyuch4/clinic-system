@@ -26,11 +26,11 @@ $Action = New-ScheduledTaskAction `
 $Trigger = New-ScheduledTaskTrigger -AtLogOn
 
 $Settings = New-ScheduledTaskSettingsSet `
-    -ExecutionTimeLimit        ([TimeSpan]::Zero) `
-    -RestartCount              5 `
-    -RestartInterval           (New-TimeSpan -Minutes 2) `
-    -StartWhenAvailable        $true `
-    -MultipleInstances         IgnoreNew
+    -ExecutionTimeLimit  ([TimeSpan]::Zero) `
+    -RestartCount        5 `
+    -RestartInterval     (New-TimeSpan -Minutes 2) `
+    -StartWhenAvailable `
+    -MultipleInstances   IgnoreNew
 
 Register-ScheduledTask `
     -TaskName  $TaskName `
