@@ -235,6 +235,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .pr-btns .act-btn{flex-shrink:0}
 .pr-tags{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .p-table .act-btn{padding:4px 11px;font-size:12px;white-space:nowrap}
+.pr-act{overflow:visible}
 .pr-more-wrap{position:relative;flex-shrink:0}
 .pr-more-btn{padding:4px 9px;font-size:13px;font-weight:700;border:1.5px solid var(--border);border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;line-height:1}
 .pr-more-btn:hover{background:var(--bg);color:var(--text)}
