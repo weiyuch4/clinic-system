@@ -1094,6 +1094,15 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .sal-part-rate-note { font-size: 12px; color: var(--text-3); padding: 10px 0 4px; display: none; }
 .sal-body.mode-part .sal-part-rate-note { display: block; }
 
+/* ── Bonus inline calculator ──────────────────────────────────────────────── */
+.bi-wrap{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px}
+.bi-row{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.bi-label{font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;min-width:60px;padding-top:8px;flex-shrink:0}
+.bi-score-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 16px}
+.bi-score-row{display:flex;align-items:center;gap:6px}
+.bi-score-name{font-size:12.5px;color:var(--text-2);flex:1;white-space:nowrap}
+.bi-result-bar{display:flex;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-s);padding:9px 14px;flex-wrap:wrap;gap:8px}
+
 .sched-fill-btn {
   margin-left: 4px;
   background: none;
@@ -1215,7 +1224,6 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       <button class="tab active" data-section="nurses">護理師統計</button>
       <button class="tab"        data-section="doctors">醫師回診率</button>
       <button class="tab"        data-section="labreport">代檢對帳單</button>
-      <button class="tab"        data-section="bonus">不定期獎金</button>
       <button class="tab"        data-section="linenotify">LINE 通知</button>
       <button class="tab"        data-section="schedule">排班表</button>
       <button class="tab"        data-section="salary">薪資計算</button>
@@ -1288,31 +1296,6 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         近期月份因後續IC檔案尚未到齊，回診率可能偏低屬正常現象。
       </div>
     </div>
-  </section>
-
-  <!-- ── Bonus ── -->
-  <section id="bonus" class="section">
-    <div class="bonus-toolbar">
-      <div style="display:flex;gap:8px">
-        <button class="btn-sm primary" onclick="addBonusCardPrompt()">＋ 新增護理師</button>
-        <button class="btn-sm" id="btn-prorata" onclick="toggleProrata()">依比例計算</button>
-      </div>
-      <button class="btn-sm" onclick="window.print()">列印</button>
-    </div>
-    <div class="bonus-std-bar" id="bonus-std-bar" style="display:none">
-      <label>標準金額</label>
-      <div class="bc-money-row" style="width:150px">
-        <span class="bc-currency">NT$</span>
-        <input type="number" class="bonus-std-input" id="bonus-std-amt" min="0" placeholder="0"
-               style="border:none;width:100%" oninput="recalcAllBonus()">
-      </div>
-      <label>基準護理師</label>
-      <select id="bonus-std-ref" class="bonus-std-select" onchange="recalcAllBonus()">
-        <option value="">— 選擇 —</option>
-      </select>
-      <span style="font-size:12px;color:#3B82F6;margin-left:4px">（其他護理師依天數比例換算）</span>
-    </div>
-    <div class="bonus-grid" id="bonus-grid"></div>
   </section>
 
   <!-- ── LINE 通知 ── -->
@@ -1418,17 +1401,6 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           <span class="sal-amount">2,000</span>
         </div>
 
-        <!-- 不定期獎金 -->
-        <div class="sal-section-head sal-full-only">績效獎金</div>
-        <div class="sal-row sal-full-only">
-          <span class="sal-label">
-            <input type="checkbox" id="sal-perf-chk" onchange="togglePerfInput()">
-            工作績效不定期獎金
-          </span>
-          <span id="sal-perf-display" class="sal-amount muted">—</span>
-          <input type="number" id="sal-perf" class="sal-input-lg" min="0" value="0"
-            style="display:none" oninput="recalcSalary()">
-        </div>
         <div class="sal-part-rate-note">兼職時薪：<strong>250 元/h</strong>（一般）；<strong>335 元/h</strong>（加班，250 × 1.34）</div>
 
         <!-- 加班記錄 (unified) -->
@@ -1450,6 +1422,58 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <div class="sal-row">
           <span class="sal-label" id="sal-ot-label">一般加班費</span>
           <span class="sal-amount" id="sal-ot-total">0</span>
+        </div>
+
+        <!-- 不定期獎金 inline calculator -->
+        <div class="sal-section-head sal-full-only" style="margin-top:18px">不定期獎金</div>
+        <div class="bi-wrap sal-full-only" id="bi-wrap">
+          <!-- Period + amount row -->
+          <div class="bi-row">
+            <span class="bi-label">計算期間</span>
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <input type="date" id="bi-start" class="sal-date-input" style="width:136px" oninput="recalcBonusInline()">
+              <span class="sal-time-sep">至</span>
+              <input type="date" id="bi-end" class="sal-date-input" style="width:136px" oninput="recalcBonusInline()">
+              <span id="bi-days" style="font-size:12px;color:var(--text-3)"></span>
+            </div>
+          </div>
+          <div class="bi-row">
+            <span class="bi-label">獎金金額</span>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div class="seg-toggle" style="margin:0" id="bi-mode-toggle">
+                <button class="seg-btn active" data-bmode="fixed" onclick="setBonusMode('fixed')">固定金額</button>
+                <button class="seg-btn" data-bmode="prorata" onclick="setBonusMode('prorata')">依比例</button>
+              </div>
+              <div id="bi-fixed-wrap" class="bc-money-row" style="width:160px">
+                <span class="bc-currency">NT$</span>
+                <input type="number" id="bi-fixed-amt" min="0" placeholder="0" oninput="recalcBonusInline()" style="border:none;width:100%;padding:7px 10px;font-size:13px;background:transparent;color:var(--text-1)">
+              </div>
+              <div id="bi-prorata-wrap" style="display:none;align-items:center;gap:5px;flex-wrap:wrap">
+                <span style="font-size:12px;color:var(--text-2)">總額</span>
+                <div class="bc-money-row" style="width:136px">
+                  <span class="bc-currency">NT$</span>
+                  <input type="number" id="bi-pool" min="0" placeholder="0" oninput="recalcBonusInline()" style="border:none;width:100%;padding:7px 8px;font-size:13px;background:transparent;color:var(--text-1)">
+                </div>
+                <span style="font-size:12px;color:var(--text-2)">÷ 基準</span>
+                <input type="number" id="bi-ref-days" min="1" value="30" class="sal-input-sm" style="text-align:right" oninput="recalcBonusInline()">
+                <span style="font-size:12px;color:var(--text-2)">天</span>
+              </div>
+            </div>
+          </div>
+          <!-- Score grid -->
+          <div class="bi-row">
+            <span class="bi-label">績效評分</span>
+            <div class="bi-score-grid" id="bi-score-grid"></div>
+          </div>
+          <!-- Result summary -->
+          <div class="bi-result-bar">
+            <span style="font-size:12px;color:var(--text-2)">平均分數 <strong id="bi-avg">100.0%</strong></span>
+            <span style="font-size:13px;font-weight:700;color:var(--text-2)">計算結果 <span id="bi-result" style="color:var(--blue)">—</span> <span style="font-size:11px;font-weight:400;color:var(--text-3)">（自動套用）</span></span>
+          </div>
+        </div>
+        <div class="sal-row sal-full-only">
+          <span class="sal-label">不定期獎金</span>
+          <span class="sal-amount muted" id="sal-bonus-amt">—</span>
         </div>
 
         <!-- 合計 -->
@@ -1479,6 +1503,39 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <span class="card-meta" id="sal-history-meta"></span>
       </div>
       <div id="sal-history-list"></div>
+    </div>
+
+    <!-- 全員獎金計算 -->
+    <div class="card" style="margin-top:16px">
+      <div class="card-head" style="cursor:pointer" onclick="toggleBatchBonus()">
+        <span class="card-title">全員獎金計算</span>
+        <span class="card-badge">依比例分配獎金池</span>
+        <span class="card-spacer"></span>
+        <span style="font-size:12px;color:var(--text-3)" id="batch-toggle-hint">展開</span>
+      </div>
+      <div id="batch-bonus-wrap" style="display:none">
+        <div class="bonus-toolbar" style="padding:16px 20px 0;margin-bottom:0">
+          <div style="display:flex;gap:8px;align-items:center">
+            <button class="btn-sm primary" onclick="addBonusCardPrompt()">＋ 新增護理師</button>
+            <button class="btn-sm" id="btn-prorata" onclick="toggleProrata()">依比例計算</button>
+          </div>
+          <button class="btn-sm" onclick="window.print()">列印</button>
+        </div>
+        <div class="bonus-std-bar" id="bonus-std-bar" style="display:none;margin:12px 20px 0">
+          <label>標準金額</label>
+          <div class="bc-money-row" style="width:150px">
+            <span class="bc-currency">NT$</span>
+            <input type="number" class="bonus-std-input" id="bonus-std-amt" min="0" placeholder="0"
+                   style="border:none;width:100%" oninput="recalcAllBonus()">
+          </div>
+          <label>基準護理師</label>
+          <select id="bonus-std-ref" class="bonus-std-select" onchange="recalcAllBonus()">
+            <option value="">— 選擇 —</option>
+          </select>
+          <span style="font-size:12px;color:#3B82F6;margin-left:4px">（其他護理師依天數比例換算）</span>
+        </div>
+        <div class="bonus-grid" id="bonus-grid" style="padding:16px 20px 20px"></div>
+      </div>
     </div>
   </section>
 
@@ -3056,6 +3113,7 @@ function initSalaryTab() {
     $('sal-month').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
   recalcSalary();
+  initBonusInline();
   loadSalaryHistory();
 }
 
@@ -3085,16 +3143,25 @@ function newSalaryRecord() {
 function _currentSalaryPayload() {
   const isPart = _salMode === 'part';
   const total  = parseInt($('sal-grand-total').textContent.replace(/[^0-9]/g, '')) || 0;
+  const bonusCfg = {
+    mode:     _biMode,
+    start:    ($('bi-start')    || {}).value || '',
+    end:      ($('bi-end')      || {}).value || '',
+    fixed:    parseFloat(($('bi-fixed-amt') || {}).value)  || 0,
+    pool:     parseFloat(($('bi-pool')      || {}).value)  || 0,
+    ref_days: parseFloat(($('bi-ref-days')  || {}).value)  || 30,
+    scores:   BONUS_CATS.map((_, i) => parseFloat((document.getElementById('bi-s' + i) || {}).value) || 100),
+  };
   return {
-    nurse: $('sal-nurse').value,
-    month: $('sal-month').value,
+    nurse:       $('sal-nurse').value,
+    month:       $('sal-month').value,
     attendance:  isPart ? 0 : ($('sal-attendance-chk').checked ? 2000 : 0),
-    performance: isPart ? 0 : (($('sal-perf-chk').checked ? parseInt($('sal-perf').value) : 0) || 0),
+    performance: isPart ? 0 : (_bonusCalculated || 0),
     sat_pay:     isPart ? 0 : (parseInt($('sal-sat-amt').textContent.replace(/,/g, '')) || 0),
     float_bonus: isPart ? 0 : (parseInt($('sal-float-amt').textContent.replace(/,/g, '')) || 0),
     ot_pay:      isPart ? total : (parseInt($('sal-ot-total').textContent.replace(/,/g, '')) || 0),
     total,
-    ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows}),
+    ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg}),
   };
 }
 
@@ -3136,31 +3203,31 @@ async function saveSalaryRecord() {
 
 function loadSalaryRecord(record) {
   // restore mode and overtime entries from JSON
+  let parsed = {};
   try {
-    const parsed = JSON.parse(record.ot_entries || '[]');
-    if (Array.isArray(parsed)) {
-      _salOtRows = parsed;
-      setSalMode('full');
-    } else {
-      _salOtRows = parsed.rows || [];
-      setSalMode(parsed.mode || 'full');
-    }
+    const raw = JSON.parse(record.ot_entries || '[]');
+    if (Array.isArray(raw)) { _salOtRows = raw; setSalMode('full'); }
+    else { _salOtRows = raw.rows || []; setSalMode(raw.mode || 'full'); parsed = raw; }
   } catch (_) { _salOtRows = []; setSalMode('full'); }
 
   // restore attendance checkbox
   $('sal-attendance-chk').checked = record.attendance > 0;
 
-  // restore performance bonus
-  if (record.performance > 0) {
-    $('sal-perf-chk').checked = true;
-    $('sal-perf').value = record.performance;
-    $('sal-perf').style.display = '';
-    $('sal-perf-display').style.display = 'none';
-  } else {
-    $('sal-perf-chk').checked = false;
-    $('sal-perf').style.display = 'none';
-    $('sal-perf-display').style.display = '';
+  // restore bonus config
+  const bc = parsed.bonus || {};
+  if (bc.start && $('bi-start')) $('bi-start').value = bc.start;
+  if (bc.end   && $('bi-end'))   $('bi-end').value   = bc.end;
+  setBonusMode(bc.mode || 'fixed');
+  if ($('bi-fixed-amt')) $('bi-fixed-amt').value = bc.fixed  || '';
+  if ($('bi-pool'))      $('bi-pool').value      = bc.pool   || '';
+  if ($('bi-ref-days'))  $('bi-ref-days').value  = bc.ref_days || 30;
+  if (Array.isArray(bc.scores)) {
+    bc.scores.forEach((v, i) => {
+      const el = document.getElementById('bi-s' + i);
+      if (el) el.value = v;
+    });
   }
+  recalcBonusInline();
 
   setEditingRecord(record.id);
 }
@@ -3186,7 +3253,7 @@ function renderSalaryHistory(records, nurse, month) {
     try { const p = JSON.parse(r.ot_entries || '[]'); if (!Array.isArray(p)) recMode = p.mode || 'full'; } catch (_) {}
     const breakdown = recMode === 'part'
       ? `兼職工時薪資 ${r.ot_pay}`
-      : `底薪 30,500 ＋ 全勤 ${r.attendance} ＋ 執照 2,000 ＋ 周六 ${r.sat_pay} ＋ 浮動 ${r.float_bonus} ＋ 績效 ${r.performance} ＋ 加班 ${r.ot_pay}`;
+      : `底薪 30,500 ＋ 全勤 ${r.attendance} ＋ 執照 2,000 ＋ 周六 ${r.sat_pay} ＋ 浮動 ${r.float_bonus} ＋ 不定期獎金 ${r.performance} ＋ 加班 ${r.ot_pay}`;
     return `
     <div class="sal-hist-row${_salEditingId === r.id ? ' selected' : ''}"
          onclick="selectSalHistRow(this, ${JSON.stringify(r).replace(/"/g, '&quot;')})">
@@ -3278,11 +3345,88 @@ function calcOvertimePay(minutes, type, hourlyRate) {
 
 function fmtNT(n) { return Math.ceil(n).toLocaleString('zh-TW'); }
 
-function togglePerfInput() {
-  const on = $('sal-perf-chk').checked;
-  $('sal-perf-display').style.display = on ? 'none' : '';
-  $('sal-perf').style.display = on ? '' : 'none';
+// ── Bonus inline calculator ────────────────────────────────────────────────
+let _biMode = 'fixed';
+let _bonusCalculated = 0;
+
+function initBonusInline() {
+  const grid = $('bi-score-grid');
+  if (!grid || grid.children.length > 0) return;
+  grid.innerHTML = BONUS_CATS.map((cat, i) =>
+    `<div class="bi-score-row">
+       <span class="bi-score-name">${cat}</span>
+       <div style="display:flex;align-items:center;gap:3px">
+         <input type="number" id="bi-s${i}" class="bc-score-input" min="0" max="100" value="100" oninput="recalcBonusInline()">
+         <span class="bc-pct">%</span>
+       </div>
+     </div>`
+  ).join('');
+  // Default period = selected month
+  const m = $('sal-month').value;
+  if (m) {
+    const [y, mo] = m.split('-').map(Number);
+    const lastDay = new Date(y, mo, 0).getDate();
+    $('bi-start').value = `${m}-01`;
+    $('bi-end').value   = `${m}-${String(lastDay).padStart(2, '0')}`;
+    recalcBonusInline();
+  }
+}
+
+function setBonusMode(mode) {
+  _biMode = mode;
+  document.querySelectorAll('#bi-mode-toggle .seg-btn').forEach(b =>
+    b.classList.toggle('active', b.dataset.bmode === mode)
+  );
+  $('bi-fixed-wrap').style.display   = mode === 'fixed'   ? '' : 'none';
+  $('bi-prorata-wrap').style.display = mode === 'prorata' ? 'flex' : 'none';
+  recalcBonusInline();
+}
+
+function recalcBonusInline() {
+  const start = ($('bi-start') || {}).value;
+  const end   = ($('bi-end')   || {}).value;
+  let days = 0;
+  if (start && end && end >= start) {
+    days = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
+    if ($('bi-days')) $('bi-days').textContent = `（${days} 天）`;
+  } else {
+    if ($('bi-days')) $('bi-days').textContent = '';
+  }
+
+  let base = 0;
+  if (_biMode === 'fixed') {
+    base = parseFloat(($('bi-fixed-amt') || {}).value) || 0;
+  } else {
+    const pool = parseFloat(($('bi-pool') || {}).value) || 0;
+    const ref  = parseFloat(($('bi-ref-days') || {}).value) || 30;
+    base = days > 0 && ref > 0 ? pool * days / ref : 0;
+  }
+
+  const scores = BONUS_CATS.map((_, i) => {
+    const el = document.getElementById(`bi-s${i}`);
+    return Math.min(100, Math.max(0, parseFloat(el ? el.value : 100) || 0));
+  });
+  const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
+  _bonusCalculated = base > 0 ? Math.round(base * avg / 100) : 0;
+
+  if ($('bi-avg')) $('bi-avg').textContent = avg.toFixed(1) + '%';
+  if ($('bi-result')) $('bi-result').textContent = base > 0 ? 'NT$ ' + _bonusCalculated.toLocaleString('zh-TW') : '—';
+
+  const bonusAmt = $('sal-bonus-amt');
+  if (bonusAmt) {
+    bonusAmt.textContent = _bonusCalculated > 0 ? fmtNT(_bonusCalculated) : '—';
+    bonusAmt.className = 'sal-amount' + (_bonusCalculated > 0 ? '' : ' muted');
+  }
   recalcSalary();
+}
+
+function toggleBatchBonus() {
+  const wrap = $('batch-bonus-wrap');
+  const hint = $('batch-toggle-hint');
+  const open = wrap.style.display === 'none';
+  wrap.style.display = open ? '' : 'none';
+  if (hint) hint.textContent = open ? '收起' : '展開';
+  if (open && $('bonus-grid').children.length === 0) loadBonus();
 }
 
 function makeTimeSel(i, field, val) {
@@ -3355,13 +3499,8 @@ function recalcSalary() {
   }
 
   const hasAttendance = $('sal-attendance-chk').checked;
-  const perfOn = $('sal-perf-chk').checked;
-  const perf   = perfOn ? (parseInt($('sal-perf').value) || 0) : 0;
-  if ($('sal-perf-display')) {
-    $('sal-perf-display').textContent = perfOn ? fmtNT(parseInt($('sal-perf').value) || 0) : '—';
-  }
-
-  const attendance  = hasAttendance ? SAL_ATTENDANCE : 0;
+  const perf = _bonusCalculated || 0;
+  const attendance = hasAttendance ? SAL_ATTENDANCE : 0;
 
   // Group entries by date, sort each group by start time, accumulate hours
   // so that two entries on the same day share the correct tier position.
@@ -3446,7 +3585,7 @@ function load(section) {
   if (section === 'nurses')    loadNurses();
   else if (section === 'doctors')   loadDoctors();
   else if (section === 'labreport') loadLabReport();
-  else if (section === 'bonus')     loadBonus();
+  else if (section === 'bonus')     {}  // merged into salary tab
   else if (section === 'linenotify') loadLineLog();
   else if (section === 'schedule')   loadSchedule();
   else if (section === 'salary')     initSalaryTab();
