@@ -308,6 +308,8 @@ _CREATE_SYNCED_CANDIDATES = """
         mspt_stage      TEXT,
         contact_reason  TEXT,
         last_visit_date TEXT,
+        phone           TEXT NOT NULL DEFAULT '',
+        mobile          TEXT NOT NULL DEFAULT '',
         synced_at       TEXT NOT NULL,
         PRIMARY KEY (clinic_id, chart_number, category, due_date)
     )
@@ -448,6 +450,8 @@ def init() -> None:
             for col in ("clean_start TEXT", "clean_end TEXT"):
                 cur.execute(f"ALTER TABLE shifts ADD COLUMN IF NOT EXISTS {col}")
             cur.execute("ALTER TABLE nurses ADD COLUMN IF NOT EXISTS pin_hash TEXT")
+            cur.execute("ALTER TABLE synced_candidates ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''")
+            cur.execute("ALTER TABLE synced_candidates ADD COLUMN IF NOT EXISTS mobile TEXT NOT NULL DEFAULT ''")
             # Multi-tenant migration: add clinic_id to all tables (idempotent)
             _all_tables = [
                 "alleypin_not_found", "bulletin_notes", "clinic_contacts", "contacts",
@@ -2118,7 +2122,7 @@ def get_synced_candidates(clinic_id: int = 1) -> list[dict]:
             cur.execute(
                 """SELECT chart_number, category, name, birth_date, disease_name,
                           due_date, days_overdue, mspt_stage, contact_reason,
-                          last_visit_date, synced_at
+                          last_visit_date, phone, mobile, synced_at
                    FROM synced_candidates WHERE clinic_id = %s""",
                 (clinic_id,),
             )
@@ -2135,7 +2139,8 @@ def upsert_synced_candidates(candidates: list[dict], clinic_id: int = 1) -> None
                     cur,
                     """INSERT INTO synced_candidates
                        (clinic_id, chart_number, category, name, birth_date, disease_name,
-                        due_date, days_overdue, mspt_stage, contact_reason, last_visit_date, synced_at)
+                        due_date, days_overdue, mspt_stage, contact_reason, last_visit_date,
+                        phone, mobile, synced_at)
                        VALUES %s
                        ON CONFLICT (clinic_id, chart_number, category, due_date) DO UPDATE SET
                            name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
@@ -2144,6 +2149,8 @@ def upsert_synced_candidates(candidates: list[dict], clinic_id: int = 1) -> None
                            mspt_stage=EXCLUDED.mspt_stage,
                            contact_reason=EXCLUDED.contact_reason,
                            last_visit_date=EXCLUDED.last_visit_date,
+                           phone=EXCLUDED.phone,
+                           mobile=EXCLUDED.mobile,
                            synced_at=EXCLUDED.synced_at""",
                     [
                         (
@@ -2151,6 +2158,7 @@ def upsert_synced_candidates(candidates: list[dict], clinic_id: int = 1) -> None
                             c["chart_number"], c["category"], c["name"], c["birth_date"],
                             c["disease_name"], c["due_date"], int(c["days_overdue"]),
                             c.get("mspt_stage"), c.get("contact_reason"), c.get("last_visit_date"),
+                            c.get("phone", ""), c.get("mobile", ""),
                             c["synced_at"],
                         )
                         for c in candidates
