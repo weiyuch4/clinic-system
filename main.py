@@ -682,6 +682,8 @@ def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
             mspt_stage=c.get("mspt_stage"),
             contact_reason=c.get("contact_reason"),
             last_visit_date=date.fromisoformat(c["last_visit_date"]) if c.get("last_visit_date") else None,
+            phone=c.get("phone", ""),
+            mobile=c.get("mobile", ""),
         )
         if cat == '慢簽':
             chronic.append(e)

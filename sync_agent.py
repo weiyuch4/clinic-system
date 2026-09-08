@@ -88,6 +88,8 @@ def _entry_to_dict(entry, category: str) -> dict:
         "mspt_stage":    entry.mspt_stage,
         "contact_reason": entry.contact_reason,
         "last_visit_date": _d(entry.last_visit_date),
+        "phone":         entry.phone,
+        "mobile":        entry.mobile,
         "synced_at":     datetime.now().isoformat(timespec="seconds"),
     }
 
