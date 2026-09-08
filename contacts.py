@@ -338,6 +338,19 @@ _CREATE_SYNCED_BLOOD_PENDING = """
     )
 """
 
+_CREATE_NURSE_OT_LOGS = """
+    CREATE TABLE IF NOT EXISTS nurse_ot_logs (
+        id         SERIAL PRIMARY KEY,
+        clinic_id  INTEGER NOT NULL DEFAULT 1,
+        nurse      TEXT    NOT NULL,
+        date       TEXT    NOT NULL,
+        start_time TEXT    NOT NULL,
+        end_time   TEXT    NOT NULL,
+        note       TEXT    NOT NULL DEFAULT '',
+        created_at TEXT    NOT NULL
+    )
+"""
+
 
 def get_blood_dismissed(clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
@@ -442,6 +455,7 @@ def init() -> None:
             cur.execute(_CREATE_SYNCED_CANDIDATES)
             cur.execute(_CREATE_BLOOD_DISMISSED)
             cur.execute(_CREATE_SYNCED_BLOOD_PENDING)
+            cur.execute(_CREATE_NURSE_OT_LOGS)
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
                 cur.execute(f"ALTER TABLE contacts ADD COLUMN IF NOT EXISTS {col}")
@@ -1964,6 +1978,52 @@ def delete_salary_record(record_id: int, clinic_id: int = 1) -> None:
                 "DELETE FROM salary_records WHERE id = %s AND clinic_id = %s",
                 (record_id, clinic_id),
             )
+
+
+# ── Nurse self-reported overtime logs ───────────────────────────────────────────
+
+def get_nurse_ot_logs(nurse: str, clinic_id: int = 1, month: str | None = None) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            if month:
+                cur.execute(
+                    """SELECT id, nurse, date, start_time, end_time, note, created_at
+                       FROM nurse_ot_logs
+                       WHERE clinic_id=%s AND nurse=%s AND date LIKE %s
+                       ORDER BY date, start_time""",
+                    (clinic_id, nurse, month + '%'),
+                )
+            else:
+                cur.execute(
+                    """SELECT id, nurse, date, start_time, end_time, note, created_at
+                       FROM nurse_ot_logs
+                       WHERE clinic_id=%s AND nurse=%s
+                       ORDER BY date DESC, start_time""",
+                    (clinic_id, nurse),
+                )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def add_nurse_ot_log(nurse: str, clinic_id: int, date: str, start_time: str, end_time: str, note: str = '') -> int:
+    created_at = datetime.now().strftime('%Y-%m-%d %H:%M')
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO nurse_ot_logs (clinic_id, nurse, date, start_time, end_time, note, created_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id""",
+                (clinic_id, nurse, date, start_time, end_time, note.strip(), created_at),
+            )
+            return cur.fetchone()["id"]
+
+
+def delete_nurse_ot_log(log_id: int, nurse: str, clinic_id: int = 1) -> bool:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM nurse_ot_logs WHERE id=%s AND nurse=%s AND clinic_id=%s",
+                (log_id, nurse, clinic_id),
+            )
+            return cur.rowcount > 0
 
 
 def get_contact_history(q: str, clinic_id: int = 1) -> list[dict]:

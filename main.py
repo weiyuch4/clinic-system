@@ -495,6 +495,44 @@ def delete_salary_record(record_id: int, admin: auth.CurrentUser = Depends(auth.
         raise HTTPException(status_code=500, detail="刪除失敗")
 
 
+# ── Nurse self-reported overtime ──────────────────────────────────────────────
+
+@app.get("/api/me")
+def get_me(user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    return {"display_name": user.display_name, "role": user.role}
+
+
+@app.get("/api/nurse/ot-logs")
+def get_my_ot_logs(month: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    return contacts.get_nurse_ot_logs(user.display_name, user.clinic_id, month or None)
+
+
+@app.post("/api/nurse/ot-logs")
+def add_my_ot_log(body: dict, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    date       = str(body.get("date", "")).strip()
+    start_time = str(body.get("start_time", "")).strip()
+    end_time   = str(body.get("end_time", "")).strip()
+    note       = str(body.get("note", "")).strip()
+    if not date or not start_time or not end_time:
+        raise HTTPException(status_code=422, detail="日期與時間不可空白")
+    new_id = contacts.add_nurse_ot_log(user.display_name, user.clinic_id, date, start_time, end_time, note)
+    return {"id": new_id}
+
+
+@app.delete("/api/nurse/ot-logs/{log_id}")
+def delete_my_ot_log(log_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    if not contacts.delete_nurse_ot_log(log_id, user.display_name, user.clinic_id):
+        raise HTTPException(status_code=404, detail="記錄不存在")
+
+
+@app.get("/api/admin/nurse-ot-logs")
+def get_nurse_ot_logs_admin(
+    nurse: str, month: str = "",
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+) -> list[dict]:
+    return contacts.get_nurse_ot_logs(nurse, admin.clinic_id, month or None)
+
+
 @app.post("/api/admin/nurses")
 def add_nurse(req: NurseNameRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     name = req.name.strip()

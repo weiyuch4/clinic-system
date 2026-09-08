@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>我的加班記錄</title>
+<link rel="stylesheet" href="/static/_layout.css?v=33">
+<style>
+/* ── month nav ─────────────────────────────────────────────────────────── */
+.month-nav { display:flex; align-items:center; gap:8px; }
+.month-nav input[type=month] {
+  border:1.5px solid var(--border); border-radius:8px; background:var(--card);
+  color:var(--text); font:600 13.5px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;
+  padding:7px 10px; outline:none; cursor:pointer;
+}
+.month-nav input[type=month]:focus { border-color:var(--g5); }
+.month-nav-btn {
+  width:30px; height:30px; border:1.5px solid var(--border); border-radius:7px;
+  background:var(--card); color:var(--sub); font-size:16px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; transition:border-color .1s, color .1s;
+}
+.month-nav-btn:hover { border-color:var(--sub); color:var(--text); }
+
+/* ── summary tiles ─────────────────────────────────────────────────────── */
+.ot-summary { display:flex; gap:12px; flex-wrap:wrap; }
+.ot-tile {
+  background:var(--card); border-radius:12px; padding:14px 18px;
+  box-shadow:var(--shadow); flex:1; min-width:140px;
+}
+.ot-tile-val { font-size:22px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; line-height:1.2; }
+.ot-tile-lbl { font-size:11.5px; color:var(--muted); margin-top:3px; }
+
+/* ── add form ─────────────────────────────────────────────────────────── */
+.add-form { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+.add-field { display:flex; flex-direction:column; gap:5px; }
+.add-lbl { font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; }
+.add-inp {
+  border:1px solid var(--border); border-radius:8px; background:var(--card);
+  color:var(--text); font:600 13px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;
+  padding:7px 10px; outline:none; transition:border-color .1s;
+}
+.add-inp:focus { border-color:var(--g5); }
+input[type=date].add-inp { min-width:138px; }
+input[type=time].add-inp { width:100px; }
+input[type=text].add-inp { min-width:180px; }
+.add-btn {
+  background:#b5d7f5; color:#111827; border:none; border-radius:8px;
+  padding:8px 18px; font:600 13px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;
+  cursor:pointer; white-space:nowrap; transition:background .1s; align-self:flex-end;
+}
+.add-btn:hover { background:#8fc5f0; }
+.add-btn:disabled { opacity:.5; cursor:default; }
+
+/* ── log table ────────────────────────────────────────────────────────── */
+.ot-table-wrap { overflow-x:auto; margin:-2px; }
+.ot-table {
+  width:100%; border-collapse:collapse; font-size:13px;
+  font-variant-numeric:tabular-nums;
+}
+.ot-table th {
+  text-align:left; font-size:10.5px; font-weight:700; letter-spacing:.07em;
+  text-transform:uppercase; color:var(--muted); padding:0 12px 10px;
+  border-bottom:1px solid var(--border);
+}
+.ot-table th:first-child, .ot-table td:first-child { padding-left:2px; }
+.ot-table td { padding:10px 12px; border-bottom:1px solid var(--border); color:var(--text); }
+.ot-table tr:last-child td { border-bottom:none; }
+.ot-table tr:hover td { background:var(--bg); }
+.ot-dow { display:inline-block; font-size:11px; font-weight:700; padding:2px 7px; border-radius:5px; margin-left:6px; }
+.dow-sat { background:#EFF6FF; color:#1D4ED8; }
+.dow-sun { background:#F3E8FF; color:#7C3AED; }
+.dow-wkd { background:var(--g0); color:var(--muted); }
+.ot-hours { font-weight:700; color:var(--g7); }
+.ot-note { color:var(--sub); font-size:12px; max-width:220px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ot-del {
+  background:none; border:none; color:var(--muted); font-size:16px; cursor:pointer;
+  padding:2px 6px; border-radius:5px; transition:color .1s, background .1s; line-height:1;
+}
+.ot-del:hover { color:#DC2626; background:var(--red-hover); }
+.ot-empty { text-align:center; padding:36px; color:var(--muted); font-size:13px; }
+.ot-loading { text-align:center; padding:36px; color:var(--muted); }
+
+/* ── error toast passthrough ────────────────────────────────────────────── */
+.ot-err { background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; border-radius:8px; padding:10px 14px; font-size:13px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar"></aside>
+  <div class="main">
+    <div id="topbar"></div>
+    <div class="ct">
+
+      <!-- Page header -->
+      <div class="ph">
+        <div>
+          <h1 id="page-title">我的加班記錄</h1>
+          <p id="page-sub" style="font-size:13px;color:var(--sub)">載入中…</p>
+        </div>
+        <div class="phb">
+          <div class="month-nav">
+            <button class="month-nav-btn" onclick="stepMonth(-1)">‹</button>
+            <input type="month" id="month-sel" onchange="loadLogs()">
+            <button class="month-nav-btn" onclick="stepMonth(1)">›</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Summary tiles -->
+      <div class="ot-summary" id="ot-summary">
+        <div class="ot-tile">
+          <div class="ot-tile-val" id="tile-hours">—</div>
+          <div class="ot-tile-lbl">本月總工時</div>
+        </div>
+        <div class="ot-tile">
+          <div class="ot-tile-val" id="tile-count">—</div>
+          <div class="ot-tile-lbl">本月筆數</div>
+        </div>
+      </div>
+
+      <!-- Add form -->
+      <div class="card">
+        <div class="chd" style="margin-bottom:12px">
+          <span class="cttl">新增加班記錄</span>
+        </div>
+        <div class="add-form">
+          <div class="add-field">
+            <span class="add-lbl">日期</span>
+            <input type="date" id="add-date" class="add-inp">
+          </div>
+          <div class="add-field">
+            <span class="add-lbl">開始時間</span>
+            <input type="time" id="add-start" class="add-inp" value="18:00">
+          </div>
+          <div class="add-field">
+            <span class="add-lbl">結束時間</span>
+            <input type="time" id="add-end" class="add-inp" value="20:00">
+          </div>
+          <div class="add-field" style="flex:1;min-width:160px">
+            <span class="add-lbl">備註（選填）</span>
+            <input type="text" id="add-note" class="add-inp" placeholder="例：月底加班" maxlength="80">
+          </div>
+          <button class="add-btn" id="add-btn" onclick="addEntry()">新增</button>
+        </div>
+        <div id="add-err" style="display:none;margin-top:10px"></div>
+      </div>
+
+      <!-- Log table -->
+      <div class="card" id="log-card">
+        <div class="chd" style="margin-bottom:12px">
+          <span class="cttl" id="log-card-title">加班記錄</span>
+        </div>
+        <div class="ot-table-wrap">
+          <div class="ot-loading" id="log-loading">載入中…</div>
+          <table class="ot-table" id="log-table" style="display:none">
+            <thead>
+              <tr>
+                <th>日期</th>
+                <th>時間</th>
+                <th>工時</th>
+                <th>備註</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="log-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- .ct -->
+  </div><!-- .main -->
+</div><!-- .app -->
+
+<script src="/static/_layout.js?v=33"></script>
+<script src="/static/auth-client.js"></script>
+<script>
+(function () {
+  'use strict';
+  var L = Layout;
+  L.init({ activePage: 'nurse-ot' });
+
+  var _nurseName = '';
+
+  var DOW = ['日','一','二','三','四','五','六'];
+
+  function localDateStr() {
+    var d = new Date();
+    return d.getFullYear() + '-' +
+      String(d.getMonth() + 1).padStart(2, '0') + '-' +
+      String(d.getDate()).padStart(2, '0');
+  }
+
+  function currentMonth() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+  }
+
+  function calcHours(start, end) {
+    if (!start || !end) return 0;
+    var sp = start.split(':').map(Number), ep = end.split(':').map(Number);
+    var mins = (ep[0] * 60 + ep[1]) - (sp[0] * 60 + sp[1]);
+    return mins > 0 ? mins / 60 : 0;
+  }
+
+  function fmtHours(h) {
+    var hrs = Math.floor(h);
+    var mins = Math.round((h - hrs) * 60);
+    if (mins === 0) return hrs + 'h';
+    return hrs + 'h ' + mins + 'm';
+  }
+
+  function dowClass(dateStr) {
+    var p = dateStr.split('-').map(Number);
+    var dow = new Date(p[0], p[1] - 1, p[2]).getDay();
+    if (dow === 0) return 'dow-sun';
+    if (dow === 6) return 'dow-sat';
+    return 'dow-wkd';
+  }
+
+  function dowLabel(dateStr) {
+    var p = dateStr.split('-').map(Number);
+    return DOW[new Date(p[0], p[1] - 1, p[2]).getDay()];
+  }
+
+  function showErr(msg) {
+    var el = document.getElementById('add-err');
+    el.className = 'ot-err';
+    el.textContent = msg;
+    el.style.display = '';
+  }
+
+  function clearErr() {
+    document.getElementById('add-err').style.display = 'none';
+  }
+
+  function renderRows(logs) {
+    var loading = document.getElementById('log-loading');
+    var table   = document.getElementById('log-table');
+    var tbody   = document.getElementById('log-body');
+    var title   = document.getElementById('log-card-title');
+    var mv      = document.getElementById('month-sel').value;
+    var dp      = mv ? mv.split('-') : null;
+    var label   = dp ? dp[0] + ' 年 ' + parseInt(dp[1]) + ' 月' : '加班記錄';
+
+    loading.style.display = 'none';
+
+    if (!logs.length) {
+      table.style.display = 'none';
+      tbody.innerHTML = '';
+      document.getElementById('log-loading').style.display = '';
+      document.getElementById('log-loading').className = 'ot-empty';
+      document.getElementById('log-loading').textContent = label + ' 尚無記錄';
+      document.getElementById('tile-hours').textContent = '0h';
+      document.getElementById('tile-count').textContent = '0';
+      title.textContent = label + ' 加班記錄';
+      return;
+    }
+
+    var totalHours = logs.reduce(function (s, r) { return s + calcHours(r.start_time, r.end_time); }, 0);
+    document.getElementById('tile-hours').textContent = fmtHours(totalHours);
+    document.getElementById('tile-count').textContent = logs.length + ' 筆';
+    title.textContent = label + ' 加班記錄（' + logs.length + ' 筆）';
+
+    tbody.innerHTML = logs.map(function (r) {
+      var h = calcHours(r.start_time, r.end_time);
+      var dc = dowClass(r.date);
+      var dl = dowLabel(r.date);
+      return '<tr>' +
+        '<td>' + r.date + '<span class="ot-dow ' + dc + '">週' + dl + '</span></td>' +
+        '<td>' + r.start_time + ' — ' + r.end_time + '</td>' +
+        '<td class="ot-hours">' + (h > 0 ? fmtHours(h) : '—') + '</td>' +
+        '<td class="ot-note">' + L.escHtml(r.note || '') + '</td>' +
+        '<td><button class="ot-del" onclick="deleteEntry(' + r.id + ')" title="刪除">×</button></td>' +
+      '</tr>';
+    }).join('');
+    table.style.display = '';
+  }
+
+  function loadLogs() {
+    if (!_nurseName) return;
+    var month = document.getElementById('month-sel').value;
+    var loading = document.getElementById('log-loading');
+    var table   = document.getElementById('log-table');
+    loading.className = 'ot-loading';
+    loading.textContent = '載入中…';
+    loading.style.display = '';
+    table.style.display = 'none';
+    L.apiFetch('/api/nurse/ot-logs' + (month ? '?month=' + encodeURIComponent(month) : ''))
+      .then(function (logs) { renderRows(logs); })
+      .catch(function () {
+        loading.className = 'ot-err';
+        loading.textContent = '載入失敗，請重新整理';
+        loading.style.display = '';
+      });
+  }
+
+  window.stepMonth = function (dir) {
+    var sel = document.getElementById('month-sel');
+    var mv = sel.value || currentMonth();
+    var p = mv.split('-').map(Number);
+    var d = new Date(p[0], p[1] - 1 + dir, 1);
+    sel.value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    loadLogs();
+  };
+
+  window.addEntry = function () {
+    clearErr();
+    var date  = document.getElementById('add-date').value;
+    var start = document.getElementById('add-start').value;
+    var end   = document.getElementById('add-end').value;
+    var note  = document.getElementById('add-note').value;
+    if (!date) { showErr('請選擇日期'); return; }
+    if (!start || !end) { showErr('請填寫開始與結束時間'); return; }
+    if (calcHours(start, end) <= 0) { showErr('結束時間必須晚於開始時間'); return; }
+    var btn = document.getElementById('add-btn');
+    btn.disabled = true;
+    btn.textContent = '新增中…';
+    L.apiAction('POST', '/api/nurse/ot-logs', { date: date, start_time: start, end_time: end, note: note })
+      .then(function () {
+        document.getElementById('add-note').value = '';
+        loadLogs();
+      })
+      .catch(function () { showErr('新增失敗，請再試一次'); })
+      .finally(function () { btn.disabled = false; btn.textContent = '新增'; });
+  };
+
+  window.deleteEntry = function (id) {
+    if (!confirm('確定刪除這筆記錄？')) return;
+    L.apiAction('DELETE', '/api/nurse/ot-logs/' + id)
+      .then(function () { loadLogs(); })
+      .catch(function () { L.showToast('刪除失敗'); });
+  };
+
+  // ── Init ──────────────────────────────────────────────────────────────────
+  document.getElementById('month-sel').value = currentMonth();
+  document.getElementById('add-date').value  = localDateStr();
+
+  L.apiFetch('/api/me')
+    .then(function (me) {
+      _nurseName = me.display_name || '';
+      document.getElementById('page-title').textContent = _nurseName + ' 的加班記錄';
+      document.getElementById('page-sub').textContent   = '自行記錄加班時間，供薪資計算參考';
+      loadLogs();
+    })
+    .catch(function () {
+      document.getElementById('page-sub').textContent = '身份驗證失敗';
+    });
+})();
+</script>
+</body>
+</html>
