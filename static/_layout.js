@@ -462,6 +462,13 @@
         target.value = srchInput.value;
         target.dispatchEvent(new Event('input', { bubbles: true }));
       });
+      srchInput.addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        var target = document.getElementById('search-input') || document.getElementById('dir-search');
+        if (target) return; // let page handle it
+        var q = srchInput.value.trim();
+        if (q) location.href = '/history?q=' + encodeURIComponent(q);
+      });
     }
   }
 

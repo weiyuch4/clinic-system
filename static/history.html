@@ -192,6 +192,10 @@
   btnSearch.addEventListener('click', function () {
     clearTimeout(debounceTimer); search();
   });
+
+  // Pre-populate from ?q= when navigated here from topbar search
+  var _urlQ = new URLSearchParams(location.search).get('q');
+  if (_urlQ) { searchInput.value = _urlQ; search(); }
 })();
 </script>
 </body>
