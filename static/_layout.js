@@ -871,7 +871,12 @@
         var dd = moreBtn.nextElementSibling;
         var isOpen = dd.classList.contains('open');
         document.querySelectorAll('.pr-dd.open').forEach(function (d) { d.classList.remove('open'); });
-        if (!isOpen) dd.classList.add('open');
+        if (!isOpen) {
+          var rect = moreBtn.getBoundingClientRect();
+          dd.style.top  = (rect.bottom + 4) + 'px';
+          dd.style.right = (window.innerWidth - rect.right) + 'px';
+          dd.classList.add('open');
+        }
         return;
       }
       if (!ev.target.closest('.pr-more-wrap')) {
