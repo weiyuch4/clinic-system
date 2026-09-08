@@ -215,7 +215,7 @@
 
       <!-- Summary tiles -->
       <div class="ot-summary">
-        <div class="ot-tile"><div class="ot-tile-val" id="tile-hours">—</div><div class="ot-tile-lbl">本月總工時</div></div>
+        <div class="ot-tile"><div class="ot-tile-val" id="tile-hours">—</div><div class="ot-tile-lbl">本月總加班時間</div></div>
         <div class="ot-tile"><div class="ot-tile-val" id="tile-count">—</div><div class="ot-tile-lbl">本月筆數</div></div>
       </div>
 
@@ -601,7 +601,7 @@
       .then(function(me) {
         _nurseName = me.display_name || '';
         document.getElementById('page-sub').textContent =
-          _nurseName + '　自行記錄加班時間，供薪資計算參考';
+          '自行記錄加班時間，供薪資計算參考';
         loadLogs();
       })
       .catch(function() {
