@@ -82,6 +82,40 @@
   </div>
 </div>
 
+<style>
+.reason-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.reason-chip{padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);font-size:13px;cursor:pointer;color:var(--sub);font-weight:500;transition:all .15s;font-family:inherit}
+.reason-chip:hover{border-color:#9ca3af;color:var(--text)}
+.reason-chip.selected{border-color:var(--red,#e53e3e);background:var(--red-soft,#fff5f5);color:var(--red,#e53e3e);font-weight:600}
+</style>
+
+<div class="modal-overlay" id="modal-exclude">
+  <div class="modal-box">
+    <div class="modal-title">排除病患</div>
+    <div class="modal-sub" id="modal-exclude-sub"></div>
+    <div class="modal-field">
+      <label class="modal-label">排除原因</label>
+      <div class="reason-chips" id="exclude-chips">
+        <button class="reason-chip" data-reason="轉至其他診所">轉至其他診所</button>
+        <button class="reason-chip" data-reason="轉至大醫院追蹤">轉至大醫院追蹤</button>
+        <button class="reason-chip" data-reason="不願繼續用藥">不願繼續用藥</button>
+        <button class="reason-chip" data-reason="病患已過世">病患已過世</button>
+        <button class="reason-chip" data-reason="已自行停藥">已自行停藥</button>
+        <button class="reason-chip" data-reason="其他">其他</button>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">備註（選填）</label>
+      <textarea class="modal-input" id="modal-exclude-note" rows="2" placeholder="選填備註"></textarea>
+    </div>
+    <div class="modal-error" id="exclude-error"></div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-exclude')">取消</button>
+      <button class="act-btn act-danger" id="btn-exclude-confirm">確認排除</button>
+    </div>
+  </div>
+</div>
+
 <script src="/static/_layout.js?v=31"></script>
 <script>
 (function () {
@@ -90,7 +124,7 @@
   var _tab = 'pending', _query = '';
   var _pending = [], _contacted = [], _hold = [];
   var _pendingMap = {}, _contactedMap = {}, _holdMap = {};
-  var _actionChart = null;
+  var _actionChart = null, _excludeEntry = null;
 
   function applyReport(r) {
     _pending   = r.chronic_prescriptions || [];
@@ -125,12 +159,16 @@
     return L.patientRow({ entry: e, actions: [
       { label: '已聯繫', cls: 'act-primary', key: 'contact' },
       { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+      { label: '排除',   cls: 'act-danger',  key: 'exclude' },
     ]});
   }
   function contactedRow(e) {
     return L.patientRow({ entry: e,
       tags: ['<span class="pbadge b-done">已聯繫</span>'],
-      actions: [{ label: '撤銷', cls: '', key: 'undo-contact' }],
+      actions: [
+        { label: '撤銷', cls: '', key: 'undo-contact' },
+        { label: '排除', cls: 'act-danger', key: 'exclude' },
+      ],
     });
   }
   function holdRow(e) {
@@ -139,10 +177,14 @@
       patient: e.patient || { chart_number: 'hold-' + e.hold_id, name: e.manual_name || '?', birth_date: '' },
       category: '慢簽', mspt_stage: null,
       due_date: e.due_date || null, last_visit_date: e.last_visit_date || null, days_overdue: e.days_overdue || 0,
+      _hold_id: e.hold_id,
     };
     return L.patientRow({ entry: adapted,
       tags: ['<span class="pbadge b-hold">' + L.escHtml(note.length > 14 ? note.slice(0,14)+'…' : note) + '</span>'],
-      actions: [{ label: '解除暫緩', cls: '', key: 'undo-hold' }],
+      actions: [
+        { label: '解除暫緩', cls: '', key: 'undo-hold' },
+        { label: '排除',     cls: 'act-danger', key: 'exclude' },
+      ],
     });
   }
 
@@ -208,7 +250,23 @@
         .then(function () { L.showToast('已解除暫緩'); load(); })
         .catch(function (e) { L.showToast('解除失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
+    } else if (action === 'exclude') {
+      var excEntry = _pendingMap[_actionChart] || _contactedMap[_actionChart] ||
+        (function () { var h = _holdMap[_actionChart]; return h && h.patient ? h : null; })();
+      if (!excEntry) return;
+      _excludeEntry = excEntry.patient ? excEntry : { patient: excEntry.patient, category: '慢簽', due_date: excEntry.due_date, days_overdue: excEntry.days_overdue };
+      document.getElementById('modal-exclude-sub').textContent = excEntry.patient.name + ' — 排除後不再出現於追蹤清單';
+      document.getElementById('modal-exclude-note').value = '';
+      document.getElementById('exclude-error').classList.remove('show');
+      document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
+      L.showModal('modal-exclude');
     }
+  });
+
+  document.getElementById('exclude-chips').addEventListener('click', function (ev) {
+    var chip = ev.target.closest('.reason-chip'); if (!chip) return;
+    document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
+    chip.classList.add('selected');
   });
 
   document.getElementById('btn-contact-confirm').addEventListener('click', function () {
@@ -233,6 +291,21 @@
     confirmBtn.disabled = true;
     L.apiAction('POST', '/api/on-hold', { entry: entry, note: note, nurse: L.getNurse() })
       .then(function () { L.hideModal('modal-hold'); L.showToast('已設定暫緩'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .finally(function () { confirmBtn.disabled = false; });
+  });
+
+  document.getElementById('btn-exclude-confirm').addEventListener('click', function () {
+    var selected = document.querySelector('#exclude-chips .reason-chip.selected');
+    var errEl = document.getElementById('exclude-error');
+    if (!selected) { errEl.textContent = '請選擇排除原因'; errEl.classList.add('show'); return; }
+    var reason = selected.dataset.reason;
+    var note = document.getElementById('modal-exclude-note').value.trim();
+    var confirmBtn = this;
+    errEl.classList.remove('show');
+    confirmBtn.disabled = true;
+    L.apiAction('POST', '/api/excluded', { entry: _excludeEntry, reason: reason, note: note, nurse: L.getNurse() })
+      .then(function () { L.hideModal('modal-exclude'); L.showToast('已排除：' + _excludeEntry.patient.name); load(); })
       .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
