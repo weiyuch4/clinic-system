@@ -235,6 +235,15 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .pr-btns .act-btn{flex-shrink:0}
 .pr-tags{display:flex;gap:4px;align-items:center;flex-wrap:wrap}
 .p-table .act-btn{padding:4px 11px;font-size:12px;white-space:nowrap}
+.pr-more-wrap{position:relative;flex-shrink:0}
+.pr-more-btn{padding:4px 9px;font-size:13px;font-weight:700;border:1.5px solid var(--border);border-radius:7px;background:transparent;color:var(--muted);cursor:pointer;line-height:1}
+.pr-more-btn:hover{background:var(--bg);color:var(--text)}
+.pr-dd{display:none;position:absolute;right:0;top:calc(100% + 4px);z-index:50;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.14);min-width:130px;padding:4px 0}
+.pr-dd.open{display:block}
+.pr-di{display:flex;width:100%;text-align:left;padding:9px 14px;border:none;background:none;font-size:13px;color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap}
+.pr-di:hover{background:var(--bg)}
+.pr-di.item-danger{color:var(--red,#c53030)}
+.pr-di.item-danger:hover{background:var(--red-soft,#fff5f5)}
 
 /* â”€â”€ section divider â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sec-head{display:flex;align-items:center;gap:8px;padding:10px 0 8px;font-size:13px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);margin-bottom:10px;cursor:pointer;user-select:none}

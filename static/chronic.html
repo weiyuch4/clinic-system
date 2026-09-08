@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>慢簽追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=29">
+<link rel="stylesheet" href="/static/_layout.css?v=30">
 </head>
 <body>
 <div class="app">
@@ -156,19 +156,19 @@
   }
 
   function pendingRow(e) {
-    return L.patientRow({ entry: e, actions: [
-      { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-      { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
-      { label: '排除',   cls: 'act-danger',  key: 'exclude' },
-    ]});
+    return L.patientRow({ entry: e,
+      actions: [{ label: '已聯繫', cls: 'act-primary', key: 'contact' }],
+      more:    [
+        { label: '暫緩',   key: 'hold' },
+        { label: '排除',   key: 'exclude', cls: 'item-danger' },
+      ],
+    });
   }
   function contactedRow(e) {
     return L.patientRow({ entry: e,
       tags: ['<span class="pbadge b-done">已聯繫</span>'],
-      actions: [
-        { label: '撤銷', cls: '', key: 'undo-contact' },
-        { label: '排除', cls: 'act-danger', key: 'exclude' },
-      ],
+      actions: [{ label: '撤銷', cls: '', key: 'undo-contact' }],
+      more:    [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
     });
   }
   function holdRow(e) {
@@ -181,10 +181,8 @@
     };
     return L.patientRow({ entry: adapted,
       tags: ['<span class="pbadge b-hold">' + L.escHtml(note.length > 14 ? note.slice(0,14)+'…' : note) + '</span>'],
-      actions: [
-        { label: '解除暫緩', cls: '', key: 'undo-hold' },
-        { label: '排除',     cls: 'act-danger', key: 'exclude' },
-      ],
+      actions: [{ label: '解除暫緩', cls: '', key: 'undo-hold' }],
+      more:    [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
     });
   }
 

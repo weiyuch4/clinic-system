@@ -617,10 +617,20 @@
     var daysCls = daysN >= 30 ? 'days-hi' : daysN >= 15 ? 'days-md' : 'days-lo';
     function sd(d) { var s = String(d || ''); return s.length >= 10 ? s.slice(5) : s; }
     var tags = (opts.tags || []).join('');
+    var tagsText = opts.tags ? opts.tags.map(function(t){ return t.replace(/<[^>]+>/g,''); }).join(' ') : '';
     var actions = (opts.actions || []).map(function (a) {
       return '<button class="act-btn ' + (a.cls || '') + '" data-action="' +
         escHtml(a.key) + '">' + escHtml(a.label) + '</button>';
     }).join('');
+    var moreHtml = '';
+    if (opts.more && opts.more.length) {
+      var items = opts.more.map(function (a) {
+        return '<button class="pr-di' + (a.cls ? ' ' + escHtml(a.cls) : '') + '" data-action="' +
+          escHtml(a.key) + '">' + escHtml(a.label) + '</button>';
+      }).join('');
+      moreHtml = '<div class="pr-more-wrap"><button class="pr-more-btn" title="更多">•••</button>' +
+        '<div class="pr-dd">' + items + '</div></div>';
+    }
     var infoParts = [];
     if (contact) infoParts.push('<span class="pr-copy" data-copy="' + escHtml(contact) + '">' + escHtml(contact) + '</span>');
     else         infoParts.push('<span class="pr-noph">無電話</span>');
@@ -634,8 +644,8 @@
       '<td class="pr-days ' + daysCls + '">' + daysN + '天</td>' +
       '<td class="pr-date">' + (e.due_date        ? escHtml(sd(e.due_date))        : '—') + '</td>' +
       '<td class="pr-date">' + (e.last_visit_date ? escHtml(sd(e.last_visit_date)) : '—') + '</td>' +
-      '<td class="pr-note">' + (tags ? '<div class="pr-tags">' + tags + '</div>' : '') + '</td>' +
-      '<td class="pr-act"><div class="pr-btns">' + actions + '</div></td>' +
+      '<td class="pr-note"' + (tagsText ? ' title="' + escHtml(tagsText) + '"' : '') + '>' + (tags ? '<div class="pr-tags">' + tags + '</div>' : '') + '</td>' +
+      '<td class="pr-act"><div class="pr-btns">' + actions + moreHtml + '</div></td>' +
     '</tr>';
   }
 
@@ -855,6 +865,18 @@
       });
     }
     document.addEventListener('click', function (ev) {
+      var moreBtn = ev.target.closest('.pr-more-btn');
+      if (moreBtn) {
+        ev.stopPropagation();
+        var dd = moreBtn.nextElementSibling;
+        var isOpen = dd.classList.contains('open');
+        document.querySelectorAll('.pr-dd.open').forEach(function (d) { d.classList.remove('open'); });
+        if (!isOpen) dd.classList.add('open');
+        return;
+      }
+      if (!ev.target.closest('.pr-more-wrap')) {
+        document.querySelectorAll('.pr-dd.open').forEach(function (d) { d.classList.remove('open'); });
+      }
       var th = ev.target.closest('th[data-sort]');
       if (th) { _handleSort(th); return; }
       var lab = ev.target.closest('.pr-lab');
