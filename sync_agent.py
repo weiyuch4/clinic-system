@@ -74,6 +74,20 @@ def _ensure_db_pool() -> bool:
 
 # ── Sync logic ────────────────────────────────────────────────────────────────
 
+def _get_phone(chart_number: str) -> str:
+    try:
+        import database as _db
+        return _db.get_phone_by_chart_number(chart_number)
+    except Exception:
+        return ""
+
+def _get_mobile(chart_number: str) -> str:
+    try:
+        import database as _db
+        return _db.get_mobile_by_chart_number(chart_number)
+    except Exception:
+        return ""
+
 def _entry_to_dict(entry, category: str) -> dict:
     def _d(d):
         return d.isoformat() if d else None
@@ -88,8 +102,8 @@ def _entry_to_dict(entry, category: str) -> dict:
         "mspt_stage":    entry.mspt_stage,
         "contact_reason": entry.contact_reason,
         "last_visit_date": _d(entry.last_visit_date),
-        "phone":         entry.phone,
-        "mobile":        entry.mobile,
+        "phone":         _get_phone(entry.patient.chart_number),
+        "mobile":        _get_mobile(entry.patient.chart_number),
         "synced_at":     datetime.now().isoformat(timespec="seconds"),
     }
 
