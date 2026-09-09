@@ -4033,12 +4033,18 @@ function recalcSalary() {
   const perf = _bonusCalculated || 0;
   // unique sick dates — rows on the same date count as one day
   const _uniqueSickDates = [...new Set(_salSickRows.map(r => r.date).filter(Boolean))];
-  const _sickUniqueDays  = _uniqueSickDates.length;
   const _daysInMonth     = new Date(_salYear, _salMon, 0).getDate();
-  // prorate 全勤獎金 by sick days (calendar-day basis)
+  // working days = calendar days minus Sundays
+  let _workingDays = 0;
+  for (let d = 1; d <= _daysInMonth; d++) {
+    if (new Date(_salYear, _salMon - 1, d).getDay() !== 0) _workingDays++;
+  }
+  // sick days that fall on working days (exclude Sundays)
+  const _sickWorkingDays = _uniqueSickDates.filter(dt => dt && new Date(dt).getDay() !== 0).length;
+  // prorate 全勤獎金 by sick working days vs total working days
   const attendance = hasAttendance
-    ? (_sickUniqueDays > 0
-        ? Math.round(SAL_ATTENDANCE * (_daysInMonth - _sickUniqueDays) / _daysInMonth)
+    ? (_sickWorkingDays > 0
+        ? Math.round(SAL_ATTENDANCE * (_workingDays - _sickWorkingDays) / _workingDays)
         : SAL_ATTENDANCE)
     : 0;
 
