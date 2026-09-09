@@ -4145,7 +4145,7 @@ function printPaySlip() {
     });
     partRegular = Math.ceil(partRegular);
     partOt      = Math.ceil(partOt);
-    const partDays      = _salOtRows.length;
+    const partDays      = [...new Set(_salOtRows.map(r => r.date).filter(Boolean))].length || _salOtRows.length;
     const partLaborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
     const partHealthIns = parseInt(($('sal-health-ins') || {}).value) || 0;
     rows = `
