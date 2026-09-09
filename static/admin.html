@@ -1629,6 +1629,24 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           <span class="sal-amount" id="sal-ins-deduct" style="color:var(--red)">—</span>
         </div>
 
+        <!-- 到職日比例計算（新進員工）-->
+        <div class="sal-section-head sal-full-only" style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span>到職日調整</span>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
+              月初未出勤
+              <input type="number" id="sal-unworked-days" min="0" max="30" value="0" step="1"
+                style="width:52px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:center"
+                oninput="recalcSalary()"> 天
+            </label>
+            <span id="sal-prorate-note" style="font-size:11.5px;color:var(--muted)"></span>
+          </div>
+        </div>
+        <div class="sal-row sal-full-only" id="sal-prorate-row" style="display:none">
+          <span class="sal-label" style="color:var(--red)">到職日薪資調整</span>
+          <span class="sal-amount" id="sal-prorate-deduct" style="color:var(--red)">—</span>
+        </div>
+
         <!-- 合計 -->
         <hr class="sal-divider">
         <div class="sal-total-row">
@@ -3533,7 +3551,8 @@ function _currentSalaryPayload() {
     ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg, extras: _salExtras,
                   sick_rows: _salSickRows,
                   labor_ins: parseInt(($('sal-labor-ins')||{}).value)||0,
-                  health_ins: parseInt(($('sal-health-ins')||{}).value)||0}),
+                  health_ins: parseInt(($('sal-health-ins')||{}).value)||0,
+                  unworked_days: parseInt(($('sal-unworked-days')||{}).value)||0}),
   };
 }
 
@@ -3610,6 +3629,9 @@ function loadSalaryRecord(record) {
   // restore insurance deductions
   if ($('sal-labor-ins'))  $('sal-labor-ins').value  = parsed.labor_ins  || 0;
   if ($('sal-health-ins')) $('sal-health-ins').value = parsed.health_ins || 0;
+
+  // restore proration
+  if ($('sal-unworked-days')) $('sal-unworked-days').value = parsed.unworked_days || 0;
 
   setEditingRecord(record.id);
 }
@@ -4109,7 +4131,18 @@ function recalcSalary() {
   if (insRow) insRow.style.display = insDeduct > 0 ? '' : 'none';
   if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = insDeduct > 0 ? `−${fmtNT(insDeduct)}` : '—';
 
-  const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otPay + extrasTotal - sickDeduct - insDeduct;
+  const unworkedDays  = parseInt(($('sal-unworked-days') || {}).value) || 0;
+  const daysInMonth   = new Date(_salYear, _salMon, 0).getDate();
+  const prorateDeduct = unworkedDays > 0 ? Math.round(fixedMonthly / daysInMonth * unworkedDays) : 0;
+  const prorateRow    = $('sal-prorate-row');
+  if (prorateRow) prorateRow.style.display = prorateDeduct > 0 ? '' : 'none';
+  if ($('sal-prorate-deduct')) $('sal-prorate-deduct').textContent = prorateDeduct > 0 ? `−${fmtNT(prorateDeduct)}` : '—';
+  const prorateNote = $('sal-prorate-note');
+  if (prorateNote) prorateNote.textContent = unworkedDays > 0
+    ? `${fmtNT(fixedMonthly)} ÷ ${daysInMonth}天 × ${unworkedDays}天`
+    : '';
+
+  const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otPay + extrasTotal - sickDeduct - insDeduct - prorateDeduct;
 
   $('sal-attendance-amt').textContent = hasAttendance ? '2,000' : '—';
   $('sal-attendance-amt').className   = 'sal-amount' + (hasAttendance ? '' : ' muted');
@@ -4141,8 +4174,11 @@ function printPaySlip() {
     const flt  = $('sal-float-amt').textContent;
     const ot   = $('sal-ot-total').textContent;
     const perf = _bonusCalculated || 0;
-    const laborInsAmt  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
-    const healthInsAmt = parseInt(($('sal-health-ins') || {}).value) || 0;
+    const laborInsAmt    = parseInt(($('sal-labor-ins')    || {}).value) || 0;
+    const healthInsAmt   = parseInt(($('sal-health-ins')   || {}).value) || 0;
+    const unworkedDaysAmt = parseInt(($('sal-unworked-days') || {}).value) || 0;
+    const prorateDeductAmt = unworkedDaysAmt > 0
+      ? (parseInt(($('sal-prorate-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
     const sickDays = _salSickRows.length;
     const sickHoursTotal = _salSickRows.reduce((s,r) => { const m = calcMinutes(r.start,r.end); return s + (m>0?m/60:0); }, 0);
     const sickDeductAmt = sickDays > 0 ? (parseInt(($('sal-sick-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
@@ -4159,6 +4195,7 @@ function printPaySlip() {
       ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款（${sickDays}天 ${sickHoursTotal.toFixed(1)}h，半薪）</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${laborInsAmt > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${healthInsAmt > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${prorateDeductAmt > 0 ? `<tr style="color:#dc2626"><td>到職日調整（月初未出勤 ${unworkedDaysAmt} 天）</td><td>−NT$ ${prorateDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   }
 
