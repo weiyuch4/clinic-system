@@ -3641,6 +3641,7 @@ function loadSalaryRecord(record) {
   if ($('sal-unworked-days')) $('sal-unworked-days').value = parsed.unworked_days || 0;
 
   setEditingRecord(record.id);
+  loadYearlySickDays();
 }
 
 async function loadSalaryHistory() {
