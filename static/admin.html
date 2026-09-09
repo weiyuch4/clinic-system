@@ -1606,6 +1606,29 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           <span class="sal-amount" id="sal-sick-deduct" style="color:var(--red)">—</span>
         </div>
 
+        <!-- 勞保/健保扣款 -->
+        <div class="sal-section-head sal-full-only" style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span>法定扣款</span>
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-left:auto">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
+              勞保
+              <input type="number" id="sal-labor-ins" min="0" value="0" step="1"
+                style="width:72px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+                oninput="recalcSalary()"> 元
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
+              健保
+              <input type="number" id="sal-health-ins" min="0" value="0" step="1"
+                style="width:72px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+                oninput="recalcSalary()"> 元
+            </label>
+          </div>
+        </div>
+        <div class="sal-row sal-full-only" id="sal-ins-row" style="display:none">
+          <span class="sal-label" style="color:var(--red)">勞健保扣款</span>
+          <span class="sal-amount" id="sal-ins-deduct" style="color:var(--red)">—</span>
+        </div>
+
         <!-- 合計 -->
         <hr class="sal-divider">
         <div class="sal-total-row">
@@ -3507,7 +3530,10 @@ function _currentSalaryPayload() {
     ot_pay:      isPart ? total : (parseInt($('sal-ot-total').textContent.replace(/,/g, '')) || 0),
     total,
     sick_days:   _salSickRows.length,
-    ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg, extras: _salExtras, sick_rows: _salSickRows}),
+    ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg, extras: _salExtras,
+                  sick_rows: _salSickRows,
+                  labor_ins: parseInt(($('sal-labor-ins')||{}).value)||0,
+                  health_ins: parseInt(($('sal-health-ins')||{}).value)||0}),
   };
 }
 
@@ -3580,6 +3606,10 @@ function loadSalaryRecord(record) {
   // restore sick rows
   _salSickRows = Array.isArray(parsed.sick_rows) ? parsed.sick_rows : [];
   renderSickRows();
+
+  // restore insurance deductions
+  if ($('sal-labor-ins'))  $('sal-labor-ins').value  = parsed.labor_ins  || 0;
+  if ($('sal-health-ins')) $('sal-health-ins').value = parsed.health_ins || 0;
 
   setEditingRecord(record.id);
 }
@@ -4072,7 +4102,14 @@ function recalcSalary() {
   if (sickRow) sickRow.style.display = sickDeduct > 0 ? '' : 'none';
   if ($('sal-sick-deduct')) $('sal-sick-deduct').textContent = sickDeduct > 0 ? `−${fmtNT(sickDeduct)}` : '—';
 
-  const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otPay + extrasTotal - sickDeduct;
+  const laborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
+  const healthIns = parseInt(($('sal-health-ins') || {}).value) || 0;
+  const insDeduct = laborIns + healthIns;
+  const insRow = $('sal-ins-row');
+  if (insRow) insRow.style.display = insDeduct > 0 ? '' : 'none';
+  if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = insDeduct > 0 ? `−${fmtNT(insDeduct)}` : '—';
+
+  const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otPay + extrasTotal - sickDeduct - insDeduct;
 
   $('sal-attendance-amt').textContent = hasAttendance ? '2,000' : '—';
   $('sal-attendance-amt').className   = 'sal-amount' + (hasAttendance ? '' : ' muted');
@@ -4104,6 +4141,8 @@ function printPaySlip() {
     const flt  = $('sal-float-amt').textContent;
     const ot   = $('sal-ot-total').textContent;
     const perf = _bonusCalculated || 0;
+    const laborInsAmt  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
+    const healthInsAmt = parseInt(($('sal-health-ins') || {}).value) || 0;
     const sickDays = _salSickRows.length;
     const sickHoursTotal = _salSickRows.reduce((s,r) => { const m = calcMinutes(r.start,r.end); return s + (m>0?m/60:0); }, 0);
     const sickDeductAmt = sickDays > 0 ? (parseInt(($('sal-sick-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
@@ -4118,6 +4157,8 @@ function printPaySlip() {
       ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款（${sickDays}天 ${sickHoursTotal.toFixed(1)}h，半薪）</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${laborInsAmt > 0 ? `<tr style="color:#dc2626"><td>勞保（員工負擔）</td><td>−NT$ ${laborInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${healthInsAmt > 0 ? `<tr style="color:#dc2626"><td>健保（員工負擔）</td><td>−NT$ ${healthInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   }
 
