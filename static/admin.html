@@ -4157,8 +4157,8 @@ function printPaySlip() {
       ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款（${sickDays}天 ${sickHoursTotal.toFixed(1)}h，半薪）</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${laborInsAmt > 0 ? `<tr style="color:#dc2626"><td>勞保（員工負擔）</td><td>−NT$ ${laborInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${healthInsAmt > 0 ? `<tr style="color:#dc2626"><td>健保（員工負擔）</td><td>−NT$ ${healthInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${laborInsAmt > 0 ? `<tr style="color:#dc2626"><td>勞保</td><td>−NT$ ${laborInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${healthInsAmt > 0 ? `<tr style="color:#dc2626"><td>健保</td><td>−NT$ ${healthInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   }
 
