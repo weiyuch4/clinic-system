@@ -1608,7 +1608,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         </div>
 
         <!-- 勞保/健保扣款 -->
-        <div class="sal-section-head sal-full-only" style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div class="sal-section-head" style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
           <span>法定扣款</span>
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-left:auto">
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
@@ -1625,7 +1625,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
             </label>
           </div>
         </div>
-        <div class="sal-row sal-full-only" id="sal-ins-row" style="display:none">
+        <div class="sal-row" id="sal-ins-row" style="display:none">
           <span class="sal-label" style="color:var(--red)">勞健保扣款</span>
           <span class="sal-amount" id="sal-ins-deduct" style="color:var(--red)">—</span>
         </div>
@@ -3981,8 +3981,14 @@ function recalcSalary() {
       if (resEl) resEl.textContent = `${h.toFixed(1)}h × ${fmtNT(rate)} 元/h → ${fmtNT(Math.ceil(pay))} 元`;
     });
     partPay = Math.ceil(partPay);
+    const partLaborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
+    const partHealthIns = parseInt(($('sal-health-ins') || {}).value) || 0;
+    const partInsDeduct = partLaborIns + partHealthIns;
+    const partInsRow = $('sal-ins-row');
+    if (partInsRow) partInsRow.style.display = partInsDeduct > 0 ? '' : 'none';
+    if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = partInsDeduct > 0 ? `−${fmtNT(partInsDeduct)}` : '—';
     $('sal-ot-total').textContent    = fmtNT(partPay);
-    $('sal-grand-total').textContent = fmtNT(partPay) + ' 元';
+    $('sal-grand-total').textContent = fmtNT(partPay - partInsDeduct) + ' 元';
     $('sal-hourly-note').textContent = '兼職時薪：250 元/h（一般）；335 元/h（加班，250 × 1.34）';
     return;
   }
