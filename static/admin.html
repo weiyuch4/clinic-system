@@ -1071,6 +1071,56 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .sal-ot-tag.saturday  { background: #EFF6FF; color: var(--blue); }
 .sal-ot-tag.sunday    { background: #F3E8FF; color: #7C3AED; }
 .sal-ot-tag.weekday   { background: #F0FDF4; color: var(--emerald); }
+/* ── salary row custom pickers ────────────────────────────── */
+.sal-pick-trigger {
+  display:inline-flex; align-items:center; gap:6px;
+  border:1.5px solid var(--border); border-radius:7px;
+  background:var(--card); color:var(--text);
+  font:600 13px/1 var(--font); padding:6px 10px;
+  cursor:pointer; text-align:left; white-space:nowrap;
+  transition:border-color .12s, box-shadow .12s; user-select:none;
+}
+.sal-pick-trigger:hover { border-color:var(--blue); }
+.sal-pick-trigger.open  { border-color:var(--blue); box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.sal-pick-trigger svg   { width:13px; height:13px; color:var(--muted); flex-shrink:0; }
+.sal-pk-drop {
+  position:fixed; z-index:700;
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  box-shadow:0 8px 28px rgba(0,0,0,.14), 0 2px 6px rgba(0,0,0,.07);
+  overflow:hidden; animation:spk-in .12s ease;
+}
+@keyframes spk-in { from{opacity:0;transform:translateY(-4px)} to{opacity:1;transform:none} }
+.sal-cal-in  { padding:14px; width:248px; }
+.sal-tp-in   { display:flex; width:160px; height:190px; }
+.scal-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; }
+.scal-nav  { width:26px; height:26px; border:none; border-radius:6px; background:var(--bg);
+  color:var(--sub); cursor:pointer; font-size:14px;
+  display:flex; align-items:center; justify-content:center; transition:background .1s, color .1s; }
+.scal-nav:hover { background:var(--g0); color:var(--text); }
+.scal-mlbl { font-size:13.5px; font-weight:700; color:var(--text); }
+.scal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
+.scal-dow  { font-size:10px; font-weight:700; text-align:center; color:var(--muted); padding:0 0 8px; letter-spacing:.04em; }
+.scal-day  { height:30px; border:none; border-radius:6px; background:transparent;
+  font-size:12.5px; color:var(--text); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:background .1s; font-variant-numeric:tabular-nums; }
+.scal-day:hover:not(:disabled) { background:var(--g0); }
+.scal-day.sc-today { font-weight:700; color:#2563EB; }
+.scal-day.sc-sel   { background:#2563EB; color:#fff; font-weight:700; }
+.scal-day.sc-sel:hover { background:#1D4ED8; }
+.scal-day.sc-other { color:var(--muted); }
+.scal-day:disabled { opacity:.25; cursor:default; }
+.stp-col  { flex:1; overflow-y:auto; scroll-behavior:smooth;
+  scrollbar-width:thin; scrollbar-color:var(--border) transparent; padding:4px; }
+.stp-col::-webkit-scrollbar { width:4px; }
+.stp-col::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+.stp-sep  { display:flex; align-items:center; padding:0 4px; font-weight:800; color:var(--muted); font-size:16px; }
+.stp-opt  { display:flex; align-items:center; justify-content:center;
+  height:34px; border-radius:7px; font-size:13px;
+  font-variant-numeric:tabular-nums; color:var(--text); cursor:pointer;
+  transition:background .1s; letter-spacing:.04em; }
+.stp-opt:hover  { background:var(--g0); }
+.stp-opt.st-sel { background:#2563EB; color:#fff; font-weight:700; }
 .sal-divider { border: none; border-top: 2px solid var(--text-1); margin: 18px 0 12px; }
 .sal-total-row { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0; }
 .sal-total-label { font-size: 14px; font-weight: 700; color: var(--text-1); }
@@ -1546,12 +1596,11 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <div class="sal-section-head sal-full-only" style="margin-top:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span>病假（勞基法半薪）</span>
           <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
-            <input type="number" id="sal-sick-days" min="0" max="30" value="0" step="1"
-              style="width:52px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:center"
-              oninput="recalcSalary();loadYearlySickDays()"> 天
+            <button class="btn-sm" style="font-size:11px;padding:4px 10px" onclick="addSickRow()">＋ 新增病假</button>
             <span id="sal-sick-yearly" style="font-size:11.5px;color:var(--muted)"></span>
           </div>
         </div>
+        <div class="sal-ot-list sal-full-only" id="sal-sick-list" style="margin-bottom:8px"></div>
         <div class="sal-row sal-full-only" id="sal-sick-row" style="display:none">
           <span class="sal-label" style="color:var(--red)">病假扣款</span>
           <span class="sal-amount" id="sal-sick-deduct" style="color:var(--red)">—</span>
@@ -3164,6 +3213,7 @@ const SAL_SAT_RATE   = 175;   // (42000/30)/8 — Saturday overtime base rate
 // full: {date:'YYYY-MM-DD', start:'HH:MM', end:'HH:MM'}
 // part: same + isOt:bool
 let _salOtRows = [];
+let _salSickRows = [];   // [{date, start, end}]
 let _salMode = 'full';  // 'full' or 'part'
 
 // ── Month picker ──
@@ -3187,6 +3237,158 @@ function stepSalMonth(dir) {
   loadSalaryHistory();
   loadYearlySickDays();
 }
+
+// ── Salary row custom pickers ─────────────────────────────────────────────
+const _SPK_CAL = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 7h12M5 2v2M11 2v2"/></svg>';
+const _SPK_CLK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>';
+const _SPK_MONS = ['','1','2','3','4','5','6','7','8','9','10','11','12'];
+let _salPkOpen  = null;   // {section:'ot'|'sick', idx, field:'date'|'start'|'end', trigger}
+let _salDpNavY  = 0, _salDpNavM = 0;
+
+function spkPad2(n) { return String(n).padStart(2, '0'); }
+
+function salDpRender() {
+  const wrap = document.getElementById('sal-cal-in');
+  if (!wrap || !_salPkOpen) return;
+  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salSickRows;
+  const selVal = rows[_salPkOpen.idx].date || '';
+  const [selY, selM, selD] = selVal ? selVal.split('-').map(Number) : [0,0,0];
+  const today = new Date();
+  const [tY, tM, tD] = [today.getFullYear(), today.getMonth()+1, today.getDate()];
+  const daysInMon = new Date(_salDpNavY, _salDpNavM, 0).getDate();
+  const firstDow  = new Date(_salDpNavY, _salDpNavM-1, 1).getDay();
+  const label     = _salDpNavY + ' 年 ' + _SPK_MONS[_salDpNavM] + ' 月';
+  let cells = '';
+  for (let b = 0; b < firstDow; b++) cells += '<button class="scal-day sc-other" disabled></button>';
+  for (let d = 1; d <= daysInMon; d++) {
+    const isSel = (selY===_salDpNavY && selM===_salDpNavM && selD===d);
+    const isTod = (tY===_salDpNavY && tM===_salDpNavM && tD===d);
+    let cls = 'scal-day';
+    if (isSel) cls += ' sc-sel'; else if (isTod) cls += ' sc-today';
+    cells += '<button class="' + cls + '" onclick="salDpSelect(' + d + ')">' + d + '</button>';
+  }
+  wrap.innerHTML =
+    '<div class="scal-head">' +
+      '<button class="scal-nav" onclick="salDpNav(-1)">&#8249;</button>' +
+      '<span class="scal-mlbl">' + label + '</span>' +
+      '<button class="scal-nav" onclick="salDpNav(1)">&#8250;</button>' +
+    '</div>' +
+    '<div class="scal-grid">' +
+      ['日','一','二','三','四','五','六'].map(d => '<div class="scal-dow">' + d + '</div>').join('') +
+      cells +
+    '</div>';
+}
+
+function salTpRender() {
+  const wrap = document.getElementById('sal-tp-in');
+  if (!wrap || !_salPkOpen) return;
+  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salSickRows;
+  const timeVal = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
+  const selH = parseInt(timeVal.slice(0,2));
+  const selM = Math.round(parseInt(timeVal.slice(3,5)) / 5) * 5 % 60;
+  let hc = '', mc = '';
+  for (let h = 0; h < 24; h++) {
+    const cls = h === selH ? 'stp-opt st-sel' : 'stp-opt';
+    hc += '<div class="' + cls + '" onclick="salTpSelH(' + h + ')">' + spkPad2(h) + '</div>';
+  }
+  for (let m = 0; m < 60; m += 5) {
+    const cls = m === selM ? 'stp-opt st-sel' : 'stp-opt';
+    mc += '<div class="' + cls + '" onclick="salTpSelM(' + m + ')">' + spkPad2(m) + '</div>';
+  }
+  wrap.innerHTML =
+    '<div class="stp-col" id="stp-hcol">' + hc + '</div>' +
+    '<div class="stp-sep">:</div>' +
+    '<div class="stp-col" id="stp-mcol">' + mc + '</div>';
+  requestAnimationFrame(function() {
+    const hSel = wrap.querySelector('.st-sel');
+    if (hSel) hSel.scrollIntoView({ block:'center' });
+    const mSels = wrap.querySelectorAll('.st-sel');
+    if (mSels[1]) mSels[1].scrollIntoView({ block:'center' });
+  });
+}
+
+window.salDpNav = function(dir) {
+  _salDpNavM += dir;
+  if (_salDpNavM > 12) { _salDpNavM = 1; _salDpNavY++; }
+  if (_salDpNavM < 1)  { _salDpNavM = 12; _salDpNavY--; }
+  salDpRender();
+};
+
+window.salDpSelect = function(day) {
+  if (!_salPkOpen) return;
+  const val = _salDpNavY + '-' + spkPad2(_salDpNavM) + '-' + spkPad2(day);
+  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salSickRows;
+  rows[_salPkOpen.idx].date = val;
+  const spn = _salPkOpen.trigger.querySelector('.spk-val');
+  if (spn) spn.textContent = val;
+  salClosePicker();
+  recalcSalary();
+};
+
+window.salTpSelH = function(h) {
+  if (!_salPkOpen) return;
+  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salSickRows;
+  const old = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
+  rows[_salPkOpen.idx][_salPkOpen.field] = spkPad2(h) + ':' + old.slice(3);
+  const spn = _salPkOpen.trigger.querySelector('.spk-val');
+  if (spn) spn.textContent = rows[_salPkOpen.idx][_salPkOpen.field];
+  salTpRender();
+  recalcSalary();
+};
+
+window.salTpSelM = function(m) {
+  if (!_salPkOpen) return;
+  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salSickRows;
+  const old = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
+  rows[_salPkOpen.idx][_salPkOpen.field] = old.slice(0,3) + spkPad2(m);
+  const spn = _salPkOpen.trigger.querySelector('.spk-val');
+  if (spn) spn.textContent = rows[_salPkOpen.idx][_salPkOpen.field];
+  salClosePicker();
+  recalcSalary();
+};
+
+function salOpenPicker(section, idx, field, triggerEl) {
+  salClosePicker();
+  _salPkOpen = { section, idx, field, trigger: triggerEl };
+  const rect = triggerEl.getBoundingClientRect();
+  const top  = rect.bottom + 6;
+  let   left = rect.left;
+  if (field === 'date') {
+    const rows = section === 'ot' ? _salOtRows : _salSickRows;
+    const v = rows[idx].date;
+    if (v) { _salDpNavY = parseInt(v.slice(0,4)); _salDpNavM = parseInt(v.slice(5,7)); }
+    else   { const n = new Date(); _salDpNavY = n.getFullYear(); _salDpNavM = n.getMonth()+1; }
+    salDpRender();
+    if (left + 248 > window.innerWidth - 8) left = window.innerWidth - 256;
+    const dp = document.getElementById('sal-dp-drop');
+    dp.style.top = top + 'px'; dp.style.left = left + 'px'; dp.style.display = '';
+  } else {
+    salTpRender();
+    if (left + 160 > window.innerWidth - 8) left = window.innerWidth - 168;
+    const tp = document.getElementById('sal-tp-drop');
+    tp.style.top = top + 'px'; tp.style.left = left + 'px'; tp.style.display = '';
+  }
+  triggerEl.classList.add('open');
+}
+
+function salClosePicker() {
+  if (!_salPkOpen) return;
+  if (_salPkOpen.trigger) _salPkOpen.trigger.classList.remove('open');
+  const dp = document.getElementById('sal-dp-drop');
+  const tp = document.getElementById('sal-tp-drop');
+  if (dp) dp.style.display = 'none';
+  if (tp) tp.style.display = 'none';
+  _salPkOpen = null;
+}
+
+document.addEventListener('mousedown', function(e) {
+  if (!_salPkOpen) return;
+  const dp = document.getElementById('sal-dp-drop');
+  const tp = document.getElementById('sal-tp-drop');
+  if (_salPkOpen.trigger && _salPkOpen.trigger.contains(e.target)) return;
+  if ((dp && dp.contains(e.target)) || (tp && tp.contains(e.target))) return;
+  salClosePicker();
+}, true);
 
 // ── Extras (other bonuses/deductions) ──
 let _salExtras = [];  // [{name, amount}]  amount can be negative
@@ -3304,8 +3506,8 @@ function _currentSalaryPayload() {
     float_bonus: isPart ? 0 : (parseInt($('sal-float-amt').textContent.replace(/,/g, '')) || 0),
     ot_pay:      isPart ? total : (parseInt($('sal-ot-total').textContent.replace(/,/g, '')) || 0),
     total,
-    sick_days:   parseInt(($('sal-sick-days') || {}).value) || 0,
-    ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg, extras: _salExtras}),
+    sick_days:   _salSickRows.length,
+    ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg, extras: _salExtras, sick_rows: _salSickRows}),
   };
 }
 
@@ -3375,8 +3577,9 @@ function loadSalaryRecord(record) {
   _salExtras = Array.isArray(parsed.extras) ? parsed.extras : [];
   renderSalExtras();
 
-  // restore sick days
-  if ($('sal-sick-days')) $('sal-sick-days').value = record.sick_days || 0;
+  // restore sick rows
+  _salSickRows = Array.isArray(parsed.sick_rows) ? parsed.sick_rows : [];
+  renderSickRows();
 
   setEditingRecord(record.id);
 }
@@ -3676,27 +3879,77 @@ function toggleBatchBonus() {
 }
 
 function renderOtRows() {
-  // Only called when rows are ADDED or REMOVED — not on input change,
-  // because re-rendering destroys a date-picker mid-navigation.
+  salClosePicker();
   const isPart = _salMode === 'part';
-  $('sal-ot-list').innerHTML = _salOtRows.map((r, i) => `
-    <div class="sal-ot-entry">
-      <input type="date" class="sal-date-input" value="${r.date}"
-        onchange="_salOtRows[${i}].date=this.value;recalcSalary()">
-      <input type="time" class="sal-time-inp" value="${r.start || '18:00'}"
-        onchange="_salOtRows[${i}].start=this.value;recalcSalary()">
-      <span class="sal-time-sep">—</span>
-      <input type="time" class="sal-time-inp" value="${r.end || '20:00'}"
-        onchange="_salOtRows[${i}].end=this.value;recalcSalary()">
-      ${isPart
-        ? `<label class="sal-part-ot-chk"><input type="checkbox" id="sal-ot-isot-${i}"${r.isOt ? ' checked' : ''}
-             onchange="_salOtRows[${i}].isOt=this.checked;recalcSalary()"> 加班</label>`
-        : `<span class="sal-ot-tag" id="sal-ot-tag-${i}"></span>`}
-      <span style="color:var(--text-2);font-size:12.5px;font-variant-numeric:tabular-nums;flex:1"
-            id="sal-ot-result-${i}"></span>
-      <button class="sal-del" onclick="removeOtRow(${i})">×</button>
-    </div>`).join('');
+  $('sal-ot-list').innerHTML = _salOtRows.map((r, i) => {
+    const dv = r.date  || '選擇日期';
+    const sv = r.start || '18:00';
+    const ev = r.end   || '20:00';
+    return (
+      '<div class="sal-ot-entry">' +
+        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'date\',this)">' +
+          _SPK_CAL + '<span class="spk-val">' + dv + '</span>' +
+        '</button>' +
+        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'start\',this)">' +
+          _SPK_CLK + '<span class="spk-val">' + sv + '</span>' +
+        '</button>' +
+        '<span class="sal-time-sep">—</span>' +
+        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'end\',this)">' +
+          _SPK_CLK + '<span class="spk-val">' + ev + '</span>' +
+        '</button>' +
+        (isPart
+          ? '<label class="sal-part-ot-chk"><input type="checkbox" id="sal-ot-isot-' + i + '"' + (r.isOt ? ' checked' : '') +
+            ' onchange="_salOtRows[' + i + '].isOt=this.checked;recalcSalary()"> 加班</label>'
+          : '<span class="sal-ot-tag" id="sal-ot-tag-' + i + '"></span>') +
+        '<span style="color:var(--text-2);font-size:12.5px;font-variant-numeric:tabular-nums;flex:1"' +
+              ' id="sal-ot-result-' + i + '"></span>' +
+        '<button class="sal-del" onclick="removeOtRow(' + i + ')">\u00d7</button>' +
+      '</div>'
+    );
+  }).join('');
   recalcSalary();
+}
+
+function renderSickRows() {
+  salClosePicker();
+  const list = $('sal-sick-list');
+  if (!list) return;
+  list.innerHTML = _salSickRows.map((r, i) => {
+    const dv = r.date  || '選擇日期';
+    const sv = r.start || '08:00';
+    const ev = r.end   || '17:00';
+    return (
+      '<div class="sal-ot-entry">' +
+        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'sick\',' + i + ',\'date\',this)">' +
+          _SPK_CAL + '<span class="spk-val">' + dv + '</span>' +
+        '</button>' +
+        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'sick\',' + i + ',\'start\',this)">' +
+          _SPK_CLK + '<span class="spk-val">' + sv + '</span>' +
+        '</button>' +
+        '<span class="sal-time-sep">—</span>' +
+        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'sick\',' + i + ',\'end\',this)">' +
+          _SPK_CLK + '<span class="spk-val">' + ev + '</span>' +
+        '</button>' +
+        '<span style="color:var(--text-2);font-size:12.5px;font-variant-numeric:tabular-nums;flex:1"' +
+              ' id="sal-sick-result-' + i + '"></span>' +
+        '<button class="sal-del" onclick="removeSickRow(' + i + ')">\u00d7</button>' +
+      '</div>'
+    );
+  }).join('');
+  recalcSalary();
+}
+
+function addSickRow() {
+  const prev = _salSickRows.length ? _salSickRows[_salSickRows.length - 1] : null;
+  _salSickRows.push({ date: '', start: prev ? prev.start : '08:00', end: prev ? prev.end : '17:00' });
+  renderSickRows();
+  loadYearlySickDays();
+}
+
+function removeSickRow(i) {
+  _salSickRows.splice(i, 1);
+  renderSickRows();
+  loadYearlySickDays();
 }
 
 function recalcSalary() {
@@ -3804,10 +4057,17 @@ function recalcSalary() {
     extrasEl.className = 'sal-amount' + (extrasTotal < 0 ? '' : '');
   }
 
-  // sick days deduction: sick_days × (fixed monthly / 30) × 50%  (勞基法病假半薪)
-  const sickDays = parseInt(($('sal-sick-days') || {}).value) || 0;
+  // Sick deduction: actual sick hours × hourly rate × 50%  (勞基法病假半薪)
+  let sickHours = 0;
+  _salSickRows.forEach((r, i) => {
+    const mins = calcMinutes(r.start, r.end);
+    if (mins > 0) sickHours += mins / 60;
+    const resEl = document.getElementById('sal-sick-result-' + i);
+    if (resEl) resEl.textContent = mins > 0 ? (mins/60).toFixed(1) + 'h' : '';
+  });
   const fixedMonthly = SAL_BASE + attendance + SAL_LICENSE + floatPay;
-  const sickDeduct = sickDays > 0 ? Math.round(sickDays * (fixedMonthly / 30) * 0.5) : 0;
+  const hourlyRate = fixedMonthly / 240;  // 月工時240小時
+  const sickDeduct = sickHours > 0 ? Math.round(sickHours * hourlyRate * 0.5) : 0;
   const sickRow = $('sal-sick-row');
   if (sickRow) sickRow.style.display = sickDeduct > 0 ? '' : 'none';
   if ($('sal-sick-deduct')) $('sal-sick-deduct').textContent = sickDeduct > 0 ? `−${fmtNT(sickDeduct)}` : '—';
@@ -3844,8 +4104,9 @@ function printPaySlip() {
     const flt  = $('sal-float-amt').textContent;
     const ot   = $('sal-ot-total').textContent;
     const perf = _bonusCalculated || 0;
-    const sickDays = parseInt(($('sal-sick-days') || {}).value) || 0;
-    const sickDeductAmt = sickDays > 0 ? parseInt(($('sal-sick-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0 : 0;
+    const sickDays = _salSickRows.length;
+    const sickHoursTotal = _salSickRows.reduce((s,r) => { const m = calcMinutes(r.start,r.end); return s + (m>0?m/60:0); }, 0);
+    const sickDeductAmt = sickDays > 0 ? (parseInt(($('sal-sick-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
     rows = `
       <tr><td>底薪</td><td>NT$ 30,500</td></tr>
       <tr><td>全勤獎金</td><td>${att ? 'NT$ 2,000' : '—'}</td></tr>
@@ -3856,7 +4117,7 @@ function printPaySlip() {
       ${parseInt(ot.replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
       ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
-      ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款（${sickDays}天，半薪）</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款（${sickDays}天 ${sickHoursTotal.toFixed(1)}h，半薪）</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   }
 
@@ -4086,5 +4347,8 @@ async function saveLabCodes() {
 $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
 refresh();
 </script>
+<!-- salary picker dropdowns -->
+<div id="sal-dp-drop" class="sal-pk-drop" style="display:none"><div class="sal-cal-in" id="sal-cal-in"></div></div>
+<div id="sal-tp-drop" class="sal-pk-drop" style="display:none"><div class="sal-tp-in" id="sal-tp-in"></div></div>
 </body>
 </html>
