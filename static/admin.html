@@ -3467,7 +3467,12 @@ async function loadYearlySickDays() {
   try {
     const res = await api(`/api/admin/salary/sick-days?nurse=${encodeURIComponent(nurse)}&year=${_salYear}`);
     const el = $('sal-sick-yearly');
-    if (el) el.textContent = `今年已用 ${res.total} / 30 天`;
+    if (!el) return;
+    // DB total may include the current record's stale sick_days count.
+    // Correct by subtracting what's saved and adding the current unique date count.
+    const localUnique = [...new Set(_salSickRows.map(r => r.date).filter(Boolean))].length;
+    const corrected = res.total - _salSavedSickDays + localUnique;
+    el.textContent = `今年已用 ${corrected} / 30 天`;
   } catch(_) {}
 }
 
@@ -3503,6 +3508,7 @@ function initSalaryTab() {
 }
 
 let _salEditingId = null;  // null = new record; number = editing existing record id
+let _salSavedSickDays = 0; // sick_days value stored in DB for the record currently being edited
 
 // reload history when nurse changes; month changes go through stepSalMonth
 document.addEventListener('change', e => {
@@ -3522,7 +3528,7 @@ function setEditingRecord(id) {
 
 function newSalaryRecord() {
   setEditingRecord(null);
-  // deselect rows visually
+  _salSavedSickDays = 0;
   document.querySelectorAll('.sal-hist-row').forEach(r => r.classList.remove('selected'));
 }
 
@@ -3624,6 +3630,7 @@ function loadSalaryRecord(record) {
 
   // restore sick rows
   _salSickRows = Array.isArray(parsed.sick_rows) ? parsed.sick_rows : [];
+  _salSavedSickDays = record.sick_days || 0;
   renderSickRows();
 
   // restore insurance deductions
