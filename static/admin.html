@@ -4148,14 +4148,15 @@ function recalcSalary() {
   if (insRow) insRow.style.display = insDeduct > 0 ? '' : 'none';
   if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = insDeduct > 0 ? `−${fmtNT(insDeduct)}` : '—';
 
-  const unworkedDays  = parseInt(($('sal-unworked-days') || {}).value) || 0;
-  const prorateDeduct = unworkedDays > 0 ? Math.round(fixedMonthly / _daysInMonth * unworkedDays) : 0;
-  const prorateRow    = $('sal-prorate-row');
+  const unworkedDays    = parseInt(($('sal-unworked-days') || {}).value) || 0;
+  const prorateBase     = SAL_BASE + SAL_ATTENDANCE + SAL_LICENSE + SAL_FLOAT_BASE;  // always 42,000
+  const prorateDeduct   = unworkedDays > 0 ? Math.round(prorateBase / _daysInMonth * unworkedDays) : 0;
+  const prorateRow      = $('sal-prorate-row');
   if (prorateRow) prorateRow.style.display = prorateDeduct > 0 ? '' : 'none';
   if ($('sal-prorate-deduct')) $('sal-prorate-deduct').textContent = prorateDeduct > 0 ? `−${fmtNT(prorateDeduct)}` : '—';
   const prorateNote = $('sal-prorate-note');
   if (prorateNote) prorateNote.textContent = unworkedDays > 0
-    ? `${fmtNT(fixedMonthly)} ÷ ${_daysInMonth}天 × ${unworkedDays}天`
+    ? `${fmtNT(prorateBase)} ÷ ${_daysInMonth}天 × ${unworkedDays}天`
     : '';
 
   const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otPay + extrasTotal - sickDeduct - insDeduct - prorateDeduct;
