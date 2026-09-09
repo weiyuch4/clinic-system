@@ -1596,11 +1596,12 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <div class="sal-section-head sal-full-only" style="margin-top:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span>病假（勞基法半薪）</span>
           <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
-            <button class="btn-sm" style="font-size:11px;padding:4px 10px" onclick="addSickRow()">＋ 新增病假</button>
+            <input type="number" id="sal-sick-days" min="0" max="30" value="0" step="1"
+              style="width:52px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:center"
+              oninput="recalcSalary();loadYearlySickDays()"> 天
             <span id="sal-sick-yearly" style="font-size:11.5px;color:var(--muted)"></span>
           </div>
         </div>
-        <div class="sal-ot-list sal-full-only" id="sal-sick-list" style="margin-bottom:8px"></div>
         <div class="sal-row sal-full-only" id="sal-sick-row" style="display:none">
           <span class="sal-label" style="color:var(--red)">病假扣款</span>
           <span class="sal-amount" id="sal-sick-deduct" style="color:var(--red)">—</span>
@@ -3254,7 +3255,6 @@ const SAL_SAT_RATE   = 175;   // (42000/30)/8 — Saturday overtime base rate
 // full: {date:'YYYY-MM-DD', start:'HH:MM', end:'HH:MM'}
 // part: same + isOt:bool
 let _salOtRows = [];
-let _salSickRows = [];   // [{date, start, end}]
 let _salMode = 'full';  // 'full' or 'part'
 
 // ── Month picker ──
@@ -3291,7 +3291,7 @@ function spkPad2(n) { return String(n).padStart(2, '0'); }
 function salDpRender() {
   const wrap = document.getElementById('sal-cal-in');
   if (!wrap || !_salPkOpen) return;
-  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salSickRows;
+  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salOtRows;
   const selVal = rows[_salPkOpen.idx].date || '';
   const [selY, selM, selD] = selVal ? selVal.split('-').map(Number) : [0,0,0];
   const today = new Date();
@@ -3323,7 +3323,7 @@ function salDpRender() {
 function salTpRender() {
   const wrap = document.getElementById('sal-tp-in');
   if (!wrap || !_salPkOpen) return;
-  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salSickRows;
+  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salOtRows;
   const timeVal = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
   const selH = parseInt(timeVal.slice(0,2));
   const selM = Math.round(parseInt(timeVal.slice(3,5)) / 5) * 5 % 60;
@@ -3358,7 +3358,7 @@ window.salDpNav = function(dir) {
 window.salDpSelect = function(day) {
   if (!_salPkOpen) return;
   const val = _salDpNavY + '-' + spkPad2(_salDpNavM) + '-' + spkPad2(day);
-  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salSickRows;
+  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salOtRows;
   rows[_salPkOpen.idx].date = val;
   const spn = _salPkOpen.trigger.querySelector('.spk-val');
   if (spn) spn.textContent = val;
@@ -3368,7 +3368,7 @@ window.salDpSelect = function(day) {
 
 window.salTpSelH = function(h) {
   if (!_salPkOpen) return;
-  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salSickRows;
+  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salOtRows;
   const old = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
   rows[_salPkOpen.idx][_salPkOpen.field] = spkPad2(h) + ':' + old.slice(3);
   const spn = _salPkOpen.trigger.querySelector('.spk-val');
@@ -3379,7 +3379,7 @@ window.salTpSelH = function(h) {
 
 window.salTpSelM = function(m) {
   if (!_salPkOpen) return;
-  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salSickRows;
+  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salOtRows;
   const old = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
   rows[_salPkOpen.idx][_salPkOpen.field] = old.slice(0,3) + spkPad2(m);
   const spn = _salPkOpen.trigger.querySelector('.spk-val');
@@ -3395,7 +3395,7 @@ function salOpenPicker(section, idx, field, triggerEl) {
   const top  = rect.bottom + 6;
   let   left = rect.left;
   if (field === 'date') {
-    const rows = section === 'ot' ? _salOtRows : _salSickRows;
+    const rows = section === 'ot' ? _salOtRows : _salOtRows;
     const v = rows[idx].date;
     if (v) { _salDpNavY = parseInt(v.slice(0,4)); _salDpNavM = parseInt(v.slice(5,7)); }
     else   { const n = new Date(); _salDpNavY = n.getFullYear(); _salDpNavM = n.getMonth()+1; }
@@ -3468,11 +3468,7 @@ async function loadYearlySickDays() {
     const res = await api(`/api/admin/salary/sick-days?nurse=${encodeURIComponent(nurse)}&year=${_salYear}`);
     const el = $('sal-sick-yearly');
     if (!el) return;
-    // DB total may include the current record's stale sick_days count.
-    // Correct by subtracting what's saved and adding the current unique date count.
-    const localUnique = [...new Set(_salSickRows.map(r => r.date).filter(Boolean))].length;
-    const corrected = res.total - _salSavedSickDays + localUnique;
-    el.textContent = `今年已用 ${corrected} / 30 天`;
+    el.textContent = `今年已用 ${res.total} / 30 天`;
   } catch(_) {}
 }
 
@@ -3508,7 +3504,6 @@ function initSalaryTab() {
 }
 
 let _salEditingId = null;  // null = new record; number = editing existing record id
-let _salSavedSickDays = 0; // sick_days value stored in DB for the record currently being edited
 
 // reload history when nurse changes; month changes go through stepSalMonth
 document.addEventListener('change', e => {
@@ -3528,7 +3523,6 @@ function setEditingRecord(id) {
 
 function newSalaryRecord() {
   setEditingRecord(null);
-  _salSavedSickDays = 0;
   document.querySelectorAll('.sal-hist-row').forEach(r => r.classList.remove('selected'));
 }
 
@@ -3553,9 +3547,8 @@ function _currentSalaryPayload() {
     float_bonus: isPart ? 0 : (parseInt($('sal-float-amt').textContent.replace(/,/g, '')) || 0),
     ot_pay:      isPart ? total : (parseInt($('sal-ot-total').textContent.replace(/,/g, '')) || 0),
     total,
-    sick_days:   [...new Set(_salSickRows.map(r => r.date).filter(Boolean))].length,
+    sick_days:   parseInt(($('sal-sick-days') || {}).value) || 0,
     ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg, extras: _salExtras,
-                  sick_rows: _salSickRows,
                   labor_ins: parseInt(($('sal-labor-ins')||{}).value)||0,
                   health_ins: parseInt(($('sal-health-ins')||{}).value)||0,
                   unworked_days: parseInt(($('sal-unworked-days')||{}).value)||0}),
@@ -3628,10 +3621,8 @@ function loadSalaryRecord(record) {
   _salExtras = Array.isArray(parsed.extras) ? parsed.extras : [];
   renderSalExtras();
 
-  // restore sick rows
-  _salSickRows = Array.isArray(parsed.sick_rows) ? parsed.sick_rows : [];
-  _salSavedSickDays = record.sick_days || 0;
-  renderSickRows();
+  // restore sick days
+  if ($('sal-sick-days')) $('sal-sick-days').value = record.sick_days || 0;
 
   // restore insurance deductions
   if ($('sal-labor-ins'))  $('sal-labor-ins').value  = parsed.labor_ins  || 0;
@@ -3970,47 +3961,6 @@ function renderOtRows() {
   recalcSalary();
 }
 
-function renderSickRows() {
-  salClosePicker();
-  const list = $('sal-sick-list');
-  if (!list) return;
-  list.innerHTML = _salSickRows.map((r, i) => {
-    const dv = r.date  || '選擇日期';
-    const sv = r.start || '08:00';
-    const ev = r.end   || '17:00';
-    return (
-      '<div class="sal-ot-entry">' +
-        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'sick\',' + i + ',\'date\',this)">' +
-          _SPK_CAL + '<span class="spk-val">' + dv + '</span>' +
-        '</button>' +
-        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'sick\',' + i + ',\'start\',this)">' +
-          _SPK_CLK + '<span class="spk-val">' + sv + '</span>' +
-        '</button>' +
-        '<span class="sal-time-sep">—</span>' +
-        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'sick\',' + i + ',\'end\',this)">' +
-          _SPK_CLK + '<span class="spk-val">' + ev + '</span>' +
-        '</button>' +
-        '<span style="color:var(--text-2);font-size:12.5px;font-variant-numeric:tabular-nums;flex:1"' +
-              ' id="sal-sick-result-' + i + '"></span>' +
-        '<button class="sal-del" onclick="removeSickRow(' + i + ')">\u00d7</button>' +
-      '</div>'
-    );
-  }).join('');
-  recalcSalary();
-}
-
-function addSickRow() {
-  const prev = _salSickRows.length ? _salSickRows[_salSickRows.length - 1] : null;
-  _salSickRows.push({ date: '', start: prev ? prev.start : '08:00', end: prev ? prev.end : '17:00' });
-  renderSickRows();
-  loadYearlySickDays();
-}
-
-function removeSickRow(i) {
-  _salSickRows.splice(i, 1);
-  renderSickRows();
-  loadYearlySickDays();
-}
 
 function recalcSalary() {
   // NOTE: does NOT call renderOtRows() — that would destroy date-pickers.
@@ -4039,14 +3989,12 @@ function recalcSalary() {
 
   const hasAttendance = $('sal-attendance-chk').checked;
   const perf = _bonusCalculated || 0;
-  // unique sick dates — rows on the same date count as one day
-  const _uniqueSickDates = [...new Set(_salSickRows.map(r => r.date).filter(Boolean))];
-  const _daysInMonth     = new Date(_salYear, _salMon, 0).getDate();
+  const _daysInMonth = new Date(_salYear, _salMon, 0).getDate();
+  const _sickDays    = parseInt(($('sal-sick-days') || {}).value) || 0;
   // prorate 全勤獎金: always divide by 30 regardless of month
-  const _sickWorkingDays = _uniqueSickDates.length;
   const attendance = hasAttendance
-    ? (_sickWorkingDays > 0
-        ? Math.round(SAL_ATTENDANCE * (30 - _sickWorkingDays) / 30)
+    ? (_sickDays > 0
+        ? Math.round(SAL_ATTENDANCE * (30 - _sickDays) / 30)
         : SAL_ATTENDANCE)
     : 0;
 
@@ -4126,17 +4074,10 @@ function recalcSalary() {
     extrasEl.className = 'sal-amount' + (extrasTotal < 0 ? '' : '');
   }
 
-  // Sick deduction: actual sick hours × hourly rate × 50%  (勞基法病假半薪)
-  let sickHours = 0;
-  _salSickRows.forEach((r, i) => {
-    const mins = calcMinutes(r.start, r.end);
-    if (mins > 0) sickHours += mins / 60;
-    const resEl = document.getElementById('sal-sick-result-' + i);
-    if (resEl) resEl.textContent = mins > 0 ? (mins/60).toFixed(1) + 'h' : '';
-  });
-  const fixedMonthly = SAL_BASE + attendance + SAL_LICENSE + floatPay;
-  const hourlyRate = fixedMonthly / 240;  // 月工時240小時
-  const sickDeduct = sickHours > 0 ? Math.round(sickHours * hourlyRate * 0.5) : 0;
+  // Sick deduction: 42,000 ÷ days_in_month × sick_days × 50%  (勞基法病假半薪)
+  const fixedMonthly  = SAL_BASE + attendance + SAL_LICENSE + floatPay;
+  const sickDailyRate = (SAL_BASE + SAL_ATTENDANCE + SAL_LICENSE + SAL_FLOAT_BASE) / _daysInMonth;
+  const sickDeduct    = _sickDays > 0 ? Math.round(sickDailyRate * _sickDays * 0.5) : 0;
   const sickRow = $('sal-sick-row');
   if (sickRow) sickRow.style.display = sickDeduct > 0 ? '' : 'none';
   if ($('sal-sick-deduct')) $('sal-sick-deduct').textContent = sickDeduct > 0 ? `−${fmtNT(sickDeduct)}` : '—';
@@ -4198,8 +4139,7 @@ function printPaySlip() {
     const unworkedDaysAmt = parseInt(($('sal-unworked-days') || {}).value) || 0;
     const prorateDeductAmt = unworkedDaysAmt > 0
       ? (parseInt(($('sal-prorate-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
-    const sickDays = [...new Set(_salSickRows.map(r => r.date).filter(Boolean))].length;
-    const sickHoursTotal = _salSickRows.reduce((s,r) => { const m = calcMinutes(r.start,r.end); return s + (m>0?m/60:0); }, 0);
+    const sickDays = parseInt(($('sal-sick-days') || {}).value) || 0;
     const sickDeductAmt = sickDays > 0 ? (parseInt(($('sal-sick-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
     rows = `
       <tr><td>底薪</td><td>NT$ 30,500</td></tr>
