@@ -4211,7 +4211,7 @@ function printPaySlip() {
       ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${laborInsAmt > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${healthInsAmt > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${prorateDeductAmt > 0 ? `<tr style="color:#dc2626"><td>到職日調整（月初未出勤 ${unworkedDaysAmt} 天）</td><td>−NT$ ${prorateDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${prorateDeductAmt > 0 ? `<tr style="color:#dc2626"><td>到職日調整</td><td>−NT$ ${prorateDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   }
 
