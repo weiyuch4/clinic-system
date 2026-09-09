@@ -293,7 +293,8 @@ _CREATE_SALARY_RECORDS = """
         total       INTEGER NOT NULL,
         ot_entries  TEXT NOT NULL,
         created_at  TEXT NOT NULL,
-        clinic_id   INTEGER NOT NULL DEFAULT 1
+        clinic_id   INTEGER NOT NULL DEFAULT 1,
+        sick_days   INTEGER NOT NULL DEFAULT 0
     )
 """
 
@@ -468,6 +469,7 @@ def init() -> None:
             cur.execute("ALTER TABLE nurses ADD COLUMN IF NOT EXISTS pin_hash TEXT")
             cur.execute("ALTER TABLE synced_candidates ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''")
             cur.execute("ALTER TABLE synced_candidates ADD COLUMN IF NOT EXISTS mobile TEXT NOT NULL DEFAULT ''")
+            cur.execute("ALTER TABLE salary_records ADD COLUMN IF NOT EXISTS sick_days INTEGER NOT NULL DEFAULT 0")
             # Multi-tenant migration: add clinic_id to all tables (idempotent)
             _all_tables = [
                 "alleypin_not_found", "bulletin_notes", "clinic_contacts", "contacts",
@@ -1926,22 +1928,23 @@ def delete_bulletin_note(note_id: int, clinic_id: int = 1) -> None:
 def save_salary_record(
     nurse: str, month: str, attendance: int, performance: int,
     sat_pay: int, float_bonus: int, ot_pay: int, total: int, ot_entries: str,
-    clinic_id: int = 1,
+    clinic_id: int = 1, sick_days: int = 0,
 ) -> dict:
     created_at = datetime.now().strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO salary_records
-                   (nurse, month, attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, created_at, clinic_id)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                   (nurse, month, attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, created_at, clinic_id, sick_days)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    RETURNING id""",
-                (nurse, month, attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, created_at, clinic_id),
+                (nurse, month, attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, created_at, clinic_id, sick_days),
             )
             record_id = cur.fetchone()["id"]
     return {'id': record_id, 'nurse': nurse, 'month': month, 'attendance': attendance,
             'performance': performance, 'sat_pay': sat_pay, 'float_bonus': float_bonus,
-            'ot_pay': ot_pay, 'total': total, 'ot_entries': ot_entries, 'created_at': created_at}
+            'ot_pay': ot_pay, 'total': total, 'ot_entries': ot_entries, 'created_at': created_at,
+            'sick_days': sick_days}
 
 
 def get_salary_records(nurse: str, month: str, clinic_id: int = 1) -> list[dict]:
@@ -1949,25 +1952,36 @@ def get_salary_records(nurse: str, month: str, clinic_id: int = 1) -> list[dict]
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, nurse, month, attendance, performance, sat_pay, float_bonus,
-                          ot_pay, total, ot_entries, created_at
+                          ot_pay, total, ot_entries, created_at, COALESCE(sick_days,0) AS sick_days
                    FROM salary_records WHERE clinic_id = %s AND nurse = %s AND month = %s ORDER BY id DESC""",
                 (clinic_id, nurse, month),
             )
             return [dict(r) for r in cur.fetchall()]
 
 
+def get_yearly_sick_days(nurse: str, year: int, clinic_id: int = 1) -> int:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT COALESCE(SUM(COALESCE(sick_days,0)),0) AS total
+                   FROM salary_records WHERE clinic_id = %s AND nurse = %s AND month LIKE %s""",
+                (clinic_id, nurse, f"{year}-%"),
+            )
+            return int(cur.fetchone()["total"])
+
+
 def update_salary_record(
     record_id: int, attendance: int, performance: int,
     sat_pay: int, float_bonus: int, ot_pay: int, total: int, ot_entries: str,
-    clinic_id: int = 1,
+    clinic_id: int = 1, sick_days: int = 0,
 ) -> None:
     updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """UPDATE salary_records SET attendance=%s, performance=%s, sat_pay=%s, float_bonus=%s,
-                   ot_pay=%s, total=%s, ot_entries=%s, created_at=%s WHERE id=%s AND clinic_id=%s""",
-                (attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, updated_at, record_id, clinic_id),
+                   ot_pay=%s, total=%s, ot_entries=%s, created_at=%s, sick_days=%s WHERE id=%s AND clinic_id=%s""",
+                (attendance, performance, sat_pay, float_bonus, ot_pay, total, ot_entries, updated_at, sick_days, record_id, clinic_id),
             )
 
 

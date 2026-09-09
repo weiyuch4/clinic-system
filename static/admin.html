@@ -1369,7 +1369,11 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   <!-- ── 薪資計算 ── -->
   <section id="salary" class="section">
     <div class="sal-toolbar">
-      <input type="month" id="sal-month" class="sal-select sal-month">
+      <div class="month-picker" style="flex-shrink:0">
+        <button class="mp-btn" onclick="stepSalMonth(-1)">&#8592;</button>
+        <span class="month-display" id="sal-month-display" style="min-width:112px;text-align:center">—</span>
+        <button class="mp-btn" onclick="stepSalMonth(1)">&#8594;</button>
+      </div>
       <select id="sal-nurse" class="sal-select">
         <option value="">選擇護理師</option>
       </select>
@@ -1525,6 +1529,32 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <div class="sal-row sal-full-only">
           <span class="sal-label">不定期獎金</span>
           <span class="sal-amount muted" id="sal-bonus-amt">—</span>
+        </div>
+
+        <!-- 其他獎金 / 扣款 -->
+        <div class="sal-section-head" style="margin-top:18px">
+          其他獎金 / 扣款
+          <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addSalExtra()">＋ 新增</button>
+        </div>
+        <div id="sal-extras-list" style="margin-bottom:4px"></div>
+        <div class="sal-row" id="sal-extras-row" style="display:none">
+          <span class="sal-label" style="color:var(--muted)">其他合計</span>
+          <span class="sal-amount" id="sal-extras-total">—</span>
+        </div>
+
+        <!-- 病假扣款 -->
+        <div class="sal-section-head sal-full-only" style="margin-top:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span>病假（勞基法半薪）</span>
+          <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+            <input type="number" id="sal-sick-days" min="0" max="30" value="0" step="1"
+              style="width:52px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:center"
+              oninput="recalcSalary();loadYearlySickDays()"> 天
+            <span id="sal-sick-yearly" style="font-size:11.5px;color:var(--muted)"></span>
+          </div>
+        </div>
+        <div class="sal-row sal-full-only" id="sal-sick-row" style="display:none">
+          <span class="sal-label" style="color:var(--red)">病假扣款</span>
+          <span class="sal-amount" id="sal-sick-deduct" style="color:var(--red)">—</span>
         </div>
 
         <!-- 合計 -->
@@ -3136,6 +3166,68 @@ const SAL_SAT_RATE   = 175;   // (42000/30)/8 — Saturday overtime base rate
 let _salOtRows = [];
 let _salMode = 'full';  // 'full' or 'part'
 
+// ── Month picker ──
+const ZH_MON = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+let _salYear = new Date().getFullYear();
+let _salMon  = new Date().getMonth() + 1;
+
+function salMonthStr() {
+  return `${_salYear}-${String(_salMon).padStart(2,'0')}`;
+}
+function updateSalMonthDisplay() {
+  const el = $('sal-month-display');
+  if (el) el.textContent = `${_salYear} 年 ${ZH_MON[_salMon - 1]} 月`;
+}
+function stepSalMonth(dir) {
+  _salMon += dir;
+  if (_salMon > 12) { _salMon = 1; _salYear++; }
+  if (_salMon < 1)  { _salMon = 12; _salYear--; }
+  updateSalMonthDisplay();
+  setEditingRecord(null);
+  loadSalaryHistory();
+  loadYearlySickDays();
+}
+
+// ── Extras (other bonuses/deductions) ──
+let _salExtras = [];  // [{name, amount}]  amount can be negative
+
+function addSalExtra() {
+  _salExtras.push({ name: '', amount: 0 });
+  renderSalExtras();
+  recalcSalary();
+}
+function removeSalExtra(i) {
+  _salExtras.splice(i, 1);
+  renderSalExtras();
+  recalcSalary();
+}
+function renderSalExtras() {
+  const list = $('sal-extras-list');
+  if (!list) return;
+  list.innerHTML = _salExtras.map((ex, i) => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <input type="text" value="${ex.name.replace(/"/g,'&quot;')}" placeholder="名稱（例：端午節獎金）"
+        style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;background:var(--card);color:var(--text)"
+        oninput="_salExtras[${i}].name=this.value">
+      <input type="number" value="${ex.amount}" placeholder="金額（負數為扣款）"
+        style="width:130px;border:1.5px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+        oninput="_salExtras[${i}].amount=parseInt(this.value)||0;recalcSalary()">
+      <button class="sal-del" onclick="removeSalExtra(${i})">×</button>
+    </div>`).join('');
+  $('sal-extras-row').style.display = _salExtras.length ? '' : 'none';
+}
+
+// ── Yearly sick days ──
+async function loadYearlySickDays() {
+  const nurse = $('sal-nurse') ? $('sal-nurse').value : '';
+  if (!nurse) { const el=$('sal-sick-yearly'); if(el) el.textContent=''; return; }
+  try {
+    const res = await api(`/api/admin/salary/sick-days?nurse=${encodeURIComponent(nurse)}&year=${_salYear}`);
+    const el = $('sal-sick-yearly');
+    if (el) el.textContent = `今年已用 ${res.total} / 30 天`;
+  } catch(_) {}
+}
+
 function setSalMode(mode) {
   _salMode = mode;
   document.querySelectorAll('#sal-mode-toggle .seg-btn').forEach(b => {
@@ -3149,6 +3241,7 @@ function setSalMode(mode) {
 }
 
 function initSalaryTab() {
+  updateSalMonthDisplay();
   const sel = $('sal-nurse');
   if (sel.options.length <= 1) {
     api('/api/nurses').then(names => {
@@ -3158,11 +3251,8 @@ function initSalaryTab() {
         sel.appendChild(opt);
       });
       loadSalaryHistory();
+      loadYearlySickDays();
     }).catch(() => {});
-  }
-  if (!$('sal-month').value) {
-    const now = new Date();
-    $('sal-month').value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
   recalcSalary();
   initBonusInline();
@@ -3171,11 +3261,12 @@ function initSalaryTab() {
 
 let _salEditingId = null;  // null = new record; number = editing existing record id
 
-// reload history whenever nurse or month changes; clear editing state
+// reload history when nurse changes; month changes go through stepSalMonth
 document.addEventListener('change', e => {
-  if (e.target.id === 'sal-nurse' || e.target.id === 'sal-month') {
+  if (e.target.id === 'sal-nurse') {
     setEditingRecord(null);
     loadSalaryHistory();
+    loadYearlySickDays();
   }
 });
 
@@ -3206,22 +3297,21 @@ function _currentSalaryPayload() {
   };
   return {
     nurse:       $('sal-nurse').value,
-    month:       $('sal-month').value,
+    month:       salMonthStr(),
     attendance:  isPart ? 0 : ($('sal-attendance-chk').checked ? 2000 : 0),
     performance: isPart ? 0 : (_bonusCalculated || 0),
     sat_pay:     isPart ? 0 : (parseInt($('sal-sat-amt').textContent.replace(/,/g, '')) || 0),
     float_bonus: isPart ? 0 : (parseInt($('sal-float-amt').textContent.replace(/,/g, '')) || 0),
     ot_pay:      isPart ? total : (parseInt($('sal-ot-total').textContent.replace(/,/g, '')) || 0),
     total,
-    ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg}),
+    sick_days:   parseInt(($('sal-sick-days') || {}).value) || 0,
+    ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg, extras: _salExtras}),
   };
 }
 
 async function saveSalaryRecord() {
   const nurse = $('sal-nurse').value;
-  const month = $('sal-month').value;
   if (!nurse) { alert('請先選擇護理師'); return; }
-  if (!month) { alert('請先選擇月份'); return; }
   if ($('sal-grand-total').textContent === '—') { alert('請先計算薪資'); return; }
 
   const btn = $('sal-save-btn');
@@ -3281,14 +3371,21 @@ function loadSalaryRecord(record) {
   }
   recalcBonusInline();
 
+  // restore extras
+  _salExtras = Array.isArray(parsed.extras) ? parsed.extras : [];
+  renderSalExtras();
+
+  // restore sick days
+  if ($('sal-sick-days')) $('sal-sick-days').value = record.sick_days || 0;
+
   setEditingRecord(record.id);
 }
 
 async function loadSalaryHistory() {
   const nurse = $('sal-nurse').value;
-  const month = $('sal-month').value;
+  const month = salMonthStr();
   const card  = $('sal-history-card');
-  if (!nurse || !month) { card.style.display = 'none'; return; }
+  if (!nurse) { card.style.display = 'none'; return; }
   try {
     const records = await api(`/api/admin/salary?nurse=${encodeURIComponent(nurse)}&month=${encodeURIComponent(month)}`);
     renderSalaryHistory(records, nurse, month);
@@ -3342,7 +3439,7 @@ async function deleteSalaryRecord(id) {
 
 
 function addOtRow() {
-  const monthVal = $('sal-month').value;
+  const monthVal = salMonthStr();
   const defaultDate = monthVal ? monthVal + '-01' : new Date().toISOString().slice(0, 10);
   const prev = _salOtRows.length ? _salOtRows[_salOtRows.length - 1] : null;
   _salOtRows.push({ date: defaultDate, start: prev ? prev.start : '18:00', end: prev ? prev.end : '20:00', isOt: false });
@@ -3357,10 +3454,9 @@ function toggleImportPanel() {
   const opening = p.style.display === 'none';
   p.style.display = opening ? '' : 'none';
   if (opening) {
-    const nurse = $('bi-nurse') ? $('bi-nurse').value : '';
-    const month = $('bi-month') ? $('bi-month').value : '';
+    const nurse = $('sal-nurse') ? $('sal-nurse').value : '';
     $('sal-import-nurse').textContent = nurse || '（未選擇）';
-    $('sal-import-month').textContent = month || '（未選擇）';
+    $('sal-import-month').textContent = `${_salYear} 年 ${ZH_MON[_salMon-1]} 月`;
     $('sal-import-preview').style.display = 'none';
     $('sal-import-actions').style.display = 'none';
     _importedLogs = [];
@@ -3368,9 +3464,9 @@ function toggleImportPanel() {
 }
 
 async function fetchImportLogs() {
-  const nurse = $('bi-nurse') ? $('bi-nurse').value : '';
-  const month = $('bi-month') ? $('bi-month').value : '';
-  if (!nurse || !month) { $('sal-import-preview').style.display=''; $('sal-import-preview').textContent='請先選擇護理師與月份'; return; }
+  const nurse = $('sal-nurse') ? $('sal-nurse').value : '';
+  const month = salMonthStr();
+  if (!nurse) { $('sal-import-preview').style.display=''; $('sal-import-preview').textContent='請先選擇護理師'; return; }
   $('sal-import-preview').style.display = '';
   $('sal-import-preview').textContent = '載入中…';
   $('sal-import-actions').style.display = 'none';
@@ -3414,7 +3510,7 @@ function toggleBatchPanel() {
   const opening = p.style.display === 'none';
   p.style.display = opening ? '' : 'none';
   if (opening) {
-    const mv = $('sal-month').value;
+    const mv = salMonthStr();
     if (mv) {
       const [y, m] = mv.split('-').map(Number);
       const last = new Date(y, m, 0).getDate();
@@ -3512,7 +3608,7 @@ function initBonusInline() {
      </div>`
   ).join('');
   // Default period = selected month
-  const m = $('sal-month').value;
+  const m = salMonthStr();
   if (m) {
     const [y, mo] = m.split('-').map(Number);
     const lastDay = new Date(y, mo, 0).getDate();
@@ -3699,7 +3795,24 @@ function recalcSalary() {
   }
   // satPay and otPay are already integer sums of per-entry ceiled values
   const floatPay = Math.max(0, SAL_FLOAT_BASE - satPay);
-  const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otPay;
+
+  // extras (other bonuses/deductions)
+  const extrasTotal = _salExtras.reduce((s, ex) => s + (parseInt(ex.amount) || 0), 0);
+  const extrasEl = $('sal-extras-total');
+  if (extrasEl) {
+    extrasEl.textContent = (extrasTotal >= 0 ? '' : '−') + fmtNT(Math.abs(extrasTotal));
+    extrasEl.className = 'sal-amount' + (extrasTotal < 0 ? '' : '');
+  }
+
+  // sick days deduction: sick_days × (fixed monthly / 30) × 50%  (勞基法病假半薪)
+  const sickDays = parseInt(($('sal-sick-days') || {}).value) || 0;
+  const fixedMonthly = SAL_BASE + attendance + SAL_LICENSE + floatPay;
+  const sickDeduct = sickDays > 0 ? Math.round(sickDays * (fixedMonthly / 30) * 0.5) : 0;
+  const sickRow = $('sal-sick-row');
+  if (sickRow) sickRow.style.display = sickDeduct > 0 ? '' : 'none';
+  if ($('sal-sick-deduct')) $('sal-sick-deduct').textContent = sickDeduct > 0 ? `−${fmtNT(sickDeduct)}` : '—';
+
+  const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otPay + extrasTotal - sickDeduct;
 
   $('sal-attendance-amt').textContent = hasAttendance ? '2,000' : '—';
   $('sal-attendance-amt').className   = 'sal-amount' + (hasAttendance ? '' : ' muted');
@@ -3712,13 +3825,11 @@ function recalcSalary() {
 
 function printPaySlip() {
   const nurse = $('sal-nurse').value;
-  const month = $('sal-month').value;
   const totalText = $('sal-grand-total').textContent;
-  if (!nurse || !month || totalText === '—') { alert('請先完成薪資計算'); return; }
+  if (!nurse || totalText === '—') { alert('請先完成薪資計算'); return; }
 
   const isPart = _salMode === 'part';
-  const [y, m] = month.split('-');
-  const monthLabel = `${y} 年 ${parseInt(m)} 月`;
+  const monthLabel = `${_salYear} 年 ${ZH_MON[_salMon-1]} 月`;
 
   const fmt = v => parseInt(v.replace(/,/g,'')) > 0
     ? 'NT$ ' + parseInt(v.replace(/,/g,'')).toLocaleString('zh-TW')
@@ -3733,6 +3844,8 @@ function printPaySlip() {
     const flt  = $('sal-float-amt').textContent;
     const ot   = $('sal-ot-total').textContent;
     const perf = _bonusCalculated || 0;
+    const sickDays = parseInt(($('sal-sick-days') || {}).value) || 0;
+    const sickDeductAmt = sickDays > 0 ? parseInt(($('sal-sick-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0 : 0;
     rows = `
       <tr><td>底薪</td><td>NT$ 30,500</td></tr>
       <tr><td>全勤獎金</td><td>${att ? 'NT$ 2,000' : '—'}</td></tr>
@@ -3741,6 +3854,9 @@ function printPaySlip() {
       <tr><td>浮動獎金</td><td>${fmt(flt)}</td></tr>
       ${perf > 0 ? `<tr><td>不定期獎金</td><td>NT$ ${perf.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${parseInt(ot.replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
+      ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款（${sickDays}天，半薪）</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   }
 

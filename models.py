@@ -271,6 +271,7 @@ class SalaryRecordRequest(BaseModel):
     ot_pay: int
     total: int
     ot_entries: str     # JSON array of {date, start, end}
+    sick_days: int = 0
 
 
 class BloodDismissRequest(BaseModel):

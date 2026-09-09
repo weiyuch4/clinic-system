@@ -466,7 +466,7 @@ def save_salary_record(req: SalaryRecordRequest, admin: auth.CurrentUser = Depen
         return contacts.save_salary_record(
             req.nurse, req.month, req.attendance, req.performance,
             req.sat_pay, req.float_bonus, req.ot_pay, req.total, req.ot_entries,
-            admin.clinic_id,
+            admin.clinic_id, req.sick_days,
         )
     except Exception:
         logger.exception("save_salary_record failed")
@@ -479,11 +479,21 @@ def update_salary_record(record_id: int, req: SalaryRecordRequest, admin: auth.C
         contacts.update_salary_record(
             record_id, req.attendance, req.performance,
             req.sat_pay, req.float_bonus, req.ot_pay, req.total, req.ot_entries,
-            admin.clinic_id,
+            admin.clinic_id, req.sick_days,
         )
     except Exception:
         logger.exception("update_salary_record failed for id=%s", record_id)
         raise HTTPException(status_code=500, detail="更新失敗")
+
+
+@app.get("/api/admin/salary/sick-days")
+def get_yearly_sick_days(nurse: str, year: int, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    try:
+        total = contacts.get_yearly_sick_days(nurse, year, admin.clinic_id)
+        return {"total": total}
+    except Exception:
+        logger.exception("get_yearly_sick_days failed")
+        raise HTTPException(status_code=500, detail="查詢失敗")
 
 
 @app.delete("/api/admin/salary/{record_id}")
