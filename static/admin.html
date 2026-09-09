@@ -4133,13 +4133,13 @@ function printPaySlip() {
 
   let rows = '';
   if (isPart) {
-    const partDays = [...new Set(_salOtRows.map(r => r.date).filter(Boolean))].length;
-    const partOtTotal = $('sal-ot-total').textContent;
+    const partDays      = _salOtRows.length;
+    const partOtAmt     = parseInt(($('sal-ot-total') || {}).textContent.replace(/,/g, '')) || 0;
     const partLaborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
     const partHealthIns = parseInt(($('sal-health-ins') || {}).value) || 0;
     rows = `
       ${partDays > 0 ? `<tr><td>工作天數</td><td>${partDays} 天</td></tr>` : ''}
-      <tr><td>加班費</td><td>NT$ ${parseInt(partOtTotal.replace(/,/g,'')).toLocaleString('zh-TW')}</td></tr>
+      <tr><td>加班費</td><td>NT$ ${partOtAmt.toLocaleString('zh-TW')}</td></tr>
       ${partLaborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${partLaborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${partHealthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${partHealthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
@@ -4214,6 +4214,7 @@ function printPaySlip() {
 </body></html>`;
 
   const w = window.open('', '_blank', 'width=600,height=700');
+  if (!w) { alert('請允許彈出視窗（pop-up），再點一次列印'); return; }
   w.document.write(html);
   w.document.close();
 }
