@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>???? � ??????</title>
+<title>檢驗追蹤 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=34">
 <style>
 .lab-group{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;flex-shrink:0}
@@ -46,11 +46,11 @@
       </div>
 
       <div class="ph">
-        <div><h1>????</h1><p id="page-date">????????(?5?)</p></div>
+        <div><h1>檢驗追蹤</h1><p id="page-date">外送抽血結果追蹤（近5日）</p></div>
       </div>
 
       <div class="scroll-area" id="lab-list">
-        <div style="text-align:center;padding:30px;color:var(--muted)">???�</div>
+        <div style="text-align:center;padding:30px;color:var(--muted)">載入中…</div>
       </div>
 
     </div>
@@ -73,8 +73,8 @@
       L.updateLastUpdated();
       var container = document.getElementById('lab-list');
       if (!days.length) {
-        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">?????????</div>';
-        document.getElementById('page-date').textContent = '?5??????';
+        container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">近期無外送抽血記錄</div>';
+        document.getElementById('page-date').textContent = '近5日無外送抽血';
         L.updateBadges(report, 0);
         return;
       }
@@ -82,7 +82,7 @@
       days.forEach(function (d) {
         (d.patients || []).forEach(function (p) { if (!p.results_back) pending++; });
       });
-      document.getElementById('page-date').textContent = '?????:' + pending + ' ?';
+      document.getElementById('page-date').textContent = '待確認結果：' + pending + ' 件';
       L.updateBadges(report, pending);
 
       container.innerHTML = days.map(function (day) {
@@ -90,8 +90,8 @@
         if (!pts.length) return '';
         return '<div class="lab-group">' +
           '<div class="lab-ghead">' +
-            '<span class="lab-gdate">???:' + L.escHtml(day.date) + '</span>' +
-            '<span class="lab-gcount">' + pts.length + ' ?</span>' +
+            '<span class="lab-gdate">抽血日：' + L.escHtml(day.date) + '</span>' +
+            '<span class="lab-gcount">' + pts.length + ' 人</span>' +
           '</div>' +
           pts.map(function (p) {
             var codes = Array.isArray(p.draw_codes) ? p.draw_codes.map(String).filter(Boolean) : (p.draw_codes || '').split(',').map(function (c) { return c.trim(); }).filter(Boolean);
@@ -100,19 +100,19 @@
               var label = names[i] || c;
               return '<span class="lab-code-chip" title="' + L.escHtml(c) + '">' + L.escHtml(label) + '</span>';
             }).join('');
-            var allergyHtml = p.is_allergy ? '<span class="allergy-chip">??</span>' : '';
+            var allergyHtml = p.is_allergy ? '<span class="allergy-chip">過敏</span>' : '';
             var statusHtml = p.results_back
-              ? '<div class="lab-back"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>????</div>'
-              : '<div class="lab-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>????</div>';
+              ? '<div class="lab-back"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已出報告</div>'
+              : '<div class="lab-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>待出報告</div>';
             var metaParts = [];
-            if (p.nat_id) metaParts.push('<span class="pr-copy" data-copy="' + L.escHtml(p.nat_id) + '" title="???????">' + L.escHtml(p.nat_id) + '</span>');
+            if (p.nat_id) metaParts.push('<span class="pr-copy" data-copy="' + L.escHtml(p.nat_id) + '" title="點擊複製身份證">' + L.escHtml(p.nat_id) + '</span>');
             if (p.birth_date) {
               var bParts = p.birth_date.split('-');
               var rocYear = bParts.length === 3 ? (parseInt(bParts[0], 10) - 1911) : '';
               var rocDisplay = rocYear ? (rocYear + '/' + bParts[1] + '/' + bParts[2]) : p.birth_date;
-              metaParts.push('<span class="pr-copy" data-copy="' + L.escHtml(p.birth_date) + '" title="??????(ISO)">' + L.escHtml(rocDisplay) + '</span>');
+              metaParts.push('<span class="pr-copy" data-copy="' + L.escHtml(p.birth_date) + '" title="點擊複製生日（ISO）">' + L.escHtml(rocDisplay) + '</span>');
             }
-            var metaHtml = metaParts.length ? '<div class="lab-meta">' + metaParts.join('<span class="lab-meta-sep">�</span>') + '</div>' : '';
+            var metaHtml = metaParts.length ? '<div class="lab-meta">' + metaParts.join('<span class="lab-meta-sep">·</span>') + '</div>' : '';
             return '<div class="lab-row">' +
               '<div class="lab-pt"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + metaHtml + '</div>' +
               allergyHtml +
@@ -123,7 +123,7 @@
         '</div>';
       }).join('');
     }).catch(function (e) {
-      L.showError('???????? � ' + (e.message || e));
+      L.showError('檢驗資料載入失敗 — ' + (e.message || e));
     });
   }
 
