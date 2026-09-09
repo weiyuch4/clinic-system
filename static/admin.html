@@ -4133,13 +4133,25 @@ function printPaySlip() {
 
   let rows = '';
   if (isPart) {
+    const PART_RATE    = 250;
+    const PART_OT_RATE = 250 * 1.34;
+    let partRegular = 0, partOt = 0;
+    _salOtRows.forEach(r => {
+      const mins = calcMinutes(r.start, r.end);
+      if (mins <= 0) return;
+      const h = mins / 60;
+      if (r.isOt) partOt += h * PART_OT_RATE;
+      else partRegular += h * PART_RATE;
+    });
+    partRegular = Math.ceil(partRegular);
+    partOt      = Math.ceil(partOt);
     const partDays      = _salOtRows.length;
-    const partOtAmt     = parseInt(($('sal-ot-total') || {}).textContent.replace(/,/g, '')) || 0;
     const partLaborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
     const partHealthIns = parseInt(($('sal-health-ins') || {}).value) || 0;
     rows = `
-      ${partDays > 0 ? `<tr><td>工作天數</td><td>${partDays} 天</td></tr>` : ''}
-      <tr><td>加班費</td><td>NT$ ${partOtAmt.toLocaleString('zh-TW')}</td></tr>
+      ${partDays     > 0 ? `<tr><td>工作天數</td><td>${partDays} 天</td></tr>` : ''}
+      ${partRegular  > 0 ? `<tr><td>工時薪資</td><td>NT$ ${partRegular.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${partOt       > 0 ? `<tr><td>加班費</td><td>NT$ ${partOt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${partLaborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${partLaborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${partHealthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${partHealthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
