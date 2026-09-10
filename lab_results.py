@@ -8,7 +8,7 @@ Reads blood test results from:
   - IC_DIR/IC?????.DBF   (IC visit files — fallback for patients not in PAT_HIST)
 
 ZZ_DIR and IC_DIR are set in config.py and overridden per-machine in config_local.py
-(on PC1 these were Z:\\ network drive paths; on the doctor's PC they are local paths).
+(on PC1 these are local paths set in config_local.py; on the doctor's PC they are also local paths).
 
 Returns structured JSON-ready dicts for the frontend modal.
 """

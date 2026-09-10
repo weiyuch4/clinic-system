@@ -8,22 +8,20 @@ PATDB_PATH: str = "mock/Data/S/PATDB.DBF"
 QUEUE_PATH: str = "mock/Data/S/QLOOK1.DBF"
 
 # Folder containing bioc.dbf / BIO2C.DBF / CBCC.DBF / PAT_HIST.DBF (血液檢驗).
-# On PC1 this was the Z: network drive's Z subfolder; on the doctor's PC
-# it is a local path — override in config_local.py.
-ZZ_DIR: str = r"Z:\Z"
+# Override in config_local.py on each clinic PC with the correct local path.
+ZZ_DIR: str = ""
 
 # Folder containing IC?????.DBF used by lab_results.py for patient-code lookup.
-# Normally the same folder as IC_DATA_PATH but kept separate so lab_results
-# can be configured independently if the folder layout differs.
-IC_DIR_LAB: str = r"Z:\IC"
+# Normally the same folder as IC_DATA_PATH — override in config_local.py.
+IC_DIR_LAB: str = ""
 
-# UV_APP.DBF — online appointment booking system (not used for manual phone lookup).
-UV_APP_PATH: str = r"Z:\Z\UV_APP.DBF"
+# UV_APP.DBF — defined for completeness; not currently used by any code path.
+UV_APP_PATH: str = ""
 
 # VFP6_P.DBF — patient attribute store; TYPE='P1' rows hold the 手機 (mobile number).
 # CODE field is the 1-based sequential record number in PATDB.
-# Override in config_local.py on the doctor's PC: VFP6P_PATH = r"E:\S\VFP6_P.DBF"
-VFP6P_PATH: str = r"Z:\S\VFP6_P.DBF"
+# Override in config_local.py: VFP6P_PATH = r"E:\S\VFP6_P.DBF"
+VFP6P_PATH: str = ""
 
 # Set to True to use hardcoded Python mock data instead of DBF files.
 USE_MOCK_DATA: bool = False
