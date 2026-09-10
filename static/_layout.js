@@ -618,6 +618,10 @@
     if (!el) return;
     el.style.display = 'flex';
     setTimeout(function () { el.classList.add('open'); }, 10);
+    if (!el._backdropHandler) {
+      el._backdropHandler = function(e) { if (e.target === el) hideModal(id); };
+      el.addEventListener('click', el._backdropHandler);
+    }
   }
   function hideModal(id) {
     var el = document.getElementById(id);
