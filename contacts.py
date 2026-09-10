@@ -579,6 +579,10 @@ def init() -> None:
             cur.execute("ALTER TABLE synced_candidates ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''")
             cur.execute("ALTER TABLE synced_candidates ADD COLUMN IF NOT EXISTS mobile TEXT NOT NULL DEFAULT ''")
             cur.execute("ALTER TABLE salary_records ADD COLUMN IF NOT EXISTS sick_days INTEGER NOT NULL DEFAULT 0")
+            cur.execute("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''")
+            cur.execute("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS mobile TEXT NOT NULL DEFAULT ''")
+            cur.execute("ALTER TABLE on_hold ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''")
+            cur.execute("ALTER TABLE on_hold ADD COLUMN IF NOT EXISTS mobile TEXT NOT NULL DEFAULT ''")
             # Multi-tenant migration: add clinic_id to all tables (idempotent)
             _all_tables = [
                 "alleypin_not_found", "bulletin_notes", "clinic_contacts", "contacts",
@@ -613,6 +617,8 @@ def _followup_to_row(entry: FollowupEntry, attempt: int, nurse: str = "") -> tup
         date.today().isoformat(),
         datetime.now(_TW).strftime('%H:%M'),
         nurse,
+        entry.phone,
+        entry.mobile,
     )
 
 
@@ -623,11 +629,12 @@ def mark_contacted(entry: FollowupEntry, nurse: str = "", clinic_id: int = 1) ->
                 """INSERT INTO contacts
                    (chart_number, category, due_date, name, birth_date, disease_name,
                     days_overdue, mspt_stage, contact_reason, last_visit_date, attempt, contacted_at,
-                    contacted_time, nurse, clinic_id)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    contacted_time, nurse, phone, mobile, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT(chart_number, category, due_date) DO UPDATE SET
                        attempt=1, contacted_at=EXCLUDED.contacted_at,
-                       contacted_time=EXCLUDED.contacted_time, nurse=EXCLUDED.nurse""",
+                       contacted_time=EXCLUDED.contacted_time, nurse=EXCLUDED.nurse,
+                       phone=EXCLUDED.phone, mobile=EXCLUDED.mobile""",
                 _followup_to_row(entry, 1, nurse) + (clinic_id,),
             )
 
@@ -639,11 +646,12 @@ def mark_called(entry: FollowupEntry, nurse: str = "", clinic_id: int = 1) -> No
                 """INSERT INTO contacts
                    (chart_number, category, due_date, name, birth_date, disease_name,
                     days_overdue, mspt_stage, contact_reason, last_visit_date, attempt, contacted_at,
-                    contacted_time, nurse, clinic_id)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    contacted_time, nurse, phone, mobile, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT(chart_number, category, due_date) DO UPDATE SET
                        attempt=2, contacted_at=EXCLUDED.contacted_at,
-                       contacted_time=EXCLUDED.contacted_time, nurse=EXCLUDED.nurse""",
+                       contacted_time=EXCLUDED.contacted_time, nurse=EXCLUDED.nurse,
+                       phone=EXCLUDED.phone, mobile=EXCLUDED.mobile""",
                 _followup_to_row(entry, 2, nurse) + (clinic_id,),
             )
 
@@ -700,6 +708,8 @@ def _rows_to_followup_entries(rows: list) -> list[FollowupEntry]:
             mspt_stage=r["mspt_stage"],
             contact_reason=r["contact_reason"],
             last_visit_date=date.fromisoformat(r["last_visit_date"]) if r["last_visit_date"] else None,
+            phone=r.get("phone", "") or "",
+            mobile=r.get("mobile", "") or "",
         )
         for r in rows
     ]
@@ -713,7 +723,7 @@ def get_contacted_with_dates(clinic_id: int = 1) -> list[tuple[FollowupEntry, da
             cur.execute(
                 """SELECT chart_number, name, birth_date, disease_name, category, due_date,
                           days_overdue, mspt_stage, contact_reason, last_visit_date, contacted_at,
-                          contacted_time
+                          contacted_time, phone, mobile
                    FROM contacts WHERE clinic_id=%s AND attempt=1 AND contacted_at > %s""",
                 (clinic_id, cutoff),
             )
@@ -907,7 +917,7 @@ def get_called_entries(clinic_id: int = 1) -> list[FollowupEntry]:
             cur.execute(
                 """SELECT chart_number, name, birth_date, disease_name, category, due_date,
                           days_overdue, mspt_stage, contact_reason, last_visit_date, contacted_at,
-                          contacted_time
+                          contacted_time, phone, mobile
                    FROM contacts WHERE clinic_id=%s AND attempt=2 AND contacted_at > %s""",
                 (clinic_id, cutoff),
             )
@@ -1684,8 +1694,8 @@ def mark_on_hold(entry: FollowupEntry, note: str, nurse: str = '', clinic_id: in
             cur.execute(
                 """INSERT INTO on_hold
                    (chart_number, category, due_date, name, birth_date, disease_name,
-                    days_overdue, mspt_stage, last_stage, last_visit_date, note, held_at, nurse, is_manual, clinic_id)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s)
+                    days_overdue, mspt_stage, last_stage, last_visit_date, note, held_at, nurse, is_manual, phone, mobile, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 0, %s, %s, %s)
                    RETURNING id""",
                 (
                     entry.patient.chart_number,
@@ -1701,6 +1711,8 @@ def mark_on_hold(entry: FollowupEntry, note: str, nurse: str = '', clinic_id: in
                     note,
                     date.today().isoformat(),
                     nurse,
+                    entry.phone,
+                    entry.mobile,
                     clinic_id,
                 ),
             )
@@ -1745,7 +1757,8 @@ def get_on_hold_entries(clinic_id: int = 1) -> list[OnHoldEntry]:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT id, chart_number, category, due_date, name, birth_date, disease_name,
-                          days_overdue, mspt_stage, last_stage, last_visit_date, note, held_at, nurse, is_manual
+                          days_overdue, mspt_stage, last_stage, last_visit_date, note, held_at, nurse, is_manual,
+                          phone, mobile
                    FROM on_hold WHERE clinic_id=%s ORDER BY held_at DESC""",
                 (clinic_id,),
             )
@@ -1770,6 +1783,8 @@ def get_on_hold_entries(clinic_id: int = 1) -> list[OnHoldEntry]:
             note=r["note"],
             held_at=date.fromisoformat(r["held_at"]),
             nurse=r["nurse"] or '',
+            phone=r.get("phone", "") or "",
+            mobile=r.get("mobile", "") or "",
             is_manual=is_manual,
             manual_name=r["name"] if is_manual else '',
         ))
