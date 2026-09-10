@@ -57,6 +57,7 @@
         <button class="filter-tab" data-tab="inactive">未複診 <span class="tc-count" id="cnt-inactive">…</span></button>
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
+              <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
       </div>
 
       <div class="search-row">
@@ -82,7 +83,9 @@
         <div id="list-submittable" style="display:none"></div>
         <div id="list-inactive" style="display:none"></div>
         <div id="list-contacted" style="display:none"></div>
-        <div id="list-hold" style="display:none"></div>
+        <div id="list-hold" style="display:none">        <div id="list-excluded" style="display:none"></div>
+      </div>
+              <div id="list-excluded" style="display:none"></div>
       </div>
 
     </div>
@@ -163,12 +166,12 @@
   'use strict';
   var L = Layout;
   var _tab = 'return', _query = '';
-  var _return = [], _phone = [], _submittable = [], _inactive = [], _contacted = [], _hold = [];
-  var _activeMap = {}, _contactedMap = {}, _holdMap = {};
+  var _return = [], _phone = [], _submittable = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
+  var _activeMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   // entry stashed for modal confirm
   var _modalEntry = null;
 
-  var ALL_TABS = ['return','phone','submittable','inactive','contacted','hold'];
+  var ALL_TABS = ['return','phone','submittable','inactive','contacted','hold','excluded'];
 
   function applyReport(r) {
     var allFollowups = r.mspt_followups || [];
@@ -193,7 +196,10 @@
     document.getElementById('cnt-submittable').textContent = _submittable.length;
     document.getElementById('cnt-inactive').textContent    = _inactive.length;
     document.getElementById('cnt-contacted').textContent   = _contacted.length;
+    _excluded = (r.excluded || []).filter(function (e) { return e.category === '代謝症候群'; });
+    _excludedMap = {}; _excluded.forEach(function (e) { _excludedMap[e.patient.chart_number] = e; });
     document.getElementById('cnt-hold').textContent        = _hold.length;
+    document.getElementById('cnt-excluded').textContent    = _excluded.length;
 
     var banner = document.getElementById('sub-banner');
     if (_submittable.length) { banner.style.display = 'flex'; document.getElementById('sub-count').textContent = _submittable.length; }
@@ -317,6 +323,36 @@
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
 
+
+  function excludedRow(e) {
+    var chart  = L.escHtml(e.patient.chart_number);
+    var name   = L.escHtml(e.patient.name);
+    var reason = L.escHtml(e.reason || '');
+    var note   = e.note ? ' <span style="color:var(--muted)">— ' + L.escHtml(e.note) + '</span>' : '';
+    var autoTag = e.auto ? '<span class="pbadge b-hold" style="font-size:10px;padding:1px 6px;margin-right:4px">自動</span>' : '';
+    var date   = e.excluded_at ? String(e.excluded_at).slice(0,10) : '';
+    return '<tr class="pr" data-chart="' + chart + '">' +
+      '<td style="color:var(--sub);font-size:12px">' + chart + '</td>' +
+      '<td style="font-weight:600">' + autoTag + name + '</td>' +
+      '<td style="font-size:12px">' + reason + note + '</td>' +
+      '<td style="font-size:12px;color:var(--sub)">' + date + '</td>' +
+      '<td style="text-align:right"><button class="act-btn" data-action="restore">恢復追蹤</button></td>' +
+      '</tr>';
+  }
+  function renderExcluded() {
+    var filtered = _excluded.filter(match);
+    var el = document.getElementById('list-excluded');
+    if (!filtered.length) {
+      el.innerHTML = '<div class="sec-empty">' + (_excluded.length ? '沒有符合搜尋條件的病患' : '尚無排除記錄') + '</div>';
+    } else {
+      el.innerHTML = '<div class="ptbl-wrap"><table class="p-table" style="table-layout:fixed">' +
+        '<colgroup><col style="width:115px"><col><col style="width:160px"><col style="width:90px"><col style="width:110px"></colgroup>' +
+        '<thead><tr><th>身份證</th><th>姓名</th><th>排除原因</th><th>排除日期</th><th></th></tr></thead>' +
+        '<tbody>' + filtered.map(excludedRow).join('') + '</tbody></table></div>';
+    }
+    if (_tab === 'excluded')
+      document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
+  }
   function renderAll() {
     renderHintTab(_return, returnRow, 'list-return-rows', '目前沒有需要回診抽血的病患');
     renderHintTab(_phone,  phoneRow,  'list-phone-rows',  '目前沒有可電話完成的病患');
@@ -324,6 +360,7 @@
     renderList(_inactive,    inactiveRow,    'list-inactive');
     renderList(_contacted,   contactedRow,   'list-contacted');
     renderList(_hold,        holdRow,        'list-hold');
+    renderExcluded();
   }
 
   document.getElementById('filter-bar').addEventListener('click', function (e) {
@@ -336,7 +373,7 @@
     });
     var counts = {
       return: _return, phone: _phone, submittable: _submittable,
-      inactive: _inactive, contacted: _contacted, hold: _hold,
+      inactive: _inactive, contacted: _contacted, hold: _hold, excluded: _excluded,
     };
     document.getElementById('result-count').textContent = '共 ' + (counts[_tab] || []).filter(match).length + ' 筆';
   });
@@ -417,6 +454,13 @@
       L.apiAction('DELETE', '/api/on-hold', { hold_id: he.hold_id })
         .then(function () { L.showToast('已解除暫緩'); load(); })
         .catch(function (e) { L.showToast('解除失敗：' + (e.message||''), 'error'); })
+        .finally(function () { btn.disabled = false; });
+    } else if (action === 'restore') {
+      var rx = _excludedMap[chart]; if (!rx) return;
+      btn.disabled = true;
+      L.apiAction('DELETE', '/api/excluded', { chart_number: rx.patient.chart_number, category: rx.category })
+        .then(function () { L.showToast('已恢復追蹤：' + rx.patient.name); load(); })
+        .catch(function (e) { L.showToast('恢復失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     }
   });

@@ -47,6 +47,7 @@
         <button class="filter-tab" data-tab="returned">待登VPN <span class="tc-count" id="cnt-returned">…</span></button>
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
+              <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
       </div>
 
       <div class="search-row">
@@ -58,7 +59,9 @@
         <div id="list-pending"><div class="sec-empty">載入中…</div></div>
         <div id="list-returned" style="display:none"></div>
         <div id="list-contacted" style="display:none"></div>
-        <div id="list-hold" style="display:none"></div>
+        <div id="list-hold" style="display:none">        <div id="list-excluded" style="display:none"></div>
+      </div>
+              <div id="list-excluded" style="display:none"></div>
       </div>
 
     </div>
@@ -122,8 +125,8 @@
   'use strict';
   var L = Layout;
   var _tab = 'pending', _query = '';
-  var _pending = [], _returned = [], _contacted = [], _hold = [];
-  var _pendingMap = {}, _returnedMap = {}, _contactedMap = {}, _holdMap = {};
+  var _pending = [], _returned = [], _contacted = [], _hold = [], _excluded = [];
+  var _pendingMap = {}, _returnedMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   var _actionChart = null, _actionEntry = null;
 
   function applyReport(r) {
@@ -140,7 +143,10 @@
     document.getElementById('cnt-pending').textContent   = _pending.length;
     document.getElementById('cnt-returned').textContent  = _returned.length;
     document.getElementById('cnt-contacted').textContent = _contacted.length;
+    _excluded = (r.excluded || []).filter(function (e) { return e.category === 'B肝'; });
+    _excludedMap = {}; _excluded.forEach(function (e) { _excludedMap[e.patient.chart_number] = e; });
     document.getElementById('cnt-hold').textContent      = _hold.length;
+    document.getElementById('cnt-excluded').textContent  = _excluded.length;
     var banner = document.getElementById('vpn-banner');
     if (_returned.length) { banner.style.display = 'flex'; document.getElementById('vpn-count').textContent = _returned.length; }
     else { banner.style.display = 'none'; }
@@ -205,11 +211,42 @@
     if (_tab === id.replace('list-', ''))
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
+
+  function excludedRow(e) {
+    var chart  = L.escHtml(e.patient.chart_number);
+    var name   = L.escHtml(e.patient.name);
+    var reason = L.escHtml(e.reason || '');
+    var note   = e.note ? ' <span style="color:var(--muted)">— ' + L.escHtml(e.note) + '</span>' : '';
+    var autoTag = e.auto ? '<span class="pbadge b-hold" style="font-size:10px;padding:1px 6px;margin-right:4px">自動</span>' : '';
+    var date   = e.excluded_at ? String(e.excluded_at).slice(0,10) : '';
+    return '<tr class="pr" data-chart="' + chart + '">' +
+      '<td style="color:var(--sub);font-size:12px">' + chart + '</td>' +
+      '<td style="font-weight:600">' + autoTag + name + '</td>' +
+      '<td style="font-size:12px">' + reason + note + '</td>' +
+      '<td style="font-size:12px;color:var(--sub)">' + date + '</td>' +
+      '<td style="text-align:right"><button class="act-btn" data-action="restore">恢復追蹤</button></td>' +
+      '</tr>';
+  }
+  function renderExcluded() {
+    var filtered = _excluded.filter(match);
+    var el = document.getElementById('list-excluded');
+    if (!filtered.length) {
+      el.innerHTML = '<div class="sec-empty">' + (_excluded.length ? '沒有符合搜尋條件的病患' : '尚無排除記錄') + '</div>';
+    } else {
+      el.innerHTML = '<div class="ptbl-wrap"><table class="p-table" style="table-layout:fixed">' +
+        '<colgroup><col style="width:115px"><col><col style="width:160px"><col style="width:90px"><col style="width:110px"></colgroup>' +
+        '<thead><tr><th>身份證</th><th>姓名</th><th>排除原因</th><th>排除日期</th><th></th></tr></thead>' +
+        '<tbody>' + filtered.map(excludedRow).join('') + '</tbody></table></div>';
+    }
+    if (_tab === 'excluded')
+      document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
+  }
   function renderAll() {
     renderList(_pending,   pendingRow,   'list-pending');
     renderList(_returned,  returnedRow,  'list-returned');
     renderList(_contacted, contactedRow, 'list-contacted');
     renderList(_hold,      holdRow,      'list-hold');
+    renderExcluded();
   }
 
   document.getElementById('filter-bar').addEventListener('click', function (e) {
@@ -217,10 +254,10 @@
     _tab = btn.dataset.tab;
     document.querySelectorAll('.filter-tab').forEach(function (b) { b.classList.remove('on'); });
     btn.classList.add('on');
-    ['pending','returned','contacted','hold'].forEach(function (t) {
+    ['pending','returned','contacted','hold','excluded'].forEach(function (t) {
       document.getElementById('list-' + t).style.display = t === _tab ? '' : 'none';
     });
-    var arr = {pending:_pending,returned:_returned,contacted:_contacted,hold:_hold}[_tab] || [];
+    var arr = {pending:_pending,returned:_returned,contacted:_contacted,hold:_hold,excluded:_excluded}[_tab] || [];
     document.getElementById('result-count').textContent = '共 ' + arr.filter(match).length + ' 筆';
   });
 
@@ -262,6 +299,13 @@
       L.apiAction('DELETE', '/api/on-hold', { hold_id: he.hold_id })
         .then(function () { L.showToast('已解除暫緩'); load(); })
         .catch(function (e) { L.showToast('解除失敗：' + (e.message||''), 'error'); })
+        .finally(function () { btn.disabled = false; });
+    } else if (action === 'restore') {
+      var rx = _excludedMap[_actionChart]; if (!rx) return;
+      btn.disabled = true;
+      L.apiAction('DELETE', '/api/excluded', { chart_number: rx.patient.chart_number, category: rx.category })
+        .then(function () { L.showToast('已恢復追蹤：' + rx.patient.name); load(); })
+        .catch(function (e) { L.showToast('恢復失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     }
   });
