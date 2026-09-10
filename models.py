@@ -86,6 +86,8 @@ class OnHoldEntry(BaseModel):
     note: str
     held_at: date
     nurse: str = ""
+    phone: str = ""
+    mobile: str = ""
     is_manual: bool = False
     manual_name: str = ""                      # display name for manual entries
 

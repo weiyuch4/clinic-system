@@ -875,13 +875,13 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                 if e.phone or e.mobile
             }
 
-        def _enrich_phones(entries: list[FollowupEntry]) -> list[FollowupEntry]:
+        def _enrich_phones(entries: list) -> list:
             if not _phone_lookup:
                 return entries
             out = []
             for e in entries:
-                chart = e.patient.chart_number if e.patient else ''
-                if chart and chart in _phone_lookup and not e.phone and not e.mobile:
+                chart = (e.patient.chart_number if e.patient else '') if hasattr(e, 'patient') else ''
+                if chart and chart in _phone_lookup and not getattr(e, 'phone', '') and not getattr(e, 'mobile', ''):
                     ph, mob = _phone_lookup[chart]
                     e = e.model_copy(update={'phone': ph, 'mobile': mob})
                 out.append(e)
