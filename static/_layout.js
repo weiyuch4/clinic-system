@@ -372,10 +372,11 @@
     if (btn) btn.disabled = true;
     apiAction('POST', '/api/auth/nurse-pin', { name: name, pin: pin })
       .then(function () {
+        var onSuccess = _pinOnSuccess;   // capture before _closePinModal nulls it
         _closePinModal();
         _setNurse(name);
         showToast(name + ' 已登入');
-        if (_pinOnSuccess) { _pinOnSuccess(); _pinOnSuccess = null; }
+        if (onSuccess) onSuccess();
       })
       .catch(function (e) {
         if (err) { err.textContent = e.message || 'PIN 不正確'; err.style.display = ''; }
