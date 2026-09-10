@@ -160,20 +160,22 @@ def do_sync() -> None:
                     p['results_back'] = found
                     p['results_date'] = result_date
 
-            # Carry forward any patients who are still pending after the 5-day window
+            # Carry forward patients older than 5 days who still need attention:
+            # either results still pending, or results back but not yet notified.
             already_covered = {
                 (p['nat_id'], day['date'])
                 for day in days
                 for p in day['patients']
             }
+            notified_keys = _contacts.get_blood_notified_keys(1)
             stored = _contacts.get_synced_blood_pending(1)
             for old_day in stored:
                 draw_d = date.fromisoformat(old_day['date'])
                 if (today - draw_d).days <= 5:
                     continue  # within normal window, already rebuilt above
                 for p in old_day['patients']:
-                    if p.get('results_back'):
-                        continue  # already resolved
+                    if p.get('results_back') and (p['nat_id'], old_day['date']) in notified_keys:
+                        continue  # results back and nurse already notified patient — drop it
                     if (p['nat_id'], old_day['date']) in already_covered:
                         continue
                     # Check if results arrived since last sync
