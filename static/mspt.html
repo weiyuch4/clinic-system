@@ -20,6 +20,11 @@
 :root[data-theme="dark"] .tab-hint-warn{background:#1c1200;border-color:#78350f;color:#fcd34d}
 :root[data-theme="dark"] .tab-hint-info{background:#0d1f3b;border-color:#1d4ed8;color:#93c5fd}
 .modal-hint{font-size:12.5px;padding:9px 11px;border-radius:7px;border:1px solid;margin-bottom:2px}
+
+.reason-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
+.reason-chip{padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);font-size:13px;cursor:pointer;color:var(--sub);font-weight:500;transition:all .15s;font-family:inherit}
+.reason-chip:hover{border-color:#9ca3af;color:var(--text)}
+.reason-chip.selected{border-color:var(--red,#e53e3e);background:var(--red-soft,#fff5f5);color:var(--red,#e53e3e);font-weight:600}
 </style>
 </head>
 <body>
@@ -160,6 +165,34 @@
   </div>
 </div>
 
+
+<div class="modal-overlay" id="modal-exclude">
+  <div class="modal-box">
+    <div class="modal-title">排除病患</div>
+    <div class="modal-sub" id="modal-exclude-sub"></div>
+    <div class="modal-field">
+      <label class="modal-label">排除原因</label>
+      <div class="reason-chips" id="exclude-chips">
+        <button class="reason-chip" data-reason="轉至其他診所">轉至其他診所</button>
+        <button class="reason-chip" data-reason="轉至大醫院追蹤">轉至大醫院追蹤</button>
+        <button class="reason-chip" data-reason="不願繼續用藥">不願繼續用藥</button>
+        <button class="reason-chip" data-reason="病患已過世">病患已過世</button>
+        <button class="reason-chip" data-reason="已自行停藥">已自行停藥</button>
+        <button class="reason-chip" data-reason="其他">其他</button>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">備註（選填）</label>
+      <textarea class="modal-input" id="modal-exclude-note" rows="2" placeholder="選填備註"></textarea>
+    </div>
+    <div class="modal-error" id="exclude-error"></div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-exclude')">取消</button>
+      <button class="act-btn act-danger" id="btn-exclude-confirm">確認排除</button>
+    </div>
+  </div>
+</div>
+
 <script src="/static/_layout.js?v=34"></script>
 <script>
 (function () {
@@ -169,7 +202,7 @@
   var _return = [], _phone = [], _submittable = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
   var _activeMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   // entry stashed for modal confirm
-  var _modalEntry = null;
+  var _modalEntry = null, _excludeEntry = null;
 
   var ALL_TABS = ['return','phone','submittable','inactive','contacted','hold','excluded'];
 
@@ -234,6 +267,7 @@
         { label: '已聯繫', cls: 'act-primary', key: 'contact' },
         { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
       ],
+      more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
     });
   }
 
@@ -246,7 +280,7 @@
     return L.patientRow({ entry: e, tags: tags, actions: [
       { label: '完成', cls: 'act-primary', key: 'phone-complete' },
       { label: '暫緩', cls: 'act-warn',    key: 'hold' },
-    ]});
+    ], more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }]});
   }
 
   function submittableRow(e) {
@@ -273,7 +307,7 @@
     return L.patientRow({ entry: e, tags: tags, actions: [
       { label: '已聯繫', cls: 'act-primary', key: 'contact' },
       { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
-    ]});
+    ], more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }]});
   }
 
   function contactedRow(e) {
@@ -455,7 +489,16 @@
         .then(function () { L.showToast('已解除暫緩'); load(); })
         .catch(function (e) { L.showToast('解除失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
+    } else if (action === 'exclude') {
+      var excEntry = _activeMap[chart]; if (!excEntry) return;
+      _excludeEntry = excEntry;
+      document.getElementById('modal-exclude-sub').textContent = excEntry.patient.name + ' — 排除後不再出現於追蹤清單';
+      document.getElementById('modal-exclude-note').value = '';
+      document.getElementById('exclude-error').classList.remove('show');
+      document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
+      L.showModal('modal-exclude');
     } else if (action === 'restore') {
+
       var rx = _excludedMap[chart]; if (!rx) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/excluded', { chart_number: rx.patient.chart_number, category: rx.category })
@@ -493,6 +536,28 @@
     errEl.classList.remove('show'); confirmBtn.disabled = true;
     L.apiAction('POST', '/api/on-hold', { entry: entry, note: note, nurse: L.getNurse() })
       .then(function () { L.hideModal('modal-hold'); L.showToast('已設定暫緩'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .finally(function () { confirmBtn.disabled = false; });
+  });
+
+
+  document.getElementById('exclude-chips').addEventListener('click', function (ev) {
+    var chip = ev.target.closest('.reason-chip'); if (!chip) return;
+    document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
+    chip.classList.add('selected');
+  });
+
+  document.getElementById('btn-exclude-confirm').addEventListener('click', function () {
+    var selected = document.querySelector('#exclude-chips .reason-chip.selected');
+    var errEl = document.getElementById('exclude-error');
+    if (!selected) { errEl.textContent = '請選擇排除原因'; errEl.classList.add('show'); return; }
+    var reason = selected.dataset.reason;
+    var note = document.getElementById('modal-exclude-note').value.trim();
+    var confirmBtn = this;
+    errEl.classList.remove('show');
+    confirmBtn.disabled = true;
+    L.apiAction('POST', '/api/excluded', { entry: _excludeEntry, reason: reason, note: note, nurse: L.getNurse() })
+      .then(function () { L.hideModal('modal-exclude'); L.showToast('已排除：' + _excludeEntry.patient.name); load(); })
       .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
