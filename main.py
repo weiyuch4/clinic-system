@@ -29,7 +29,7 @@ import lab_report
 import lab_results
 import settings as _settings
 from models import (
-    BloodDismissRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
+    BloodDismissRequest, BloodNotifiedRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
     CreateUserRequest, DailyReport,
     ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
     ManualOnHoldRequest, ManualPickupRequest,
@@ -1509,19 +1509,27 @@ async def undo_line_notification(log_id: int, req: UndoLineNotificationRequest, 
 
 @app.get("/api/blood-pending")
 def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
-    """Patients with external lab orders in the last 5 days, with result status.
+    """Patients with external lab orders (last 5 days + overdue), with result and notified status.
     Returns [{date, patients: [{name, nat_id, draw_codes, is_allergy,
-    results_back, results_date}]}], most recent day first."""
+    results_back, results_date, notified, overdue}]}], most recent day first."""
     try:
+        notified_keys = contacts.get_blood_notified_keys(user.clinic_id)
         if CLOUD_MODE:
-            return contacts.get_synced_blood_pending(user.clinic_id)
-        days = database.get_blood_draw_patients(date.today())
+            days = contacts.get_synced_blood_pending(user.clinic_id)
+        else:
+            days = database.get_blood_draw_patients(date.today())
+            for day in days:
+                draw_date = date.fromisoformat(day['date'])
+                for p in day['patients']:
+                    found, result_date = lab_results.has_results_since(p['nat_id'], draw_date)
+                    p['results_back'] = found
+                    p['results_date'] = result_date
+        today = date.today()
         for day in days:
-            draw_date = date.fromisoformat(day['date'])
             for p in day['patients']:
-                found, result_date = lab_results.has_results_since(p['nat_id'], draw_date)
-                p['results_back'] = found
-                p['results_date'] = result_date
+                p['notified'] = (p.get('nat_id', ''), day['date']) in notified_keys
+                draw_age = (today - date.fromisoformat(day['date'])).days
+                p['overdue'] = draw_age > 5 and not p.get('results_back', False)
         return days
     except Exception:
         logger.exception("get_blood_pending failed")
@@ -1538,6 +1546,28 @@ def post_blood_dismiss(req: BloodDismissRequest, user: auth.CurrentUser = Depend
     except Exception:
         logger.exception("blood-dismiss failed")
         raise HTTPException(status_code=500, detail="移除失敗")
+
+
+@app.post("/api/blood-notified")
+def post_blood_notified(req: BloodNotifiedRequest, user: auth.CurrentUser = Depends(auth.get_current_user)):
+    """Mark a patient as notified after their lab results came back."""
+    try:
+        contacts.add_blood_notified(req.nat_id, req.draw_date, req.nurse, user.clinic_id)
+        return {"ok": True}
+    except Exception:
+        logger.exception("blood-notified POST failed")
+        raise HTTPException(status_code=500, detail="標記失敗")
+
+
+@app.delete("/api/blood-notified")
+def delete_blood_notified(req: BloodNotifiedRequest, user: auth.CurrentUser = Depends(auth.get_current_user)):
+    """Undo a blood-notified mark."""
+    try:
+        contacts.remove_blood_notified(req.nat_id, req.draw_date, user.clinic_id)
+        return {"ok": True}
+    except Exception:
+        logger.exception("blood-notified DELETE failed")
+        raise HTTPException(status_code=500, detail="撤銷失敗")
 
 
 @app.get("/api/notice")

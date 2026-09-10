@@ -349,6 +349,17 @@ _CREATE_LAB_CACHE = """
     )
 """
 
+_CREATE_BLOOD_NOTIFIED = """
+    CREATE TABLE IF NOT EXISTS blood_notified (
+        clinic_id    INTEGER NOT NULL DEFAULT 1,
+        nat_id       TEXT NOT NULL,
+        draw_date    TEXT NOT NULL,
+        notified_at  TEXT NOT NULL,
+        nurse        TEXT NOT NULL DEFAULT '',
+        PRIMARY KEY (clinic_id, nat_id, draw_date)
+    )
+"""
+
 _CREATE_NURSE_OT_LOGS = """
     CREATE TABLE IF NOT EXISTS nurse_ot_logs (
         id         SERIAL PRIMARY KEY,
@@ -383,6 +394,37 @@ def add_blood_dismissed(nat_id: str, draw_date: str, name: str, reason: str, cli
                        reason=EXCLUDED.reason, dismissed_at=EXCLUDED.dismissed_at""",
                 (clinic_id, nat_id, draw_date, name, reason, datetime.now().isoformat(timespec='seconds')),
             )
+
+
+def add_blood_notified(nat_id: str, draw_date: str, nurse: str, clinic_id: int = 1) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO blood_notified (clinic_id, nat_id, draw_date, notified_at, nurse)
+                   VALUES (%s, %s, %s, %s, %s)
+                   ON CONFLICT (clinic_id, nat_id, draw_date) DO UPDATE SET
+                       notified_at=EXCLUDED.notified_at, nurse=EXCLUDED.nurse""",
+                (clinic_id, nat_id, draw_date, datetime.now().isoformat(timespec='seconds'), nurse),
+            )
+
+
+def remove_blood_notified(nat_id: str, draw_date: str, clinic_id: int = 1) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM blood_notified WHERE clinic_id=%s AND nat_id=%s AND draw_date=%s",
+                (clinic_id, nat_id, draw_date),
+            )
+
+
+def get_blood_notified_keys(clinic_id: int = 1) -> set[tuple[str, str]]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT nat_id, draw_date FROM blood_notified WHERE clinic_id=%s",
+                (clinic_id,),
+            )
+            return {(r['nat_id'], r['draw_date']) for r in cur.fetchall()}
 
 
 def get_synced_blood_pending(clinic_id: int = 1) -> list[dict]:
@@ -523,6 +565,7 @@ def init() -> None:
             cur.execute(_CREATE_SYNCED_BLOOD_PENDING)
             cur.execute(_CREATE_LAB_CACHE)
             cur.execute(_CREATE_NURSE_OT_LOGS)
+            cur.execute(_CREATE_BLOOD_NOTIFIED)
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
                 cur.execute(f"ALTER TABLE contacts ADD COLUMN IF NOT EXISTS {col}")

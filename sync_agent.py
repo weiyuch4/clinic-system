@@ -151,15 +151,44 @@ def do_sync() -> None:
             import database as _db
             import lab_results as _lab
             import contacts as _contacts
-            days = _db.get_blood_draw_patients(date.today())
+            today = date.today()
+            days = _db.get_blood_draw_patients(today)
             for day in days:
                 draw_d = date.fromisoformat(day['date'])
                 for p in day['patients']:
                     found, result_date = _lab.has_results_since(p['nat_id'], draw_d)
                     p['results_back'] = found
                     p['results_date'] = result_date
+
+            # Carry forward any patients who are still pending after the 5-day window
+            already_covered = {
+                (p['nat_id'], day['date'])
+                for day in days
+                for p in day['patients']
+            }
+            stored = _contacts.get_synced_blood_pending(1)
+            for old_day in stored:
+                draw_d = date.fromisoformat(old_day['date'])
+                if (today - draw_d).days <= 5:
+                    continue  # within normal window, already rebuilt above
+                for p in old_day['patients']:
+                    if p.get('results_back'):
+                        continue  # already resolved
+                    if (p['nat_id'], old_day['date']) in already_covered:
+                        continue
+                    # Check if results arrived since last sync
+                    found, result_date = _lab.has_results_since(p['nat_id'], draw_d)
+                    p['results_back'] = found
+                    p['results_date'] = result_date
+                    # Merge into days list (keep as separate overdue day entry)
+                    existing = next((d for d in days if d['date'] == old_day['date']), None)
+                    if existing:
+                        existing['patients'].append(p)
+                    else:
+                        days.append({'date': old_day['date'], 'patients': [p]})
+
             _contacts.upsert_synced_blood_pending(days)
-            log.info("Synced blood pending (%d days)", len(days))
+            log.info("Synced blood pending (%d days, including overdue carry-forward)", len(days))
     except Exception as exc:
         log.error("Blood pending sync failed: %s", exc)
 

@@ -282,6 +282,12 @@ class BloodDismissRequest(BaseModel):
     reason: str
 
 
+class BloodNotifiedRequest(BaseModel):
+    nat_id: str
+    draw_date: str      # 'YYYY-MM-DD'
+    nurse: str = ""
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
