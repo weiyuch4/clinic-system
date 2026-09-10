@@ -170,13 +170,16 @@ def do_sync() -> None:
         nat_ids = {c['chart_number'] for c in candidates if c.get('chart_number')}
         lab_data = _lab.batch_lab_results(nat_ids)
         if lab_data:
-            resp = requests.post(
-                f"{CLOUD_URL}/api/sync/push-lab",
-                json={"clinic_id": 1, "lab_data": lab_data},
-                headers={"X-Sync-Token": SYNC_TOKEN},
-                timeout=60,
-            )
-            resp.raise_for_status()
+            items = list(lab_data.items())
+            for i in range(0, len(items), 50):
+                chunk = dict(items[i:i + 50])
+                resp = requests.post(
+                    f"{CLOUD_URL}/api/sync/push-lab",
+                    json={"clinic_id": 1, "lab_data": chunk},
+                    headers={"X-Sync-Token": SYNC_TOKEN},
+                    timeout=60,
+                )
+                resp.raise_for_status()
             log.info("Synced lab results for %d patients", len(lab_data))
         else:
             log.info("No lab results to sync (ZZ_DIR may be unavailable)")
