@@ -857,7 +857,35 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             f_all_blood_used       = exe.submit(contacts.get_all_mspt_blood_used, cid)
             f_all_lab_cache        = exe.submit(contacts.get_all_lab_cache, cid) if CLOUD_MODE else None
 
-        report                      = _build_cloud_report(f_report.result(), as_of) if CLOUD_MODE else f_report.result()
+        _raw_candidates             = f_report.result()
+        report                      = _build_cloud_report(_raw_candidates, as_of) if CLOUD_MODE else _raw_candidates  # type: ignore[arg-type]
+
+        # Build phone lookup from synced_candidates (cloud) or report entries (local)
+        # so that 已聯繫 / 暫緩中 entries — stored without phone — can show numbers.
+        if CLOUD_MODE:
+            _phone_lookup: dict[str, tuple[str, str]] = {
+                c['chart_number']: (c.get('phone', ''), c.get('mobile', ''))
+                for c in _raw_candidates if isinstance(c, dict)
+            }
+        else:
+            _phone_lookup = {
+                e.patient.chart_number: (e.phone, e.mobile)
+                for e in (report.mspt_followups + report.chronic_prescriptions
+                          + report.hep_followups + report.ckd_followups)
+                if e.phone or e.mobile
+            }
+
+        def _enrich_phones(entries: list[FollowupEntry]) -> list[FollowupEntry]:
+            if not _phone_lookup:
+                return entries
+            out = []
+            for e in entries:
+                chart = e.patient.chart_number if e.patient else ''
+                if chart and chart in _phone_lookup and not e.phone and not e.mobile:
+                    ph, mob = _phone_lookup[chart]
+                    e = e.model_copy(update={'phone': ph, 'mobile': mob})
+                out.append(e)
+            return out
         hidden_keys                 = f_hidden.result()
         call_required_keys          = f_call_required.result()
         submitted_keys              = f_submitted.result()
@@ -1081,14 +1109,14 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                 if (e.patient.chart_number, e.last_visit_date.isoformat()) not in hep_returned_completed_keys
             ],
             hep_returned_completed=contacts.get_hep_returned_completed_entries(cid),
-            contacted=contacted,
-            called=called_filtered,
+            contacted=_enrich_phones(contacted),
+            called=_enrich_phones(called_filtered),
             submitted=contacts.get_submitted_entries(cid),
             excluded=all_excluded,
             mspt_completed=contacts.get_mspt_completed_entries(cid),
             mspt_checkedin=contacts.get_mspt_checkedin_entries(cid),
             chronic_manual_pickups=contacts.get_manual_pickup_entries(cid),
-            on_hold=contacts.get_on_hold_entries(cid),
+            on_hold=_enrich_phones(contacts.get_on_hold_entries(cid)),
             mspt_manual=contacts.get_mspt_manual_entries(cid),
             ckd_followups=filter_followups(report.ckd_followups),
             ckd_inactive=filter_followups(report.ckd_inactive),
