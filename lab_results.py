@@ -361,7 +361,10 @@ def _decode_date(raw: str) -> str:
     if len(raw) == 7:
         return f"{raw[:3]}/{raw[3:5]}/{raw[5:]}"
     if len(raw) == 6:
-        return f"{int(raw[:2]):03d}/{raw[2:4]}/{raw[4:]}"
+        try:
+            return f"{int(raw[:2]):03d}/{raw[2:4]}/{raw[4:]}"
+        except ValueError:
+            return raw
     return raw
 
 
