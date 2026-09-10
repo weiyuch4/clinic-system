@@ -1131,15 +1131,16 @@ def unmark_contacted(req: ContactRequest, user: auth.CurrentUser = Depends(auth.
 def mark_submitted(entry: MsptSubmittableEntry, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.mark_submitted(entry, user.clinic_id)
-        contacts.record_mspt_blood_used(
-            entry.patient.chart_number,
-            entry.mspt_stage,
-            entry.blood_report_date.isoformat(),
-            user.clinic_id,
-        )
+        if entry.used_blood:
+            contacts.record_mspt_blood_used(
+                entry.patient.chart_number,
+                entry.mspt_stage,
+                entry.blood_report_date.isoformat(),
+                user.clinic_id,
+            )
     except Exception:
         logger.exception("mark_submitted failed for %s", entry.patient.chart_number)
-        raise HTTPException(status_code=500, detail="申報記錄儲存失敗，請稍後再試")
+        raise HTTPException(status_code=500, detail="待登VPN記錄儲存失敗，請稍後再試")
 
 
 @app.delete("/api/submitted")

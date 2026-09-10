@@ -48,7 +48,7 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 18 15 15"/></svg>
         </div>
         <div>
-          <div class="sub-banner-title">今日可申報健保</div>
+          <div class="sub-banner-title">今日待登VPN</div>
           <div class="sub-banner-sub">血液報告已出爐或電話完成，可於健保署VPN系統提交</div>
         </div>
         <div class="sub-count" id="sub-count">0</div>
@@ -57,7 +57,7 @@
       <div class="filter-bar" id="filter-bar">
         <button class="filter-tab on" data-tab="return">需回診 <span class="tc-count" id="cnt-return">…</span></button>
         <button class="filter-tab" data-tab="phone">可電話完成 <span class="tc-count" id="cnt-phone">…</span></button>
-        <button class="filter-tab" data-tab="submittable">可申報 <span class="tc-count" id="cnt-submittable">…</span></button>
+        <button class="filter-tab" data-tab="submittable">待登VPN <span class="tc-count" id="cnt-submittable">…</span></button>
         <span class="filter-sep"></span>
         <button class="filter-tab" data-tab="inactive">未複診 <span class="tc-count" id="cnt-inactive">…</span></button>
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
@@ -81,7 +81,7 @@
         <div id="list-phone" style="display:none">
           <div class="tab-hint tab-hint-info">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 11.9 19.79 19.79 0 0 1 1.61 3.27 2 2 0 0 1 3.6 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.56a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 21.73 16z"/></svg>
-            <span>這些病患不需要回診抽血，電話聯繫後即可直接完成並送健保申報。</span>
+            <span>這些病患不需要回診抽血，電話聯繫後即可直接完成並待登VPN。</span>
           </div>
           <div id="list-phone-rows"><div class="sec-empty">載入中…</div></div>
         </div>
@@ -143,7 +143,25 @@
     <div class="modal-error" id="phone-error"></div>
     <div class="modal-footer">
       <button class="act-btn" onclick="Layout.hideModal('modal-phone')">取消</button>
-      <button class="act-btn act-primary" id="btn-phone-confirm">完成並送申報</button>
+      <button class="act-btn act-primary" id="btn-phone-confirm">完成並待登VPN</button>
+    </div>
+  </div>
+</div>
+
+<!-- VPN submit confirm modal -->
+<div class="modal-overlay" id="modal-vpn">
+  <div class="modal-box">
+    <div class="modal-title">確認待登VPN</div>
+    <div class="modal-sub" id="modal-vpn-sub"></div>
+    <div class="modal-field" style="margin-top:4px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
+        <input type="checkbox" id="modal-vpn-blood" style="width:16px;height:16px;cursor:pointer">
+        <span>此次使用血液檢驗紀錄</span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-vpn')">取消</button>
+      <button class="act-btn act-primary" id="btn-vpn-confirm">已登VPN</button>
     </div>
   </div>
 </div>
@@ -202,11 +220,33 @@
   var _return = [], _phone = [], _submittable = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
   var _activeMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   // entry stashed for modal confirm
-  var _modalEntry = null, _excludeEntry = null;
+  var _modalEntry = null, _excludeEntry = null, _submitEntry = null;
+  // charts where all prior MSPT stages were tracked through dashboard
+  var _completedSet = {};  // {chart_number: Set of completed stages}
+
+  function _buildCompletedSet(msptCompleted) {
+    var s = {};
+    (msptCompleted || []).forEach(function(c) {
+      var chart = c.patient ? c.patient.chart_number : c.chart_number;
+      if (chart && c.mspt_stage) {
+        if (!s[chart]) s[chart] = {};
+        s[chart][c.mspt_stage] = true;
+      }
+    });
+    return s;
+  }
+
+  function isPriorTracked(chart, stage) {
+    var stages = _completedSet[chart] || {};
+    if (stage === '追2') return !!stages['追1'];
+    if (stage === '追3') return !!(stages['追1'] && stages['追2']);
+    return false;
+  }
 
   var ALL_TABS = ['return','phone','submittable','inactive','contacted','hold','excluded'];
 
   function applyReport(r) {
+    _completedSet = _buildCompletedSet(r.mspt_completed);
     var allFollowups = r.mspt_followups || [];
     _return = allFollowups.filter(function (e) { return e.needs_blood_test; });
     _phone  = allFollowups.filter(function (e) { return !e.needs_blood_test; });
@@ -275,6 +315,7 @@
     var tags = [];
     if (e.call_required) tags.push('<span class="pbadge b-call">第2次</span>');
     tags.push('<span class="pbadge b-prog">需抽血</span>');
+    if (isPriorTracked(e.patient.chart_number, e.mspt_stage)) tags.push('<span class="pbadge b-done">已追蹤</span>');
     return L.patientRow({ entry: e, tags: tags,
       actions: [
         { label: '已聯繫', cls: 'act-primary', key: 'contact' },
@@ -290,6 +331,7 @@
     if (e.blood_draw_date) {
       tags.push('<span class="pbadge b-done" title="可使用 ' + L.escHtml(e.blood_draw_date) + ' 血液報告">血測可用</span>');
     }
+    if (isPriorTracked(e.patient.chart_number, e.mspt_stage)) tags.push('<span class="pbadge b-done">已追蹤</span>');
     return L.patientRow({ entry: e, tags: tags, actions: [
       { label: '完成', cls: 'act-primary', key: 'phone-complete' },
       { label: '暫緩', cls: 'act-warn',    key: 'hold' },
@@ -302,11 +344,12 @@
       mspt_stage: e.mspt_stage, due_date: e.blood_report_date,
       days_overdue: 0, last_visit_date: null,
     };
-    return L.patientRow({ entry: adapted,
-      tags: ['<span class="pbadge b-sub">' + L.escHtml(e.mspt_stage) + '</span>'],
+    var tags = ['<span class="pbadge b-sub">' + L.escHtml(e.mspt_stage) + '</span>'];
+    if (isPriorTracked(e.patient.chart_number, e.mspt_stage)) tags.push('<span class="pbadge b-done">已追蹤</span>');
+    return L.patientRow({ entry: adapted, tags: tags,
       actions: [
-        { label: '已申報', cls: 'act-purple', key: 'submit' },
-        { label: '撤銷',   cls: '',           key: 'undo-phone' },
+        { label: '已登VPN', cls: 'act-purple', key: 'submit' },
+        { label: '撤銷',    cls: '',           key: 'undo-phone' },
       ],
     });
   }
@@ -472,15 +515,10 @@
     } else if (action === 'submit') {
       var se = _submittable.find(function (e) { return e.patient.chart_number === chart; });
       if (!se) return;
-      btn.disabled = true;
-      L.apiAction('POST', '/api/submitted', se)
-        .then(function () {
-          L.showToast('申報記錄已儲存');
-          _submittable = _submittable.filter(function(e) { return e.patient.chart_number !== chart; });
-          _refreshBg();
-        })
-        .catch(function (e) { L.showToast('儲存失敗：' + (e.message||''), 'error'); })
-        .finally(function () { btn.disabled = false; });
+      _submitEntry = se;
+      document.getElementById('modal-vpn-sub').textContent = se.patient.name + ' · ' + (se.mspt_stage || '');
+      document.getElementById('modal-vpn-blood').checked = false;
+      L.showModal('modal-vpn');
 
     } else if (action === 'undo-phone') {
       var se2 = _submittable.find(function (e) { return e.patient.chart_number === chart; });
@@ -594,6 +632,23 @@
       .finally(function () { confirmBtn.disabled = false; });
   });
 
+
+  document.getElementById('btn-vpn-confirm').addEventListener('click', function () {
+    var entry = _submitEntry; if (!entry) return;
+    var confirmBtn = this;
+    confirmBtn.disabled = true;
+    var usedBlood = document.getElementById('modal-vpn-blood').checked;
+    var payload = Object.assign({}, entry, { used_blood: usedBlood });
+    L.apiAction('POST', '/api/submitted', payload)
+      .then(function () {
+        L.hideModal('modal-vpn'); L.showToast('待登VPN記錄已儲存');
+        _submittable = _submittable.filter(function(e) { return e.patient.chart_number !== entry.patient.chart_number; });
+        _submitEntry = null;
+        _refreshBg();
+      })
+      .catch(function (e) { L.showToast('儲存失敗：' + (e.message||''), 'error'); })
+      .finally(function () { confirmBtn.disabled = false; });
+  });
 
   document.getElementById('exclude-chips').addEventListener('click', function (ev) {
     var chip = ev.target.closest('.reason-chip'); if (!chip) return;

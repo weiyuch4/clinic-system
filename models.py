@@ -40,6 +40,7 @@ class MsptSubmittableEntry(BaseModel):
     mspt_stage: MsptStage                    # always 追1, 追2, or 追3
     blood_report_date: date                  # date of eligible 抽血報告
     days_since_last_stage: int
+    used_blood: bool = False                 # nurse checked "used blood test" in VPN confirm
 
 
 class MsptWaitingEntry(BaseModel):
