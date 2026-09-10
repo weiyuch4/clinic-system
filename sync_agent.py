@@ -163,6 +163,30 @@ def do_sync() -> None:
     except Exception as exc:
         log.error("Blood pending sync failed: %s", exc)
 
+    # Lab results cache — push parsed BIO/CBC for each candidate so the cloud
+    # app can serve them without needing local file access.
+    try:
+        import lab_results as _lab
+        nat_ids = {c['chart_number'] for c in candidates if c.get('chart_number')}
+        lab_data = {}
+        for nat_id in nat_ids:
+            r = _lab.get_lab_results(nat_id)
+            if r.get('bio') or r.get('cbc'):
+                lab_data[nat_id] = {'bio': r['bio'], 'cbc': r['cbc']}
+        if lab_data:
+            resp = requests.post(
+                f"{CLOUD_URL}/api/sync/push-lab",
+                json={"clinic_id": 1, "lab_data": lab_data},
+                headers={"X-Sync-Token": SYNC_TOKEN},
+                timeout=60,
+            )
+            resp.raise_for_status()
+            log.info("Synced lab results for %d patients", len(lab_data))
+        else:
+            log.info("No lab results to sync (ZZ_DIR may be unavailable)")
+    except Exception as exc:
+        log.error("Lab results sync failed: %s", exc)
+
 
 # ── File watcher ──────────────────────────────────────────────────────────────
 

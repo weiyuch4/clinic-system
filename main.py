@@ -102,7 +102,7 @@ if not contacts.get_nurses():  # first run on this DB — seed from the hardcode
 # still comes from request body fields (Option B shared-session model).
 @app.middleware("http")
 async def require_auth_for_api(request: Request, call_next):
-    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/status"}
+    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/status"}
     if request.url.path.startswith("/api/") and request.url.path not in _sync_exempt:
         token = request.headers.get("Authorization", "")
         if token.startswith("Bearer "):
@@ -801,6 +801,18 @@ async def sync_push(request: Request) -> dict:
     candidates = body.get("candidates", [])
     contacts.upsert_synced_candidates(candidates, clinic_id)
     return {"ok": True, "count": len(candidates)}
+
+
+@app.post("/api/sync/push-lab")
+async def sync_push_lab(request: Request) -> dict:
+    token = request.headers.get("X-Sync-Token", "")
+    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    body = await request.json()
+    clinic_id = int(body.get("clinic_id", 1))
+    lab_data = body.get("lab_data", {})
+    contacts.upsert_lab_cache(lab_data, clinic_id)
+    return {"ok": True, "count": len(lab_data)}
 
 
 @app.get("/api/sync/status")
@@ -1597,9 +1609,15 @@ def unmark_mspt_manual(req: MsptManualRemoveRequest, user: auth.CurrentUser = De
 
 
 @app.get("/api/lab/{national_id}")
-def get_lab_results(national_id: str) -> dict:
-    """Return structured blood test results for a patient by national ID."""
-    return lab_results.get_lab_results(national_id.strip().upper())
+def get_lab_results(national_id: str, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    """Return structured blood test results. Tries local DBF files first; falls back to DB cache."""
+    nat_id = national_id.strip().upper()
+    result = lab_results.get_lab_results(nat_id)
+    if not result.get('bio') and not result.get('cbc'):
+        cached = contacts.get_lab_cache(nat_id, user.clinic_id)
+        if cached.get('bio') or cached.get('cbc'):
+            return cached
+    return result
 
 
 

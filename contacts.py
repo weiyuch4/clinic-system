@@ -339,6 +339,16 @@ _CREATE_SYNCED_BLOOD_PENDING = """
     )
 """
 
+_CREATE_LAB_CACHE = """
+    CREATE TABLE IF NOT EXISTS lab_cache (
+        national_id  TEXT    NOT NULL,
+        clinic_id    INTEGER NOT NULL DEFAULT 1,
+        data         JSONB   NOT NULL DEFAULT '{}'::jsonb,
+        synced_at    TEXT    NOT NULL DEFAULT '',
+        PRIMARY KEY (national_id, clinic_id)
+    )
+"""
+
 _CREATE_NURSE_OT_LOGS = """
     CREATE TABLE IF NOT EXISTS nurse_ot_logs (
         id         SERIAL PRIMARY KEY,
@@ -430,6 +440,40 @@ def patch_blood_pending_dismiss(nat_id: str, draw_date: str, clinic_id: int = 1)
             )
 
 
+def upsert_lab_cache(lab_data: dict, clinic_id: int = 1) -> None:
+    """Store parsed lab results (national_id → {bio, cbc}) pushed from sync agent."""
+    import json as _json
+    if not lab_data:
+        return
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            for nat_id, data in lab_data.items():
+                cur.execute(
+                    """INSERT INTO lab_cache (national_id, clinic_id, data, synced_at)
+                       VALUES (%s, %s, %s::jsonb, %s)
+                       ON CONFLICT (national_id, clinic_id) DO UPDATE
+                           SET data=EXCLUDED.data, synced_at=EXCLUDED.synced_at""",
+                    (nat_id, clinic_id,
+                     _json.dumps(data, ensure_ascii=False, default=str),
+                     datetime.now().isoformat(timespec='seconds')),
+                )
+
+
+def get_lab_cache(national_id: str, clinic_id: int = 1) -> dict:
+    """Retrieve cached lab results for a patient (populated by sync agent)."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT data FROM lab_cache WHERE national_id=%s AND clinic_id=%s",
+                (national_id, clinic_id),
+            )
+            row = cur.fetchone()
+            if row:
+                data = row[0]
+                return data if isinstance(data, dict) else __import__('json').loads(data)
+            return {'bio': [], 'cbc': [], 'patient_code': None, 'error': None}
+
+
 def init() -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
@@ -459,6 +503,7 @@ def init() -> None:
             cur.execute(_CREATE_SYNCED_CANDIDATES)
             cur.execute(_CREATE_BLOOD_DISMISSED)
             cur.execute(_CREATE_SYNCED_BLOOD_PENDING)
+            cur.execute(_CREATE_LAB_CACHE)
             cur.execute(_CREATE_NURSE_OT_LOGS)
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
