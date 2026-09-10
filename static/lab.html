@@ -108,17 +108,6 @@
   var L = Layout;
   var _days = [];
 
-  function sortOrder(p) {
-    // 0 = needs notify (results back, not notified) — most urgent
-    // 1 = overdue pending (>5 days, no results) — special cases
-    // 2 = normal pending
-    // 3 = notified (done)
-    if (p.results_back && !p.notified) return 0;
-    if (p.overdue)                      return 1;
-    if (!p.results_back)                return 2;
-    return 3;
-  }
-
   function renderDays(days) {
     var container = document.getElementById('lab-list');
 
@@ -140,16 +129,15 @@
     }
 
     container.innerHTML = days.map(function (day) {
-      var pts = (day.patients || []).slice().sort(function (a, b) { return sortOrder(a) - sortOrder(b); });
+      var pts = day.patients || [];
       if (!pts.length) return '';
 
       var needNotifyCount = pts.filter(function (p) { return p.results_back && !p.notified; }).length;
       var overdueCount    = pts.filter(function (p) { return p.overdue; }).length;
-      var isOldDay = pts.every(function (p) { return p.overdue || p.results_back; });
 
       return '<div class="lab-group">' +
         '<div class="lab-ghead">' +
-          '<span class="lab-gdate">抽血日：' + L.escHtml(day.date) + (isOldDay && overdueCount ? ' <span style="font-size:11px;color:#B45309;font-weight:600">超時</span>' : '') + '</span>' +
+          '<span class="lab-gdate">抽血日：' + L.escHtml(day.date) + '</span>' +
           '<span class="lab-gcount">' + pts.length + ' 人</span>' +
           (overdueCount ? '<span class="lab-goverdue">超時待出 ' + overdueCount + '</span>' : '') +
           (needNotifyCount ? '<span class="lab-gnotify">待通知 ' + needNotifyCount + '</span>' : '') +
