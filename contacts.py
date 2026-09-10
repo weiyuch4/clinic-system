@@ -459,6 +459,24 @@ def upsert_lab_cache(lab_data: dict, clinic_id: int = 1) -> None:
                 )
 
 
+def get_all_lab_cache(clinic_id: int = 1) -> dict[str, dict]:
+    """Fetch all lab_cache rows for a clinic in one query. Returns {national_id: data}."""
+    import json as _json
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT national_id, data FROM lab_cache WHERE clinic_id=%s",
+                (clinic_id,)
+            )
+            out: dict[str, dict] = {}
+            for row in cur.fetchall():
+                data = row["data"]
+                if isinstance(data, str):
+                    data = _json.loads(data)
+                out[row["national_id"]] = data
+            return out
+
+
 def get_lab_cache(national_id: str, clinic_id: int = 1) -> dict:
     """Retrieve cached lab results for a patient (populated by sync agent)."""
     with _conn() as conn:

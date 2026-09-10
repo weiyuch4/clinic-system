@@ -855,6 +855,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             f_auto_excluded        = exe.submit(contacts.get_auto_excluded_entries, cid)
             f_called_entries       = exe.submit(contacts.get_called_entries, cid)
             f_all_blood_used       = exe.submit(contacts.get_all_mspt_blood_used, cid)
+            f_all_lab_cache        = exe.submit(contacts.get_all_lab_cache, cid) if CLOUD_MODE else None
 
         report                      = _build_cloud_report(f_report.result(), as_of) if CLOUD_MODE else f_report.result()
         hidden_keys                 = f_hidden.result()
@@ -878,6 +879,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
         auto_excluded_raw           = f_auto_excluded.result()
         called_entries              = f_called_entries.result()
         all_blood_used              = f_all_blood_used.result()
+        all_lab_cache               = f_all_lab_cache.result() if f_all_lab_cache else {}
 
         def apply_blood_status(entries: list[FollowupEntry]) -> list[FollowupEntry]:
             """Fill needs_blood_test and blood_draw_date.
@@ -901,6 +903,17 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                     bt_needed, bt_date = database.mspt_blood_status(
                         e.mspt_stage, nat_id, as_of, _used=used, skip_lab=True
                     )
+                    # On cloud, skip_lab=True means BIO files weren't checked.
+                    # Fall back to lab_cache (synced from PC1) to catch available draws.
+                    if bt_needed and all_lab_cache:
+                        used_dates = set(used.values())
+                        cache_date = lab_results.check_metabolic_panel_in_cache(
+                            nat_id, all_lab_cache, as_of,
+                            window_days=database.MSPT_BLOOD_TEST_WINDOW_DAYS,
+                            exclude_iso_dates=used_dates,
+                        )
+                        if cache_date:
+                            bt_needed, bt_date = False, cache_date
                 updates: dict = {'needs_blood_test': bt_needed, 'blood_draw_date': bt_date}
                 if e.mspt_stage == '收案' and e.last_stage is not None:
                     updates['contact_reason'] = '需重新收案+抽血' if bt_needed else '需重新收案'

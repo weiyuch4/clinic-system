@@ -775,6 +775,34 @@ def _parse_slash_date(s: str) -> date | None:
         return None
 
 
+def check_metabolic_panel_in_cache(
+    nat_id: str,
+    all_lab_cache: dict,
+    as_of: date,
+    window_days: int = 90,
+    exclude_iso_dates: set[str] | None = None,
+) -> str | None:
+    """Check lab_cache (Supabase) for a recent metabolic panel result.
+
+    Used on Railway where local DBF files are unavailable. Returns the ISO date
+    of the most recent qualifying result, or None.
+    """
+    bio_records = all_lab_cache.get(nat_id, {}).get('bio', [])
+    if not bio_records:
+        return None
+    cutoff = as_of - timedelta(days=window_days)
+    exclude = exclude_iso_dates or set()
+    best: date | None = None
+    for record in bio_records:
+        d = _parse_slash_date(record.get('date', ''))
+        if not d or d < cutoff or d > as_of or d.isoformat() in exclude:
+            continue
+        if any(item.get('label') in MSPT_PANEL_LABELS for item in record.get('items', [])):
+            if best is None or d > best:
+                best = d
+    return best.isoformat() if best else None
+
+
 def has_results_since(national_id: str, since: date) -> tuple[bool, str | None]:
     """Check whether any lab result for this patient was uploaded on or after `since`.
     Checks EXAMPLAT.DBF first (new platform, direct ID_NO lookup), then falls back
