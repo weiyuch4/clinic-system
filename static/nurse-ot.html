@@ -291,7 +291,15 @@
 (function () {
   'use strict';
   var L = Layout;
-  L.init({ activePage: 'nurse-ot' });
+  L.init({
+    activePage: 'nurse-ot',
+    onNurseChange: function(name) {
+      _nurseFilter = name || _nurseName;
+      document.getElementById('page-sub').textContent =
+        _nurseFilter ? _nurseFilter + ' 的加班紀錄' : '自行記錄加班時間，供薪資計算參考';
+      loadLogs();
+    },
+  });
 
   /* ── picker state ─────────────────────────────────────────────────────── */
   var _openPicker = null;   // 'dp' | 'tp-start' | 'tp-end' | null
@@ -305,6 +313,7 @@
 
   /* ── page state ───────────────────────────────────────────────────────── */
   var _nurseName   = '';
+  var _nurseFilter = '';   // PIN-selected nurse; falls back to JWT display_name
   var _currentYear = 0, _currentMon = 0;
   var _logs        = [];
 
@@ -520,6 +529,7 @@
   }
 
   function loadLogs() {
+    _nurseFilter = L.getNurse() || _nurseName;
     updateMonthDisplay();
     var stateEl = document.getElementById('log-state');
     document.getElementById('log-table').style.display = 'none';
@@ -528,7 +538,8 @@
     stateEl.textContent = '載入中…';
     stateEl.style.display = '';
 
-    L.apiFetch('/api/nurse/ot-logs?month=' + encodeURIComponent(monthStr(_currentYear, _currentMon)))
+    L.apiFetch('/api/nurse/ot-logs?month=' + encodeURIComponent(monthStr(_currentYear, _currentMon)) +
+               (_nurseFilter ? '&nurse=' + encodeURIComponent(_nurseFilter) : ''))
       .then(function(logs) { renderRows(logs); })
       .catch(function() {
         stateEl.className = 'ot-err-msg';
@@ -557,6 +568,7 @@
       start_time: pad2(st.h)+':'+pad2(st.m),
       end_time:   pad2(et.h)+':'+pad2(et.m),
       note: document.getElementById('add-note').value,
+      nurse: _nurseFilter,
     })
     .then(function() {
       document.getElementById('add-note').value = '';
@@ -570,7 +582,8 @@
 
   window.deleteEntry = function(id) {
     if (!confirm('確定刪除這筆記錄？')) return;
-    L.apiAction('DELETE', '/api/nurse/ot-logs/'+id)
+    var url = '/api/nurse/ot-logs/' + id + (_nurseFilter ? '?nurse=' + encodeURIComponent(_nurseFilter) : '');
+    L.apiAction('DELETE', url)
       .then(function() { loadLogs(); })
       .catch(function() { alert('刪除失敗'); });
   };
@@ -584,7 +597,7 @@
       return s+Math.max(0,calcMins(sp[0],sp[1],ep[0],ep[1]));
     }, 0);
     document.getElementById('print-meta').textContent =
-      _nurseName + '　' + label + '　共 ' + _logs.length + ' 筆，合計 ' + fmtHours(totalMins);
+      (_nurseFilter || _nurseName) + '　' + label + '　共 ' + _logs.length + ' 筆，合計 ' + fmtHours(totalMins);
     window.print();
   };
 
@@ -599,9 +612,10 @@
 
     L.apiFetch('/api/me')
       .then(function(me) {
-        _nurseName = me.display_name || '';
+        _nurseName   = me.display_name || '';
+        _nurseFilter = L.getNurse() || _nurseName;
         document.getElementById('page-sub').textContent =
-          '自行記錄加班時間，供薪資計算參考';
+          _nurseFilter ? _nurseFilter + ' 的加班紀錄' : '自行記錄加班時間，供薪資計算參考';
         loadLogs();
       })
       .catch(function() {

@@ -513,8 +513,9 @@ def get_me(user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
 
 
 @app.get("/api/nurse/ot-logs")
-def get_my_ot_logs(month: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
-    return contacts.get_nurse_ot_logs(user.display_name, user.clinic_id, month or None)
+def get_my_ot_logs(month: str = "", nurse: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    effective_nurse = nurse.strip() or user.display_name
+    return contacts.get_nurse_ot_logs(effective_nurse, user.clinic_id, month or None)
 
 
 @app.post("/api/nurse/ot-logs")
@@ -523,15 +524,17 @@ def add_my_ot_log(body: dict, user: auth.CurrentUser = Depends(auth.get_current_
     start_time = str(body.get("start_time", "")).strip()
     end_time   = str(body.get("end_time", "")).strip()
     note       = str(body.get("note", "")).strip()
+    nurse      = str(body.get("nurse", "")).strip() or user.display_name
     if not date or not start_time or not end_time:
         raise HTTPException(status_code=422, detail="日期與時間不可空白")
-    new_id = contacts.add_nurse_ot_log(user.display_name, user.clinic_id, date, start_time, end_time, note)
+    new_id = contacts.add_nurse_ot_log(nurse, user.clinic_id, date, start_time, end_time, note)
     return {"id": new_id}
 
 
 @app.delete("/api/nurse/ot-logs/{log_id}")
-def delete_my_ot_log(log_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
-    if not contacts.delete_nurse_ot_log(log_id, user.display_name, user.clinic_id):
+def delete_my_ot_log(log_id: int, nurse: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    effective_nurse = nurse.strip() or user.display_name
+    if not contacts.delete_nurse_ot_log(log_id, effective_nurse, user.clinic_id):
         raise HTTPException(status_code=404, detail="記錄不存在")
 
 

@@ -51,9 +51,10 @@
   ];
 
   // ── Private state ────────────────────────────────────
-  var _activePage   = 'dashboard';
-  var _onRefresh    = null;
-  var _nurse        = localStorage.getItem('nurse') || '';
+  var _activePage      = 'dashboard';
+  var _onRefresh       = null;
+  var _onNurseChange   = null;
+  var _nurse           = localStorage.getItem('nurse') || '';
   var _pinTarget    = '';   // nurse name waiting for PIN entry
   var _scheduleData = null;
   // _theme declared at top of IIFE for early application
@@ -296,6 +297,7 @@
     _updateNurseLbl(name);
     _renderNurseShift();
     _updateChangePinBtn();
+    if (_onNurseChange) _onNurseChange(name);
   }
 
   function _openChangePinModal(name) {
@@ -945,8 +947,9 @@
 
   // ── Public init ──────────────────────────────────────
   function init(config) {
-    _activePage = config.activePage || 'dashboard';
-    _onRefresh  = config.onRefresh  || null;
+    _activePage    = config.activePage    || 'dashboard';
+    _onRefresh     = config.onRefresh     || null;
+    _onNurseChange = config.onNurseChange || null;
     _renderSidebar();
     _renderTopbar();
     _injectPinModal();
