@@ -168,11 +168,7 @@ def do_sync() -> None:
     try:
         import lab_results as _lab
         nat_ids = {c['chart_number'] for c in candidates if c.get('chart_number')}
-        lab_data = {}
-        for nat_id in nat_ids:
-            r = _lab.get_lab_results(nat_id)
-            if r.get('bio') or r.get('cbc'):
-                lab_data[nat_id] = {'bio': r['bio'], 'cbc': r['cbc']}
+        lab_data = _lab.batch_lab_results(nat_ids)
         if lab_data:
             resp = requests.post(
                 f"{CLOUD_URL}/api/sync/push-lab",

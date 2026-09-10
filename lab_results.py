@@ -559,6 +559,176 @@ def _read_examplat_records(national_id: str) -> list[dict]:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+def batch_lab_results(national_ids: set[str]) -> dict[str, dict]:
+    """Read lab results for many patients at once.
+
+    Reads PAT_HIST.DBF and each data DBF exactly once regardless of patient
+    count — O(files) instead of O(patients × files).  Returns a dict keyed by
+    national_id containing only patients who have at least one result.
+    """
+    from collections import defaultdict
+
+    if not national_ids or not ZZ_DIR:
+        return {}
+
+    # ── Step 1: build nat_id → patient_code map in one PAT_HIST pass ──────────
+    code_map: dict[str, str] = {}   # nat_id → 6-digit code
+    remaining = set()
+    for nat_id in national_ids:
+        cached = _patient_code_cache.get(nat_id, '__miss__')
+        if cached != '__miss__':
+            if cached:
+                code_map[nat_id] = cached
+        else:
+            remaining.add(nat_id)
+
+    if remaining:
+        pat_hist = os.path.join(ZZ_DIR, 'PAT_HIST.DBF')
+        if os.path.isfile(pat_hist):
+            best: dict[str, tuple[str, str]] = {}  # nat_id → (code, date)
+            for row in _iter_rows(pat_hist):
+                for fld in ('ID_NEW', 'ID_OLD'):
+                    nid = row.get(fld, '').strip()
+                    if nid not in remaining:
+                        continue
+                    d    = row.get('DATE', '').strip()
+                    code = row.get('CODE', '').strip()
+                    if code and (nid not in best or d >= best[nid][1]):
+                        best[nid] = (code, d)
+            for nid, (code, _) in best.items():
+                code_map[nid] = code
+                _patient_code_cache[nid] = code
+                remaining.discard(nid)
+
+        # Fallback: IC visit files for patients not in PAT_HIST
+        if remaining and os.path.isdir(IC_DIR):
+            ic_files = sorted(
+                (p for p in _glob.glob(os.path.join(IC_DIR, 'IC?????.DBF'))
+                 if os.path.basename(p)[2:-4].isdigit()),
+                reverse=True,
+            )
+            for ic_path in ic_files:
+                if not remaining:
+                    break
+                for row in _iter_rows(ic_path):
+                    nid = row.get('ID', '').strip()
+                    if nid not in remaining:
+                        continue
+                    cf = row.get('CODE_F', '').strip()
+                    if len(cf) >= 6 and cf[:6].isdigit():
+                        code_map[nid] = cf[:6]
+                        _patient_code_cache[nid] = cf[:6]
+                        remaining.discard(nid)
+
+        for nid in remaining:            # cache confirmed misses
+            _patient_code_cache[nid] = None
+
+    if not code_map:
+        return {}
+
+    code_to_nat = {code: nid for nid, code in code_map.items()}
+    results: dict[str, dict] = {nid: {'bio': [], 'cbc': []} for nid in code_map}
+
+    # ── Step 2: bioc.dbf + BIO2C.DBF — one pass each ─────────────────────────
+    for dbf_name in ('bioc.dbf', 'BIO2C.DBF'):
+        path = os.path.join(ZZ_DIR, dbf_name)
+        if not os.path.isfile(path):
+            continue
+        code_rows: dict[str, list] = defaultdict(list)
+        for row in _cached_rows(path):
+            code = row.get('CODE', '').strip()
+            if code in code_to_nat:
+                code_rows[code].append(row)
+        for code, rows in code_rows.items():
+            nid = code_to_nat[code]
+            rows.sort(key=_bio_display_date, reverse=True)
+            existing_dates = {r['date'] for r in results[nid]['bio']}
+            for row in rows:
+                labels  = _bio_labels_for(row.get('DATE', ''))
+                is_new  = labels is NEW_BIO_LABELS
+                items, notes = [], ''
+                for var, label in labels.items():
+                    val = row.get(var, '').strip()
+                    if not val:
+                        continue
+                    if label == '__notes__':
+                        notes = val
+                        continue
+                    v, flag = _parse_flag(val)
+                    items.append({'label': label, 'value': v, 'flag': flag})
+                if is_new:
+                    var41 = row.get('VAR41', '').strip()
+                    if var41:
+                        items.extend(_parse_new_platform_notes(var41))
+                labeled = set(labels.keys()) | DATE_VARS | {'CODE', 'DATE', 'VAR41'}
+                for k, val in row.items():
+                    if k not in labeled and val:
+                        v, flag = _parse_flag(val)
+                        items.append({'label': k, 'value': v, 'flag': flag})
+                disp = _bio_display_date(row)
+                if (items or notes) and disp not in existing_dates:
+                    results[nid]['bio'].append({'date': disp, 'items': items, 'notes': notes})
+                    existing_dates.add(disp)
+
+    # ── Step 3: EXAMPLAT.DBF — one pass, keyed by national_id directly ────────
+    examplat_path = os.path.join(ZZ_DIR, 'EXAMPLAT.DBF')
+    if os.path.isfile(examplat_path):
+        ep_groups: dict[str, dict[str, list]] = {}
+        for row in _cached_rows(examplat_path):
+            nid = row.get('ID_NO', '').strip()
+            if nid not in code_map:
+                continue
+            date_raw = row.get('M_DATE', '').strip() or row.get('E_DATE', '').strip()
+            disp = _decode_date(date_raw) if date_raw else '???'
+            name  = row.get('E_NAME', '').strip() or row.get('E_NAME_EN', '').strip()
+            value = row.get('E_RESULT', '').strip()
+            if not name or not value:
+                continue
+            jdg  = row.get('E_JDG', '').strip().upper()
+            flag = '+' if jdg.startswith('H') else '-' if jdg.startswith('L') else ''
+            ep_groups.setdefault(nid, defaultdict(list))[disp].append(
+                {'label': name, 'value': value, 'flag': flag}
+            )
+        for nid, groups in ep_groups.items():
+            ep_records = [
+                {'date': d, 'items': groups[d], 'notes': ''}
+                for d in sorted(groups, reverse=True) if groups[d]
+            ]
+            ep_dates = {r['date'] for r in ep_records}
+            results[nid]['bio'] = [r for r in results[nid]['bio'] if r['date'] not in ep_dates] + ep_records
+
+    # ── Step 4: CBCC.DBF — one pass ───────────────────────────────────────────
+    cbc_path = os.path.join(ZZ_DIR, 'CBCC.DBF')
+    if os.path.isfile(cbc_path):
+        cbc_rows: dict[str, list] = defaultdict(list)
+        for row in _cached_rows(cbc_path):
+            code = row.get('CODE', '').strip()
+            if code in code_to_nat:
+                cbc_rows[code].append(row)
+        for code, rows in cbc_rows.items():
+            nid = code_to_nat[code]
+            rows.sort(key=lambda r: _decode_date(r.get('DATE', '')), reverse=True)
+            for row in rows:
+                items = []
+                for var, label in CBC_LABELS.items():
+                    val = row.get(var, '').strip()
+                    if val:
+                        v, flag = _parse_flag(val)
+                        items.append({'label': label, 'value': v, 'flag': flag})
+                if items:
+                    results[nid]['cbc'].append(
+                        {'date': _decode_date(row.get('DATE', '???')), 'items': items}
+                    )
+
+    # ── Step 5: sort and drop patients with no results ─────────────────────────
+    out: dict[str, dict] = {}
+    for nid, data in results.items():
+        data['bio'].sort(key=lambda r: r['date'], reverse=True)
+        if data['bio'] or data['cbc']:
+            out[nid] = data
+    return out
+
+
 def get_lab_results(national_id: str) -> dict:
     """
     Return structured lab results for a patient identified by national ID.
