@@ -1116,6 +1116,9 @@
     apiFetch:          apiFetch,
     apiAction:         apiAction,
     getReport:         getReport,
+    clearReportCache:  function(dateStr) {
+      try { sessionStorage.removeItem('clinic_rpt_' + (dateStr || localDateStr())); } catch(e) {}
+    },
     ICONS:             ICONS,
   };
 })();

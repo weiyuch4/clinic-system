@@ -248,7 +248,20 @@
     var today = L.localDateStr();
     L.getReport(today, applyReport).then(applyReport)
       .catch(function (e) { L.showError('資料載入失敗 — ' + (e.message || '')); });
+  }
 
+  // After a successful write action: re-render immediately with current local
+  // state, then fetch fresh data in the background to correct any discrepancy.
+  function _refreshBg() {
+    renderAll();
+    L.clearReportCache();
+    L.getReport(L.localDateStr(), applyReport).then(applyReport).catch(function(){});
+  }
+
+  function _removeFromActive(chartNum) {
+    _return = _return.filter(function(e) { return e.patient.chart_number !== chartNum; });
+    _phone  = _phone.filter(function(e)  { return e.patient.chart_number !== chartNum; });
+    delete _activeMap[chartNum];
   }
 
   function match(entry) {
@@ -461,7 +474,11 @@
       if (!se) return;
       btn.disabled = true;
       L.apiAction('POST', '/api/submitted', se)
-        .then(function () { L.showToast('申報記錄已儲存'); load(); })
+        .then(function () {
+          L.showToast('申報記錄已儲存');
+          _submittable = _submittable.filter(function(e) { return e.patient.chart_number !== chart; });
+          _refreshBg();
+        })
         .catch(function (e) { L.showToast('儲存失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
 
@@ -470,7 +487,11 @@
       if (!se2) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/submitted', { chart_number: se2.patient.chart_number, mspt_stage: se2.mspt_stage })
-        .then(function () { L.showToast('已撤銷完成記錄'); load(); })
+        .then(function () {
+          L.showToast('已撤銷完成記錄');
+          _submittable = _submittable.filter(function(e) { return e.patient.chart_number !== chart; });
+          _refreshBg();
+        })
         .catch(function (e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
 
@@ -478,7 +499,12 @@
       var ce = _contactedMap[chart]; if (!ce) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/contacted', { chart_number: ce.patient.chart_number, category: ce.category, due_date: ce.due_date })
-        .then(function () { L.showToast('已撤銷聯絡記錄'); load(); })
+        .then(function () {
+          L.showToast('已撤銷聯絡記錄');
+          _contacted = _contacted.filter(function(e) { return e.patient.chart_number !== chart; });
+          delete _contactedMap[chart];
+          _refreshBg();
+        })
         .catch(function (e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
 
@@ -486,7 +512,12 @@
       var he = _holdMap[chart]; if (!he) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/on-hold', { hold_id: he.hold_id })
-        .then(function () { L.showToast('已解除暫緩'); load(); })
+        .then(function () {
+          L.showToast('已解除暫緩');
+          _hold = _hold.filter(function(e) { return e.patient.chart_number !== chart; });
+          delete _holdMap[chart];
+          _refreshBg();
+        })
         .catch(function (e) { L.showToast('解除失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     } else if (action === 'exclude') {
@@ -502,7 +533,12 @@
       var rx = _excludedMap[chart]; if (!rx) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/excluded', { chart_number: rx.patient.chart_number, category: rx.category })
-        .then(function () { L.showToast('已恢復追蹤：' + rx.patient.name); load(); })
+        .then(function () {
+          L.showToast('已恢復追蹤：' + rx.patient.name);
+          _excluded = _excluded.filter(function(e) { return e.patient.chart_number !== chart; });
+          delete _excludedMap[chart];
+          _refreshBg();
+        })
         .catch(function (e) { L.showToast('恢復失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     }
@@ -514,7 +550,14 @@
     var confirmBtn = this, errEl = document.getElementById('contact-error');
     errEl.classList.remove('show'); confirmBtn.disabled = true;
     L.apiAction('POST', url, { entry: entry, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-contact'); L.showToast('聯絡記錄已儲存'); load(); })
+      .then(function () {
+        L.hideModal('modal-contact'); L.showToast('聯絡記錄已儲存');
+        var chart = entry.patient.chart_number;
+        _removeFromActive(chart);
+        var ce = { patient: entry.patient, category: '代謝症候群', due_date: entry.due_date, note: '' };
+        _contacted.push(ce); _contactedMap[chart] = ce;
+        _refreshBg();
+      })
       .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
@@ -524,7 +567,11 @@
     var confirmBtn = this, errEl = document.getElementById('phone-error');
     errEl.classList.remove('show'); confirmBtn.disabled = true;
     L.apiAction('POST', '/api/mspt-phone-complete', { entry: entry, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-phone'); L.showToast('已完成，進入可申報佇列'); load(); })
+      .then(function () {
+        L.hideModal('modal-phone'); L.showToast('已完成，進入可申報佇列');
+        _removeFromActive(entry.patient.chart_number);
+        _refreshBg();
+      })
       .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
@@ -535,7 +582,14 @@
     var confirmBtn = this, errEl = document.getElementById('hold-error');
     errEl.classList.remove('show'); confirmBtn.disabled = true;
     L.apiAction('POST', '/api/on-hold', { entry: entry, note: note, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-hold'); L.showToast('已設定暫緩'); load(); })
+      .then(function () {
+        L.hideModal('modal-hold'); L.showToast('已設定暫緩');
+        var chart = entry.patient.chart_number;
+        _removeFromActive(chart);
+        var he = { patient: entry.patient, category: '代謝症候群', due_date: entry.due_date, note: note };
+        _hold.push(he); _holdMap[chart] = he;
+        _refreshBg();
+      })
       .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
@@ -557,7 +611,17 @@
     errEl.classList.remove('show');
     confirmBtn.disabled = true;
     L.apiAction('POST', '/api/excluded', { entry: _excludeEntry, reason: reason, note: note, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-exclude'); L.showToast('已排除：' + _excludeEntry.patient.name); load(); })
+      .then(function () {
+        L.hideModal('modal-exclude'); L.showToast('已排除：' + _excludeEntry.patient.name);
+        var chart = _excludeEntry.patient.chart_number;
+        _removeFromActive(chart);
+        delete _holdMap[chart]; delete _contactedMap[chart];
+        _hold      = _hold.filter(function(e) { return e.patient.chart_number !== chart; });
+        _contacted = _contacted.filter(function(e) { return e.patient.chart_number !== chart; });
+        var xe = { patient: _excludeEntry.patient, category: '代謝症候群', reason: reason };
+        _excluded.push(xe); _excludedMap[chart] = xe;
+        _refreshBg();
+      })
       .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
