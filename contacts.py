@@ -436,6 +436,9 @@ def init() -> None:
             cur.execute(_CREATE_CONTACTS)
             cur.execute(_CREATE_SUBMITTED)
             cur.execute(_CREATE_EXCLUDED)
+            # Migrate excluded table — add columns that may be missing from older schema
+            cur.execute("ALTER TABLE excluded ADD COLUMN IF NOT EXISTS nurse TEXT DEFAULT ''")
+            cur.execute("ALTER TABLE excluded ADD COLUMN IF NOT EXISTS clinic_id INTEGER NOT NULL DEFAULT 1")
             cur.execute(_CREATE_MSPT_PHONE_COMPLETED)
             cur.execute(_CREATE_MSPT_BLOOD_USED)
             cur.execute(_CREATE_MSPT_COMPLETED)
