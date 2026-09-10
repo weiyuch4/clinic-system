@@ -469,7 +469,7 @@ def get_lab_cache(national_id: str, clinic_id: int = 1) -> dict:
             )
             row = cur.fetchone()
             if row:
-                data = row[0]
+                data = row["data"]
                 return data if isinstance(data, dict) else __import__('json').loads(data)
             return {'bio': [], 'cbc': [], 'patient_code': None, 'error': None}
 
@@ -2044,24 +2044,27 @@ def delete_salary_record(record_id: int, clinic_id: int = 1) -> None:
 
 # ── Nurse self-reported overtime logs ───────────────────────────────────────────
 
-def get_nurse_ot_logs(nurse: str, clinic_id: int = 1, month: str | None = None) -> list[dict]:
+def get_nurse_ot_logs(nurse: str, clinic_id: int = 1, month: str | None = None, legacy_nurse: str = '') -> list[dict]:
+    # Include records stored under the shared JWT display_name (pre-PIN-tracking era)
+    nurses = list({n for n in [nurse, legacy_nurse] if n})
+    placeholders = ','.join(['%s'] * len(nurses))
     with _conn() as conn:
         with conn.cursor() as cur:
             if month:
                 cur.execute(
-                    """SELECT id, nurse, date, start_time, end_time, note, created_at
+                    f"""SELECT id, nurse, date, start_time, end_time, note, created_at
                        FROM nurse_ot_logs
-                       WHERE clinic_id=%s AND nurse=%s AND date LIKE %s
+                       WHERE clinic_id=%s AND nurse IN ({placeholders}) AND date LIKE %s
                        ORDER BY date, start_time""",
-                    (clinic_id, nurse, month + '%'),
+                    (clinic_id, *nurses, month + '%'),
                 )
             else:
                 cur.execute(
-                    """SELECT id, nurse, date, start_time, end_time, note, created_at
+                    f"""SELECT id, nurse, date, start_time, end_time, note, created_at
                        FROM nurse_ot_logs
-                       WHERE clinic_id=%s AND nurse=%s
+                       WHERE clinic_id=%s AND nurse IN ({placeholders})
                        ORDER BY date DESC, start_time""",
-                    (clinic_id, nurse),
+                    (clinic_id, *nurses),
                 )
             return [dict(r) for r in cur.fetchall()]
 
@@ -2078,12 +2081,12 @@ def add_nurse_ot_log(nurse: str, clinic_id: int, date: str, start_time: str, end
             return cur.fetchone()["id"]
 
 
-def delete_nurse_ot_log(log_id: int, nurse: str, clinic_id: int = 1) -> bool:
+def delete_nurse_ot_log(log_id: int, clinic_id: int = 1) -> bool:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM nurse_ot_logs WHERE id=%s AND nurse=%s AND clinic_id=%s",
-                (log_id, nurse, clinic_id),
+                "DELETE FROM nurse_ot_logs WHERE id=%s AND clinic_id=%s",
+                (log_id, clinic_id),
             )
             return cur.rowcount > 0
 

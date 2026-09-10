@@ -582,11 +582,11 @@
     var confirmBtn = this, errEl = document.getElementById('hold-error');
     errEl.classList.remove('show'); confirmBtn.disabled = true;
     L.apiAction('POST', '/api/on-hold', { entry: entry, note: note, nurse: L.getNurse() })
-      .then(function () {
+      .then(function (resp) {
         L.hideModal('modal-hold'); L.showToast('已設定暫緩');
         var chart = entry.patient.chart_number;
         _removeFromActive(chart);
-        var he = { patient: entry.patient, category: '代謝症候群', due_date: entry.due_date, note: note };
+        var he = { patient: entry.patient, category: '代謝症候群', due_date: entry.due_date, note: note, hold_id: resp && resp.hold_id };
         _hold.push(he); _holdMap[chart] = he;
         _refreshBg();
       })
