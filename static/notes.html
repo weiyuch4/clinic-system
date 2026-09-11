@@ -176,8 +176,6 @@
           <div class="notes-editor-hd">
             <span class="notes-editor-title" id="editor-title">便利貼</span>
             <div class="editor-hd-btns">
-              <button class="act-btn" id="btn-cancel" hidden>取消</button>
-              <button class="act-btn" id="btn-save" hidden>儲存</button>
               <button class="act-btn act-primary" id="btn-new">新增記事</button>
             </div>
           </div>
@@ -199,7 +197,7 @@
           <!-- Compose / edit textarea (hidden when idle) -->
           <textarea class="notes-editor-ta" id="compose-ta" placeholder="在此輸入記事內容，Ctrl+Enter 送出…" hidden></textarea>
 
-          <!-- Footer: color picker + post button (hidden when idle) -->
+          <!-- Footer: color picker + action button (hidden when idle) -->
           <div class="notes-editor-footer" id="editor-footer" hidden>
             <span class="notes-color-label">選擇顏色</span>
             <div class="color-pick" id="color-pick">
@@ -209,6 +207,7 @@
               <span class="cp-sw" data-c="pink"></span>
             </div>
             <button class="act-btn act-primary" id="btn-post" style="margin-left:auto">發布</button>
+            <button class="act-btn" id="btn-save" hidden style="margin-left:8px">儲存</button>
           </div>
         </div>
 
@@ -246,8 +245,6 @@
     _mode = 'idle';
     _selectedId = null;
     document.getElementById('editor-title').textContent = '便利貼';
-    document.getElementById('btn-cancel').hidden = true;
-    document.getElementById('btn-save').hidden = true;
     document.getElementById('notes-idle').style.display = '';
     document.getElementById('compose-ta').hidden = true;
     document.getElementById('editor-footer').hidden = true;
@@ -258,9 +255,8 @@
     _mode = 'new';
     _selectedId = null;
     document.getElementById('editor-title').textContent = '新增記事';
-    document.getElementById('btn-cancel').hidden = false;
+    document.getElementById('btn-post').hidden = false;
     document.getElementById('btn-save').hidden = true;
-    document.getElementById('btn-post').style.display = '';
     document.getElementById('notes-idle').style.display = 'none';
     document.getElementById('compose-ta').hidden = false;
     document.getElementById('editor-footer').hidden = false;
@@ -274,9 +270,8 @@
     _mode = 'edit';
     _selectedId = note.id;
     document.getElementById('editor-title').textContent = '編輯記事';
-    document.getElementById('btn-cancel').hidden = false;
+    document.getElementById('btn-post').hidden = true;
     document.getElementById('btn-save').hidden = false;
-    document.getElementById('btn-post').style.display = 'none';
     document.getElementById('notes-idle').style.display = 'none';
     document.getElementById('compose-ta').hidden = false;
     document.getElementById('editor-footer').hidden = false;
@@ -320,8 +315,6 @@
 
   document.getElementById('btn-new').addEventListener('click', showNew);
 
-  document.getElementById('btn-cancel').addEventListener('click', showIdle);
-
   document.getElementById('btn-post').addEventListener('click', submitNew);
 
   document.getElementById('btn-save').addEventListener('click', submitEdit);
@@ -343,7 +336,7 @@
     _notes.unshift(optimistic);
     render(_notes);
     ta.value = '';
-    showIdle();
+    showNew();
     L.apiAction('POST', '/api/notes', { content: content, color: _color, nurse: L.getNurse() })
       .then(function (note) {
         _notes = _notes.map(function (n) { return n.id === optimistic.id ? note : n; });
