@@ -301,6 +301,14 @@
 
   // ── weekly chart ────────────────────────────────────
   function fetchDayHistory(dateStr) {
+    var today = D();
+    var cacheKey = 'hist:' + dateStr;
+    if (dateStr !== today) {
+      try {
+        var hit = sessionStorage.getItem(cacheKey);
+        if (hit) return Promise.resolve(JSON.parse(hit));
+      } catch(e) {}
+    }
     return L.apiFetch('/api/contacts/history?target_date=' + dateStr)
       .then(function(r) {
         var c1 = (r.contacted || []).length, c2 = (r.called || []).length, mc = (r.mspt_completed || []).length;
@@ -308,7 +316,11 @@
         [].concat(r.contacted || [], r.called || []).forEach(function(e) {
           var c = e.category || '其他'; cats[c] = (cats[c] || 0) + 1;
         });
-        return {count: c1 + c2, contacted: c1, called: c2, mspt_completed: mc, cats: cats};
+        var result = {count: c1 + c2, contacted: c1, called: c2, mspt_completed: mc, cats: cats};
+        if (dateStr !== today) {
+          try { sessionStorage.setItem(cacheKey, JSON.stringify(result)); } catch(e) {}
+        }
+        return result;
       })
       .catch(function() { return {count: 0, contacted: 0, called: 0, mspt_completed: 0, cats: {}}; });
   }

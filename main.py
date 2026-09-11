@@ -4,7 +4,6 @@ import os
 import re as _re
 import secrets
 import threading
-import time as _time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 
@@ -52,14 +51,25 @@ NURSE_NAMES: list[str] = ["媛淩", "巧潔", "巧菱", "惠茗"]
 CLOUD_MODE = os.environ.get("CLOUD_MODE", "").lower() in ("1", "true", "yes")
 _SYNC_TOKEN = os.environ.get("SYNC_TOKEN", "")
 
-# Cache today's report per clinic_id — invalidated by any write that changes dashboard state.
-# This eliminates the 22-parallel-DB-query fan-out on every tab load/navigation.
-_report_cache: dict[int, tuple[float, "DailyReport"]] = {}
-_REPORT_CACHE_TTL = 30  # seconds — safety-net TTL in case a write path is ever missed
+# Per-clinic server-side caches. No TTL — invalidated only by writes and at midnight
+# (date mismatch). Write endpoints call the invalidate helpers immediately, so cached
+# data is always consistent with the DB during active use. The only "cold start" is
+# after a Railway deploy (process restart clears the dict).
+_report_cache: dict[int, tuple[date, "DailyReport"]] = {}
+_blood_pending_cache: dict[int, list] = {}
+_blood_physical_cache: dict[int, list] = {}
 
 
 def _invalidate_report_cache(clinic_id: int) -> None:
     _report_cache.pop(clinic_id, None)
+
+
+def _invalidate_blood_pending_cache(clinic_id: int) -> None:
+    _blood_pending_cache.pop(clinic_id, None)
+
+
+def _invalidate_blood_physical_cache(clinic_id: int) -> None:
+    _blood_physical_cache.pop(clinic_id, None)
 
 
 logging.basicConfig(
@@ -865,6 +875,7 @@ async def sync_push_lab(request: Request) -> dict:
     clinic_id = int(body.get("clinic_id", 1))
     lab_data = body.get("lab_data", {})
     contacts.upsert_lab_cache(lab_data, clinic_id)
+    _invalidate_blood_pending_cache(clinic_id)
     return {"ok": True, "count": len(lab_data)}
 
 
@@ -884,7 +895,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
     cid = user.clinic_id
     if report_date is None:
         _cached = _report_cache.get(cid)
-        if _cached and (_time.monotonic() - _cached[0]) < _REPORT_CACHE_TTL:
+        if _cached and _cached[0] == date.today():
             return _cached[1]
     try:
         as_of = report_date or date.today()
@@ -1181,7 +1192,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             ckd_inactive=filter_followups(report.ckd_inactive),
         )
         if report_date is None:
-            _report_cache[cid] = (_time.monotonic(), _result)
+            _report_cache[cid] = (date.today(), _result)
         return _result
     except HTTPException:
         raise
@@ -1620,6 +1631,10 @@ def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -
     """Patients with external lab orders (last 5 days + overdue), with result and notified status.
     Returns [{date, patients: [{name, nat_id, draw_codes, is_allergy,
     results_back, results_date, notified, overdue}]}], most recent day first."""
+    cid = user.clinic_id
+    _cached = _blood_pending_cache.get(cid)
+    if _cached is not None:
+        return _cached
     try:
         notified_keys  = contacts.get_blood_notified_keys(user.clinic_id)
         physical_keys  = contacts.get_blood_physical_keys(user.clinic_id)
@@ -1646,6 +1661,7 @@ def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -
                 p['overdue'] = draw_age > 5 and not p.get('results_back', False)
         # Drop empty day groups
         days = [d for d in days if d['patients']]
+        _blood_pending_cache[cid] = days
         return days
     except Exception:
         logger.exception("get_blood_pending failed")
@@ -1669,6 +1685,7 @@ def post_blood_notified(req: BloodNotifiedRequest, user: auth.CurrentUser = Depe
     """Mark a patient as notified after their lab results came back."""
     try:
         contacts.add_blood_notified(req.nat_id, req.draw_date, req.nurse, user.clinic_id)
+        _invalidate_blood_pending_cache(user.clinic_id)
         return {"ok": True}
     except Exception:
         logger.exception("blood-notified POST failed")
@@ -1680,6 +1697,7 @@ def delete_blood_notified(req: BloodNotifiedRequest, user: auth.CurrentUser = De
     """Undo a blood-notified mark."""
     try:
         contacts.remove_blood_notified(req.nat_id, req.draw_date, user.clinic_id)
+        _invalidate_blood_pending_cache(user.clinic_id)
         return {"ok": True}
     except Exception:
         logger.exception("blood-notified DELETE failed")
@@ -1689,8 +1707,14 @@ def delete_blood_notified(req: BloodNotifiedRequest, user: auth.CurrentUser = De
 @app.get("/api/blood-physical")
 def get_blood_physical(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
     """Patients moved to external-lab physical report tracking."""
+    cid = user.clinic_id
+    _cached = _blood_physical_cache.get(cid)
+    if _cached is not None:
+        return _cached
     try:
-        return contacts.get_blood_physical(user.clinic_id)
+        result = contacts.get_blood_physical(user.clinic_id)
+        _blood_physical_cache[cid] = result
+        return result
     except Exception:
         logger.exception("blood-physical GET failed")
         raise HTTPException(status_code=500, detail="實體報告清單載入失敗")
@@ -1702,6 +1726,8 @@ def post_blood_physical(req: BloodPhysicalRequest, user: auth.CurrentUser = Depe
     try:
         contacts.add_blood_physical(req.nat_id, req.draw_date, req.name, req.nurse,
                                     req.draw_codes, req.draw_code_names, user.clinic_id)
+        _invalidate_blood_pending_cache(user.clinic_id)
+        _invalidate_blood_physical_cache(user.clinic_id)
         return {"ok": True}
     except Exception:
         logger.exception("blood-physical POST failed")
@@ -1713,6 +1739,8 @@ def delete_blood_physical(req: BloodPhysicalRequest, user: auth.CurrentUser = De
     """Move a patient back from physical tracking to the digital list."""
     try:
         contacts.remove_blood_physical(req.nat_id, req.draw_date, user.clinic_id)
+        _invalidate_blood_pending_cache(user.clinic_id)
+        _invalidate_blood_physical_cache(user.clinic_id)
         return {"ok": True}
     except Exception:
         logger.exception("blood-physical DELETE failed")
@@ -1725,6 +1753,8 @@ def blood_physical_done(req: BloodPhysicalRequest, user: auth.CurrentUser = Depe
     try:
         contacts.add_blood_notified(req.nat_id, req.draw_date, req.nurse, user.clinic_id)
         contacts.remove_blood_physical(req.nat_id, req.draw_date, user.clinic_id)
+        _invalidate_blood_pending_cache(user.clinic_id)
+        _invalidate_blood_physical_cache(user.clinic_id)
         return {"ok": True}
     except Exception:
         logger.exception("blood-physical/done POST failed")

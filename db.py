@@ -1,5 +1,6 @@
 import contextvars
 import os
+import time as _time
 import psycopg2
 import psycopg2.extras
 from psycopg2.pool import ThreadedConnectionPool
@@ -14,6 +15,10 @@ _clinic_id_ctx: contextvars.ContextVar[int | None] = contextvars.ContextVar(
     "clinic_id", default=None
 )
 
+# Only pre-ping connections idle longer than this. Shorter than Railway NAT timeout
+# (~6 min) but long enough that hot connections skip the extra 2 RTTs entirely.
+_PING_IF_IDLE_SECS = 60
+
 
 def set_clinic_id(cid: int) -> None:
     _clinic_id_ctx.set(cid)
@@ -23,27 +28,40 @@ def init_pool(minconn=1, maxconn=20) -> None:
     global _pool
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL environment variable not set")
-    # TCP keepalives prevent Railway's NAT gateway from silently dropping idle connections.
-    # Without these, reused pool connections can be dead, causing ~10s TCP-timeout hangs.
-    _pool = ThreadedConnectionPool(minconn, maxconn, DATABASE_URL)
+    # TCP keepalives prevent Railway's NAT gateway from silently dropping idle
+    # connections. keepalives_idle=30 means probes start after 30 s of silence,
+    # well before Railway's ~6-minute NAT timeout.
+    _pool = ThreadedConnectionPool(
+        minconn, maxconn, DATABASE_URL,
+        keepalives=1,
+        keepalives_idle=30,
+        keepalives_interval=10,
+        keepalives_count=3,
+    )
 
 
 def _get_live_conn() -> "psycopg2.extensions.connection":
     """Get a connection from the pool.
-    Pre-pings each candidate to detect Railway NAT-dropped connections before use.
-    Dead connections are discarded and a fresh one is returned instead."""
+    Pre-pings only connections that have been idle long enough that they
+    might have been dropped by Railway's NAT. Warm connections (used recently)
+    skip the ping entirely to avoid 2 extra RTTs on every hot request."""
     assert _pool is not None
+    now = _time.monotonic()
     for _ in range(3):
         conn = _pool.getconn()
         if conn.closed != 0:
             _pool.putconn(conn, close=True)
             continue
-        try:
-            conn.cursor().execute("SELECT 1")
-            conn.reset()
-            return conn
-        except psycopg2.OperationalError:
-            _pool.putconn(conn, close=True)
+        last_used = getattr(conn, '_last_used', None)
+        if last_used is not None and now - last_used > _PING_IF_IDLE_SECS:
+            try:
+                conn.cursor().execute("SELECT 1")
+                conn.reset()
+            except psycopg2.OperationalError:
+                _pool.putconn(conn, close=True)
+                continue
+        # New connections (no _last_used yet) are alive by definition; skip ping.
+        return conn
     return _pool.getconn()
 
 
@@ -81,4 +99,5 @@ def _conn():
             pass
         raise
     finally:
+        conn._last_used = _time.monotonic()
         _pool.putconn(conn, close=_discard)
