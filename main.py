@@ -1620,7 +1620,8 @@ def get_blood_physical(user: auth.CurrentUser = Depends(auth.get_current_user)) 
 def post_blood_physical(req: BloodPhysicalRequest, user: auth.CurrentUser = Depends(auth.get_current_user)):
     """Move a patient to external-lab physical report tracking."""
     try:
-        contacts.add_blood_physical(req.nat_id, req.draw_date, req.name, req.nurse, user.clinic_id)
+        contacts.add_blood_physical(req.nat_id, req.draw_date, req.name, req.nurse,
+                                    req.draw_codes, req.draw_code_names, user.clinic_id)
         return {"ok": True}
     except Exception:
         logger.exception("blood-physical POST failed")

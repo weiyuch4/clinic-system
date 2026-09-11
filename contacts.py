@@ -362,12 +362,14 @@ _CREATE_BLOOD_NOTIFIED = """
 
 _CREATE_BLOOD_PHYSICAL = """
     CREATE TABLE IF NOT EXISTS blood_physical (
-        clinic_id  INTEGER NOT NULL DEFAULT 1,
-        nat_id     TEXT    NOT NULL,
-        draw_date  TEXT    NOT NULL,
-        name       TEXT    NOT NULL DEFAULT '',
-        moved_at   TEXT    NOT NULL,
-        nurse      TEXT    NOT NULL DEFAULT '',
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
+        nat_id          TEXT    NOT NULL,
+        draw_date       TEXT    NOT NULL,
+        name            TEXT    NOT NULL DEFAULT '',
+        moved_at        TEXT    NOT NULL,
+        nurse           TEXT    NOT NULL DEFAULT '',
+        draw_codes      TEXT    NOT NULL DEFAULT '[]',
+        draw_code_names TEXT    NOT NULL DEFAULT '[]',
         PRIMARY KEY (clinic_id, nat_id, draw_date)
     )
 """
@@ -439,15 +441,20 @@ def get_blood_notified_keys(clinic_id: int = 1) -> set[tuple[str, str]]:
             return {(r['nat_id'], r['draw_date']) for r in cur.fetchall()}
 
 
-def add_blood_physical(nat_id: str, draw_date: str, name: str = '', nurse: str = '', clinic_id: int = 1) -> None:
+def add_blood_physical(nat_id: str, draw_date: str, name: str = '', nurse: str = '',
+                       draw_codes: str = '[]', draw_code_names: str = '[]',
+                       clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """INSERT INTO blood_physical (clinic_id, nat_id, draw_date, name, moved_at, nurse)
-                   VALUES (%s, %s, %s, %s, %s, %s)
+                """INSERT INTO blood_physical
+                       (clinic_id, nat_id, draw_date, name, moved_at, nurse, draw_codes, draw_code_names)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (clinic_id, nat_id, draw_date) DO UPDATE SET
-                       nurse=EXCLUDED.nurse, moved_at=EXCLUDED.moved_at""",
-                (clinic_id, nat_id, draw_date, name, datetime.now().isoformat(timespec='seconds'), nurse),
+                       nurse=EXCLUDED.nurse, moved_at=EXCLUDED.moved_at,
+                       draw_codes=EXCLUDED.draw_codes, draw_code_names=EXCLUDED.draw_code_names""",
+                (clinic_id, nat_id, draw_date, name, datetime.now().isoformat(timespec='seconds'),
+                 nurse, draw_codes, draw_code_names),
             )
 
 
@@ -464,7 +471,7 @@ def get_blood_physical(clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT nat_id, draw_date, name, moved_at, nurse FROM blood_physical WHERE clinic_id=%s ORDER BY draw_date DESC",
+                "SELECT nat_id, draw_date, name, moved_at, nurse, draw_codes, draw_code_names FROM blood_physical WHERE clinic_id=%s ORDER BY draw_date DESC",
                 (clinic_id,),
             )
             return [dict(r) for r in cur.fetchall()]
@@ -620,6 +627,8 @@ def init() -> None:
             cur.execute(_CREATE_NURSE_OT_LOGS)
             cur.execute(_CREATE_BLOOD_NOTIFIED)
             cur.execute(_CREATE_BLOOD_PHYSICAL)
+            cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_codes TEXT NOT NULL DEFAULT '[]'")
+            cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
                 cur.execute(f"ALTER TABLE contacts ADD COLUMN IF NOT EXISTS {col}")

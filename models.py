@@ -295,6 +295,8 @@ class BloodPhysicalRequest(BaseModel):
     draw_date: str      # 'YYYY-MM-DD'
     name: str = ""
     nurse: str = ""
+    draw_codes: str = "[]"        # JSON array string
+    draw_code_names: str = "[]"   # JSON array string
 
 
 class LoginRequest(BaseModel):

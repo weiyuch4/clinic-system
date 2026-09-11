@@ -329,7 +329,14 @@
             '<div class="lab-pt"><span class="lab-name">' + L.escHtml(item.name || item.nat_id) + '</span>' +
               '<div class="lab-meta"><span class="pr-copy" data-copy="' + L.escHtml(item.nat_id) + '" title="點擊複製">' + L.escHtml(item.nat_id) + '</span></div>' +
             '</div>' +
-            '<div class="lab-codes"><span class="phys-days">' + L.escHtml(daysLabel) + '</span></div>' +
+            (function () {
+              var pcodes = []; try { pcodes = JSON.parse(item.draw_codes || '[]'); } catch(e) {}
+              var pnames = []; try { pnames = JSON.parse(item.draw_code_names || '[]'); } catch(e) {}
+              var pChips = pcodes.map(function (c, i) {
+                return '<span class="lab-code-chip" title="' + L.escHtml(String(c)) + '">' + L.escHtml(pnames[i] || String(c)) + '</span>';
+              }).join('');
+              return '<div class="lab-codes">' + pChips + '<span class="phys-days">' + L.escHtml(daysLabel) + '</span></div>';
+            }()) +
             '<div class="lab-right">' +
               '<button class="lab-btn lab-btn-undo" data-action="phys-back" data-nat="' + L.escHtml(item.nat_id) + '" data-date="' + L.escHtml(item.draw_date) + '" title="移回數位追蹤">移回</button>' +
               '<button class="lab-btn lab-btn-done" data-action="phys-done" data-nat="' + L.escHtml(item.nat_id) + '" data-date="' + L.escHtml(item.draw_date) + '" data-name="' + L.escHtml(item.name || '') + '">已通知病患</button>' +
@@ -350,7 +357,16 @@
     btn.disabled = true;
 
     if (action === 'to-physical') {
-      L.apiAction('POST', '/api/blood-physical', { nat_id: nat, draw_date: drawDate, name: name, nurse: L.getNurse() })
+      // Grab draw codes from in-memory data before removing from digital list
+      var dayData = _days.find(function (d) { return d.date === drawDate; });
+      var patData = dayData && (dayData.patients || []).find(function (p) { return p.nat_id === nat; });
+      var drawCodes     = patData ? JSON.stringify(patData.draw_codes || []) : '[]';
+      var drawCodeNames = patData ? JSON.stringify(patData.draw_code_names || []) : '[]';
+
+      L.apiAction('POST', '/api/blood-physical', {
+        nat_id: nat, draw_date: drawDate, name: name, nurse: L.getNurse(),
+        draw_codes: drawCodes, draw_code_names: drawCodeNames,
+      })
         .then(function () {
           // Optimistic: remove from digital list
           _days.forEach(function (d) {
@@ -359,8 +375,11 @@
           });
           _days = _days.filter(function (d) { return (d.patients || []).length; });
           renderDays(_days);
-          // Add to physical list
-          _physical.push({ nat_id: nat, draw_date: drawDate, name: name });
+          // Add to physical list with codes
+          _physical.push({
+            nat_id: nat, draw_date: drawDate, name: name,
+            draw_codes: drawCodes, draw_code_names: drawCodeNames,
+          });
           renderPhysical(_physical);
           L.showToast('已移至實體報告追蹤');
         })
