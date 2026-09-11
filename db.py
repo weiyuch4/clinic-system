@@ -3,7 +3,7 @@ import os
 import time as _time
 import psycopg2
 import psycopg2.extras
-from psycopg2.pool import ThreadedConnectionPool
+from psycopg2.pool import ThreadedConnectionPool, PoolError
 from contextlib import contextmanager
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
@@ -47,9 +47,24 @@ def _get_live_conn() -> "psycopg2.extensions.connection":
     """Get a connection from the pool.
     Pre-pings only connections that have been idle long enough that they
     might have been dropped by Railway's NAT. Warm connections (used recently)
-    skip the ping entirely to avoid 2 extra RTTs on every hot request."""
+    skip the ping entirely to avoid 2 extra RTTs on every hot request.
+    When the pool is temporarily exhausted (concurrent burst), retries with
+    short back-off rather than raising immediately."""
     assert _pool is not None
     now = _time.monotonic()
+    _POOL_RETRY_DELAYS = (0.05, 0.1, 0.2, 0.4)
+    for attempt in range(len(_POOL_RETRY_DELAYS) + 1):
+        try:
+            conn = _get_live_conn_once(now)
+            return conn
+        except PoolError:
+            if attempt == len(_POOL_RETRY_DELAYS):
+                raise
+            _time.sleep(_POOL_RETRY_DELAYS[attempt])
+
+
+def _get_live_conn_once(now: float) -> "psycopg2.extensions.connection":
+    assert _pool is not None
     for _ in range(3):
         conn = _pool.getconn()
         if conn.closed != 0:

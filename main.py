@@ -916,7 +916,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
         cid = user.clinic_id
         # All DB queries run in parallel with the IC file report to avoid
         # sequential 130ms round trips to Supabase Tokyo on every tab load.
-        with ThreadPoolExecutor(max_workers=20) as exe:
+        with ThreadPoolExecutor(max_workers=12) as exe:
             f_report               = exe.submit(contacts.get_synced_candidates, cid) if CLOUD_MODE else exe.submit(database.get_daily_report, as_of)
             f_hidden               = exe.submit(contacts.get_hidden_keys, cid)
             f_call_required        = exe.submit(contacts.get_call_required_keys, cid)
@@ -1210,9 +1210,9 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
         return _result
     except HTTPException:
         raise
-    except Exception:
-        logger.exception("get_report failed for date=%s", report_date)
-        raise HTTPException(status_code=503, detail="資料載入失敗，請確認資料夾是否可存取")
+    except Exception as exc:
+        logger.exception("get_report failed for date=%s: %s", report_date, exc)
+        raise HTTPException(status_code=500, detail="資料載入失敗，請稍後再試")
 
 
 @app.post("/api/contacted")
