@@ -5,7 +5,7 @@
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>加班紀錄</title>
-<link rel="stylesheet" href="/static/_layout.css?v=37">
+<link rel="stylesheet" href="/static/_layout.css?v=38">
 <style>
 /* ── month nav (page header) ───────────────────────────────────────────── */
 .month-nav { display:flex; align-items:center; gap:6px; }
@@ -151,6 +151,7 @@
 .ot-err-msg { background:#FEF2F2; border:1px solid #FECACA; color:#991B1B; border-radius:8px; padding:10px 14px; font-size:13px; margin-top:10px; }
 
 /* ── print button ─────────────────────────────────────────────────────── */
+@media(max-width:767px){.print-btn{display:none!important}}
 .print-btn {
   display:inline-flex; align-items:center; gap:6px;
   background:transparent; border:1.5px solid var(--border); border-radius:8px;
@@ -341,7 +342,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=36"></script>
+<script src="/static/_layout.js?v=37"></script>
 <script src="/static/auth-client.js"></script>
 <script>
 (function () {

@@ -495,17 +495,15 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .ct{padding:16px 16px calc(68px + env(safe-area-inset-bottom,0px)) 16px;font-size:15px}
 
   /* ── topbar ───────────────────────────────────────── */
-  .tb{height:54px;padding:0 14px;position:relative}
-  .tb-title{display:block}
+  .tb{height:54px;padding:0 14px;position:relative;justify-content:flex-end}
+  .tb-title{display:block;max-width:calc(100% - 200px)}
   .ib{width:44px;height:44px}
   .nurse-btn{height:44px;padding:0 8px!important;gap:0;border-radius:22px;min-width:44px;justify-content:center}
   .nurse-lbl{display:none!important}
   .nurse-chev{display:none!important}
 
-  /* ── page header ──────────────────────────────────── */
-  .ph{padding-bottom:14px}
-  .ph h1{font-size:20px;font-weight:700}
-  .ph p{font-size:13px}
+  /* ── page header — hidden on mobile (topbar shows the title) */
+  .ph{display:none!important}
 
   /* ── prevent iOS auto-zoom on input focus (<16px zooms) */
   input,select,textarea{font-size:16px!important}
@@ -520,7 +518,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .sg-date{font-size:12px}
   .wn-btn{width:44px;height:44px;border-radius:11px}
   .week-label{font-size:15px}
-  .wn-today{height:44px;padding:0 18px;font-size:14px;line-height:44px}
+  .wn-today{height:44px;padding:0 16px;font-size:14px;line-height:44px;border-radius:11px}
   .view-toggle button{padding:8px 16px;font-size:14px}
 
   /* ── OT page ──────────────────────────────────────── */

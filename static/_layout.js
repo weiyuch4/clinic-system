@@ -58,10 +58,10 @@
   // Pages nurses may visit on their phones (no patient data)
   var MOBILE_ALLOWED = { schedule: 1, 'nurse-ot': 1, notes: 1, 'change-password': 1, login: 1 };
   var MOBILE_NAV = [
-    { id: 'schedule',  label: '排班',  href: '/schedule'         },
-    { id: 'nurse-ot',  label: '加班',  href: '/nurse-ot'         },
-    { id: 'notes',     label: '記事', href: '/notes'            },
-    { id: 'me',        label: '我的',  href: '/change-password'   },
+    { id: 'schedule',  label: '排班',  href: '/schedule' },
+    { id: 'nurse-ot',  label: '加班',  href: '/nurse-ot' },
+    { id: 'notes',     label: '記事',  href: '/notes'    },
+    { id: 'me',        label: '我的',  href: null        },  // opens nurse selector
   ];
 
   // ── Private state ────────────────────────────────────
@@ -483,10 +483,13 @@
       MOBILE_NAV.map(function (item) {
         var isActive = item.id === activeId ||
                        (item.id === 'schedule' && activeId === 'dashboard');
-        return '<a href="' + item.href + '" class="mn-item' + (isActive ? ' on' : '') + '">' +
-          '<span class="mn-ic">' + (ICONS[item.id] || '') + '</span>' +
-          '<span>' + item.label + '</span>' +
-        '</a>';
+        var cls = 'mn-item' + (isActive ? ' on' : '');
+        var inner = '<span class="mn-ic">' + (ICONS[item.id] || '') + '</span><span>' + item.label + '</span>';
+        if (item.href === null) {
+          // "我的" opens the nurse selector dropdown
+          return '<button type="button" class="' + cls + '" onclick="document.getElementById(\'nurse-btn\').click()">' + inner + '</button>';
+        }
+        return '<a href="' + item.href + '" class="' + cls + '">' + inner + '</a>';
       }).join('') +
     '</div>';
     document.body.appendChild(nav);

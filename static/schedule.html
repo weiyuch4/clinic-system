@@ -5,7 +5,7 @@
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>排班表 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=37">
+<link rel="stylesheet" href="/static/_layout.css?v=38">
 <style>
 .week-nav{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .week-label{font-size:14px;font-weight:600;color:var(--text);flex:1;text-align:center}
@@ -42,8 +42,8 @@
 /* ── Mobile: week-nav wraps, day-card list replaces grid ── */
 @media(max-width:767px){
   .week-nav{flex-wrap:wrap;gap:8px}
-  .view-toggle{flex:1 0 100%;justify-content:center}
-  .view-toggle button{flex:1;max-width:160px}
+  .view-toggle{flex:1 0 100%;justify-content:stretch}
+  .view-toggle button{flex:1}
 
   /* hide desktop grid, show mobile list */
   .sched-grid{display:none!important}
@@ -110,7 +110,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=36"></script>
+<script src="/static/_layout.js?v=37"></script>
 <script>
 (function () {
   'use strict';
