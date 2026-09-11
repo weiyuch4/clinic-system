@@ -29,12 +29,16 @@
 .notes-list{flex:1;overflow-y:auto;padding:6px 0}
 
 /* ── Note cards in sidebar ── */
-.note-item{display:flex;align-items:center;border-left:4px solid #FCD34D;margin:2px 8px;border-radius:6px;cursor:default;padding:8px 8px 8px 10px;gap:8px}
+.note-item{display:flex;align-items:center;border-left:4px solid #FCD34D;margin:2px 8px;border-radius:6px;cursor:pointer;padding:8px 8px 8px 10px;gap:8px;transition:background .1s}
 .note-item[data-color="yellow"]{border-left-color:#FCD34D;background:rgba(252,211,77,.07)}
 .note-item[data-color="blue"]  {border-left-color:#60A5FA;background:rgba(96,165,250,.08)}
 .note-item[data-color="green"] {border-left-color:#4ADE80;background:rgba(74,222,128,.07)}
 .note-item[data-color="pink"]  {border-left-color:#F472B6;background:rgba(244,114,182,.08)}
-.note-item.note-tmp{opacity:.6}
+.note-item.note-tmp{opacity:.6;cursor:default}
+.note-item.selected[data-color="yellow"]{background:rgba(252,211,77,.18)}
+.note-item.selected[data-color="blue"]  {background:rgba(96,165,250,.20)}
+.note-item.selected[data-color="green"] {background:rgba(74,222,128,.18)}
+.note-item.selected[data-color="pink"]  {background:rgba(244,114,182,.20)}
 
 .note-body{flex:1;min-width:0}
 .note-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
@@ -47,17 +51,22 @@
 .note-del{background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;border-radius:4px;display:flex;align-items:center;transition:color .12s,background .12s;flex-shrink:0}
 .note-del:hover{color:#dc2626;background:rgba(220,38,38,.08)}
 
-/* ── Empty state ── */
+/* ── Empty / idle states ── */
 .notes-empty{text-align:center;color:var(--muted);font-size:13px;padding:36px 16px}
-.notes-empty svg{display:block;margin:0 auto 12px;opacity:.22}
 .notes-empty p{font-weight:500;color:var(--sub);margin-bottom:4px}
 .notes-empty small{font-size:12px}
+
+.notes-idle{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:var(--muted);text-align:center;padding:24px;user-select:none}
+.notes-idle svg{opacity:.18}
+.notes-idle p{font-size:13.5px;font-weight:500;color:var(--sub);margin:0}
+.notes-idle small{font-size:12px}
 
 /* ── Right editor panel ── */
 .notes-editor{flex:1;display:flex;flex-direction:column;padding:20px 24px;gap:14px;background:var(--card);min-width:0}
 
 .notes-editor-hd{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .notes-editor-title{font-size:15px;font-weight:700;color:var(--text)}
+.editor-hd-btns{display:flex;gap:8px}
 
 .notes-editor-ta{flex:1;resize:none;border:1px solid var(--border);border-radius:8px;padding:13px 14px;font-size:14px;line-height:1.7;color:var(--text);background:var(--bg);outline:none;font-family:inherit;transition:border-color .15s,box-shadow .15s;min-height:200px}
 .notes-editor-ta:focus{border-color:#b5d7f5;box-shadow:0 0 0 3px rgba(181,215,245,.3)}
@@ -89,6 +98,10 @@
   :root:not([data-theme=light]) .note-item[data-color="blue"]  {background:rgba(96,165,250,.12)}
   :root:not([data-theme=light]) .note-item[data-color="green"] {background:rgba(74,222,128,.10)}
   :root:not([data-theme=light]) .note-item[data-color="pink"]  {background:rgba(244,114,182,.11)}
+  :root:not([data-theme=light]) .note-item.selected[data-color="yellow"]{background:rgba(252,211,77,.22)}
+  :root:not([data-theme=light]) .note-item.selected[data-color="blue"]  {background:rgba(96,165,250,.26)}
+  :root:not([data-theme=light]) .note-item.selected[data-color="green"] {background:rgba(74,222,128,.22)}
+  :root:not([data-theme=light]) .note-item.selected[data-color="pink"]  {background:rgba(244,114,182,.24)}
   :root:not([data-theme=light]) .note-item[data-color="yellow"] .note-title{color:#FDE68A}
   :root:not([data-theme=light]) .note-item[data-color="blue"]   .note-title{color:#93C5FD}
   :root:not([data-theme=light]) .note-item[data-color="green"]  .note-title{color:#6EE7B7}
@@ -100,6 +113,10 @@
 :root[data-theme=dark] .note-item[data-color="blue"]  {background:rgba(96,165,250,.12)}
 :root[data-theme=dark] .note-item[data-color="green"] {background:rgba(74,222,128,.10)}
 :root[data-theme=dark] .note-item[data-color="pink"]  {background:rgba(244,114,182,.11)}
+:root[data-theme=dark] .note-item.selected[data-color="yellow"]{background:rgba(252,211,77,.22)}
+:root[data-theme=dark] .note-item.selected[data-color="blue"]  {background:rgba(96,165,250,.26)}
+:root[data-theme=dark] .note-item.selected[data-color="green"] {background:rgba(74,222,128,.22)}
+:root[data-theme=dark] .note-item.selected[data-color="pink"]  {background:rgba(244,114,182,.24)}
 :root[data-theme=dark] .note-item[data-color="yellow"] .note-title{color:#FDE68A}
 :root[data-theme=dark] .note-item[data-color="blue"]   .note-title{color:#93C5FD}
 :root[data-theme=dark] .note-item[data-color="green"]  .note-title{color:#6EE7B7}
@@ -157,13 +174,33 @@
         <!-- Right panel: editor -->
         <div class="notes-editor">
           <div class="notes-editor-hd">
-            <span class="notes-editor-title">編輯記事</span>
-            <button class="act-btn act-primary" id="btn-post">新增記事</button>
+            <span class="notes-editor-title" id="editor-title">便利貼</span>
+            <div class="editor-hd-btns">
+              <button class="act-btn" id="btn-cancel" hidden>取消</button>
+              <button class="act-btn" id="btn-save" hidden>儲存</button>
+              <button class="act-btn act-primary" id="btn-new">新增記事</button>
+            </div>
           </div>
-          <!-- Hidden element kept for JS compatibility -->
+
+          <!-- Hidden shim for JS compat -->
           <div id="compose-accent" style="display:none"></div>
-          <textarea class="notes-editor-ta" id="compose-ta" placeholder="在此輸入記事內容，Ctrl+Enter 送出…"></textarea>
-          <div class="notes-editor-footer">
+
+          <!-- Idle placeholder (shown when nothing selected) -->
+          <div class="notes-idle" id="notes-idle">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="3"/>
+              <line x1="8" y1="9" x2="16" y2="9"/>
+              <line x1="8" y1="13" x2="14" y2="13"/>
+            </svg>
+            <p>點選左側記事來查看</p>
+            <small>或按「新增記事」建立新的便利貼</small>
+          </div>
+
+          <!-- Compose / edit textarea (hidden when idle) -->
+          <textarea class="notes-editor-ta" id="compose-ta" placeholder="在此輸入記事內容，Ctrl+Enter 送出…" hidden></textarea>
+
+          <!-- Footer: color picker + post button (hidden when idle) -->
+          <div class="notes-editor-footer" id="editor-footer" hidden>
             <span class="notes-color-label">選擇顏色</span>
             <div class="color-pick" id="color-pick">
               <span class="cp-sw active" data-c="yellow"></span>
@@ -171,6 +208,7 @@
               <span class="cp-sw" data-c="green"></span>
               <span class="cp-sw" data-c="pink"></span>
             </div>
+            <button class="act-btn act-primary" id="btn-post" style="margin-left:auto">發布</button>
           </div>
         </div>
 
@@ -188,8 +226,13 @@
   var _notes          = [];
   var _pendingDeletes = {};
   var _searchQuery    = '';
+  // 'idle' | 'new' | 'edit'
+  var _mode           = 'idle';
+  var _selectedId     = null;  // id of note being edited
 
   var ACCENT = { yellow: '#FCD34D', blue: '#60A5FA', green: '#4ADE80', pink: '#F472B6' };
+
+  // ── UI state helpers ────────────────────────────────────────────────────────
 
   function setColor(c) {
     _color = c;
@@ -199,7 +242,63 @@
     document.getElementById('compose-accent').style.background = ACCENT[c] || ACCENT.yellow;
   }
 
+  function showIdle() {
+    _mode = 'idle';
+    _selectedId = null;
+    document.getElementById('editor-title').textContent = '便利貼';
+    document.getElementById('btn-cancel').hidden = true;
+    document.getElementById('btn-save').hidden = true;
+    document.getElementById('notes-idle').style.display = '';
+    document.getElementById('compose-ta').hidden = true;
+    document.getElementById('editor-footer').hidden = true;
+    _refreshSelected();
+  }
+
+  function showNew() {
+    _mode = 'new';
+    _selectedId = null;
+    document.getElementById('editor-title').textContent = '新增記事';
+    document.getElementById('btn-cancel').hidden = false;
+    document.getElementById('btn-save').hidden = true;
+    document.getElementById('btn-post').style.display = '';
+    document.getElementById('notes-idle').style.display = 'none';
+    document.getElementById('compose-ta').hidden = false;
+    document.getElementById('editor-footer').hidden = false;
+    document.getElementById('compose-ta').value = '';
+    setColor('yellow');
+    _refreshSelected();
+    setTimeout(function () { document.getElementById('compose-ta').focus(); }, 30);
+  }
+
+  function showEdit(note) {
+    _mode = 'edit';
+    _selectedId = note.id;
+    document.getElementById('editor-title').textContent = '編輯記事';
+    document.getElementById('btn-cancel').hidden = false;
+    document.getElementById('btn-save').hidden = false;
+    document.getElementById('btn-post').style.display = 'none';
+    document.getElementById('notes-idle').style.display = 'none';
+    document.getElementById('compose-ta').hidden = false;
+    document.getElementById('editor-footer').hidden = false;
+    document.getElementById('compose-ta').value = note.content || '';
+    setColor(note.color || 'yellow');
+    _refreshSelected();
+    setTimeout(function () { document.getElementById('compose-ta').focus(); }, 30);
+  }
+
+  function _refreshSelected() {
+    document.querySelectorAll('.note-item').forEach(function (el) {
+      var id = el.dataset.id ? Number(el.dataset.id) : null;
+      el.classList.toggle('selected', _mode === 'edit' && id === _selectedId);
+    });
+  }
+
+  // ── Initial state ──────────────────────────────────────────────────────────
+
   setColor('yellow');
+  showIdle();
+
+  // ── Color picker ──────────────────────────────────────────────────────────
 
   document.getElementById('color-pick').addEventListener('click', function (e) {
     var sw = e.target.closest('.cp-sw');
@@ -207,21 +306,30 @@
     setColor(sw.dataset.c);
   });
 
-  var ta = document.getElementById('compose-ta');
-  ta.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); }
-  });
-  setTimeout(function () { ta.focus(); }, 50);
+  // ── Keyboard shortcut ─────────────────────────────────────────────────────
 
-  document.getElementById('btn-post').addEventListener('click', submit);
-
-  // Search filter
-  document.getElementById('notes-search').addEventListener('input', function (e) {
-    _searchQuery = e.target.value.trim().toLowerCase();
-    render(_notes);
+  document.getElementById('compose-ta').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      if (_mode === 'new') submitNew();
+      else if (_mode === 'edit') submitEdit();
+    }
   });
 
-  function submit() {
+  // ── Button handlers ───────────────────────────────────────────────────────
+
+  document.getElementById('btn-new').addEventListener('click', showNew);
+
+  document.getElementById('btn-cancel').addEventListener('click', showIdle);
+
+  document.getElementById('btn-post').addEventListener('click', submitNew);
+
+  document.getElementById('btn-save').addEventListener('click', submitEdit);
+
+  // ── Submit new note ───────────────────────────────────────────────────────
+
+  function submitNew() {
+    var ta = document.getElementById('compose-ta');
     var content = ta.value.trim();
     if (!content) { ta.focus(); return; }
     var btn = document.getElementById('btn-post');
@@ -235,6 +343,7 @@
     _notes.unshift(optimistic);
     render(_notes);
     ta.value = '';
+    showIdle();
     L.apiAction('POST', '/api/notes', { content: content, color: _color, nurse: L.getNurse() })
       .then(function (note) {
         _notes = _notes.map(function (n) { return n.id === optimistic.id ? note : n; });
@@ -248,27 +357,78 @@
       .finally(function () { btn.disabled = false; });
   }
 
+  // ── Submit edit (save existing note) ─────────────────────────────────────
+
+  function submitEdit() {
+    var ta = document.getElementById('compose-ta');
+    var content = ta.value.trim();
+    if (!content) { ta.focus(); return; }
+    if (!_selectedId) return;
+    var id = _selectedId;
+    var btn = document.getElementById('btn-save');
+    btn.disabled = true;
+    L.apiAction('PATCH', '/api/notes/' + id, { content: content, color: _color, nurse: L.getNurse() })
+      .then(function (updated) {
+        _notes = _notes.map(function (n) { return n.id === updated.id ? updated : n; });
+        render(_notes);
+        showEdit(updated);
+        L.showToast('已儲存', 'success');
+      })
+      .catch(function (e) {
+        L.showToast('儲存失敗：' + (e.message || ''), 'error');
+      })
+      .finally(function () { btn.disabled = false; });
+  }
+
+  // ── List click: card select OR delete ────────────────────────────────────
+
   document.getElementById('notes-list').addEventListener('click', function (e) {
+    // Delete button
     var delBtn = e.target.closest('.note-del');
-    if (!delBtn) return;
-    var id = delBtn.dataset.id;
-    if (!id || _pendingDeletes[id]) return;
-    var idx = -1, note = null;
-    for (var i = 0; i < _notes.length; i++) {
-      if (String(_notes[i].id) === id) { idx = i; note = _notes[i]; break; }
+    if (delBtn) {
+      var id = delBtn.dataset.id;
+      if (!id || _pendingDeletes[id]) return;
+      var idx = -1, note = null;
+      for (var i = 0; i < _notes.length; i++) {
+        if (String(_notes[i].id) === id) { idx = i; note = _notes[i]; break; }
+      }
+      if (!note) return;
+      // If the note being deleted is currently selected, go back to idle
+      if (_mode === 'edit' && _selectedId === note.id) showIdle();
+      _notes.splice(idx, 1);
+      render(_notes);
+      var toast = document.createElement('div');
+      toast.className = 'undo-toast';
+      toast.innerHTML = '已移除便利貼 <button class="undo-btn">復原</button>';
+      document.body.appendChild(toast);
+      setTimeout(function () { toast.classList.add('show'); }, 10);
+      var timerId = setTimeout(function () { _commitDelete(id); }, 5000);
+      _pendingDeletes[id] = { note: note, origIndex: idx, timerId: timerId, toastEl: toast };
+      toast.querySelector('.undo-btn').addEventListener('click', function () { _undoDelete(id); });
+      return;
     }
-    if (!note) return;
-    _notes.splice(idx, 1);
-    render(_notes);
-    var toast = document.createElement('div');
-    toast.className = 'undo-toast';
-    toast.innerHTML = '已移除便利貼 <button class="undo-btn">復原</button>';
-    document.body.appendChild(toast);
-    setTimeout(function () { toast.classList.add('show'); }, 10);
-    var timerId = setTimeout(function () { _commitDelete(id); }, 5000);
-    _pendingDeletes[id] = { note: note, origIndex: idx, timerId: timerId, toastEl: toast };
-    toast.querySelector('.undo-btn').addEventListener('click', function () { _undoDelete(id); });
+
+    // Card click → load into editor
+    var card = e.target.closest('.note-item');
+    if (!card) return;
+    var noteId = card.dataset.id ? Number(card.dataset.id) : null;
+    if (!noteId) return;
+    var found = null;
+    for (var j = 0; j < _notes.length; j++) {
+      if (_notes[j].id === noteId) { found = _notes[j]; break; }
+    }
+    if (!found || found._tmp) return;
+    showEdit(found);
   });
+
+  // ── Search filter ─────────────────────────────────────────────────────────
+
+  document.getElementById('notes-search').addEventListener('input', function (e) {
+    _searchQuery = e.target.value.trim().toLowerCase();
+    render(_notes);
+  });
+
+  // ── Delete helpers ────────────────────────────────────────────────────────
 
   function _commitDelete(id) {
     var entry = _pendingDeletes[id]; if (!entry) return;
@@ -291,12 +451,13 @@
     setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 280);
   }
 
+  // ── Render note list ──────────────────────────────────────────────────────
+
   function render(notes) {
     var list = document.getElementById('notes-list');
     var countEl = document.getElementById('notes-count');
     var real = notes.filter(function (n) { return !n._tmp; });
 
-    // Apply search filter
     var filtered = _searchQuery ? notes.filter(function (n) {
       return n.content && n.content.toLowerCase().indexOf(_searchQuery) !== -1;
     }) : notes;
@@ -308,33 +469,28 @@
     }
 
     if (!filtered.length) {
-      if (!notes.length) {
-        list.innerHTML = '<div class="notes-empty">' +
-          '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/></svg>' +
-          '<p>目前沒有便利貼</p><small>輸入內容後按「新增記事」即可新增</small></div>';
-      } else {
-        list.innerHTML = '<div class="notes-empty"><p>無符合的記事</p></div>';
-      }
+      list.innerHTML = !notes.length
+        ? '<div class="notes-empty"><p>目前沒有便利貼</p><small>按「新增記事」即可新增</small></div>'
+        : '<div class="notes-empty"><p>無符合的記事</p></div>';
       return;
     }
 
     list.innerHTML = filtered.map(function (n) {
       var color = n.color || 'yellow';
       var isTemp = !!n._tmp;
-      // Use first line as card title
       var firstLine = ((n.content || '').split('\n')[0] || '').trim() || '（無內容）';
-      // Extract HH:MM from ISO timestamp or time string
       var timeLabel = '';
       if (n.created_at) {
         var m = n.created_at.match(/(\d{1,2}:\d{2})/);
         timeLabel = m ? m[1] : n.created_at.slice(0, 5);
       }
+      var isSelected = !isTemp && _mode === 'edit' && n.id === _selectedId;
       var delBtn = !isTemp
         ? '<button class="note-del" data-id="' + L.escHtml(String(n.id)) + '" title="刪除">' +
             '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
           '</button>'
         : '';
-      return '<div class="note-item' + (isTemp ? ' note-tmp' : '') + '" data-color="' + L.escHtml(color) + '">' +
+      return '<div class="note-item' + (isTemp ? ' note-tmp' : '') + (isSelected ? ' selected' : '') + '" data-color="' + L.escHtml(color) + '"' + (!isTemp ? ' data-id="' + n.id + '"' : '') + '>' +
         '<div class="note-body">' +
           '<div class="note-title">' + L.escHtml(firstLine) + '</div>' +
           (timeLabel ? '<div class="note-time">' + L.escHtml(timeLabel) + '</div>' : '') +
@@ -343,6 +499,8 @@
       '</div>';
     }).join('');
   }
+
+  // ── Load & poll ───────────────────────────────────────────────────────────
 
   function load() {
     L.apiFetch('/api/notes')
@@ -353,6 +511,19 @@
           return pendingIds.indexOf(String(n.id)) === -1;
         }));
         render(_notes);
+        // If the currently-selected note was refreshed, sync the textarea content
+        if (_mode === 'edit' && _selectedId) {
+          for (var i = 0; i < _notes.length; i++) {
+            if (_notes[i].id === _selectedId) {
+              // Only sync if textarea hasn't been modified
+              var ta = document.getElementById('compose-ta');
+              if (ta.value === (_notes[i].content || '')) {
+                // already in sync — do nothing
+              }
+              break;
+            }
+          }
+        }
       })
       .catch(function (e) {
         document.getElementById('error-msg').textContent = '便利貼載入失敗 — ' + (e.message || e);

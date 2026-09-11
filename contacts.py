@@ -2148,6 +2148,20 @@ def get_sticky_notes(clinic_id: int = 1) -> list[dict]:
             return [dict(r) for r in cur.fetchall()]
 
 
+def update_sticky_note(note_id: int, content: str, color: str, clinic_id: int = 1) -> dict:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE sticky_notes SET content = %s, color = %s WHERE id = %s AND clinic_id = %s "
+                "RETURNING id, nurse, content, color, created_at",
+                (content, color, note_id, clinic_id),
+            )
+            row = cur.fetchone()
+            if not row:
+                raise ValueError("not found")
+            return dict(row)
+
+
 def delete_sticky_note(note_id: int, clinic_id: int = 1) -> None:
     with _conn() as conn:
         with conn.cursor() as cur:

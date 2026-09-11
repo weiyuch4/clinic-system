@@ -505,6 +505,20 @@ def add_note(req: StickyNoteRequest, user: auth.CurrentUser = Depends(auth.get_c
         raise HTTPException(status_code=500, detail="新增便利貼失敗")
 
 
+@app.patch("/api/notes/{note_id}")
+def update_note(note_id: int, req: StickyNoteRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    content = req.content.strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="內容不可空白")
+    try:
+        return contacts.update_sticky_note(note_id, content, req.color, user.clinic_id)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="找不到便利貼")
+    except Exception:
+        logger.exception("update_note failed for id=%s", note_id)
+        raise HTTPException(status_code=500, detail="更新便利貼失敗")
+
+
 @app.delete("/api/notes/{note_id}")
 def delete_note(note_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
