@@ -7,83 +7,113 @@
 <title>便利貼 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=35">
 <style>
-/* ── Compose card ── */
-.compose-card{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
-.compose-accent{height:4px;flex-shrink:0;background:#FCD34D;transition:background .18s}
-.compose-inner{padding:14px 16px 15px;display:flex;flex-direction:column;gap:11px}
-.compose-footer{display:flex;align-items:center;gap:9px}
-.compose-hint{font-size:11.5px;color:var(--muted)}
-.compose-spacer{flex:1}
+/* ── Two-panel workspace ── */
+.notes-workspace{display:flex;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;height:calc(100vh - 190px);min-height:480px;max-height:760px}
 
-/* Color swatches */
-.color-pick{display:flex;gap:7px;align-items:center}
-.cp-sw{width:22px;height:22px;border-radius:7px;cursor:pointer;border:2.5px solid transparent;transition:transform .12s,border-color .12s,box-shadow .12s;flex-shrink:0;position:relative}
-.cp-sw:hover{transform:scale(1.14)}
-.cp-sw.active{border-color:var(--text);box-shadow:0 0 0 1px var(--text)}
-.cp-sw.active::after{content:'';position:absolute;inset:0;border-radius:4px;background:rgba(0,0,0,.22)}
+/* ── Left sidebar ── */
+.notes-sidebar{width:240px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--card);overflow:hidden}
+
+.notes-search-wrap{padding:14px 12px 10px;flex-shrink:0}
+.notes-search{width:100%;box-sizing:border-box;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:7px 10px 7px 30px;font-size:13px;color:var(--text);outline:none;font-family:inherit;transition:border-color .15s,box-shadow .15s;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%234B5563' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:9px center}
+.notes-search:focus{border-color:#b5d7f5;box-shadow:0 0 0 3px rgba(181,215,245,.3)}
+.notes-search::placeholder{color:var(--muted)}
+
+.notes-sidebar-hd{display:flex;align-items:center;justify-content:space-between;padding:0 12px 9px;font-size:11.5px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);flex-shrink:0}
+.notes-sidebar-hd-left{display:flex;align-items:center;gap:6px}
+.notes-hd-count{font-size:10.5px;background:var(--border);color:var(--muted);border-radius:10px;padding:2px 7px;font-weight:600;display:none}
+.notes-live{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted);font-weight:400}
+.live-dot{width:5px;height:5px;border-radius:50%;background:#22c55e;flex-shrink:0;animation:livePulse 2.5s ease-in-out infinite}
+@keyframes livePulse{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* Note list scroll area */
+.notes-list{flex:1;overflow-y:auto;padding:6px 0}
+
+/* ── Note cards in sidebar ── */
+.note-item{display:flex;align-items:center;border-left:4px solid #FCD34D;margin:2px 8px;border-radius:6px;cursor:default;padding:8px 8px 8px 10px;gap:8px}
+.note-item[data-color="yellow"]{border-left-color:#FCD34D;background:rgba(252,211,77,.07)}
+.note-item[data-color="blue"]  {border-left-color:#60A5FA;background:rgba(96,165,250,.08)}
+.note-item[data-color="green"] {border-left-color:#4ADE80;background:rgba(74,222,128,.07)}
+.note-item[data-color="pink"]  {border-left-color:#F472B6;background:rgba(244,114,182,.08)}
+.note-item.note-tmp{opacity:.6}
+
+.note-body{flex:1;min-width:0}
+.note-title{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.35}
+.note-item[data-color="yellow"] .note-title{color:#78350F}
+.note-item[data-color="blue"]   .note-title{color:#1D4ED8}
+.note-item[data-color="green"]  .note-title{color:#065F46}
+.note-item[data-color="pink"]   .note-title{color:#831843}
+.note-time{font-size:11px;color:var(--muted);margin-top:3px}
+
+.note-del{background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;border-radius:4px;display:flex;align-items:center;transition:color .12s,background .12s;flex-shrink:0}
+.note-del:hover{color:#dc2626;background:rgba(220,38,38,.08)}
+
+/* ── Empty state ── */
+.notes-empty{text-align:center;color:var(--muted);font-size:13px;padding:36px 16px}
+.notes-empty svg{display:block;margin:0 auto 12px;opacity:.22}
+.notes-empty p{font-weight:500;color:var(--sub);margin-bottom:4px}
+.notes-empty small{font-size:12px}
+
+/* ── Right editor panel ── */
+.notes-editor{flex:1;display:flex;flex-direction:column;padding:20px 24px;gap:14px;background:var(--card);min-width:0}
+
+.notes-editor-hd{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.notes-editor-title{font-size:15px;font-weight:700;color:var(--text)}
+
+.notes-editor-ta{flex:1;resize:none;border:1px solid var(--border);border-radius:8px;padding:13px 14px;font-size:14px;line-height:1.7;color:var(--text);background:var(--bg);outline:none;font-family:inherit;transition:border-color .15s,box-shadow .15s;min-height:200px}
+.notes-editor-ta:focus{border-color:#b5d7f5;box-shadow:0 0 0 3px rgba(181,215,245,.3)}
+.notes-editor-ta::placeholder{color:var(--muted)}
+
+.notes-editor-footer{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.notes-color-label{font-size:13px;color:var(--sub);font-weight:500;white-space:nowrap}
+
+/* ── Circular color pickers with checkmark ── */
+.color-pick{display:flex;gap:8px;align-items:center}
+.cp-sw{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:transform .12s,border-color .12s,box-shadow .12s;flex-shrink:0;position:relative;display:inline-flex;align-items:center;justify-content:center}
+.cp-sw:hover{transform:scale(1.1)}
+.cp-sw.active{border-color:rgba(0,0,0,.35);box-shadow:0 0 0 1px rgba(0,0,0,.12)}
+.cp-sw.active::after{content:'';position:absolute;width:9px;height:5px;border-left:2px solid rgba(0,0,0,.55);border-bottom:2px solid rgba(0,0,0,.55);transform:rotate(-45deg) translate(1px,-1px)}
 .cp-sw[data-c="yellow"]{background:#FCD34D}
 .cp-sw[data-c="blue"]  {background:#60A5FA}
 .cp-sw[data-c="green"] {background:#4ADE80}
 .cp-sw[data-c="pink"]  {background:#F472B6}
 
-/* ── Section header ── */
-.notes-hd{display:flex;align-items:center;gap:8px;padding:10px 0 8px;font-size:13px;font-weight:600;color:var(--sub);border-bottom:1px solid var(--border);margin-bottom:12px;cursor:default;user-select:none}
-.notes-hd-count{font-size:10.5px;background:var(--border);color:var(--sub);border-radius:10px;padding:2px 8px;font-weight:600;display:none}
-.notes-live{margin-left:auto;display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-weight:400}
-.live-dot{width:6px;height:6px;border-radius:50%;background:#22c55e;flex-shrink:0;animation:livePulse 2.5s ease-in-out infinite}
-@keyframes livePulse{0%,100%{opacity:1}50%{opacity:.2}}
-
-/* ── Note grid ── */
-.notes-list{display:flex;flex-direction:column;gap:10px}
-@media(min-width:960px){
-  .notes-list{display:grid;grid-template-columns:1fr 1fr;align-items:start;gap:10px}
-}
-
-/* Note cards */
-.note-item{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border-left:5px solid #FCD34D;display:flex;align-items:flex-start;overflow:hidden;transition:box-shadow .15s}
-.note-item:hover{box-shadow:0 4px 12px rgba(0,0,0,.09),0 1px 3px rgba(0,0,0,.05)}
-.note-item[data-color="yellow"]{border-left-color:#FCD34D;background-color:rgba(252,211,77,.06)}
-.note-item[data-color="blue"]  {border-left-color:#60A5FA;background-color:rgba(96,165,250,.07)}
-.note-item[data-color="green"] {border-left-color:#4ADE80;background-color:rgba(74,222,128,.06)}
-.note-item[data-color="pink"]  {border-left-color:#F472B6;background-color:rgba(244,114,182,.07)}
-.note-item.note-tmp{opacity:.6}
-
-.note-body{flex:1;padding:12px 14px 11px}
-.note-content{font-size:14px;line-height:1.65;color:var(--text);white-space:pre-wrap;word-break:break-word}
-.note-meta{display:flex;align-items:center;gap:7px;margin-top:8px}
-.note-nurse{font-size:11px;font-weight:700;color:var(--sub);background:var(--bg);border-radius:100px;padding:2px 8px;white-space:nowrap;flex-shrink:0}
-.note-time{font-size:11px;color:var(--muted)}
-
-.note-del{background:none;border:none;cursor:pointer;color:var(--muted);padding:12px 14px;align-self:stretch;display:flex;align-items:center;transition:color .12s,background .12s;flex-shrink:0}
-.note-del:hover{color:#dc2626;background:var(--red-hover)}
-
-/* Dark mode tint boost */
-@media(prefers-color-scheme:dark){
-  :root:not([data-theme=light]) .note-item[data-color="yellow"]{background-color:rgba(252,211,77,.09)}
-  :root:not([data-theme=light]) .note-item[data-color="blue"]  {background-color:rgba(96,165,250,.11)}
-  :root:not([data-theme=light]) .note-item[data-color="green"] {background-color:rgba(74,222,128,.09)}
-  :root:not([data-theme=light]) .note-item[data-color="pink"]  {background-color:rgba(244,114,182,.10)}
-}
-:root[data-theme=dark] .note-item[data-color="yellow"]{background-color:rgba(252,211,77,.09)}
-:root[data-theme=dark] .note-item[data-color="blue"]  {background-color:rgba(96,165,250,.11)}
-:root[data-theme=dark] .note-item[data-color="green"] {background-color:rgba(74,222,128,.09)}
-:root[data-theme=dark] .note-item[data-color="pink"]  {background-color:rgba(244,114,182,.10)}
-
-/* Empty state */
-.notes-empty{text-align:center;color:var(--muted);font-size:13px;padding:52px 0}
-.notes-empty svg{display:block;margin:0 auto 14px;opacity:.22}
-.notes-empty p{font-weight:500;color:var(--sub);margin-bottom:4px}
-.notes-empty small{font-size:12px}
-
-/* Undo toast */
+/* ── Undo toast ── */
 .undo-toast{position:fixed;bottom:24px;right:24px;background:#1F2937;color:#fff;padding:11px 14px 11px 18px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.28);display:flex;align-items:center;gap:12px;z-index:9999;transform:translateY(10px);opacity:0;transition:transform .22s,opacity .22s;pointer-events:none}
 .undo-toast.show{transform:translateY(0);opacity:1;pointer-events:auto}
 .undo-btn{background:#fff;color:#111827;border:none;border-radius:6px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
 .undo-btn:hover{background:#f3f4f6}
 
+/* ── Dark mode ── */
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .note-item[data-color="yellow"]{background:rgba(252,211,77,.10)}
+  :root:not([data-theme=light]) .note-item[data-color="blue"]  {background:rgba(96,165,250,.12)}
+  :root:not([data-theme=light]) .note-item[data-color="green"] {background:rgba(74,222,128,.10)}
+  :root:not([data-theme=light]) .note-item[data-color="pink"]  {background:rgba(244,114,182,.11)}
+  :root:not([data-theme=light]) .note-item[data-color="yellow"] .note-title{color:#FDE68A}
+  :root:not([data-theme=light]) .note-item[data-color="blue"]   .note-title{color:#93C5FD}
+  :root:not([data-theme=light]) .note-item[data-color="green"]  .note-title{color:#6EE7B7}
+  :root:not([data-theme=light]) .note-item[data-color="pink"]   .note-title{color:#F9A8D4}
+  :root:not([data-theme=light]) .cp-sw.active{border-color:rgba(255,255,255,.5)}
+  :root:not([data-theme=light]) .cp-sw.active::after{border-color:rgba(255,255,255,.7)}
+}
+:root[data-theme=dark] .note-item[data-color="yellow"]{background:rgba(252,211,77,.10)}
+:root[data-theme=dark] .note-item[data-color="blue"]  {background:rgba(96,165,250,.12)}
+:root[data-theme=dark] .note-item[data-color="green"] {background:rgba(74,222,128,.10)}
+:root[data-theme=dark] .note-item[data-color="pink"]  {background:rgba(244,114,182,.11)}
+:root[data-theme=dark] .note-item[data-color="yellow"] .note-title{color:#FDE68A}
+:root[data-theme=dark] .note-item[data-color="blue"]   .note-title{color:#93C5FD}
+:root[data-theme=dark] .note-item[data-color="green"]  .note-title{color:#6EE7B7}
+:root[data-theme=dark] .note-item[data-color="pink"]   .note-title{color:#F9A8D4}
+:root[data-theme=dark] .cp-sw.active{border-color:rgba(255,255,255,.5)}
+:root[data-theme=dark] .cp-sw.active::after{border-color:rgba(255,255,255,.7)}
+
+/* ── Mobile: stack panels ── */
 @media(max-width:767px){
+  .notes-workspace{flex-direction:column;height:auto;min-height:unset;max-height:unset}
+  .notes-sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);max-height:220px}
+  .notes-editor{padding:16px}
+  .notes-editor-ta{min-height:160px}
   .undo-toast{bottom:calc(72px + env(safe-area-inset-bottom,0px) + 10px)}
-  .compose-hint{display:none}
 }
 </style>
 </head>
@@ -103,34 +133,47 @@
         <div><h1>便利貼</h1><p>前台共用記事板，即時同步</p></div>
       </div>
 
-      <div class="compose-card">
-        <div class="compose-accent" id="compose-accent"></div>
-        <div class="compose-inner">
-          <textarea class="modal-input" id="compose-ta" placeholder="快速記事…" rows="2" style="resize:none;min-height:60px"></textarea>
-          <div class="compose-footer">
+      <div class="notes-workspace">
+
+        <!-- Left panel: search + note list -->
+        <div class="notes-sidebar">
+          <div class="notes-search-wrap">
+            <input type="text" class="notes-search" id="notes-search" placeholder="搜尋記事…" autocomplete="off">
+          </div>
+          <div class="notes-sidebar-hd">
+            <div class="notes-sidebar-hd-left">
+              <span>所有記事</span>
+              <span class="notes-hd-count" id="notes-count"></span>
+            </div>
+            <span class="notes-live">
+              <span class="live-dot"></span>即時同步
+            </span>
+          </div>
+          <div class="notes-list" id="notes-list">
+            <div class="notes-empty" id="notes-loading">載入中…</div>
+          </div>
+        </div>
+
+        <!-- Right panel: editor -->
+        <div class="notes-editor">
+          <div class="notes-editor-hd">
+            <span class="notes-editor-title">編輯記事</span>
+            <button class="act-btn act-primary" id="btn-post">新增記事</button>
+          </div>
+          <!-- Hidden element kept for JS compatibility -->
+          <div id="compose-accent" style="display:none"></div>
+          <textarea class="notes-editor-ta" id="compose-ta" placeholder="在此輸入記事內容，Ctrl+Enter 送出…"></textarea>
+          <div class="notes-editor-footer">
+            <span class="notes-color-label">選擇顏色</span>
             <div class="color-pick" id="color-pick">
               <span class="cp-sw active" data-c="yellow"></span>
               <span class="cp-sw" data-c="blue"></span>
               <span class="cp-sw" data-c="green"></span>
               <span class="cp-sw" data-c="pink"></span>
             </div>
-            <span class="compose-hint">Ctrl+Enter 送出</span>
-            <div class="compose-spacer"></div>
-            <button class="act-btn act-primary" id="btn-post">貼上</button>
           </div>
         </div>
-      </div>
 
-      <div class="notes-hd" style="margin-top:20px">
-        <span>記事</span>
-        <span class="notes-hd-count" id="notes-count"></span>
-        <span class="notes-live">
-          <span class="live-dot"></span>即時同步
-        </span>
-      </div>
-
-      <div class="notes-list" id="notes-list">
-        <div class="notes-empty" id="notes-loading">載入中…</div>
       </div>
 
     </div>
@@ -144,6 +187,7 @@
   var _color          = 'yellow';
   var _notes          = [];
   var _pendingDeletes = {};
+  var _searchQuery    = '';
 
   var ACCENT = { yellow: '#FCD34D', blue: '#60A5FA', green: '#4ADE80', pink: '#F472B6' };
 
@@ -164,16 +208,18 @@
   });
 
   var ta = document.getElementById('compose-ta');
-  ta.addEventListener('input', function () {
-    ta.style.height = 'auto';
-    ta.style.height = Math.max(60, ta.scrollHeight) + 'px';
-  });
   ta.addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); }
   });
   setTimeout(function () { ta.focus(); }, 50);
 
   document.getElementById('btn-post').addEventListener('click', submit);
+
+  // Search filter
+  document.getElementById('notes-search').addEventListener('input', function (e) {
+    _searchQuery = e.target.value.trim().toLowerCase();
+    render(_notes);
+  });
 
   function submit() {
     var content = ta.value.trim();
@@ -188,7 +234,7 @@
     };
     _notes.unshift(optimistic);
     render(_notes);
-    ta.value = ''; ta.style.height = '';
+    ta.value = '';
     L.apiAction('POST', '/api/notes', { content: content, color: _color, nurse: L.getNurse() })
       .then(function (note) {
         _notes = _notes.map(function (n) { return n.id === optimistic.id ? note : n; });
@@ -249,35 +295,51 @@
     var list = document.getElementById('notes-list');
     var countEl = document.getElementById('notes-count');
     var real = notes.filter(function (n) { return !n._tmp; });
+
+    // Apply search filter
+    var filtered = _searchQuery ? notes.filter(function (n) {
+      return n.content && n.content.toLowerCase().indexOf(_searchQuery) !== -1;
+    }) : notes;
+
     if (real.length > 0) {
       countEl.textContent = real.length; countEl.style.display = '';
     } else {
       countEl.style.display = 'none';
     }
-    if (!notes.length) {
-      list.innerHTML = '<div class="notes-empty">' +
-        '<svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/></svg>' +
-        '<p>目前沒有便利貼</p><small>輸入內容後按「貼上」即可新增</small></div>';
+
+    if (!filtered.length) {
+      if (!notes.length) {
+        list.innerHTML = '<div class="notes-empty">' +
+          '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><line x1="8" y1="9" x2="16" y2="9"/><line x1="8" y1="13" x2="14" y2="13"/></svg>' +
+          '<p>目前沒有便利貼</p><small>輸入內容後按「新增記事」即可新增</small></div>';
+      } else {
+        list.innerHTML = '<div class="notes-empty"><p>無符合的記事</p></div>';
+      }
       return;
     }
-    list.innerHTML = notes.map(function (n) {
-      var timeLabel = n.created_at ? (n.created_at.slice(11, 16) || n.created_at) : '';
+
+    list.innerHTML = filtered.map(function (n) {
+      var color = n.color || 'yellow';
       var isTemp = !!n._tmp;
-      var meta = '';
-      if (n.nurse || timeLabel) {
-        meta = '<div class="note-meta">' +
-          (n.nurse ? '<span class="note-nurse">' + L.escHtml(n.nurse) + '</span>' : '') +
-          (timeLabel ? '<span class="note-time">' + L.escHtml(timeLabel) + '</span>' : '') +
-        '</div>';
+      // Use first line as card title
+      var firstLine = ((n.content || '').split('\n')[0] || '').trim() || '（無內容）';
+      // Extract HH:MM from ISO timestamp or time string
+      var timeLabel = '';
+      if (n.created_at) {
+        var m = n.created_at.match(/(\d{1,2}:\d{2})/);
+        timeLabel = m ? m[1] : n.created_at.slice(0, 5);
       }
-      return '<div class="note-item' + (isTemp ? ' note-tmp' : '') + '" data-color="' + L.escHtml(n.color || 'yellow') + '">' +
+      var delBtn = !isTemp
+        ? '<button class="note-del" data-id="' + L.escHtml(String(n.id)) + '" title="刪除">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+          '</button>'
+        : '';
+      return '<div class="note-item' + (isTemp ? ' note-tmp' : '') + '" data-color="' + L.escHtml(color) + '">' +
         '<div class="note-body">' +
-          '<div class="note-content">' + L.escHtml(n.content) + '</div>' +
-          meta +
+          '<div class="note-title">' + L.escHtml(firstLine) + '</div>' +
+          (timeLabel ? '<div class="note-time">' + L.escHtml(timeLabel) + '</div>' : '') +
         '</div>' +
-        (!isTemp ? '<button class="note-del" data-id="' + L.escHtml(String(n.id)) + '" title="刪除">' +
-          '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
-        '</button>' : '') +
+        delBtn +
       '</div>';
     }).join('');
   }
