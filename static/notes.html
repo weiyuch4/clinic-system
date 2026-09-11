@@ -199,7 +199,7 @@
           <!-- Compose / edit textarea (hidden when idle) -->
           <textarea class="notes-editor-ta" id="compose-ta" placeholder="在此輸入記事內容，Ctrl+Enter 送出…" hidden></textarea>
 
-          <!-- Footer: color picker + 發布 (hidden when idle; 發布 hidden in edit mode) -->
+          <!-- Footer: color picker only (hidden when idle) -->
           <div class="notes-editor-footer" id="editor-footer" hidden>
             <span class="notes-color-label">選擇顏色</span>
             <div class="color-pick" id="color-pick">
@@ -208,7 +208,6 @@
               <span class="cp-sw" data-c="green"></span>
               <span class="cp-sw" data-c="pink"></span>
             </div>
-            <button class="act-btn act-primary" id="btn-post" style="margin-left:auto">發布</button>
           </div>
         </div>
 
@@ -243,10 +242,10 @@
   }
 
   function _setHeaderBtns(mode) {
-    // Idle/New: show 新增記事. Edit only: replace with 取消 + 儲存.
-    document.getElementById('btn-new').hidden    = mode === 'edit';
-    document.getElementById('btn-cancel').hidden = mode !== 'edit';
-    document.getElementById('btn-save').hidden   = mode !== 'edit';
+    // Idle: 新增記事. New or Edit: 取消 + 儲存.
+    document.getElementById('btn-new').hidden    = mode !== 'idle';
+    document.getElementById('btn-cancel').hidden = mode === 'idle';
+    document.getElementById('btn-save').hidden   = mode === 'idle';
   }
 
   function showIdle() {
@@ -265,7 +264,6 @@
     _selectedId = null;
     document.getElementById('editor-title').textContent = '新增記事';
     _setHeaderBtns('new');
-    document.getElementById('btn-post').hidden = false;
     document.getElementById('notes-idle').style.display = 'none';
     document.getElementById('compose-ta').hidden = false;
     document.getElementById('editor-footer').hidden = false;
@@ -280,7 +278,6 @@
     _selectedId = note.id;
     document.getElementById('editor-title').textContent = '編輯記事';
     _setHeaderBtns('edit');
-    document.getElementById('btn-post').hidden = true;
     document.getElementById('notes-idle').style.display = 'none';
     document.getElementById('compose-ta').hidden = false;
     document.getElementById('editor-footer').hidden = false;
@@ -320,7 +317,6 @@
 
   document.getElementById('btn-new').addEventListener('click', showNew);
   document.getElementById('btn-cancel').addEventListener('click', showIdle);
-  document.getElementById('btn-post').addEventListener('click', submit);
   document.getElementById('btn-save').addEventListener('click', submit);
 
   // ── Unified submit: POST (new) or PATCH (edit) ───────────────────────────
