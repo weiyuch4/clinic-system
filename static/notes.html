@@ -5,63 +5,47 @@
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>便利貼 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=34">
+<link rel="stylesheet" href="/static/_layout.css?v=35">
 <style>
-/* ── compose box ─────────────────────────────────────── */
-.compose{background:var(--card);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px;flex-shrink:0}
-.compose-ta{width:100%;resize:none;border:1.5px solid var(--border);border-radius:8px;padding:10px 12px;font-size:14px;font-family:inherit;background:var(--bg);color:var(--text);outline:none;min-height:72px;line-height:1.5;box-sizing:border-box;transition:border-color .15s}
-.compose-ta:focus{border-color:#93c5fd}
-.compose-row{display:flex;align-items:center;gap:10px}
-.color-pick{display:flex;gap:6px;align-items:center}
-.cp-dot{width:20px;height:20px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:transform .12s,border-color .12s;flex-shrink:0}
-.cp-dot:hover{transform:scale(1.15)}
+.compose-card{background:var(--card);border-radius:var(--r);padding:16px 18px;box-shadow:var(--shadow);flex-shrink:0;display:flex;flex-direction:column;gap:10px}
+.compose-footer{display:flex;align-items:center;gap:10px}
+.color-pick{display:flex;gap:7px;align-items:center}
+.cp-dot{width:18px;height:18px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:transform .12s,border-color .12s;flex-shrink:0}
+.cp-dot:hover{transform:scale(1.18)}
 .cp-dot.active{border-color:var(--text)}
 .cp-dot[data-c="yellow"]{background:#FCD34D}
 .cp-dot[data-c="blue"]  {background:#60A5FA}
 .cp-dot[data-c="green"] {background:#4ADE80}
 .cp-dot[data-c="pink"]  {background:#F472B6}
+.compose-hint{font-size:11.5px;color:var(--muted)}
 .compose-spacer{flex:1}
-.btn-post{padding:7px 18px;border-radius:8px;font-size:13.5px;font-weight:600;background:#1E3A8A;color:#fff;border:none;cursor:pointer;transition:background .15s}
-.btn-post:hover{background:#1e40af}
-.btn-post:disabled{opacity:.5;cursor:default}
 
-/* ── notes grid ──────────────────────────────────────── */
-.notes-grid{columns:3 220px;column-gap:14px;padding-top:4px}
-.note-card{break-inside:avoid;margin-bottom:14px;border-radius:10px;padding:14px 14px 10px;position:relative;display:flex;flex-direction:column;gap:8px;border:1.5px solid transparent}
-.note-card[data-color="yellow"]{background:#FEF9C3;border-color:#FDE68A}
-.note-card[data-color="blue"]  {background:#DBEAFE;border-color:#BFDBFE}
-.note-card[data-color="green"] {background:#DCFCE7;border-color:#BBF7D0}
-.note-card[data-color="pink"]  {background:#FCE7F3;border-color:#FBCFE8}
-:root[data-theme="dark"] .note-card[data-color="yellow"]{background:#422006;border-color:#78350F}
-:root[data-theme="dark"] .note-card[data-color="blue"]  {background:#1e3a5f;border-color:#1e40af}
-:root[data-theme="dark"] .note-card[data-color="green"] {background:#14532d;border-color:#166534}
-:root[data-theme="dark"] .note-card[data-color="pink"]  {background:#4a1942;border-color:#831843}
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .note-card[data-color="yellow"]{background:#422006;border-color:#78350F}
-  :root:not([data-theme="light"]) .note-card[data-color="blue"]  {background:#1e3a5f;border-color:#1e40af}
-  :root:not([data-theme="light"]) .note-card[data-color="green"] {background:#14532d;border-color:#166534}
-  :root:not([data-theme="light"]) .note-card[data-color="pink"]  {background:#4a1942;border-color:#831843}
-}
+.notes-list{display:flex;flex-direction:column;gap:8px}
+.note-item{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);border-left:4px solid #FCD34D;display:flex;align-items:flex-start;gap:0;overflow:hidden}
+.note-item[data-color="yellow"]{border-left-color:#FCD34D}
+.note-item[data-color="blue"]  {border-left-color:#60A5FA}
+.note-item[data-color="green"] {border-left-color:#4ADE80}
+.note-item[data-color="pink"]  {border-left-color:#F472B6}
+.note-body{flex:1;padding:11px 14px 10px}
 .note-content{font-size:14px;line-height:1.6;color:var(--text);white-space:pre-wrap;word-break:break-word}
-.note-footer{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--muted)}
-.note-nurse{font-weight:600}
-.note-time{opacity:.75}
-.note-footer-spacer{flex:1}
-.btn-del{background:none;border:none;cursor:pointer;color:var(--muted);padding:2px 4px;border-radius:5px;font-size:15px;line-height:1;transition:color .12s,background .12s}
-.btn-del:hover{color:#dc2626;background:rgba(220,38,38,.1)}
+.note-meta{display:flex;align-items:center;gap:6px;margin-top:5px;font-size:11.5px;color:var(--muted)}
+.note-nurse{font-weight:600;color:var(--sub)}
+.note-dot{opacity:.4}
+.note-del{background:none;border:none;cursor:pointer;color:var(--muted);padding:11px 14px;align-self:stretch;display:flex;align-items:center;font-size:16px;line-height:1;transition:color .12s,background .12s;flex-shrink:0}
+.note-del:hover{color:#dc2626;background:rgba(220,38,38,.08)}
 
-/* ── empty state ─────────────────────────────────────── */
-.notes-empty{text-align:center;padding:48px 20px;color:var(--muted);font-size:14px}
-.notes-empty svg{display:block;margin:0 auto 12px;opacity:.35}
+.notes-empty{text-align:center;color:var(--muted);font-size:13px;padding:32px 0}
+.notes-empty svg{display:block;margin:0 auto 10px;opacity:.3}
 
-/* ── scroll wrap ─────────────────────────────────────── */
-.notes-scroll{flex:1;overflow-y:auto}
-
-/* ── undo toast ──────────────────────────────────────── */
 .undo-toast{position:fixed;bottom:24px;right:24px;background:#374151;color:#fff;padding:11px 14px 11px 18px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 4px 16px rgba(0,0,0,.22);display:flex;align-items:center;gap:12px;z-index:9999;transform:translateY(10px);opacity:0;transition:transform .22s,opacity .22s;pointer-events:none}
 .undo-toast.show{transform:translateY(0);opacity:1;pointer-events:auto}
 .undo-btn{background:#fff;color:#111827;border:none;border-radius:6px;padding:4px 11px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
 .undo-btn:hover{background:#f3f4f6}
+
+@media(max-width:767px){
+  .undo-toast{bottom:calc(72px + env(safe-area-inset-bottom,0px) + 10px)}
+  .compose-hint{display:none}
+}
 </style>
 </head>
 <body>
@@ -80,26 +64,28 @@
         <div><h1>便利貼</h1><p>前台共用記事板，即時同步</p></div>
       </div>
 
-      <!-- compose -->
-      <div class="compose" id="compose">
-        <textarea class="compose-ta" id="compose-ta" placeholder="快速記事… (Ctrl+Enter 送出)" rows="3"></textarea>
-        <div class="compose-row">
+      <div class="compose-card">
+        <textarea class="modal-input" id="compose-ta" placeholder="快速記事…" rows="2" style="resize:none;min-height:60px"></textarea>
+        <div class="compose-footer">
           <div class="color-pick" id="color-pick">
             <span class="cp-dot active" data-c="yellow"></span>
             <span class="cp-dot" data-c="blue"></span>
             <span class="cp-dot" data-c="green"></span>
             <span class="cp-dot" data-c="pink"></span>
           </div>
+          <span class="compose-hint">Ctrl+Enter 送出</span>
           <div class="compose-spacer"></div>
-          <button class="btn-post" id="btn-post">貼上</button>
+          <button class="act-btn act-primary" id="btn-post">貼上</button>
         </div>
       </div>
 
-      <!-- notes feed -->
-      <div class="notes-scroll">
-        <div class="notes-grid" id="notes-grid">
-          <div class="notes-empty" id="notes-loading">載入中…</div>
-        </div>
+      <div class="sec-head" style="margin-top:18px;cursor:default">
+        <span>記事</span>
+        <span class="sec-count" id="notes-count" style="display:none"></span>
+      </div>
+
+      <div class="notes-list" id="notes-list">
+        <div class="notes-empty" id="notes-loading">載入中…</div>
       </div>
 
     </div>
@@ -112,9 +98,8 @@
   var L = window._L;
   var _color          = 'yellow';
   var _notes          = [];
-  var _pendingDeletes = {};  // id → { note, timerId, toastEl, origIndex }
+  var _pendingDeletes = {};
 
-  // ── color picker ──────────────────────────────────────
   document.getElementById('color-pick').addEventListener('click', function (e) {
     var dot = e.target.closest('.cp-dot');
     if (!dot) return;
@@ -124,23 +109,16 @@
     });
   });
 
-  // ── auto-grow textarea ────────────────────────────────
   var ta = document.getElementById('compose-ta');
   ta.addEventListener('input', function () {
     ta.style.height = 'auto';
-    ta.style.height = ta.scrollHeight + 'px';
+    ta.style.height = Math.max(60, ta.scrollHeight) + 'px';
   });
-
   ta.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      submit();
-    }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); }
   });
-
   setTimeout(function () { ta.focus(); }, 50);
 
-  // ── submit ────────────────────────────────────────────
   document.getElementById('btn-post').addEventListener('click', submit);
 
   function submit() {
@@ -148,20 +126,15 @@
     if (!content) { ta.focus(); return; }
     var btn = document.getElementById('btn-post');
     btn.disabled = true;
-
     var optimistic = {
-      id: 'tmp-' + Date.now(),
-      content: content,
-      color: _color,
+      id: 'tmp-' + Date.now(), content: content, color: _color,
       nurse: L.getNurse(),
       created_at: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
       _tmp: true,
     };
     _notes.unshift(optimistic);
     render(_notes);
-    ta.value = '';
-    ta.style.height = '';
-
+    ta.value = ''; ta.style.height = '';
     L.apiAction('POST', '/api/notes', { content: content, color: _color, nurse: L.getNurse() })
       .then(function (note) {
         _notes = _notes.map(function (n) { return n.id === optimistic.id ? note : n; });
@@ -175,67 +148,41 @@
       .finally(function () { btn.disabled = false; });
   }
 
-  // ── delete with undo ──────────────────────────────────
-  document.getElementById('notes-grid').addEventListener('click', function (e) {
-    var delBtn = e.target.closest('.btn-del');
+  document.getElementById('notes-list').addEventListener('click', function (e) {
+    var delBtn = e.target.closest('.note-del');
     if (!delBtn) return;
     var id = delBtn.dataset.id;
-    if (!id || _pendingDeletes[id]) return;  // already pending
-
-    var idx = -1;
-    var note = null;
+    if (!id || _pendingDeletes[id]) return;
+    var idx = -1, note = null;
     for (var i = 0; i < _notes.length; i++) {
       if (String(_notes[i].id) === id) { idx = i; note = _notes[i]; break; }
     }
     if (!note) return;
-
-    // Remove from visible list immediately
     _notes.splice(idx, 1);
     render(_notes);
-
-    // Build undo toast
     var toast = document.createElement('div');
     toast.className = 'undo-toast';
     toast.innerHTML = '已移除便利貼 <button class="undo-btn">復原</button>';
     document.body.appendChild(toast);
     setTimeout(function () { toast.classList.add('show'); }, 10);
-
-    // Timer to commit the delete after 5 s
-    var timerId = setTimeout(function () {
-      _commitDelete(id);
-    }, 5000);
-
+    var timerId = setTimeout(function () { _commitDelete(id); }, 5000);
     _pendingDeletes[id] = { note: note, origIndex: idx, timerId: timerId, toastEl: toast };
-
-    // Undo button
-    toast.querySelector('.undo-btn').addEventListener('click', function () {
-      _undoDelete(id);
-    });
+    toast.querySelector('.undo-btn').addEventListener('click', function () { _undoDelete(id); });
   });
 
   function _commitDelete(id) {
-    var entry = _pendingDeletes[id];
-    if (!entry) return;
-    _dismissToast(entry.toastEl);
-    delete _pendingDeletes[id];
-    L.apiAction('DELETE', '/api/notes/' + id)
-      .catch(function (e) {
-        L.showToast('刪除失敗：' + (e.message || ''), 'error');
-        // Restore on API failure
-        _notes.splice(0, 0, entry.note);
-        render(_notes);
-      });
+    var entry = _pendingDeletes[id]; if (!entry) return;
+    _dismissToast(entry.toastEl); delete _pendingDeletes[id];
+    L.apiAction('DELETE', '/api/notes/' + id).catch(function (e) {
+      L.showToast('刪除失敗：' + (e.message || ''), 'error');
+      _notes.splice(0, 0, entry.note); render(_notes);
+    });
   }
 
   function _undoDelete(id) {
-    var entry = _pendingDeletes[id];
-    if (!entry) return;
-    clearTimeout(entry.timerId);
-    _dismissToast(entry.toastEl);
-    delete _pendingDeletes[id];
-    // Restore at original position (clamp in case other notes were added/removed)
-    var pos = Math.min(entry.origIndex, _notes.length);
-    _notes.splice(pos, 0, entry.note);
+    var entry = _pendingDeletes[id]; if (!entry) return;
+    clearTimeout(entry.timerId); _dismissToast(entry.toastEl); delete _pendingDeletes[id];
+    _notes.splice(Math.min(entry.origIndex, _notes.length), 0, entry.note);
     render(_notes);
   }
 
@@ -244,64 +191,69 @@
     setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 280);
   }
 
-  // ── render ────────────────────────────────────────────
   function render(notes) {
-    var grid = document.getElementById('notes-grid');
+    var list = document.getElementById('notes-list');
+    var countEl = document.getElementById('notes-count');
+    var real = notes.filter(function(n){ return !n._tmp; });
+    if (real.length > 0) {
+      countEl.textContent = real.length; countEl.style.display = '';
+    } else {
+      countEl.style.display = 'none';
+    }
     if (!notes.length) {
-      grid.innerHTML = '<div class="notes-empty">' +
-        '<svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>' +
+      list.innerHTML = '<div class="notes-empty">' +
+        '<svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>' +
         '目前沒有便利貼</div>';
       return;
     }
-    grid.innerHTML = notes.map(function (n) {
-      var timeLabel = n.created_at ? n.created_at.slice(11, 16) || n.created_at : '';
+    list.innerHTML = notes.map(function (n) {
+      var timeLabel = n.created_at ? (n.created_at.slice(11, 16) || n.created_at) : '';
       var isTemp = !!n._tmp;
-      return '<div class="note-card" data-color="' + L.escHtml(n.color || 'yellow') + '">' +
-        '<div class="note-content">' + L.escHtml(n.content) + '</div>' +
-        '<div class="note-footer">' +
-          (n.nurse ? '<span class="note-nurse">' + L.escHtml(n.nurse) + '</span>' : '') +
-          (timeLabel ? '<span class="note-time">' + L.escHtml(timeLabel) + '</span>' : '') +
-          '<span class="note-footer-spacer"></span>' +
-          (!isTemp ? '<button class="btn-del" data-id="' + L.escHtml(String(n.id)) + '" title="刪除">×</button>' : '') +
+      var meta = [];
+      if (n.nurse) meta.push('<span class="note-nurse">' + L.escHtml(n.nurse) + '</span>');
+      if (timeLabel) {
+        if (meta.length) meta.push('<span class="note-dot">·</span>');
+        meta.push('<span>' + L.escHtml(timeLabel) + '</span>');
+      }
+      return '<div class="note-item" data-color="' + L.escHtml(n.color || 'yellow') + '">' +
+        '<div class="note-body">' +
+          '<div class="note-content">' + L.escHtml(n.content) + '</div>' +
+          (meta.length ? '<div class="note-meta">' + meta.join('') + '</div>' : '') +
         '</div>' +
+        (!isTemp ? '<button class="note-del" data-id="' + L.escHtml(String(n.id)) + '" title="刪除">' +
+          '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+        '</button>' : '') +
       '</div>';
     }).join('');
   }
 
-  // ── load / poll ───────────────────────────────────────
   function load() {
     L.apiFetch('/api/notes')
       .then(function (notes) {
         var tmpEntries = _notes.filter(function (n) { return n._tmp; });
-        // Exclude notes pending deletion from the refreshed list
         var pendingIds = Object.keys(_pendingDeletes);
-        var filtered = notes.filter(function (n) {
+        _notes = tmpEntries.concat(notes.filter(function (n) {
           return pendingIds.indexOf(String(n.id)) === -1;
-        });
-        _notes = tmpEntries.concat(filtered);
+        }));
         render(_notes);
       })
       .catch(function (e) {
-        var bar = document.getElementById('error-bar');
         document.getElementById('error-msg').textContent = '便利貼載入失敗 — ' + (e.message || e);
-        bar.style.display = 'flex';
+        document.getElementById('error-bar').style.display = 'flex';
       });
   }
 
   load();
   setInterval(function () {
     if (_notes.some(function (n) { return n._tmp; })) return;
-    L.apiFetch('/api/notes')
-      .then(function (notes) {
-        var pendingIds = Object.keys(_pendingDeletes);
-        _notes = notes.filter(function (n) {
-          return pendingIds.indexOf(String(n.id)) === -1;
-        });
-        render(_notes);
-      })
-      .catch(function () {});
+    L.apiFetch('/api/notes').then(function (notes) {
+      var pendingIds = Object.keys(_pendingDeletes);
+      _notes = notes.filter(function (n) { return pendingIds.indexOf(String(n.id)) === -1; });
+      render(_notes);
+    }).catch(function () {});
   }, 10000);
 
+  Layout.init({ activePage: 'notes' });
 }());
 </script>
 </body>
