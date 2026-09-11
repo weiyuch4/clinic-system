@@ -86,6 +86,26 @@ if CLOUD_MODE:
 else:
     threading.Thread(target=database.warmup_cache, daemon=True).start()
 
+
+def _connection_heartbeat() -> None:
+    """Ping every pool connection every 2 minutes so AWS NAT never sees 6+ minutes of idle.
+    Socket-level keepalives (keepalives_idle=60) may not survive Railway's network proxy,
+    so we keep connections alive at the application layer instead."""
+    import time
+    while True:
+        time.sleep(120)
+        if db._pool is None:
+            continue
+        try:
+            with db._conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute("SELECT 1")
+        except Exception:
+            pass  # pool will discard the dead connection on next real use
+
+
+threading.Thread(target=_connection_heartbeat, daemon=True).start()
+
 if not auth.has_any_users():
     _default_pass = os.environ.get("BOOTSTRAP_ADMIN_PASS", "ClinicAdmin2026!")
     auth.bootstrap_clinic(
