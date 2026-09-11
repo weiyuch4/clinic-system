@@ -19,18 +19,38 @@ def set_clinic_id(cid: int) -> None:
     _clinic_id_ctx.set(cid)
 
 
-def init_pool(minconn=1, maxconn=10) -> None:
+def init_pool(minconn=1, maxconn=20) -> None:
     global _pool
     if not DATABASE_URL:
         raise RuntimeError("DATABASE_URL environment variable not set")
-    _pool = ThreadedConnectionPool(minconn, maxconn, DATABASE_URL)
+    # TCP keepalives prevent Railway's NAT gateway from silently dropping idle connections.
+    # Without these, reused pool connections can be dead, causing ~10s TCP-timeout hangs.
+    _pool = ThreadedConnectionPool(
+        minconn, maxconn, DATABASE_URL,
+        keepalives=1,
+        keepalives_idle=60,
+        keepalives_interval=10,
+        keepalives_count=5,
+    )
+
+
+def _get_live_conn() -> "psycopg2.extensions.connection":
+    """Get a connection from the pool, discarding any that psycopg2 already knows are closed."""
+    assert _pool is not None
+    for _ in range(3):
+        conn = _pool.getconn()
+        if conn.closed == 0:
+            return conn
+        _pool.putconn(conn, close=True)
+    return _pool.getconn()
 
 
 @contextmanager
 def _conn():
     if _pool is None:
         raise RuntimeError("DB pool not initialized — call db.init_pool() first")
-    conn = _pool.getconn()
+    conn = _get_live_conn()
+    _discard = False
     try:
         conn.autocommit = False
         conn.cursor_factory = psycopg2.extras.RealDictCursor
@@ -44,8 +64,19 @@ def _conn():
                 )
         yield conn
         conn.commit()
+    except psycopg2.OperationalError:
+        # Connection died mid-query — discard it so the pool doesn't reuse a dead socket.
+        _discard = True
+        try:
+            conn.rollback()
+        except Exception:
+            pass
+        raise
     except Exception:
-        conn.rollback()
+        try:
+            conn.rollback()
+        except Exception:
+            pass
         raise
     finally:
-        _pool.putconn(conn)
+        _pool.putconn(conn, close=_discard)
