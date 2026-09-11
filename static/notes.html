@@ -87,7 +87,7 @@
 .cp-sw[data-c="pink"]  {background:#F472B6}
 
 /* ── Read-only note view ── */
-.notes-view-body{flex:1;border:1px solid var(--border);border-radius:8px;padding:13px 14px;font-size:14px;line-height:1.7;color:var(--text);background:var(--bg);overflow-y:auto;white-space:pre-wrap;word-break:break-word;min-height:200px}
+.notes-view-body{flex:1;padding:4px 2px;font-size:14px;line-height:1.7;color:var(--text);overflow-y:auto;white-space:pre-wrap;word-break:break-word;min-height:200px}
 
 /* ── Undo toast ── */
 .undo-toast{position:fixed;bottom:24px;right:24px;background:#1F2937;color:#fff;padding:11px 14px 11px 18px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.28);display:flex;align-items:center;gap:12px;z-index:9999;transform:translateY(10px);opacity:0;transition:transform .22s,opacity .22s;pointer-events:none}
@@ -413,7 +413,7 @@
       }
       if (!note) return;
       // If the note being deleted is currently selected, go back to idle
-      if (_mode === 'edit' && _selectedId === note.id) showIdle();
+      if ((_mode === 'edit' || _mode === 'view') && _selectedId === note.id) showIdle();
       _notes.splice(idx, 1);
       render(_notes);
       var toast = document.createElement('div');
