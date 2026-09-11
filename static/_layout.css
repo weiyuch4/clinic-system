@@ -1,4 +1,6 @@
-﻿/* â”€â”€ CSS variables & themes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+﻿/* Override browser UA [hidden] which author styles (display:inline-flex etc.) would otherwise beat */
+[hidden]{display:none!important}
+/* â”€â”€ CSS variables & themes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root {
   --bg:#F0EFED;--card:#FFFFFF;--border:#E5E7EB;
   --text:#111827;--sub:#4B5563;--muted:#596172;
