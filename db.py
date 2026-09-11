@@ -29,13 +29,21 @@ def init_pool(minconn=1, maxconn=20) -> None:
 
 
 def _get_live_conn() -> "psycopg2.extensions.connection":
-    """Get a connection from the pool, discarding any that psycopg2 already knows are closed."""
+    """Get a connection from the pool.
+    Pre-pings each candidate to detect Railway NAT-dropped connections before use.
+    Dead connections are discarded and a fresh one is returned instead."""
     assert _pool is not None
     for _ in range(3):
         conn = _pool.getconn()
-        if conn.closed == 0:
+        if conn.closed != 0:
+            _pool.putconn(conn, close=True)
+            continue
+        try:
+            conn.cursor().execute("SELECT 1")
+            conn.reset()
             return conn
-        _pool.putconn(conn, close=True)
+        except psycopg2.OperationalError:
+            _pool.putconn(conn, close=True)
     return _pool.getconn()
 
 
