@@ -488,22 +488,14 @@
 
     } else if (action === 'phone-complete') {
       var entry2 = _activeMap[chart]; if (!entry2) return;
-      _modalEntry = entry2;
-      document.getElementById('modal-phone-title').textContent = '完成 — ' + entry2.patient.name;
-      document.getElementById('modal-phone-sub').textContent =
-        '身份證 #' + entry2.patient.chart_number + ' · 階段 ' + (entry2.mspt_stage || '');
-      var bloodWrap = document.getElementById('modal-phone-blood-wrap');
-      var bloodEl   = document.getElementById('modal-phone-blood');
-      if (entry2.blood_draw_date) {
-        bloodEl.textContent = '✓ 使用 ' + entry2.blood_draw_date + ' 的血液報告完成此階段。';
-        bloodEl.style.background = '#f0fdf4'; bloodEl.style.borderColor = '#bbf7d0'; bloodEl.style.color = '#14532d';
-        bloodWrap.style.display = '';
-      } else {
-        bloodWrap.style.display = 'none';
-      }
-      document.getElementById('modal-phone-note').value = '';
-      document.getElementById('phone-error').classList.remove('show');
-      L.showModal('modal-phone');
+      btn.disabled = true;
+      L.apiAction('POST', '/api/mspt-phone-complete', { entry: entry2, nurse: L.getNurse() })
+        .then(function () {
+          L.showToast('已完成，進入可申報佇列');
+          _removeFromActive(entry2.patient.chart_number);
+          _refreshBg();
+        })
+        .catch(function (e) { L.showToast('操作失敗：' + (e.message || ''), 'error'); btn.disabled = false; });
 
     } else if (action === 'hold') {
       var entry3 = _activeMap[chart]; if (!entry3) return;
@@ -601,19 +593,6 @@
       .finally(function () { confirmBtn.disabled = false; });
   });
 
-  document.getElementById('btn-phone-confirm').addEventListener('click', function () {
-    var entry = _modalEntry; if (!entry) return;
-    var confirmBtn = this, errEl = document.getElementById('phone-error');
-    errEl.classList.remove('show'); confirmBtn.disabled = true;
-    L.apiAction('POST', '/api/mspt-phone-complete', { entry: entry, nurse: L.getNurse() })
-      .then(function () {
-        L.hideModal('modal-phone'); L.showToast('已完成，進入可申報佇列');
-        _removeFromActive(entry.patient.chart_number);
-        _refreshBg();
-      })
-      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
-      .finally(function () { confirmBtn.disabled = false; });
-  });
 
   document.getElementById('btn-hold-confirm').addEventListener('click', function () {
     var entry = _modalEntry; if (!entry) return;
