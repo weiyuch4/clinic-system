@@ -258,12 +258,12 @@
 
           var actionHtml = '';
           if (!p.notified) {
-            // "外部檢驗所" button available for any non-notified patient
-            actionHtml += '<button class="lab-btn lab-btn-physical" data-action="to-physical" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '" data-name="' + L.escHtml(p.name) + '" title="移至實體報告追蹤">外部檢驗所</button>';
-          }
-          if (p.results_back && !p.notified) {
+            // 外部檢驗所: only when results haven't arrived digitally yet
+            if (!p.results_back) {
+              actionHtml += '<button class="lab-btn lab-btn-physical" data-action="to-physical" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '" data-name="' + L.escHtml(p.name) + '" title="移至實體報告追蹤">外部檢驗所</button>';
+            }
             actionHtml += '<button class="lab-btn lab-btn-notify" data-action="notify" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '">已通知病患</button>';
-          } else if (p.notified) {
+          } else {
             actionHtml += '<button class="lab-btn lab-btn-undo" data-action="undo-notify" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '">撤銷</button>';
           }
 
