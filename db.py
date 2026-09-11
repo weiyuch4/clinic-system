@@ -25,13 +25,7 @@ def init_pool(minconn=1, maxconn=20) -> None:
         raise RuntimeError("DATABASE_URL environment variable not set")
     # TCP keepalives prevent Railway's NAT gateway from silently dropping idle connections.
     # Without these, reused pool connections can be dead, causing ~10s TCP-timeout hangs.
-    _pool = ThreadedConnectionPool(
-        minconn, maxconn, DATABASE_URL,
-        keepalives=1,
-        keepalives_idle=60,
-        keepalives_interval=10,
-        keepalives_count=5,
-    )
+    _pool = ThreadedConnectionPool(minconn, maxconn, DATABASE_URL)
 
 
 def _get_live_conn() -> "psycopg2.extensions.connection":

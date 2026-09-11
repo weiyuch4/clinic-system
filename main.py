@@ -72,7 +72,7 @@ app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 try:
-    db.init_pool(minconn=8, maxconn=30)
+    db.init_pool(minconn=2, maxconn=25)
 except RuntimeError as e:
     logger.warning(f"PostgreSQL pool not initialized: {e}. Set DATABASE_URL to enable database access.")
 
@@ -87,37 +87,6 @@ else:
     threading.Thread(target=database.warmup_cache, daemon=True).start()
 
 
-def _connection_heartbeat() -> None:
-    """Ping all idle pool connections every 2 minutes so AWS NAT never drops them.
-    We check out all minconn connections simultaneously, ping each, then return them.
-    Without this, idle connections die after ~6 min and the next report fetch is slow."""
-    import time
-    _PING_COUNT = 8  # must match minconn
-    while True:
-        time.sleep(120)
-        if db._pool is None:
-            continue
-        conns = []
-        try:
-            for _ in range(_PING_COUNT):
-                try:
-                    conn = db._pool.getconn()
-                    conns.append(conn)
-                    conn.cursor().execute("SELECT 1")
-                    conn.commit()
-                except Exception:
-                    break
-        except Exception:
-            pass
-        finally:
-            for conn in conns:
-                try:
-                    db._pool.putconn(conn)
-                except Exception:
-                    pass
-
-
-threading.Thread(target=_connection_heartbeat, daemon=True).start()
 
 if not auth.has_any_users():
     _default_pass = os.environ.get("BOOTSTRAP_ADMIN_PASS", "ClinicAdmin2026!")
