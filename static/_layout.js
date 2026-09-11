@@ -213,8 +213,11 @@
   function getNurse() { return _nurse; }
 
   function _updateAvatar(name) {
+    var ch = name ? name.slice(-1) : '?';
     var el = document.getElementById('nurse-av');
-    if (el) el.textContent = name ? name.slice(-1) : '?';
+    if (el) el.textContent = ch;
+    var mob = document.getElementById('mob-nurse-av');
+    if (mob) mob.textContent = ch;
   }
 
   function _updateNurseLbl(name) {
@@ -486,8 +489,10 @@
         var cls = 'mn-item' + (isActive ? ' on' : '');
         var inner = '<span class="mn-ic">' + (ICONS[item.id] || '') + '</span><span>' + item.label + '</span>';
         if (item.href === null) {
-          // "我的" opens the nurse selector dropdown
-          return '<button type="button" class="' + cls + '" onclick="document.getElementById(\'nurse-btn\').click()">' + inner + '</button>';
+          // "我的" shows nurse avatar and opens the nurse selector dropdown
+          var avChar = _nurse ? _nurse.slice(-1) : '?';
+          var avInner = '<span class="mn-ic"><div class="av" id="mob-nurse-av">' + avChar + '</div></span><span>' + item.label + '</span>';
+          return '<button type="button" class="' + cls + '" onclick="document.getElementById(\'nurse-btn\').click()">' + avInner + '</button>';
         }
         return '<a href="' + item.href + '" class="' + cls + '">' + inner + '</a>';
       }).join('') +

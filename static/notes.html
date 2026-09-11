@@ -5,7 +5,7 @@
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>記事 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=38">
+<link rel="stylesheet" href="/static/_layout.css?v=39">
 <style>
 /* ── Two-panel workspace ── */
 .notes-workspace{display:flex;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;height:calc(100vh - 190px);min-height:480px;max-height:760px}
@@ -24,8 +24,10 @@
 .notes-live{display:flex;align-items:center;gap:4px;font-size:10.5px;color:var(--muted);font-weight:400}
 .live-dot{width:5px;height:5px;border-radius:50%;background:#22c55e;flex-shrink:0;animation:livePulse 2.5s ease-in-out infinite}
 @keyframes livePulse{0%,100%{opacity:1}50%{opacity:.2}}
-.notes-mob-add{display:none;align-items:center;gap:5px;padding:5px 12px;min-height:32px;font-size:13px}
-@media(max-width:767px){.notes-mob-add{display:inline-flex}}
+.notes-fab{display:none;position:fixed;right:18px;bottom:calc(72px + env(safe-area-inset-bottom,0px));width:52px;height:52px;border-radius:50%;background:#2563eb;color:#fff;border:none;cursor:pointer;box-shadow:0 4px 14px rgba(37,99,235,.45);align-items:center;justify-content:center;z-index:290;transition:background .12s,transform .1s}
+.notes-fab:active{transform:scale(.94)}
+.notes-fab svg{width:24px;height:24px;flex-shrink:0}
+@media(max-width:767px){.notes-fab{display:flex}}
 
 /* Note list scroll area */
 .notes-list{flex:1;overflow-y:auto;padding:6px 0}
@@ -161,6 +163,7 @@
   /* When workspace has .notes-show-editor: reveal editor, cover list */
   .notes-workspace.notes-show-editor .notes-editor{display:flex}
   .notes-workspace.notes-show-editor .notes-sidebar{visibility:hidden;pointer-events:none}
+  .notes-workspace.notes-show-editor ~ .notes-fab{display:none}
 
   /* Back button visible on mobile */
   .notes-back-btn{display:flex}
@@ -201,7 +204,6 @@
               <span>所有記事</span>
               <span class="notes-hd-count" id="notes-count"></span>
             </div>
-            <button class="act-btn act-primary notes-mob-add" id="btn-mob-add" type="button">新增</button>
             <span class="notes-live">
               <span class="live-dot"></span>即時同步
             </span>
@@ -261,11 +263,16 @@
 
       </div>
 
+      <!-- FAB: mobile-only 新增 button, hidden when editor is open -->
+      <button class="notes-fab" id="btn-mob-add" type="button" title="新增記事">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+
     </div>
   </div>
 </div>
 
-<script src="/static/_layout.js?v=37"></script>
+<script src="/static/_layout.js?v=38"></script>
 <script>
 (function () {
   var L = window.Layout;

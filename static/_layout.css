@@ -496,9 +496,10 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 
   /* ── topbar ───────────────────────────────────────── */
   .tb{height:54px;padding:0 14px;position:relative;justify-content:flex-end}
-  .tb-title{display:block;max-width:calc(100% - 200px)}
+  .tb-title{display:block;max-width:calc(100% - 140px)}
   .ib{width:44px;height:44px}
-  .nurse-btn{height:44px;padding:0 8px!important;gap:0;border-radius:22px;min-width:44px;justify-content:center}
+  #btn-refresh{display:none!important}
+  .nurse-wrap{display:none!important}
   .nurse-lbl{display:none!important}
   .nurse-chev{display:none!important}
 
@@ -518,7 +519,8 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .sg-date{font-size:12px}
   .wn-btn{width:44px;height:44px;border-radius:11px}
   .week-label{font-size:15px}
-  .wn-today{height:44px;padding:0 16px;font-size:14px;line-height:44px;border-radius:11px}
+  .wn-today{height:34px;padding:0 12px;font-size:13px;display:flex;align-items:center;border-radius:8px}
+  .mob-nav .av{width:24px;height:24px;font-size:11px}
   .view-toggle button{padding:8px 16px;font-size:14px}
 
   /* ── OT page ──────────────────────────────────────── */
