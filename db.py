@@ -61,7 +61,8 @@ def _get_live_conn() -> "psycopg2.extensions.connection":
             try:
                 conn.cursor().execute("SELECT 1")
                 conn.reset()
-            except psycopg2.OperationalError:
+            except Exception:
+                # InterfaceError, OperationalError, etc. — any ping failure
                 _conn_last_used.pop(id(conn), None)
                 _pool.putconn(conn, close=True)
                 continue
