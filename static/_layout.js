@@ -71,6 +71,7 @@
   var _nurse           = localStorage.getItem('nurse') || '';
   var _pinTarget    = '';   // nurse name waiting for PIN entry
   var _scheduleData = null;
+  var _openNurseDD  = null;  // set by _initNurseSelector, used by mobile nav
   // _theme declared at top of IIFE for early application
 
   // ── Utilities (also exposed publicly) ────────────────
@@ -260,6 +261,7 @@
 
     function closeDd() { dd.classList.remove('open'); btn.classList.remove('open'); }
     function openDd()  { dd.classList.add('open');    btn.classList.add('open');    }
+    _openNurseDD = openDd;
 
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
@@ -492,7 +494,7 @@
           // "我的" shows nurse avatar and opens the nurse selector dropdown
           var avChar = _nurse ? _nurse.slice(-1) : '?';
           var avInner = '<span class="mn-ic"><div class="av" id="mob-nurse-av">' + avChar + '</div></span><span>' + item.label + '</span>';
-          return '<button type="button" class="' + cls + '" onclick="document.getElementById(\'nurse-btn\').click()">' + avInner + '</button>';
+          return '<button type="button" class="' + cls + '" onclick="Layout.openNurseSelector()">' + avInner + '</button>';
         }
         return '<a href="' + item.href + '" class="' + cls + '">' + inner + '</a>';
       }).join('') +
@@ -1200,6 +1202,7 @@
   // ── Export ───────────────────────────────────────────
   window.Layout = {
     init:              init,
+    openNurseSelector: function () { if (_openNurseDD) _openNurseDD(); },
     updateBadges:      updateBadges,
     updateShiftInfo:   updateShiftInfo,
     updateLastUpdated: updateLastUpdated,

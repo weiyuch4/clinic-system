@@ -473,15 +473,15 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .mn-items{display:flex}
 .mn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 7px;color:var(--muted);text-decoration:none;font-size:10px;font-weight:500;gap:3px;border:none;background:transparent;cursor:pointer;font-family:inherit;transition:color .12s}
 .mn-item svg{width:22px;height:22px;flex-shrink:0}
-.mn-item.on{color:#111827}
+.mn-item.on{color:#2563eb}
 /* ── mobile nav icon pill ────────────────────────────── */
 .mn-ic{display:flex;align-items:center;justify-content:center;width:48px;height:28px;border-radius:14px;transition:background .15s;flex-shrink:0}
-.mn-item.on .mn-ic{background:#b5d7f5}
-:root[data-theme=dark] .mn-item.on{color:#93c5fd}
-:root[data-theme=dark] .mn-item.on .mn-ic{background:#1E3A5F}
+.mn-item.on .mn-ic{background:rgba(37,99,235,.12)}
+:root[data-theme=dark] .mn-item.on{color:#60a5fa}
+:root[data-theme=dark] .mn-item.on .mn-ic{background:rgba(96,165,250,.18)}
 @media(prefers-color-scheme:dark){
-  :root:not([data-theme=light]) .mn-item.on{color:#93c5fd}
-  :root:not([data-theme=light]) .mn-item.on .mn-ic{background:#1E3A5F}
+  :root:not([data-theme=light]) .mn-item.on{color:#60a5fa}
+  :root:not([data-theme=light]) .mn-item.on .mn-ic{background:rgba(96,165,250,.18)}
 }
 
 @media(max-width:767px){
@@ -502,6 +502,9 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .nurse-wrap{display:none!important}
   .nurse-lbl{display:none!important}
   .nurse-chev{display:none!important}
+  /* Nurse dropdown: fixed position above bottom nav when opened from mobile nav */
+  .nurse-dd{position:fixed!important;bottom:calc(72px + env(safe-area-inset-bottom,0px) + 8px)!important;right:12px!important;top:auto!important;transform-origin:bottom right!important;transform:scale(.96)!important;min-width:220px}
+  .nurse-dd.open{transform:scale(1)!important}
 
   /* ── page header — hidden on mobile (topbar shows the title) */
   .ph{display:none!important}
