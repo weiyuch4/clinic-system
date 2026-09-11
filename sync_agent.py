@@ -167,13 +167,16 @@ def do_sync() -> None:
                 for day in days
                 for p in day['patients']
             }
-            notified_keys = _contacts.get_blood_notified_keys(1)
+            notified_keys  = _contacts.get_blood_notified_keys(1)
+            physical_keys  = _contacts.get_blood_physical_keys(1)
             stored = _contacts.get_synced_blood_pending(1)
             for old_day in stored:
                 draw_d = date.fromisoformat(old_day['date'])
                 if (today - draw_d).days <= 5:
                     continue  # within normal window, already rebuilt above
                 for p in old_day['patients']:
+                    if (p['nat_id'], old_day['date']) in physical_keys:
+                        continue  # sent to external lab — tracked on physical tab, not here
                     if p.get('results_back') and (p['nat_id'], old_day['date']) in notified_keys:
                         continue  # results back and nurse already notified patient — drop it
                     if (p['nat_id'], old_day['date']) in already_covered:

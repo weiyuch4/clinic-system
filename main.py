@@ -29,7 +29,7 @@ import lab_report
 import lab_results
 import settings as _settings
 from models import (
-    BloodDismissRequest, BloodNotifiedRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
+    BloodDismissRequest, BloodNotifiedRequest, BloodPhysicalRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
     CreateUserRequest, DailyReport,
     ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
     ManualOnHoldRequest, ManualPickupRequest,
@@ -1541,7 +1541,8 @@ def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -
     Returns [{date, patients: [{name, nat_id, draw_codes, is_allergy,
     results_back, results_date, notified, overdue}]}], most recent day first."""
     try:
-        notified_keys = contacts.get_blood_notified_keys(user.clinic_id)
+        notified_keys  = contacts.get_blood_notified_keys(user.clinic_id)
+        physical_keys  = contacts.get_blood_physical_keys(user.clinic_id)
         if CLOUD_MODE:
             days = contacts.get_synced_blood_pending(user.clinic_id)
         else:
@@ -1554,10 +1555,17 @@ def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -
                     p['results_date'] = result_date
         today = date.today()
         for day in days:
+            # Remove patients sent to external physical labs
+            day['patients'] = [
+                p for p in day['patients']
+                if (p.get('nat_id', ''), day['date']) not in physical_keys
+            ]
             for p in day['patients']:
                 p['notified'] = (p.get('nat_id', ''), day['date']) in notified_keys
                 draw_age = (today - date.fromisoformat(day['date'])).days
                 p['overdue'] = draw_age > 5 and not p.get('results_back', False)
+        # Drop empty day groups
+        days = [d for d in days if d['patients']]
         return days
     except Exception:
         logger.exception("get_blood_pending failed")
@@ -1596,6 +1604,50 @@ def delete_blood_notified(req: BloodNotifiedRequest, user: auth.CurrentUser = De
     except Exception:
         logger.exception("blood-notified DELETE failed")
         raise HTTPException(status_code=500, detail="撤銷失敗")
+
+
+@app.get("/api/blood-physical")
+def get_blood_physical(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    """Patients moved to external-lab physical report tracking."""
+    try:
+        return contacts.get_blood_physical(user.clinic_id)
+    except Exception:
+        logger.exception("blood-physical GET failed")
+        raise HTTPException(status_code=500, detail="實體報告清單載入失敗")
+
+
+@app.post("/api/blood-physical")
+def post_blood_physical(req: BloodPhysicalRequest, user: auth.CurrentUser = Depends(auth.get_current_user)):
+    """Move a patient to external-lab physical report tracking."""
+    try:
+        contacts.add_blood_physical(req.nat_id, req.draw_date, req.name, req.nurse, user.clinic_id)
+        return {"ok": True}
+    except Exception:
+        logger.exception("blood-physical POST failed")
+        raise HTTPException(status_code=500, detail="移至實體報告失敗")
+
+
+@app.delete("/api/blood-physical")
+def delete_blood_physical(req: BloodPhysicalRequest, user: auth.CurrentUser = Depends(auth.get_current_user)):
+    """Move a patient back from physical tracking to the digital list."""
+    try:
+        contacts.remove_blood_physical(req.nat_id, req.draw_date, user.clinic_id)
+        return {"ok": True}
+    except Exception:
+        logger.exception("blood-physical DELETE failed")
+        raise HTTPException(status_code=500, detail="撤銷失敗")
+
+
+@app.post("/api/blood-physical/done")
+def blood_physical_done(req: BloodPhysicalRequest, user: auth.CurrentUser = Depends(auth.get_current_user)):
+    """Mark physical-report patient as notified and remove from physical tracking."""
+    try:
+        contacts.add_blood_notified(req.nat_id, req.draw_date, req.nurse, user.clinic_id)
+        contacts.remove_blood_physical(req.nat_id, req.draw_date, user.clinic_id)
+        return {"ok": True}
+    except Exception:
+        logger.exception("blood-physical/done POST failed")
+        raise HTTPException(status_code=500, detail="標記完成失敗")
 
 
 @app.get("/api/notice")

@@ -290,6 +290,13 @@ class BloodNotifiedRequest(BaseModel):
     nurse: str = ""
 
 
+class BloodPhysicalRequest(BaseModel):
+    nat_id: str
+    draw_date: str      # 'YYYY-MM-DD'
+    name: str = ""
+    nurse: str = ""
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str
