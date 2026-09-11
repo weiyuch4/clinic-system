@@ -3,9 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>今日總覽 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=34">
+<link rel="stylesheet" href="/static/_layout.css?v=36">
 <style>
 /* ── dashboard-specific ─────────────────────────────── */
 .big-num{font-size:34px;font-weight:700;color:var(--text);line-height:1;margin-bottom:6px;font-variant-numeric:tabular-nums}
@@ -20,6 +20,11 @@
 .urg-name{font-size:13px;font-weight:600;color:var(--text)}
 .urg-sub{font-size:11px;color:var(--sub)}
 .urg-count{margin-left:auto;font-size:15px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+/* ── tablet: stack dashboard columns ─────────────────── */
+@media(min-width:768px) and (max-width:960px){
+  .tc{grid-template-columns:1fr}
+  .rc{display:grid;grid-template-columns:repeat(2,1fr)}
+}
 #chart-htip{position:fixed;z-index:999;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:9px;box-shadow:0 6px 22px rgba(0,0,0,.13);padding:10px 13px;min-width:152px;font-size:12px;line-height:1.4;display:none}
 .ht-date{font-size:10.5px;color:var(--muted);font-weight:600;margin-bottom:5px;letter-spacing:.2px}
 .ht-total{font-size:22px;font-weight:700;color:var(--text);line-height:1;font-variant-numeric:tabular-nums}
