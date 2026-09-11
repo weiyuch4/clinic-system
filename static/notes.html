@@ -5,7 +5,7 @@
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>記事 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=36">
+<link rel="stylesheet" href="/static/_layout.css?v=37">
 <style>
 /* ── Two-panel workspace ── */
 .notes-workspace{display:flex;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;height:calc(100vh - 190px);min-height:480px;max-height:760px}
@@ -127,13 +127,47 @@
 :root[data-theme=dark] .cp-sw.active{border-color:rgba(255,255,255,.5)}
 :root[data-theme=dark] .cp-sw.active::after{border-color:rgba(255,255,255,.7)}
 
-/* ── Mobile: stack panels ── */
+/* ── Back button (mobile-only, hidden on desktop) ── */
+.notes-back-btn{display:none;align-items:center;gap:5px;background:transparent;border:none;cursor:pointer;color:var(--sub);font-size:14px;font-weight:600;padding:4px 8px 4px 0;font-family:inherit;flex-shrink:0;transition:color .1s}
+.notes-back-btn:hover{color:var(--text)}
+.notes-back-btn svg{flex-shrink:0}
+
+/* ── Mobile: show only one panel at a time ── */
 @media(max-width:767px){
+  /* Workspace loses fixed height — .ct handles page scroll */
   .notes-workspace{flex-direction:column;height:auto;min-height:unset;max-height:unset}
-  .notes-sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);max-height:220px}
-  .notes-editor{padding:16px}
-  .notes-editor-ta{min-height:160px}
-  .undo-toast{bottom:calc(72px + env(safe-area-inset-bottom,0px) + 10px)}
+
+  /* List panel: full width, natural height, page scrolls */
+  .notes-sidebar{width:100%;border-right:none;border-bottom:none;max-height:unset;height:auto;overflow:visible}
+  .notes-list{flex:none;overflow-y:visible}
+
+  /* Editor panel: fixed full-screen overlay (above nav, below topbar) — hidden by default */
+  .notes-editor{
+    display:none;
+    position:fixed;
+    top:54px;
+    left:0;
+    right:0;
+    bottom:calc(60px + env(safe-area-inset-bottom,0px));
+    z-index:200;
+    background:var(--card);
+    padding:16px;
+    overflow-y:auto;
+    border-top:1px solid var(--border);
+  }
+
+  /* When workspace has .notes-show-editor: reveal editor, cover list */
+  .notes-workspace.notes-show-editor .notes-editor{display:flex}
+  .notes-workspace.notes-show-editor .notes-sidebar{visibility:hidden;pointer-events:none}
+
+  /* Back button visible on mobile */
+  .notes-back-btn{display:flex}
+
+  /* Textarea fills the available panel height */
+  .notes-editor-ta{flex:1;min-height:unset}
+  .notes-view-body{flex:1;min-height:unset;overflow-y:auto}
+
+  .undo-toast{bottom:calc(68px + env(safe-area-inset-bottom,0px) + 10px)}
 }
 </style>
 </head>
@@ -177,6 +211,10 @@
         <!-- Right panel: editor -->
         <div class="notes-editor">
           <div class="notes-editor-hd">
+            <button class="notes-back-btn" id="btn-back" type="button">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+              返回
+            </button>
             <span class="notes-editor-title" id="editor-title">記事</span>
             <div class="editor-hd-btns">
               <button class="act-btn" id="btn-cancel" hidden>取消</button>
@@ -224,7 +262,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=35"></script>
+<script src="/static/_layout.js?v=36"></script>
 <script>
 (function () {
   var L = window.Layout;
@@ -237,6 +275,19 @@
   var _selectedId     = null;  // id of note being edited
 
   var ACCENT = { yellow: '#FCD34D', blue: '#60A5FA', green: '#4ADE80', pink: '#F472B6' };
+
+  // ── Mobile panel switching ──────────────────────────────────────────────────
+  function _isMob() { return window.innerWidth < 768; }
+  function _showEditorPanel() {
+    if (!_isMob()) return;
+    var ws = document.querySelector('.notes-workspace');
+    if (ws) ws.classList.add('notes-show-editor');
+  }
+  function _showListPanel() {
+    if (!_isMob()) return;
+    var ws = document.querySelector('.notes-workspace');
+    if (ws) ws.classList.remove('notes-show-editor');
+  }
 
   // ── UI state helpers ────────────────────────────────────────────────────────
 
@@ -265,6 +316,7 @@
     document.getElementById('compose-ta').hidden = true;
     document.getElementById('editor-footer').hidden = true;
     _refreshSelected();
+    _showListPanel();
   }
 
   function showView(note) {
@@ -278,6 +330,7 @@
     document.getElementById('compose-ta').hidden = true;
     document.getElementById('editor-footer').hidden = true;
     _refreshSelected();
+    _showEditorPanel();
   }
 
   function showNew() {
@@ -292,6 +345,7 @@
     document.getElementById('compose-ta').value = '';
     setColor('yellow');
     _refreshSelected();
+    _showEditorPanel();
     setTimeout(function () { document.getElementById('compose-ta').focus(); }, 30);
   }
 
@@ -307,6 +361,7 @@
     document.getElementById('compose-ta').value = note.content || '';
     setColor(note.color || 'yellow');
     _refreshSelected();
+    _showEditorPanel();
     setTimeout(function () { document.getElementById('compose-ta').focus(); }, 30);
   }
 
@@ -338,6 +393,7 @@
 
   // ── Button handlers ───────────────────────────────────────────────────────
 
+  document.getElementById('btn-back').addEventListener('click', showIdle);
   document.getElementById('btn-new').addEventListener('click', showNew);
   document.getElementById('btn-cancel').addEventListener('click', function () {
     // From edit mode: go back to view. From new mode: go to idle.

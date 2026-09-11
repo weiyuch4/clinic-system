@@ -5,7 +5,7 @@
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>加班紀錄</title>
-<link rel="stylesheet" href="/static/_layout.css?v=36">
+<link rel="stylesheet" href="/static/_layout.css?v=37">
 <style>
 /* ── month nav (page header) ───────────────────────────────────────────── */
 .month-nav { display:flex; align-items:center; gap:6px; }
@@ -173,6 +173,61 @@
   .ot-table tr:hover td { background:transparent !important; }
   #print-footer { display:block !important; margin-top:32px; }
 }
+/* ── Mobile: convert log table to stacked cards ──────── */
+@media(max-width:767px){
+  .ot-summary{gap:8px}
+  .ot-tile{min-width:0;flex:1}
+  .ot-tile-val{font-size:20px}
+
+  /* hide table header, switch to block layout */
+  .ot-table thead{display:none}
+  .ot-table,.ot-table tbody{display:block}
+  .ot-table tr{
+    display:block;
+    background:var(--bg);
+    border-radius:10px;
+    padding:12px 14px;
+    margin-bottom:8px;
+    border:1px solid var(--border);
+    position:relative;
+  }
+  .ot-table tr:last-child{margin-bottom:0}
+  .ot-table td{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:4px 0;
+    border-bottom:none;
+    font-size:14px;
+    min-height:28px;
+  }
+  .ot-table td::before{
+    content:attr(data-label);
+    font-size:11px;
+    color:var(--muted);
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:.05em;
+    min-width:44px;
+    flex-shrink:0;
+  }
+  /* delete button — float to top-right corner of card */
+  .ot-table td:last-child{
+    position:absolute;
+    top:10px;
+    right:10px;
+    padding:0;
+    min-height:unset;
+    border:none;
+  }
+  .ot-table td:last-child::before{display:none}
+  .ot-hours{font-size:15px}
+  .ot-note{max-width:unset;white-space:normal}
+
+  /* add-form already stacks via _layout.css; make note input full width */
+  .note-inp{min-width:0;width:100%}
+}
+
 #print-header, #print-footer { display:none; }
 #print-header { margin-bottom:18px; }
 #print-header h2 { font-size:18pt; font-weight:700; margin-bottom:4px; }
@@ -286,7 +341,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=35"></script>
+<script src="/static/_layout.js?v=36"></script>
 <script src="/static/auth-client.js"></script>
 <script>
 (function () {
@@ -519,10 +574,10 @@
       var dow = new Date(p[0],p[1]-1,p[2]).getDay();
       var dowCls = dow===0?'dow-sun':dow===6?'dow-sat':'dow-wkd';
       return '<tr>' +
-        '<td>'+r.date+'<span class="ot-dow '+dowCls+'">週'+DOW_ZH[dow]+'</span></td>' +
-        '<td>'+r.start_time+' — '+r.end_time+'</td>' +
-        '<td class="ot-hours">'+(mins>0?fmtHours(mins):'—')+'</td>' +
-        '<td class="ot-note">'+L.escHtml(r.note||'')+'</td>' +
+        '<td data-label="日期">'+r.date+'<span class="ot-dow '+dowCls+'">週'+DOW_ZH[dow]+'</span></td>' +
+        '<td data-label="時間">'+r.start_time+' — '+r.end_time+'</td>' +
+        '<td class="ot-hours" data-label="工時">'+(mins>0?fmtHours(mins):'—')+'</td>' +
+        '<td class="ot-note" data-label="備註">'+L.escHtml(r.note||'')+'</td>' +
         '<td><button class="ot-del" onclick="deleteEntry('+r.id+')" title="刪除">×</button></td>' +
       '</tr>';
     }).join('');

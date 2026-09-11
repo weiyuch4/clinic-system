@@ -5,7 +5,7 @@
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>排班表 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=36">
+<link rel="stylesheet" href="/static/_layout.css?v=37">
 <style>
 .week-nav{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .week-label{font-size:14px;font-weight:600;color:var(--text);flex:1;text-align:center}
@@ -38,6 +38,37 @@
 .view-toggle button.on{background:#b5d7f5;color:#111827}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .view-toggle button.on{background:#1E3A5F;color:#93C5FD}}
 :root[data-theme="dark"] .view-toggle button.on{background:#1E3A5F;color:#93C5FD}
+
+/* ── Mobile: week-nav wraps, day-card list replaces grid ── */
+@media(max-width:767px){
+  .week-nav{flex-wrap:wrap;gap:8px}
+  .view-toggle{flex:1 0 100%;justify-content:center}
+  .view-toggle button{flex:1;max-width:160px}
+
+  /* hide desktop grid, show mobile list */
+  .sched-grid{display:none!important}
+  #sched-area{overflow-x:visible}
+
+  /* day-card list */
+  .mob-day-list{display:flex;flex-direction:column;gap:10px}
+  .mob-day-card{background:var(--card);border-radius:12px;border:1.5px solid var(--border);overflow:hidden;box-shadow:var(--shadow)}
+  .mob-day-card.mob-today{border-color:#b5d7f5;border-width:2px}
+  .mob-day-hd{display:flex;align-items:center;gap:8px;padding:12px 14px 10px;border-bottom:1px solid var(--border)}
+  .mob-day-card.mob-today .mob-day-hd{background:rgba(181,215,245,.12)}
+  .mob-day-dow{font-size:15px;font-weight:700;color:var(--text)}
+  .mob-day-date{font-size:13px;color:var(--sub);font-variant-numeric:tabular-nums}
+  .mob-today-badge{margin-left:auto;background:#b5d7f5;color:#111827;font-size:11px;font-weight:700;padding:2px 10px;border-radius:100px}
+  .mob-day-slots{padding:10px 14px;display:flex;flex-direction:column;gap:8px}
+  .mob-slot-row{display:flex;align-items:flex-start;gap:10px;min-height:32px}
+  .mob-slot-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;width:38px;flex-shrink:0;padding-top:5px}
+  .mob-slot-entries{flex:1;display:flex;flex-direction:column;gap:4px}
+  .mob-slot-entry{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-radius:7px;background:var(--bg);min-height:32px}
+  .mob-slot-entry.mob-mine{background:rgba(75,170,255,.10);border:1px solid rgba(75,170,255,.18)}
+  .mob-slot-name{font-size:14px;font-weight:600;color:var(--text)}
+  .mob-slot-time{font-size:12px;color:var(--sub);font-variant-numeric:tabular-nums}
+  .mob-slot-empty{font-size:12px;color:var(--border);padding:3px 0}
+  .mob-day-empty{font-size:13px;color:var(--muted);padding:4px 0;text-align:center}
+}
 </style>
 </head>
 <body>
@@ -79,7 +110,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=35"></script>
+<script src="/static/_layout.js?v=36"></script>
 <script>
 (function () {
   'use strict';
@@ -133,8 +164,59 @@
     return h;
   }
 
+  function renderMobileDays(idx) {
+    var myNurse = L.getNurse();
+    var dates = weekDates(_mondayStr);
+    var area = document.getElementById('sched-area');
+    var DOW_FULL = ['一','二','三','四','五','六','日'];
+
+    var cards = dates.map(function(d, i) {
+      var isToday = d === TODAY;
+      var hd = '<div class="mob-day-hd">' +
+        '<span class="mob-day-dow">週' + DOW_FULL[i] + '</span>' +
+        '<span class="mob-day-date">' + d.slice(5) + '</span>' +
+        (isToday ? '<span class="mob-today-badge">今日</span>' : '') +
+      '</div>';
+
+      var allDayEmpty = true;
+      var slotsHtml = SLOTS.map(function(slot) {
+        var allEntries = (idx[d] && idx[d][slot.key]) || [];
+        var entries = _showAll ? allEntries
+          : (myNurse ? allEntries.filter(function(e){ return e.nurse === myNurse; }) : allEntries);
+        if (entries.length) allDayEmpty = false;
+        var entriesHtml = entries.length
+          ? entries.map(function(e) {
+              var isMine = myNurse && e.nurse === myNurse;
+              var timeStr = (e.start_time || '') + (e.end_time ? '–' + e.end_time : '');
+              return '<div class="mob-slot-entry' + (isMine ? ' mob-mine' : '') + '">' +
+                '<span class="mob-slot-name">' + L.escHtml(e.nurse) + '</span>' +
+                (timeStr ? '<span class="mob-slot-time">' + timeStr + '</span>' : '') +
+              '</div>';
+            }).join('')
+          : '<span class="mob-slot-empty">—</span>';
+        return '<div class="mob-slot-row">' +
+          '<span class="mob-slot-label">' + L.escHtml(slot.key) + '</span>' +
+          '<div class="mob-slot-entries">' + entriesHtml + '</div>' +
+        '</div>';
+      }).join('');
+
+      // In "my shifts" mode, skip days with no entries (keep today always visible)
+      if (!_showAll && !allDayEmpty === false && !isToday) {
+        // all slots empty and not today — still show the card, just grayed
+      }
+
+      return '<div class="mob-day-card' + (isToday ? ' mob-today' : '') + '">' +
+        hd +
+        '<div class="mob-day-slots">' + slotsHtml + '</div>' +
+      '</div>';
+    }).join('');
+
+    area.innerHTML = '<div class="mob-day-list">' + cards + '</div>';
+  }
+
   function renderGrid(idx) {
     _lastIdx = idx;
+    if (window.innerWidth < 768) { renderMobileDays(idx); return; }
     var myNurse = L.getNurse();
     var dates = weekDates(_mondayStr);
     var area = document.getElementById('sched-area');

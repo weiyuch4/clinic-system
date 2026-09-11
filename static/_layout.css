@@ -466,13 +466,23 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .srch-dd{box-shadow:0 6px 20px rgba(0,0,0,.35)}}
 
 /* ── mobile layout ───────────────────────────────────────────────────────── */
+/* ── mobile topbar page title (hidden on desktop) ───── */
+.tb-title{display:none;font-size:17px;font-weight:700;color:var(--text);white-space:nowrap;pointer-events:none;position:absolute;left:50%;transform:translateX(-50%)}
+
 .mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1.5px solid var(--border);z-index:300;padding-bottom:env(safe-area-inset-bottom,0px)}
 .mn-items{display:flex}
 .mn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 7px;color:var(--muted);text-decoration:none;font-size:10px;font-weight:500;gap:3px;border:none;background:transparent;cursor:pointer;font-family:inherit;transition:color .12s}
 .mn-item svg{width:22px;height:22px;flex-shrink:0}
-.mn-item.on{color:#1E3A8A}
+.mn-item.on{color:#111827}
+/* ── mobile nav icon pill ────────────────────────────── */
+.mn-ic{display:flex;align-items:center;justify-content:center;width:48px;height:28px;border-radius:14px;transition:background .15s;flex-shrink:0}
+.mn-item.on .mn-ic{background:#b5d7f5}
 :root[data-theme=dark] .mn-item.on{color:#93c5fd}
-@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .mn-item.on{color:#93c5fd}}
+:root[data-theme=dark] .mn-item.on .mn-ic{background:#1E3A5F}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .mn-item.on{color:#93c5fd}
+  :root:not([data-theme=light]) .mn-item.on .mn-ic{background:#1E3A5F}
+}
 
 @media(max-width:767px){
   /* ── hide desktop chrome ──────────────────────────── */
@@ -482,13 +492,15 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .lu{display:none!important}
 
   /* ── base ─────────────────────────────────────────── */
-  .ct{padding:16px 16px calc(72px + env(safe-area-inset-bottom,0px)) 16px;font-size:15px}
+  .ct{padding:16px 16px calc(68px + env(safe-area-inset-bottom,0px)) 16px;font-size:15px}
 
   /* ── topbar ───────────────────────────────────────── */
-  .tb{height:54px;padding:0 14px}
+  .tb{height:54px;padding:0 14px;position:relative}
+  .tb-title{display:block}
   .ib{width:44px;height:44px}
-  .nurse-btn{height:44px;padding:0 12px;gap:8px;border-radius:22px}
-  .nurse-lbl{font-size:14px}
+  .nurse-btn{height:44px;padding:0 8px!important;gap:0;border-radius:22px;min-width:44px;justify-content:center}
+  .nurse-lbl{display:none!important}
+  .nurse-chev{display:none!important}
 
   /* ── page header ──────────────────────────────────── */
   .ph{padding-bottom:14px}
@@ -528,8 +540,11 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .note-content{font-size:15px;line-height:1.65}
   .note-footer{font-size:13px}
 
+  /* ── bottom nav item height ───────────────────────── */
+  .mn-item{padding:6px 4px 8px}
+
   /* ── toast/undo — lift above bottom nav ───────────── */
-  .toast,.undo-toast{bottom:calc(72px + env(safe-area-inset-bottom,0px) + 10px)}
+  .toast,.undo-toast{bottom:calc(68px + env(safe-area-inset-bottom,0px) + 10px)}
 }
 :root[data-theme=dark] .srch-dd{box-shadow:0 6px 20px rgba(0,0,0,.35)}
 

@@ -484,7 +484,7 @@
         var isActive = item.id === activeId ||
                        (item.id === 'schedule' && activeId === 'dashboard');
         return '<a href="' + item.href + '" class="mn-item' + (isActive ? ' on' : '') + '">' +
-          (ICONS[item.id] || '') +
+          '<span class="mn-ic">' + (ICONS[item.id] || '') + '</span>' +
           '<span>' + item.label + '</span>' +
         '</a>';
       }).join('') +
@@ -493,12 +493,18 @@
   }
 
   // ── Topbar ───────────────────────────────────────────
+  var _MOB_TITLES = {
+    schedule: '排班表', 'nurse-ot': '加班紀錄', notes: '記事',
+    'change-password': '我的設定', login: '登入',
+  };
+
   function _renderTopbar() {
     var el = document.getElementById('topbar');
     if (!el) return;
     el.className = 'tb';
     el.innerHTML =
       '<div class="srch">' + ICONS.search + '<input class="srch-input" type="text" placeholder="搜尋病患姓名或身份證…" autocomplete="off"></div>' +
+      '<span class="tb-title" id="tb-title">' + (_MOB_TITLES[_activePage] || '') + '</span>' +
       '<div class="tbr">' +
         '<span class="lu" id="last-updated"></span>' +
         '<button class="ib" id="btn-theme" title="切換深色模式">' + ICONS.moon + '</button>' +
