@@ -113,17 +113,39 @@
     return h;
   }
 
-  function _handle401(r, url) {
-    if (r.status === 401) {
-      localStorage.removeItem('clinic_token');
-      location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
-    }
-    return r;
+  // Singleton refresh promise — prevents parallel refresh races when multiple
+  // requests 401 at the same time (e.g. page load fires several API calls at once).
+  var _refreshPromise = null;
+  function _refreshToken() {
+    if (_refreshPromise) return _refreshPromise;
+    _refreshPromise = fetch('/auth/refresh', { method: 'POST' })
+      .then(function(r) {
+        if (!r.ok) throw new Error('refresh_failed');
+        return r.json();
+      })
+      .then(function(d) {
+        localStorage.setItem('clinic_token', d.access_token);
+        _refreshPromise = null;
+      })
+      .catch(function(e) {
+        _refreshPromise = null;
+        localStorage.removeItem('clinic_token');
+        location.href = '/login?next=' + encodeURIComponent(location.pathname + location.search);
+        return Promise.reject(e);
+      });
+    return _refreshPromise;
   }
 
   function apiFetch(url) {
-    return fetch(url, { headers: _authHeaders() }).then(function (r) {
-      _handle401(r, url);
+    return fetch(url, { headers: _authHeaders() }).then(function(r) {
+      if (r.status === 401) {
+        return _refreshToken().then(function() {
+          return fetch(url, { headers: _authHeaders() });
+        }).then(function(r2) {
+          if (!r2.ok) throw new Error(r2.status);
+          return r2.json();
+        });
+      }
       if (!r.ok) throw new Error(r.status);
       return r.json();
     });
@@ -168,16 +190,22 @@
 
   // Generic mutating API call (POST / DELETE / PUT)
   function apiAction(method, url, body) {
-    return fetch(url, {
-      method: method,
-      headers: _authHeaders(body ? { 'Content-Type': 'application/json' } : {}),
-      body:    body ? JSON.stringify(body) : undefined,
-    }).then(function (r) {
-      _handle401(r, url);
-      if (!r.ok) return r.json().then(function (e) {
-        throw new Error(e.detail || ('HTTP ' + r.status));
+    function _doReq() {
+      return fetch(url, {
+        method:  method,
+        headers: _authHeaders(body ? { 'Content-Type': 'application/json' } : {}),
+        body:    body ? JSON.stringify(body) : undefined,
       });
-      return r.status === 204 ? null : r.json().catch(function () { return null; });
+    }
+    function _parseResp(r) {
+      if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || ('HTTP ' + r.status)); });
+      return r.status === 204 ? null : r.json().catch(function() { return null; });
+    }
+    return _doReq().then(function(r) {
+      if (r.status === 401) {
+        return _refreshToken().then(_doReq).then(_parseResp);
+      }
+      return _parseResp(r);
     });
   }
 
