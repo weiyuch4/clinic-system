@@ -4,6 +4,7 @@ import os
 import re as _re
 import secrets
 import threading
+import time as _time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 
@@ -51,6 +52,15 @@ NURSE_NAMES: list[str] = ["媛淩", "巧潔", "巧菱", "惠茗"]
 CLOUD_MODE = os.environ.get("CLOUD_MODE", "").lower() in ("1", "true", "yes")
 _SYNC_TOKEN = os.environ.get("SYNC_TOKEN", "")
 
+# Cache today's report per clinic_id — invalidated by any write that changes dashboard state.
+# This eliminates the 22-parallel-DB-query fan-out on every tab load/navigation.
+_report_cache: dict[int, tuple[float, "DailyReport"]] = {}
+_REPORT_CACHE_TTL = 30  # seconds — safety-net TTL in case a write path is ever missed
+
+
+def _invalidate_report_cache(clinic_id: int) -> None:
+    _report_cache.pop(clinic_id, None)
+
 
 logging.basicConfig(
     level=logging.ERROR,
@@ -62,7 +72,7 @@ app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
 try:
-    db.init_pool(minconn=22, maxconn=30)
+    db.init_pool(minconn=2, maxconn=20)
 except RuntimeError as e:
     logger.warning(f"PostgreSQL pool not initialized: {e}. Set DATABASE_URL to enable database access.")
 
@@ -840,6 +850,7 @@ async def sync_push(request: Request) -> dict:
     db.set_clinic_id(clinic_id)
     candidates = body.get("candidates", [])
     contacts.upsert_synced_candidates(candidates, clinic_id)
+    _invalidate_report_cache(clinic_id)
     return {"ok": True, "count": len(candidates)}
 
 
@@ -868,6 +879,11 @@ def sync_status(request: Request) -> dict:
 
 @app.get("/api/report")
 def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends(auth.get_current_user)) -> DailyReport:
+    cid = user.clinic_id
+    if report_date is None:
+        _cached = _report_cache.get(cid)
+        if _cached and (_time.monotonic() - _cached[0]) < _REPORT_CACHE_TTL:
+            return _cached[1]
     try:
         as_of = report_date or date.today()
         cid = user.clinic_id
@@ -1123,7 +1139,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_checkedin_keys
         ]
 
-        return DailyReport(
+        _result = DailyReport(
             report_date=report.report_date,
             chronic_prescriptions=filter_followups(chronic_prescriptions),
             mspt_followups=filter_followups(apply_mspt_overrides(apply_blood_status(report.mspt_followups))),
@@ -1162,6 +1178,9 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             ckd_followups=filter_followups(report.ckd_followups),
             ckd_inactive=filter_followups(report.ckd_inactive),
         )
+        if report_date is None:
+            _report_cache[cid] = (_time.monotonic(), _result)
+        return _result
     except HTTPException:
         raise
     except Exception:
@@ -1173,6 +1192,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
 def mark_contacted(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.mark_contacted(req.entry, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mark_contacted failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="聯絡記錄儲存失敗，請稍後再試")
@@ -1182,6 +1202,7 @@ def mark_contacted(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth
 def mark_called(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.mark_called(req.entry, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mark_called failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="二次通知記錄儲存失敗，請稍後再試")
@@ -1191,6 +1212,7 @@ def mark_called(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.ge
 def unmark_contacted(req: ContactRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.unmark(req.chart_number, req.category, req.due_date, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("unmark_contacted failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
@@ -1207,6 +1229,7 @@ def mark_submitted(entry: MsptSubmittableEntry, user: auth.CurrentUser = Depends
                 entry.blood_report_date.isoformat(),
                 user.clinic_id,
             )
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mark_submitted failed for %s", entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="待登VPN記錄儲存失敗，請稍後再試")
@@ -1218,6 +1241,7 @@ def unmark_submitted(req: SubmitRequest, user: auth.CurrentUser = Depends(auth.g
         contacts.unmark_submitted(req.chart_number, req.mspt_stage, user.clinic_id)
         contacts.clear_mspt_blood_used(req.chart_number, req.mspt_stage, user.clinic_id)
         contacts.unmark_mspt_phone_completed(req.chart_number, req.mspt_stage, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("unmark_submitted failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷申報失敗，請稍後再試")
@@ -1236,6 +1260,7 @@ def mspt_phone_complete(req: NurseEntryRequest, user: auth.CurrentUser = Depends
                 blood_draw_date,
                 user.clinic_id,
             )
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mspt_phone_complete failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="完成記錄失敗，請稍後再試")
@@ -1245,6 +1270,7 @@ def mspt_phone_complete(req: NurseEntryRequest, user: auth.CurrentUser = Depends
 def mark_excluded(req: ExcludeRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.mark_excluded(req.entry, req.reason, req.note, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mark_excluded failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="排除記錄儲存失敗，請稍後再試")
@@ -1254,6 +1280,7 @@ def mark_excluded(req: ExcludeRequest, user: auth.CurrentUser = Depends(auth.get
 def unmark_excluded(req: UnexcludeRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.unmark_excluded(req.chart_number, req.category, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("unmark_excluded failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷排除失敗，請稍後再試")
@@ -1263,6 +1290,7 @@ def unmark_excluded(req: UnexcludeRequest, user: auth.CurrentUser = Depends(auth
 def mark_mspt_completed(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.mark_mspt_completed(req.entry, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mark_mspt_completed failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="完成MSPT記錄儲存失敗，請稍後再試")
@@ -1272,6 +1300,7 @@ def mark_mspt_completed(req: NurseEntryRequest, user: auth.CurrentUser = Depends
 def unmark_mspt_completed(req: MsptCompleteRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.unmark_mspt_completed(req.chart_number, req.mspt_stage, req.due_date.isoformat(), user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("unmark_mspt_completed failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷完成MSPT失敗，請稍後再試")
@@ -1281,6 +1310,7 @@ def unmark_mspt_completed(req: MsptCompleteRequest, user: auth.CurrentUser = Dep
 def mark_mspt_checkedin(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.mark_mspt_checkedin(req.entry, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mark_mspt_checkedin failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="待建檔記錄儲存失敗，請稍後再試")
@@ -1290,6 +1320,7 @@ def mark_mspt_checkedin(req: NurseEntryRequest, user: auth.CurrentUser = Depends
 def unmark_mspt_checkedin(req: MsptCompleteRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.unmark_mspt_checkedin(req.chart_number, req.mspt_stage, req.due_date.isoformat(), user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("unmark_mspt_checkedin failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷待建檔失敗，請稍後再試")
@@ -1299,6 +1330,7 @@ def unmark_mspt_checkedin(req: MsptCompleteRequest, user: auth.CurrentUser = Dep
 def mark_hep_returned_completed(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.mark_hep_returned_completed(req.entry, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mark_hep_returned_completed failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="完成B肝記錄儲存失敗，請稍後再試")
@@ -1308,6 +1340,7 @@ def mark_hep_returned_completed(req: NurseEntryRequest, user: auth.CurrentUser =
 def unmark_hep_returned_completed(req: HepReturnedCompleteRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.unmark_hep_returned_completed(req.chart_number, req.last_visit_date.isoformat(), user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("unmark_hep_returned_completed failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
@@ -1317,6 +1350,7 @@ def unmark_hep_returned_completed(req: HepReturnedCompleteRequest, user: auth.Cu
 def mark_manual_pickup(req: ManualPickupRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.mark_manual_pickup(req.entry, req.pickup_date, req.ps_days, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mark_manual_pickup failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="手動取藥記錄儲存失敗，請稍後再試")
@@ -1326,6 +1360,7 @@ def mark_manual_pickup(req: ManualPickupRequest, user: auth.CurrentUser = Depend
 def unmark_manual_pickup(req: ChartNumberRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.unmark_manual_pickup(req.chart_number, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("unmark_manual_pickup failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
@@ -1335,6 +1370,7 @@ def unmark_manual_pickup(req: ChartNumberRequest, user: auth.CurrentUser = Depen
 def mark_line_unlinked(req: LineUnlinkedRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.flag_line_unlinked(req.chart_number, req.name, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("flag_line_unlinked failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="標記失敗，請稍後再試")
@@ -1343,6 +1379,7 @@ def mark_line_unlinked(req: LineUnlinkedRequest, user: auth.CurrentUser = Depend
 def clear_line_unlinked(chart_number: str, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.clear_line_unlinked(chart_number, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("clear_line_unlinked failed for %s", chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
@@ -1722,6 +1759,7 @@ def get_contacts_history(target_date: str | None = None, user: auth.CurrentUser 
 def mark_on_hold(req: OnHoldRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     try:
         hold_id = contacts.mark_on_hold(req.entry, req.note, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
         return {"hold_id": hold_id}
     except Exception:
         logger.exception("mark_on_hold failed for %s", req.entry.patient.chart_number)
@@ -1732,6 +1770,7 @@ def mark_on_hold(req: OnHoldRequest, user: auth.CurrentUser = Depends(auth.get_c
 def mark_on_hold_manual(req: ManualOnHoldRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     try:
         hold_id = contacts.mark_on_hold_manual(req.name, req.note, req.nurse, req.category, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
         return {"hold_id": hold_id}
     except Exception:
         logger.exception("mark_on_hold_manual failed for %s", req.name)
@@ -1742,6 +1781,7 @@ def mark_on_hold_manual(req: ManualOnHoldRequest, user: auth.CurrentUser = Depen
 def remove_on_hold(req: OnHoldRemoveRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.remove_on_hold(req.hold_id, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("remove_on_hold failed for id=%s", req.hold_id)
         raise HTTPException(status_code=500, detail="撤銷暫緩失敗，請稍後再試")
@@ -1759,6 +1799,7 @@ def mark_mspt_manual(req: MsptManualRequest, user: auth.CurrentUser = Depends(au
             req.nurse,
             user.clinic_id,
         )
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mark_mspt_manual failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="手動標記儲存失敗，請稍後再試")
@@ -1768,6 +1809,7 @@ def mark_mspt_manual(req: MsptManualRequest, user: auth.CurrentUser = Depends(au
 def unmark_mspt_manual(req: MsptManualRemoveRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.unmark_mspt_manual(req.chart_number, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("unmark_mspt_manual failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷手動標記失敗，請稍後再試")
