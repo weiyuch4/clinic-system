@@ -176,6 +176,8 @@
           <div class="notes-editor-hd">
             <span class="notes-editor-title" id="editor-title">便利貼</span>
             <div class="editor-hd-btns">
+              <button class="act-btn" id="btn-cancel" hidden>取消</button>
+              <button class="act-btn act-primary" id="btn-save" hidden>儲存</button>
               <button class="act-btn act-primary" id="btn-new">新增記事</button>
             </div>
           </div>
@@ -197,7 +199,7 @@
           <!-- Compose / edit textarea (hidden when idle) -->
           <textarea class="notes-editor-ta" id="compose-ta" placeholder="在此輸入記事內容，Ctrl+Enter 送出…" hidden></textarea>
 
-          <!-- Footer: color picker + action button (hidden when idle) -->
+          <!-- Footer: color picker only (hidden when idle) -->
           <div class="notes-editor-footer" id="editor-footer" hidden>
             <span class="notes-color-label">選擇顏色</span>
             <div class="color-pick" id="color-pick">
@@ -206,8 +208,6 @@
               <span class="cp-sw" data-c="green"></span>
               <span class="cp-sw" data-c="pink"></span>
             </div>
-            <button class="act-btn act-primary" id="btn-post" style="margin-left:auto">發布</button>
-            <button class="act-btn" id="btn-save" hidden style="margin-left:8px">儲存</button>
           </div>
         </div>
 
@@ -241,10 +241,18 @@
     document.getElementById('compose-accent').style.background = ACCENT[c] || ACCENT.yellow;
   }
 
+  function _setHeaderBtns(mode) {
+    // Idle: only 新增記事. New/Edit: 取消 + 儲存 (no 新增記事).
+    document.getElementById('btn-new').hidden    = mode !== 'idle';
+    document.getElementById('btn-cancel').hidden = mode === 'idle';
+    document.getElementById('btn-save').hidden   = mode === 'idle';
+  }
+
   function showIdle() {
     _mode = 'idle';
     _selectedId = null;
     document.getElementById('editor-title').textContent = '便利貼';
+    _setHeaderBtns('idle');
     document.getElementById('notes-idle').style.display = '';
     document.getElementById('compose-ta').hidden = true;
     document.getElementById('editor-footer').hidden = true;
@@ -255,8 +263,7 @@
     _mode = 'new';
     _selectedId = null;
     document.getElementById('editor-title').textContent = '新增記事';
-    document.getElementById('btn-post').hidden = false;
-    document.getElementById('btn-save').hidden = true;
+    _setHeaderBtns('new');
     document.getElementById('notes-idle').style.display = 'none';
     document.getElementById('compose-ta').hidden = false;
     document.getElementById('editor-footer').hidden = false;
@@ -270,8 +277,7 @@
     _mode = 'edit';
     _selectedId = note.id;
     document.getElementById('editor-title').textContent = '編輯記事';
-    document.getElementById('btn-post').hidden = true;
-    document.getElementById('btn-save').hidden = false;
+    _setHeaderBtns('edit');
     document.getElementById('notes-idle').style.display = 'none';
     document.getElementById('compose-ta').hidden = false;
     document.getElementById('editor-footer').hidden = false;
@@ -304,73 +310,59 @@
   // ── Keyboard shortcut ─────────────────────────────────────────────────────
 
   document.getElementById('compose-ta').addEventListener('keydown', function (e) {
-    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      if (_mode === 'new') submitNew();
-      else if (_mode === 'edit') submitEdit();
-    }
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); }
   });
 
   // ── Button handlers ───────────────────────────────────────────────────────
 
   document.getElementById('btn-new').addEventListener('click', showNew);
+  document.getElementById('btn-cancel').addEventListener('click', showIdle);
+  document.getElementById('btn-save').addEventListener('click', submit);
 
-  document.getElementById('btn-post').addEventListener('click', submitNew);
+  // ── Unified submit: POST (new) or PATCH (edit) ───────────────────────────
 
-  document.getElementById('btn-save').addEventListener('click', submitEdit);
-
-  // ── Submit new note ───────────────────────────────────────────────────────
-
-  function submitNew() {
+  function submit() {
     var ta = document.getElementById('compose-ta');
     var content = ta.value.trim();
     if (!content) { ta.focus(); return; }
-    var btn = document.getElementById('btn-post');
-    btn.disabled = true;
-    var optimistic = {
-      id: 'tmp-' + Date.now(), content: content, color: _color,
-      nurse: L.getNurse(),
-      created_at: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
-      _tmp: true,
-    };
-    _notes.unshift(optimistic);
-    render(_notes);
-    ta.value = '';
-    showNew();
-    L.apiAction('POST', '/api/notes', { content: content, color: _color, nurse: L.getNurse() })
-      .then(function (note) {
-        _notes = _notes.map(function (n) { return n.id === optimistic.id ? note : n; });
-        render(_notes);
-      })
-      .catch(function (e) {
-        _notes = _notes.filter(function (n) { return n.id !== optimistic.id; });
-        render(_notes);
-        L.showToast('發布失敗：' + (e.message || ''), 'error');
-      })
-      .finally(function () { btn.disabled = false; });
-  }
-
-  // ── Submit edit (save existing note) ─────────────────────────────────────
-
-  function submitEdit() {
-    var ta = document.getElementById('compose-ta');
-    var content = ta.value.trim();
-    if (!content) { ta.focus(); return; }
-    if (!_selectedId) return;
-    var id = _selectedId;
     var btn = document.getElementById('btn-save');
     btn.disabled = true;
-    L.apiAction('PATCH', '/api/notes/' + id, { content: content, color: _color, nurse: L.getNurse() })
-      .then(function (updated) {
-        _notes = _notes.map(function (n) { return n.id === updated.id ? updated : n; });
-        render(_notes);
-        showEdit(updated);
-        L.showToast('已儲存', 'success');
-      })
-      .catch(function (e) {
-        L.showToast('儲存失敗：' + (e.message || ''), 'error');
-      })
-      .finally(function () { btn.disabled = false; });
+
+    if (_mode === 'new') {
+      var optimistic = {
+        id: 'tmp-' + Date.now(), content: content, color: _color,
+        nurse: L.getNurse(),
+        created_at: new Date().toLocaleTimeString('zh-TW', { hour: '2-digit', minute: '2-digit' }),
+        _tmp: true,
+      };
+      _notes.unshift(optimistic);
+      render(_notes);
+      showIdle();
+      L.apiAction('POST', '/api/notes', { content: content, color: _color, nurse: L.getNurse() })
+        .then(function (note) {
+          _notes = _notes.map(function (n) { return n.id === optimistic.id ? note : n; });
+          render(_notes);
+        })
+        .catch(function (e) {
+          _notes = _notes.filter(function (n) { return n.id !== optimistic.id; });
+          render(_notes);
+          L.showToast('新增失敗：' + (e.message || ''), 'error');
+        })
+        .finally(function () { btn.disabled = false; });
+    } else if (_mode === 'edit' && _selectedId) {
+      var id = _selectedId;
+      L.apiAction('PATCH', '/api/notes/' + id, { content: content, color: _color, nurse: L.getNurse() })
+        .then(function (updated) {
+          _notes = _notes.map(function (n) { return n.id === updated.id ? updated : n; });
+          render(_notes);
+          showEdit(updated);
+          L.showToast('已儲存', 'success');
+        })
+        .catch(function (e) {
+          L.showToast('儲存失敗：' + (e.message || ''), 'error');
+        })
+        .finally(function () { btn.disabled = false; });
+    }
   }
 
   // ── List click: card select OR delete ────────────────────────────────────
