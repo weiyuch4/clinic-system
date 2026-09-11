@@ -32,6 +32,8 @@
     moon:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>',
     history:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
     'nurse-ot': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="11" cy="15" r="3"/><polyline points="11 13.5 11 15 12.2 16"/></svg>',
+    notes:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>',
+    me:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   };
 
   // ── Nav structure ────────────────────────────────────
@@ -44,10 +46,22 @@
     { id: 'lab',       label: '檢驗追蹤',  href: '/lab',         badge: true  },
   ];
   var OTHER_NAV = [
+    { id: 'notes',     label: '便利貼',    href: '/notes',       badge: false },
     { id: 'directory', label: '聯絡資訊',  href: '/directory',   badge: false },
     { id: 'schedule',  label: '排班表',    href: '/schedule',    badge: false },
     { id: 'history',   label: '聯絡記錄',  href: '/history',     badge: false },
     { id: 'nurse-ot',  label: '加班記錄',  href: '/nurse-ot',    badge: false },
+  ];
+
+  // ── Mobile config ────────────────────────────────────
+  var _isMobile = window.innerWidth < 768;
+  // Pages nurses may visit on their phones (no patient data)
+  var MOBILE_ALLOWED = { schedule: 1, 'nurse-ot': 1, notes: 1, 'change-password': 1, login: 1 };
+  var MOBILE_NAV = [
+    { id: 'schedule',  label: '排班',  href: '/schedule'         },
+    { id: 'nurse-ot',  label: '加班',  href: '/nurse-ot'         },
+    { id: 'notes',     label: '便利貼', href: '/notes'            },
+    { id: 'me',        label: '我的',  href: '/change-password'   },
   ];
 
   // ── Private state ────────────────────────────────────
@@ -425,6 +439,29 @@
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' +
           '管理員後台</button>' +
       '</div>';
+  }
+
+  // ── Mobile bottom nav ────────────────────────────────
+  function _renderMobileNav() {
+    var existing = document.getElementById('mob-nav');
+    if (existing) existing.remove();
+    var nav = document.createElement('nav');
+    nav.id = 'mob-nav';
+    nav.className = 'mob-nav';
+    // Map 'nurse-ot' and 'change-password' active pages to their nav ids
+    var activeId = _activePage;
+    if (activeId === 'change-password') activeId = 'me';
+    nav.innerHTML = '<div class="mn-items">' +
+      MOBILE_NAV.map(function (item) {
+        var isActive = item.id === activeId ||
+                       (item.id === 'schedule' && activeId === 'dashboard');
+        return '<a href="' + item.href + '" class="mn-item' + (isActive ? ' on' : '') + '">' +
+          (ICONS[item.id] || '') +
+          '<span>' + item.label + '</span>' +
+        '</a>';
+      }).join('') +
+    '</div>';
+    document.body.appendChild(nav);
   }
 
   // ── Topbar ───────────────────────────────────────────
@@ -950,12 +987,44 @@
     _updateChangePinBtn();
   }
 
+  // ── PWA setup ────────────────────────────────────────
+  function _initPWA() {
+    // Inject manifest link
+    var mLink = document.createElement('link');
+    mLink.rel = 'manifest'; mLink.href = '/static/manifest.json';
+    document.head.appendChild(mLink);
+    // iOS standalone support
+    var iosCap = document.createElement('meta');
+    iosCap.name = 'apple-mobile-web-app-capable'; iosCap.content = 'yes';
+    document.head.appendChild(iosCap);
+    var iosBar = document.createElement('meta');
+    iosBar.name = 'apple-mobile-web-app-status-bar-style'; iosBar.content = 'default';
+    document.head.appendChild(iosBar);
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').catch(function () {});
+    }
+  }
+
   // ── Public init ──────────────────────────────────────
   function init(config) {
     _activePage    = config.activePage    || 'dashboard';
     _onRefresh     = config.onRefresh     || null;
     _onNurseChange = config.onNurseChange || null;
-    _renderSidebar();
+
+    // Mobile: redirect restricted pages before rendering anything
+    if (_isMobile && !MOBILE_ALLOWED[_activePage]) {
+      window.location.replace('/schedule');
+      return;
+    }
+
+    _initPWA();
+
+    if (_isMobile) {
+      _renderMobileNav();
+    } else {
+      _renderSidebar();
+    }
     _renderTopbar();
     _injectPinModal();
     _initNurseSelector();

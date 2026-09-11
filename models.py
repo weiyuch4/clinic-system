@@ -299,6 +299,12 @@ class BloodPhysicalRequest(BaseModel):
     draw_code_names: str = "[]"   # JSON array string
 
 
+class StickyNoteRequest(BaseModel):
+    content: str
+    color: str = "yellow"
+    nurse: str = ""
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str

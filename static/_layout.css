@@ -453,4 +453,28 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .srch-dd-meta{flex:1;min-width:0}
 .srch-dd-empty{padding:14px 13px;font-size:13px;color:var(--muted);text-align:center}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .srch-dd{box-shadow:0 6px 20px rgba(0,0,0,.35)}}
+
+/* ── mobile layout ───────────────────────────────────────────────────────── */
+.mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1.5px solid var(--border);z-index:300;padding-bottom:env(safe-area-inset-bottom,0px)}
+.mn-items{display:flex}
+.mn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 7px;color:var(--muted);text-decoration:none;font-size:10px;font-weight:500;gap:3px;border:none;background:transparent;cursor:pointer;font-family:inherit;transition:color .12s}
+.mn-item svg{width:22px;height:22px;flex-shrink:0}
+.mn-item.on{color:#1E3A8A}
+:root[data-theme=dark] .mn-item.on{color:#93c5fd}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .mn-item.on{color:#93c5fd}}
+
+@media(max-width:767px){
+  .sb{display:none!important}
+  .mob-nav{display:block}
+  .srch{display:none!important}
+  .lu{display:none!important}
+  .ct{padding:12px 14px calc(66px + env(safe-area-inset-bottom,0px)) 14px}
+  .ph h1{font-size:19px}
+  .ph p{font-size:12px}
+  /* schedule grid — horizontal scroll on narrow screens */
+  #sched-area{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  .sched-grid{min-width:520px}
+  /* toast/undo — lift above bottom nav */
+  .toast,.undo-toast{bottom:calc(66px + env(safe-area-inset-bottom,0px) + 10px)}
+}
 :root[data-theme=dark] .srch-dd{box-shadow:0 6px 20px rgba(0,0,0,.35)}

@@ -30,6 +30,7 @@ import lab_results
 import settings as _settings
 from models import (
     BloodDismissRequest, BloodNotifiedRequest, BloodPhysicalRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
+    StickyNoteRequest,
     CreateUserRequest, DailyReport,
     ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
     ManualOnHoldRequest, ManualPickupRequest,
@@ -59,6 +60,17 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+
+@app.middleware("http")
+async def _log_slow_requests(request: Request, call_next):
+    import time
+    t0 = time.perf_counter()
+    response = await call_next(request)
+    ms = (time.perf_counter() - t0) * 1000
+    if ms > 1000:
+        logger.warning("SLOW %s %s → %dms", request.method, request.url.path, int(ms))
+    return response
 
 try:
     db.init_pool(minconn=22, maxconn=30)
@@ -329,6 +341,15 @@ def dashboard_page() -> Response:
                     headers={"Cache-Control": "no-store"})
 
 
+@app.get("/sw.js")
+def service_worker() -> FileResponse:
+    return FileResponse("static/sw.js", headers={
+        "Content-Type": "application/javascript",
+        "Service-Worker-Allowed": "/",
+        "Cache-Control": "no-cache",
+    })
+
+
 @app.get("/{page}")
 def app_page(page: str) -> Response:
     if not _re.fullmatch(r"[a-z0-9_-]{1,40}", page):
@@ -449,6 +470,37 @@ def delete_bulletin(note_id: int, nurse: str = "", user: auth.CurrentUser = Depe
     except Exception:
         logger.exception("delete_bulletin failed for id=%s", note_id)
         raise HTTPException(status_code=500, detail="刪除失敗")
+
+
+@app.get("/api/notes")
+def get_notes(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    try:
+        return contacts.get_sticky_notes(user.clinic_id)
+    except Exception:
+        logger.exception("get_notes failed")
+        raise HTTPException(status_code=500, detail="載入便利貼失敗")
+
+
+@app.post("/api/notes")
+def add_note(req: StickyNoteRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    content = req.content.strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="內容不可空白")
+    color = req.color if req.color in {"yellow", "blue", "green", "pink"} else "yellow"
+    try:
+        return contacts.add_sticky_note(content, color, req.nurse, user.clinic_id)
+    except Exception:
+        logger.exception("add_note failed")
+        raise HTTPException(status_code=500, detail="新增便利貼失敗")
+
+
+@app.delete("/api/notes/{note_id}")
+def delete_note(note_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    try:
+        contacts.delete_sticky_note(note_id, user.clinic_id)
+    except Exception:
+        logger.exception("delete_note failed for id=%s", note_id)
+        raise HTTPException(status_code=500, detail="刪除便利貼失敗")
 
 
 @app.get("/api/admin/salary")

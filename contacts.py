@@ -374,6 +374,17 @@ _CREATE_BLOOD_PHYSICAL = """
     )
 """
 
+_CREATE_STICKY_NOTES = """
+    CREATE TABLE IF NOT EXISTS sticky_notes (
+        id         BIGSERIAL PRIMARY KEY,
+        clinic_id  INTEGER NOT NULL DEFAULT 1,
+        nurse      TEXT    NOT NULL DEFAULT '',
+        content    TEXT    NOT NULL,
+        color      TEXT    NOT NULL DEFAULT 'yellow',
+        created_at TEXT    NOT NULL
+    )
+"""
+
 _CREATE_NURSE_OT_LOGS = """
     CREATE TABLE IF NOT EXISTS nurse_ot_logs (
         id         SERIAL PRIMARY KEY,
@@ -628,6 +639,7 @@ def init() -> None:
             cur.execute(_CREATE_BLOOD_NOTIFIED)
             cur.execute(_CREATE_BLOOD_PHYSICAL)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_codes TEXT NOT NULL DEFAULT '[]'")
+            cur.execute(_CREATE_STICKY_NOTES)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
@@ -2108,6 +2120,39 @@ def delete_bulletin_note(note_id: int, clinic_id: int = 1) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 "DELETE FROM bulletin_notes WHERE id = %s AND clinic_id = %s",
+                (note_id, clinic_id),
+            )
+
+
+# ── Sticky notes ──────────────────────────────────────────────────────────────
+
+def add_sticky_note(content: str, color: str = 'yellow', nurse: str = '', clinic_id: int = 1) -> dict:
+    created_at = datetime.now(_TW).strftime('%Y-%m-%d %H:%M')
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO sticky_notes (clinic_id, nurse, content, color, created_at) VALUES (%s, %s, %s, %s, %s) RETURNING id",
+                (clinic_id, nurse, content, color, created_at),
+            )
+            note_id = cur.fetchone()["id"]
+    return {"id": note_id, "nurse": nurse, "content": content, "color": color, "created_at": created_at}
+
+
+def get_sticky_notes(clinic_id: int = 1) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, nurse, content, color, created_at FROM sticky_notes WHERE clinic_id = %s ORDER BY id DESC",
+                (clinic_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def delete_sticky_note(note_id: int, clinic_id: int = 1) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM sticky_notes WHERE id = %s AND clinic_id = %s",
                 (note_id, clinic_id),
             )
 
