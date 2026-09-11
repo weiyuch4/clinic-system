@@ -61,17 +61,6 @@ logger = logging.getLogger(__name__)
 app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
-@app.middleware("http")
-async def _log_slow_requests(request: Request, call_next):
-    import time
-    t0 = time.perf_counter()
-    response = await call_next(request)
-    ms = (time.perf_counter() - t0) * 1000
-    if ms > 1000:
-        logger.warning("SLOW %s %s → %dms", request.method, request.url.path, int(ms))
-    return response
-
 try:
     db.init_pool(minconn=22, maxconn=30)
 except RuntimeError as e:
