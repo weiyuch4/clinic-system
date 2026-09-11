@@ -8,6 +8,9 @@ from contextlib import contextmanager
 
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 _pool: ThreadedConnectionPool | None = None
+# psycopg2 C extension objects don't support arbitrary attribute assignment,
+# so we track last-used timestamps in a separate dict keyed by id(conn).
+_conn_last_used: dict[int, float] = {}
 
 # Per-request clinic_id — set by auth.get_current_user (and sync endpoints).
 # ThreadPoolExecutor inherits ContextVar values from the spawning thread.
@@ -50,17 +53,19 @@ def _get_live_conn() -> "psycopg2.extensions.connection":
     for _ in range(3):
         conn = _pool.getconn()
         if conn.closed != 0:
+            _conn_last_used.pop(id(conn), None)
             _pool.putconn(conn, close=True)
             continue
-        last_used = getattr(conn, '_last_used', None)
+        last_used = _conn_last_used.get(id(conn))
         if last_used is not None and now - last_used > _PING_IF_IDLE_SECS:
             try:
                 conn.cursor().execute("SELECT 1")
                 conn.reset()
             except psycopg2.OperationalError:
+                _conn_last_used.pop(id(conn), None)
                 _pool.putconn(conn, close=True)
                 continue
-        # New connections (no _last_used yet) are alive by definition; skip ping.
+        # New connections (no entry yet) are alive by definition; skip ping.
         return conn
     return _pool.getconn()
 
@@ -99,5 +104,8 @@ def _conn():
             pass
         raise
     finally:
-        conn._last_used = _time.monotonic()
+        if not _discard:
+            _conn_last_used[id(conn)] = _time.monotonic()
+        else:
+            _conn_last_used.pop(id(conn), None)
         _pool.putconn(conn, close=_discard)
