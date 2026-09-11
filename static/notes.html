@@ -86,6 +86,9 @@
 .cp-sw[data-c="green"] {background:#4ADE80}
 .cp-sw[data-c="pink"]  {background:#F472B6}
 
+/* ── Read-only note view ── */
+.notes-view-body{flex:1;border:1px solid var(--border);border-radius:8px;padding:13px 14px;font-size:14px;line-height:1.7;color:var(--text);background:var(--bg);overflow-y:auto;white-space:pre-wrap;word-break:break-word;min-height:200px}
+
 /* ── Undo toast ── */
 .undo-toast{position:fixed;bottom:24px;right:24px;background:#1F2937;color:#fff;padding:11px 14px 11px 18px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.28);display:flex;align-items:center;gap:12px;z-index:9999;transform:translateY(10px);opacity:0;transition:transform .22s,opacity .22s;pointer-events:none}
 .undo-toast.show{transform:translateY(0);opacity:1;pointer-events:auto}
@@ -177,6 +180,7 @@
             <span class="notes-editor-title" id="editor-title">記事</span>
             <div class="editor-hd-btns">
               <button class="act-btn" id="btn-cancel" hidden>取消</button>
+              <button class="act-btn act-primary" id="btn-edit" hidden>編輯</button>
               <button class="act-btn act-primary" id="btn-save" hidden>儲存</button>
               <button class="act-btn act-primary" id="btn-new">新增</button>
             </div>
@@ -196,7 +200,10 @@
             <small>或按「新增」建立新的記事</small>
           </div>
 
-          <!-- Compose / edit textarea (hidden when idle) -->
+          <!-- Read-only view (shown when a card is selected but not in edit mode) -->
+          <div class="notes-view-body" id="notes-view" hidden></div>
+
+          <!-- Compose / edit textarea (shown in new or edit mode) -->
           <textarea class="notes-editor-ta" id="compose-ta" placeholder="在此輸入記事內容，Ctrl+Enter 送出…" hidden></textarea>
 
           <!-- Footer: color picker only (hidden when idle) -->
@@ -242,10 +249,10 @@
   }
 
   function _setHeaderBtns(mode) {
-    // Idle: 新增. New or Edit: 取消 + 儲存.
-    document.getElementById('btn-new').hidden    = mode !== 'idle';
-    document.getElementById('btn-cancel').hidden = mode === 'idle';
-    document.getElementById('btn-save').hidden   = mode === 'idle';
+    document.getElementById('btn-new').hidden    = mode === 'new' || mode === 'edit';
+    document.getElementById('btn-edit').hidden   = mode !== 'view';
+    document.getElementById('btn-cancel').hidden = mode !== 'new' && mode !== 'edit';
+    document.getElementById('btn-save').hidden   = mode !== 'new' && mode !== 'edit';
   }
 
   function showIdle() {
@@ -254,6 +261,20 @@
     document.getElementById('editor-title').textContent = '記事';
     _setHeaderBtns('idle');
     document.getElementById('notes-idle').style.display = '';
+    document.getElementById('notes-view').hidden = true;
+    document.getElementById('compose-ta').hidden = true;
+    document.getElementById('editor-footer').hidden = true;
+    _refreshSelected();
+  }
+
+  function showView(note) {
+    _mode = 'view';
+    _selectedId = note.id;
+    document.getElementById('editor-title').textContent = '記事';
+    _setHeaderBtns('view');
+    document.getElementById('notes-idle').style.display = 'none';
+    document.getElementById('notes-view').hidden = false;
+    document.getElementById('notes-view').textContent = note.content || '';
     document.getElementById('compose-ta').hidden = true;
     document.getElementById('editor-footer').hidden = true;
     _refreshSelected();
@@ -265,6 +286,7 @@
     document.getElementById('editor-title').textContent = '新增';
     _setHeaderBtns('new');
     document.getElementById('notes-idle').style.display = 'none';
+    document.getElementById('notes-view').hidden = true;
     document.getElementById('compose-ta').hidden = false;
     document.getElementById('editor-footer').hidden = false;
     document.getElementById('compose-ta').value = '';
@@ -276,9 +298,10 @@
   function showEdit(note) {
     _mode = 'edit';
     _selectedId = note.id;
-    document.getElementById('editor-title').textContent = '編輯記事';
+    document.getElementById('editor-title').textContent = '編輯';
     _setHeaderBtns('edit');
     document.getElementById('notes-idle').style.display = 'none';
+    document.getElementById('notes-view').hidden = true;
     document.getElementById('compose-ta').hidden = false;
     document.getElementById('editor-footer').hidden = false;
     document.getElementById('compose-ta').value = note.content || '';
@@ -316,7 +339,18 @@
   // ── Button handlers ───────────────────────────────────────────────────────
 
   document.getElementById('btn-new').addEventListener('click', showNew);
-  document.getElementById('btn-cancel').addEventListener('click', showIdle);
+  document.getElementById('btn-cancel').addEventListener('click', function () {
+    // From edit mode: go back to view. From new mode: go to idle.
+    if (_mode === 'edit' && _selectedId) {
+      var note = _notes.find(function (n) { return n.id === _selectedId; });
+      if (note) { showView(note); return; }
+    }
+    showIdle();
+  });
+  document.getElementById('btn-edit').addEventListener('click', function () {
+    var note = _notes.find(function (n) { return n.id === _selectedId; });
+    if (note) showEdit(note);
+  });
   document.getElementById('btn-save').addEventListener('click', submit);
 
   // ── Unified submit: POST (new) or PATCH (edit) ───────────────────────────
@@ -355,7 +389,7 @@
         .then(function (updated) {
           _notes = _notes.map(function (n) { return n.id === updated.id ? updated : n; });
           render(_notes);
-          showEdit(updated);
+          showView(updated);
           L.showToast('已儲存', 'success');
         })
         .catch(function (e) {
@@ -403,7 +437,7 @@
       if (_notes[j].id === noteId) { found = _notes[j]; break; }
     }
     if (!found || found._tmp) return;
-    showEdit(found);
+    showView(found);
   });
 
   // ── Search filter ─────────────────────────────────────────────────────────
