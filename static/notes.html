@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>便利貼 — 診所追蹤系統</title>
+<title>記事 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=35">
 <style>
 /* ── Two-panel workspace ── */
@@ -147,7 +147,7 @@
       </div>
 
       <div class="ph">
-        <div><h1>便利貼</h1><p>前台共用記事板，即時同步</p></div>
+        <div><h1>記事</h1><p>前台共用記事板，即時同步</p></div>
       </div>
 
       <div class="notes-workspace">
@@ -174,11 +174,11 @@
         <!-- Right panel: editor -->
         <div class="notes-editor">
           <div class="notes-editor-hd">
-            <span class="notes-editor-title" id="editor-title">便利貼</span>
+            <span class="notes-editor-title" id="editor-title">記事</span>
             <div class="editor-hd-btns">
               <button class="act-btn" id="btn-cancel" hidden>取消</button>
               <button class="act-btn act-primary" id="btn-save" hidden>儲存</button>
-              <button class="act-btn act-primary" id="btn-new">新增記事</button>
+              <button class="act-btn act-primary" id="btn-new">新增</button>
             </div>
           </div>
 
@@ -193,7 +193,7 @@
               <line x1="8" y1="13" x2="14" y2="13"/>
             </svg>
             <p>點選左側記事來查看</p>
-            <small>或按「新增記事」建立新的便利貼</small>
+            <small>或按「新增」建立新的記事</small>
           </div>
 
           <!-- Compose / edit textarea (hidden when idle) -->
@@ -242,7 +242,7 @@
   }
 
   function _setHeaderBtns(mode) {
-    // Idle: 新增記事. New or Edit: 取消 + 儲存.
+    // Idle: 新增. New or Edit: 取消 + 儲存.
     document.getElementById('btn-new').hidden    = mode !== 'idle';
     document.getElementById('btn-cancel').hidden = mode === 'idle';
     document.getElementById('btn-save').hidden   = mode === 'idle';
@@ -251,7 +251,7 @@
   function showIdle() {
     _mode = 'idle';
     _selectedId = null;
-    document.getElementById('editor-title').textContent = '便利貼';
+    document.getElementById('editor-title').textContent = '記事';
     _setHeaderBtns('idle');
     document.getElementById('notes-idle').style.display = '';
     document.getElementById('compose-ta').hidden = true;
@@ -262,7 +262,7 @@
   function showNew() {
     _mode = 'new';
     _selectedId = null;
-    document.getElementById('editor-title').textContent = '新增記事';
+    document.getElementById('editor-title').textContent = '新增';
     _setHeaderBtns('new');
     document.getElementById('notes-idle').style.display = 'none';
     document.getElementById('compose-ta').hidden = false;
@@ -384,7 +384,7 @@
       render(_notes);
       var toast = document.createElement('div');
       toast.className = 'undo-toast';
-      toast.innerHTML = '已移除便利貼 <button class="undo-btn">復原</button>';
+      toast.innerHTML = '已移除記事 <button class="undo-btn">復原</button>';
       document.body.appendChild(toast);
       setTimeout(function () { toast.classList.add('show'); }, 10);
       var timerId = setTimeout(function () { _commitDelete(id); }, 5000);
@@ -455,7 +455,7 @@
 
     if (!filtered.length) {
       list.innerHTML = !notes.length
-        ? '<div class="notes-empty"><p>目前沒有便利貼</p><small>按「新增記事」即可新增</small></div>'
+        ? '<div class="notes-empty"><p>目前沒有記事</p><small>按「新增」即可新增</small></div>'
         : '<div class="notes-empty"><p>無符合的記事</p></div>';
       return;
     }
@@ -511,7 +511,7 @@
         }
       })
       .catch(function (e) {
-        document.getElementById('error-msg').textContent = '便利貼載入失敗 — ' + (e.message || e);
+        document.getElementById('error-msg').textContent = '記事載入失敗 — ' + (e.message || e);
         document.getElementById('error-bar').style.display = 'flex';
       });
   }

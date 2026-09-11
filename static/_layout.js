@@ -46,7 +46,7 @@
     { id: 'lab',       label: '檢驗追蹤',  href: '/lab',         badge: true  },
   ];
   var OTHER_NAV = [
-    { id: 'notes',     label: '便利貼',    href: '/notes',       badge: false },
+    { id: 'notes',     label: '記事',    href: '/notes',       badge: false },
     { id: 'directory', label: '聯絡資訊',  href: '/directory',   badge: false },
     { id: 'schedule',  label: '排班表',    href: '/schedule',    badge: false },
     { id: 'history',   label: '聯絡記錄',  href: '/history',     badge: false },
@@ -60,7 +60,7 @@
   var MOBILE_NAV = [
     { id: 'schedule',  label: '排班',  href: '/schedule'         },
     { id: 'nurse-ot',  label: '加班',  href: '/nurse-ot'         },
-    { id: 'notes',     label: '便利貼', href: '/notes'            },
+    { id: 'notes',     label: '記事', href: '/notes'            },
     { id: 'me',        label: '我的',  href: '/change-password'   },
   ];
 
