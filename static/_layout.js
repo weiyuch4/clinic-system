@@ -272,9 +272,29 @@
     var wrap = document.getElementById('nurse-wrap');
     if (!btn || !dd) return;
 
-    function closeDd() { dd.classList.remove('open'); btn.classList.remove('open'); }
-    function openDd()  { dd.classList.add('open');    btn.classList.add('open');    }
+    // Mobile: create a backdrop element for the bottom sheet
+    var backdrop = null;
+    if (_isMobile) {
+      backdrop = document.createElement('div');
+      backdrop.className = 'nurse-sheet-bd';
+      document.body.appendChild(backdrop);
+    }
+
+    function closeDd() {
+      dd.classList.remove('open');
+      btn.classList.remove('open');
+      if (backdrop) backdrop.classList.remove('show');
+      document.body.classList.remove('nurse-sheet-open');
+    }
+    function openDd() {
+      dd.classList.add('open');
+      btn.classList.add('open');
+      if (backdrop) backdrop.classList.add('show');
+      document.body.classList.add('nurse-sheet-open');
+    }
     _openNurseDD = openDd;
+
+    if (backdrop) backdrop.addEventListener('click', closeDd);
 
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
