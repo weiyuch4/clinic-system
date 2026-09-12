@@ -35,7 +35,7 @@
 :root[data-theme=dark] *{scrollbar-color:rgba(255,255,255,.14) transparent}
 
 /* â”€â”€ reset â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;touch-action:manipulation}
 html,body{height:100%;overflow:hidden;font-size:14px}
 body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
 
