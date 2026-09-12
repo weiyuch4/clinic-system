@@ -501,7 +501,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   #btn-refresh{display:none!important}
   /* Collapse nurse-wrap to 0×0 instead of display:none so the fixed-position
      nurse-dd child can still render (display:none hides fixed children too) */
-  .nurse-wrap{position:fixed!important;width:0!important;height:0!important;overflow:visible!important;pointer-events:none!important}
+  .nurse-wrap{position:fixed!important;width:0!important;height:0!important;overflow:visible!important;pointer-events:none!important;z-index:500!important}
   .nurse-btn{display:none!important}
   .nurse-lbl{display:none!important}
   .nurse-chev{display:none!important}
