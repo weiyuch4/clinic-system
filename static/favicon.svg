@@ -1,7 +1,9 @@
 <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-  <circle cx="50" cy="50" r="50" fill="#1E3A8A"/>
-  <polyline
-    points="12,50 26,50 34,30 42,68 50,35 58,60 66,50 88,50"
-    fill="none" stroke="white" stroke-width="7"
+  <rect width="100" height="100" fill="#1E3A8A"/>
+  <polyline points="5,50 22,50 32,20 45,80 54,26 63,64 73,50 95,50"
+    fill="none" stroke="rgba(147,197,253,.45)" stroke-width="18"
+    stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="5,50 22,50 32,20 45,80 54,26 63,64 73,50 95,50"
+    fill="none" stroke="#fff" stroke-width="8"
     stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
