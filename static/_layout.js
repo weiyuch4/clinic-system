@@ -553,11 +553,11 @@
         var isActive = item.id === activeId ||
                        (item.id === 'schedule' && activeId === 'dashboard');
         var cls = 'mn-item' + (isActive ? ' on' : '');
-        var inner = '<span class="mn-ic">' + (ICONS[item.id] || '') + '</span><span>' + item.label + '</span>';
+        var inner = '<span class="mn-ic">' + (ICONS[item.id] || '') + '</span>';
         if (item.href === null) {
           // "我的" shows nurse avatar and opens the nurse selector dropdown
           var avChar = _nurse ? _nurse.slice(-1) : '?';
-          var avInner = '<span class="mn-ic"><div class="av" id="mob-nurse-av">' + avChar + '</div></span><span>' + item.label + '</span>';
+          var avInner = '<span class="mn-ic"><div class="av" id="mob-nurse-av">' + avChar + '</div></span>';
           return '<button type="button" class="' + cls + '" onclick="event.stopPropagation();Layout.openNurseSelector()">' + avInner + '</button>';
         }
         return '<a href="' + item.href + '" class="' + cls + '">' + inner + '</a>';

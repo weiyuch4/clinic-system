@@ -471,8 +471,8 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 
 .mob-nav{display:none;position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1.5px solid var(--border);z-index:300;padding-bottom:env(safe-area-inset-bottom,0px)}
 .mn-items{display:flex}
-.mn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 7px;color:var(--muted);text-decoration:none;font-size:10px;font-weight:500;gap:3px;border:none;background:transparent;cursor:pointer;font-family:inherit;transition:color .12s}
-.mn-item svg{width:22px;height:22px;flex-shrink:0}
+.mn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 7px;color:var(--muted);text-decoration:none;border:none;background:transparent;cursor:pointer;font-family:inherit;transition:color .12s}
+.mn-item svg{width:24px;height:24px;flex-shrink:0}
 .mn-item.on{color:#2563eb}
 /* ── mobile nav icon pill ────────────────────────────── */
 .mn-ic{display:flex;align-items:center;justify-content:center;width:48px;height:28px;border-radius:14px;transition:background .15s;flex-shrink:0}
@@ -558,7 +558,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .note-footer{font-size:13px}
 
   /* ── bottom nav item height ───────────────────────── */
-  .mn-item{padding:10px 4px 8px}
+  .mn-item{padding:14px 4px}
 
   /* ── toast/undo — lift above bottom nav ───────────── */
   .toast,.undo-toast{bottom:calc(68px + env(safe-area-inset-bottom,0px) + 10px)}

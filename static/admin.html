@@ -1,15 +1,15 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>管理員後台</title>
-<link rel="stylesheet" href="/static/_layout.css?v=45">
+<title>ç®¡ç†å“¡å¾Œå°</title>
+<link rel="stylesheet" href="/static/_layout.css?v=46">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
-/* Map _layout.css tokens → admin variable names */
+/* Map _layout.css tokens â†’ admin variable names */
 :root {
   --surface:    var(--card);
   --text-1:     var(--text);
@@ -72,7 +72,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Tab bar ─────────────────────────────────────────────────────────────── */
+/* â”€â”€ Tab bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .tabbar {
   flex-shrink: 0;
   background: var(--card);
@@ -95,7 +95,7 @@
 .tab:hover { color: var(--text-2); }
 .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
 
-/* ── Layout ──────────────────────────────────────────────────────────────── */
+/* â”€â”€ Layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 main {
   padding: 28px 32px 48px;
 }
@@ -121,7 +121,7 @@ main {
 #back-to-top:hover { background: #1d4ed8; }
 #back-to-top:active { transform: translateY(1px); }
 
-/* ── KPI row ─────────────────────────────────────────────────────────────── */
+/* â”€â”€ KPI row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .kpi-row {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(148px, 1fr));
@@ -154,7 +154,7 @@ main {
 .kpi-value.green  { color: var(--emerald); }
 .kpi-value.amber  { color: var(--amber); }
 
-/* ── Card ────────────────────────────────────────────────────────────────── */
+/* â”€â”€ Card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .card {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -190,7 +190,7 @@ main {
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Table ───────────────────────────────────────────────────────────────── */
+/* â”€â”€ Table â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .tbl-wrap { overflow-x: auto; }
 table {
   width: 100%;
@@ -250,7 +250,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 }
 .nurse-name { font-weight: 500; }
 
-/* ── Rate bar ────────────────────────────────────────────────────────────── */
+/* â”€â”€ Rate bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .rate-cell {
   display: flex;
   align-items: center;
@@ -284,7 +284,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .rate-pct.md { color: var(--amber); }
 .rate-pct.lo { color: var(--red); }
 
-/* ── States ──────────────────────────────────────────────────────────────── */
+/* â”€â”€ States â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .empty {
   padding: 52px 24px;
   text-align: center;
@@ -295,7 +295,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .empty-sub { font-size: 12.5px; }
 .err { color: var(--red); }
 
-/* ── Shimmer ─────────────────────────────────────────────────────────────── */
+/* â”€â”€ Shimmer â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @keyframes shimmer {
   from { background-position: -500px 0; }
   to   { background-position:  500px 0; }
@@ -314,7 +314,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   padding: 18px 20px 16px;
 }
 
-/* ── Footer note ─────────────────────────────────────────────────────────── */
+/* â”€â”€ Footer note â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .foot-note {
   padding: 12px 24px;
   border-top: 1px solid var(--border);
@@ -323,7 +323,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   background: var(--bg);
 }
 
-/* ── Lab report tab ──────────────────────────────────────────────────────── */
+/* â”€â”€ Lab report tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .upload-zone {
   border: 2px dashed var(--border-mid);
   border-radius: var(--radius);
@@ -457,7 +457,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .note-pill.p  { background: #FFFBEB; color: var(--amber); }
 .note-pill.other { background: var(--bg); color: var(--text-2); }
 
-/* ── Bonus calculator ─────────────────────────────────────────────────────── */
+/* â”€â”€ Bonus calculator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .bonus-toolbar {
   display: flex;
   align-items: center;
@@ -732,7 +732,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   line-height: 1.1;
 }
 
-/* ── Schedule ────────────────────────────────────────────────────────────── */
+/* â”€â”€ Schedule â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sched-cards {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
@@ -783,8 +783,8 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   gap: 8px;
 }
 /* table-layout:fixed + an explicit width on the label column makes every day
-   column share the remaining space equally — without it, a day with a long
-   "HH:MM–HH:MM" entry gets a wider column than a day showing just "－" */
+   column share the remaining space equally â€” without it, a day with a long
+   "HH:MMâ€“HH:MM" entry gets a wider column than a day showing just "ï¼" */
 .sched-mini { width: 100%; border-collapse: collapse; table-layout: fixed; }
 .sched-mini th, .sched-mini td { padding: 7px 3px; text-align: center; }
 .sched-mini thead th {
@@ -883,7 +883,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   border-top: 1px solid var(--border);
 }
 .stp-duration { font-size: 12.5px; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; }
-.stp-duration:empty::before { content: '尚未選擇完整時段'; font-size: 11.5px; font-weight: 600; color: var(--text-3); }
+.stp-duration:empty::before { content: 'å°šæœªé¸æ“‡å®Œæ•´æ™‚æ®µ'; font-size: 11.5px; font-weight: 600; color: var(--text-3); }
 .stp-clear {
   background: none;
   border: none;
@@ -933,7 +933,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 #sched-publish-btn.published { background: var(--emerald); border-color: var(--emerald); color: #fff; }
 #sched-publish-btn.published:hover { background: #047857; border-color: #047857; color: #fff; }
 
-/* coverage / overlap view — single card, whole week at a glance */
+/* coverage / overlap view â€” single card, whole week at a glance */
 .cov-week-card { padding: 16px 18px 10px; }
 .cov-timeline { position: relative; }
 .cov-hours { position: relative; height: 15px; margin-bottom: 8px; margin-left: 58px; }
@@ -1003,7 +1003,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .cov-legend-item { display: flex; align-items: center; gap: 5px; }
 .cov-legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
 
-/* ── 薪資計算 ─────────────────────────────────────────────────────────────── */
+/* â”€â”€ è–ªè³‡è¨ˆç®— â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sal-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
 .sal-select {
   border: 1px solid var(--border-mid); border-radius: var(--radius-s);
@@ -1071,7 +1071,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .sal-ot-tag.saturday  { background: #EFF6FF; color: var(--blue); }
 .sal-ot-tag.sunday    { background: #F3E8FF; color: #7C3AED; }
 .sal-ot-tag.weekday   { background: #F0FDF4; color: var(--emerald); }
-/* ── salary row custom pickers ────────────────────────────── */
+/* â”€â”€ salary row custom pickers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .sal-pick-trigger {
   display:inline-flex; align-items:center; gap:6px;
   border:1.5px solid var(--border); border-radius:7px;
@@ -1146,7 +1146,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .sal-part-rate-note { font-size: 12px; color: var(--text-3); padding: 10px 0 4px; display: none; }
 .sal-body.mode-part .sal-part-rate-note { display: block; }
 
-/* ── Bonus inline calculator ──────────────────────────────────────────────── */
+/* â”€â”€ Bonus inline calculator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .bi-wrap{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px}
 .bi-row{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
 .bi-label{font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;min-width:60px;padding-top:8px;flex-shrink:0}
@@ -1172,7 +1172,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 @media print {
   @page { size: landscape; margin: 10mm; }
 
-  /* browsers strip background colors from print/PDF by default — without this,
+  /* browsers strip background colors from print/PDF by default â€” without this,
      every colored badge/bar in the schedule views would print plain white */
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
@@ -1192,7 +1192,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   .sched-toolbar .mp-btn, .sched-toolbar .seg-toggle, .sched-toolbar .btn-sm { display: none !important; }
   .week-picker { background: none; border: none; box-shadow: none; padding: 0; justify-content: flex-start; }
   .week-display { font-size: 18px; font-weight: 800; color: #0F172A; }
-  .week-display::before { content: "排班表　"; }
+  .week-display::before { content: "æŽ’ç­è¡¨ã€€"; }
 
   .sched-cards { grid-template-columns: 1fr !important; }
   .sched-nurse-card { break-inside: avoid; box-shadow: none !important; border: 1px solid #CBD5E1; }
@@ -1201,7 +1201,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   .cov-day-group { break-inside: avoid; }
 }
 
-/* ── Lab code settings ───────────────────────────────────────────────────────── */
+/* â”€â”€ Lab code settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .lc-chapter-head{display:flex;align-items:center;gap:10px;padding:12px 20px;cursor:pointer;user-select:none;transition:background .12s;border-bottom:1px solid var(--border)}
 .lc-chapter-head:last-child{border-bottom:none}
 .lc-chapter-head:hover{background:var(--bg)}
@@ -1226,7 +1226,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .lc-drop-sep{height:1px;background:var(--border);margin:2px 0}
 .lc-empty-drop{padding:14px 16px;font-size:13px;color:var(--text-3);text-align:center}
 
-/* ── LINE notification ──────────────────────────────────────────────────────── */
+/* â”€â”€ LINE notification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ln-form { padding: 18px 24px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
 .ln-field { display: flex; flex-direction: column; gap: 4px; }
 .ln-field label { font-size: 11px; font-weight: 700; color: var(--text-2); }
@@ -1248,23 +1248,23 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .ln-detail { font-size: 11px; color: var(--text-3); }
 #nurse-wrap, .srch { display: none !important; }
 </style>
-<script src="/static/_layout.js?v=44"></script>
+<script src="/static/_layout.js?v=45"></script>
 <script src="/static/admin-auth.js?v=1"></script>
 </head>
 <body>
 
-<!-- Admin login overlay — shown when sessionStorage has no valid admin token -->
+<!-- Admin login overlay â€” shown when sessionStorage has no valid admin token -->
 <div id="adm-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0D1117;align-items:center;justify-content:center">
   <div style="background:#161B27;border:1px solid #262F3E;border-radius:14px;padding:40px;width:360px;max-width:90vw">
-    <div style="font-size:22px;font-weight:700;color:#f3f4f6;margin-bottom:6px">管理員後台</div>
-    <div style="font-size:13px;color:#6b7280;margin-bottom:28px;line-height:1.5">關閉視窗後登入狀態自動清除，不留任何痕跡。</div>
+    <div style="font-size:22px;font-weight:700;color:#f3f4f6;margin-bottom:6px">ç®¡ç†å“¡å¾Œå°</div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:28px;line-height:1.5">é—œé–‰è¦–çª—å¾Œç™»å…¥ç‹€æ…‹è‡ªå‹•æ¸…é™¤ï¼Œä¸ç•™ä»»ä½•ç—•è·¡ã€‚</div>
     <form id="adm-login-form">
-      <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">帳號</label>
+      <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">å¸³è™Ÿ</label>
       <input id="adm-u" type="text" autocomplete="username" style="display:block;width:100%;padding:10px 12px;border:1.5px solid #262F3E;border-radius:8px;background:#0D1117;color:#f3f4f6;font-size:14px;font-family:inherit;outline:none;margin-bottom:16px">
-      <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">密碼</label>
+      <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">å¯†ç¢¼</label>
       <input id="adm-p" type="password" autocomplete="current-password" style="display:block;width:100%;padding:10px 12px;border:1.5px solid #262F3E;border-radius:8px;background:#0D1117;color:#f3f4f6;font-size:14px;font-family:inherit;outline:none;margin-bottom:20px">
       <div id="adm-err" style="display:none;color:#fca5a5;font-size:12.5px;background:#2A0A0F;border-radius:6px;padding:8px 11px;margin-bottom:14px"></div>
-      <button type="submit" style="width:100%;padding:11px;background:#2563EB;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">登入</button>
+      <button type="submit" style="width:100%;padding:11px;background:#2563EB;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">ç™»å…¥</button>
     </form>
   </div>
 </div>
@@ -1273,31 +1273,31 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   <div class="main" style="display:flex;flex-direction:column">
     <div id="topbar"></div>
     <div class="tabbar">
-      <button class="tab active" data-section="nurses">護理師統計</button>
-      <button class="tab"        data-section="doctors">醫師回診率</button>
-      <button class="tab"        data-section="labreport">代檢對帳單</button>
-      <button class="tab"        data-section="linenotify">LINE 通知</button>
-      <button class="tab"        data-section="schedule">排班表</button>
-      <button class="tab"        data-section="salary">薪資計算</button>
-      <button class="tab"        data-section="labcodes">代碼設定</button>
-      <button class="btn-sm" style="margin-left:auto;align-self:center;margin-right:8px" onclick="exitAdminMode()">退出</button>
+      <button class="tab active" data-section="nurses">è­·ç†å¸«çµ±è¨ˆ</button>
+      <button class="tab"        data-section="doctors">é†«å¸«å›žè¨ºçŽ‡</button>
+      <button class="tab"        data-section="labreport">ä»£æª¢å°å¸³å–®</button>
+      <button class="tab"        data-section="linenotify">LINE é€šçŸ¥</button>
+      <button class="tab"        data-section="schedule">æŽ’ç­è¡¨</button>
+      <button class="tab"        data-section="salary">è–ªè³‡è¨ˆç®—</button>
+      <button class="tab"        data-section="labcodes">ä»£ç¢¼è¨­å®š</button>
+      <button class="btn-sm" style="margin-left:auto;align-self:center;margin-right:8px" onclick="exitAdminMode()">é€€å‡º</button>
     </div>
     <div class="ct" id="admin-ct" style="padding:0">
 <main>
 
-  <!-- ── Nurses ── -->
+  <!-- â”€â”€ Nurses â”€â”€ -->
   <section id="nurses" class="section active">
     <div class="section-bar">
       <div class="month-picker">
         <button class="mp-btn prev-month">&#8592;</button>
-        <span class="month-display">—</span>
+        <span class="month-display">â€”</span>
         <button class="mp-btn next-month">&#8594;</button>
       </div>
     </div>
     <div class="kpi-row" id="nurse-kpis"></div>
     <div class="card">
       <div class="card-head">
-        <span class="card-title">護理師活動明細</span>
+        <span class="card-title">è­·ç†å¸«æ´»å‹•æ˜Žç´°</span>
         <span class="card-spacer"></span>
         <span class="card-meta" id="nurse-meta"></span>
       </div>
@@ -1305,15 +1305,15 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
     </div>
   </section>
 
-  <!-- ── Lab Report ── -->
+  <!-- â”€â”€ Lab Report â”€â”€ -->
   <section id="labreport" class="section">
 
     <!-- Upload zone -->
     <div class="upload-zone" id="upload-zone" onclick="$('file-input').click()">
       <input type="file" id="file-input" accept=".xlsx">
-      <div class="upload-icon">📊</div>
-      <div class="upload-label">拖曳 xlsx 檔案至此，或點擊上傳</div>
-      <div class="upload-sub">院所明申報暨代檢費對帳單</div>
+      <div class="upload-icon">ðŸ“Š</div>
+      <div class="upload-label">æ‹–æ›³ xlsx æª”æ¡ˆè‡³æ­¤ï¼Œæˆ–é»žæ“Šä¸Šå‚³</div>
+      <div class="upload-sub">é™¢æ‰€æ˜Žç”³å ±æš¨ä»£æª¢è²»å°å¸³å–®</div>
       <div id="upload-status" style="margin-top:10px;font-size:12.5px;color:var(--text-3)"></div>
     </div>
 
@@ -1325,55 +1325,55 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
   </section>
 
-  <!-- ── Doctors ── -->
+  <!-- â”€â”€ Doctors â”€â”€ -->
   <section id="doctors" class="section">
     <div class="section-bar">
       <div class="month-picker">
         <button class="mp-btn prev-month">&#8592;</button>
-        <span class="month-display">—</span>
+        <span class="month-display">â€”</span>
         <button class="mp-btn next-month">&#8594;</button>
       </div>
     </div>
     <div class="kpi-row" id="doctor-kpis"></div>
     <div class="card">
       <div class="card-head">
-        <span class="card-title">醫師回診率</span>
-        <span class="card-badge">90天・同一醫師</span>
+        <span class="card-title">é†«å¸«å›žè¨ºçŽ‡</span>
+        <span class="card-badge">90å¤©ãƒ»åŒä¸€é†«å¸«</span>
         <span class="card-spacer"></span>
         <span class="card-meta" id="doctor-meta"></span>
       </div>
       <div class="tbl-wrap" id="doctors-body"></div>
       <div class="foot-note">
-        統計方式：計算該月每位患者最後一次就診日，90天內回診同一醫師即計入。
-        近期月份因後續IC檔案尚未到齊，回診率可能偏低屬正常現象。
+        çµ±è¨ˆæ–¹å¼ï¼šè¨ˆç®—è©²æœˆæ¯ä½æ‚£è€…æœ€å¾Œä¸€æ¬¡å°±è¨ºæ—¥ï¼Œ90å¤©å…§å›žè¨ºåŒä¸€é†«å¸«å³è¨ˆå…¥ã€‚
+        è¿‘æœŸæœˆä»½å› å¾ŒçºŒICæª”æ¡ˆå°šæœªåˆ°é½Šï¼Œå›žè¨ºçŽ‡å¯èƒ½åä½Žå±¬æ­£å¸¸ç¾è±¡ã€‚
       </div>
     </div>
   </section>
 
-  <!-- ── LINE 通知 ── -->
+  <!-- â”€â”€ LINE é€šçŸ¥ â”€â”€ -->
   <section id="linenotify" class="section">
     <div class="card" style="margin-bottom:20px">
       <div class="card-head">
-        <span class="card-title">批次發送LINE通知</span>
+        <span class="card-title">æ‰¹æ¬¡ç™¼é€LINEé€šçŸ¥</span>
         <span class="card-spacer"></span>
-        <button class="btn-sm" style="border-color:var(--red);color:var(--red)" onclick="stopLineAutomation()">停止／重啟瀏覽器</button>
-        <span class="card-meta">尚未在 PC1 完整驗證，謹慎使用</span>
+        <button class="btn-sm" style="border-color:var(--red);color:var(--red)" onclick="stopLineAutomation()">åœæ­¢ï¼é‡å•Ÿç€è¦½å™¨</button>
+        <span class="card-meta">å°šæœªåœ¨ PC1 å®Œæ•´é©—è­‰ï¼Œè¬¹æ…Žä½¿ç”¨</span>
       </div>
       <div class="ln-form">
         <div class="ln-field">
-          <label>類別</label>
+          <label>é¡žåˆ¥</label>
           <select id="ln-category" class="ln-input">
-            <option value="慢簽">慢簽</option>
-            <option value="代謝症候群">代謝症候群</option>
-            <option value="B肝">B肝</option>
+            <option value="æ…¢ç°½">æ…¢ç°½</option>
+            <option value="ä»£è¬ç—‡å€™ç¾¤">ä»£è¬ç—‡å€™ç¾¤</option>
+            <option value="Bè‚">Bè‚</option>
           </select>
         </div>
         <div class="ln-field">
-          <label>限制人數（留空＝全部）</label>
-          <input type="number" id="ln-limit" class="ln-input" min="1" placeholder="全部" style="width:110px">
+          <label>é™åˆ¶äººæ•¸ï¼ˆç•™ç©ºï¼å…¨éƒ¨ï¼‰</label>
+          <input type="number" id="ln-limit" class="ln-input" min="1" placeholder="å…¨éƒ¨" style="width:110px">
         </div>
-        <label class="ln-check"><input type="checkbox" id="ln-dryrun" checked> 測試模式（不會真的發送）</label>
-        <button class="btn-sm primary" onclick="startLineBatch()">發送</button>
+        <label class="ln-check"><input type="checkbox" id="ln-dryrun" checked> æ¸¬è©¦æ¨¡å¼ï¼ˆä¸æœƒçœŸçš„ç™¼é€ï¼‰</label>
+        <button class="btn-sm primary" onclick="startLineBatch()">ç™¼é€</button>
       </div>
       <div class="ln-progress" id="ln-progress-wrap" style="display:none">
         <p class="ln-progress-status" id="ln-status"></p>
@@ -1383,107 +1383,107 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
     <div class="card">
       <div class="card-head">
-        <span class="card-title">發送記錄</span>
+        <span class="card-title">ç™¼é€è¨˜éŒ„</span>
         <span class="card-spacer"></span>
-        <button class="btn-sm" onclick="loadLineLog()">重新整理</button>
+        <button class="btn-sm" onclick="loadLineLog()">é‡æ–°æ•´ç†</button>
       </div>
       <div class="tbl-wrap" id="linenotify-body"></div>
     </div>
   </section>
 
-  <!-- ── Schedule ── -->
+  <!-- â”€â”€ Schedule â”€â”€ -->
   <section id="schedule" class="section">
     <div class="bonus-toolbar sched-toolbar">
       <div class="week-picker">
         <button class="mp-btn prev-week">&#8592;</button>
-        <span class="week-display" id="sched-week-display">—</span>
+        <span class="week-display" id="sched-week-display">â€”</span>
         <button class="mp-btn next-week">&#8594;</button>
       </div>
       <div style="display:flex;gap:8px">
         <div class="seg-toggle" id="sched-view-toggle">
-          <button class="seg-btn active" data-view="edit">編輯班表</button>
-          <button class="seg-btn" data-view="coverage">人力總覽</button>
+          <button class="seg-btn active" data-view="edit">ç·¨è¼¯ç­è¡¨</button>
+          <button class="seg-btn" data-view="coverage">äººåŠ›ç¸½è¦½</button>
         </div>
-        <button class="btn-sm" id="sched-publish-btn" onclick="togglePublish()">—</button>
-        <button class="btn-sm" onclick="openStaffModal()">管理人員</button>
-        <button class="btn-sm" onclick="copyLastWeek()">複製上週</button>
-        <button class="btn-sm" onclick="window.print()">列印</button>
+        <button class="btn-sm" id="sched-publish-btn" onclick="togglePublish()">â€”</button>
+        <button class="btn-sm" onclick="openStaffModal()">ç®¡ç†äººå“¡</button>
+        <button class="btn-sm" onclick="copyLastWeek()">è¤‡è£½ä¸Šé€±</button>
+        <button class="btn-sm" onclick="window.print()">åˆ—å°</button>
       </div>
     </div>
     <div class="sched-legend" id="sched-legend" style="margin-bottom:12px">
-      <span class="sched-legend-swatch"></span> 含清潔時段（點擊時段查看詳細時間）
+      <span class="sched-legend-swatch"></span> å«æ¸…æ½”æ™‚æ®µï¼ˆé»žæ“Šæ™‚æ®µæŸ¥çœ‹è©³ç´°æ™‚é–“ï¼‰
     </div>
     <div id="sched-grid"></div>
   </section>
 
-  <!-- ── 薪資計算 ── -->
+  <!-- â”€â”€ è–ªè³‡è¨ˆç®— â”€â”€ -->
   <section id="salary" class="section">
     <div class="sal-toolbar">
       <div class="month-picker" style="flex-shrink:0">
         <button class="mp-btn" onclick="stepSalMonth(-1)">&#8592;</button>
-        <span class="month-display" id="sal-month-display" style="min-width:112px;text-align:center">—</span>
+        <span class="month-display" id="sal-month-display" style="min-width:112px;text-align:center">â€”</span>
         <button class="mp-btn" onclick="stepSalMonth(1)">&#8594;</button>
       </div>
       <select id="sal-nurse" class="sal-select">
-        <option value="">選擇護理師</option>
+        <option value="">é¸æ“‡è­·ç†å¸«</option>
       </select>
       <div class="seg-toggle" id="sal-mode-toggle">
-        <button class="seg-btn active" data-mode="full">全職</button>
-        <button class="seg-btn" data-mode="part">兼職</button>
+        <button class="seg-btn active" data-mode="full">å…¨è·</button>
+        <button class="seg-btn" data-mode="part">å…¼è·</button>
       </div>
     </div>
     <div class="card">
       <div class="card-head">
-        <span class="card-title">薪資明細</span>
+        <span class="card-title">è–ªè³‡æ˜Žç´°</span>
         <span class="card-spacer"></span>
-        <button class="btn-sm" onclick="window.print()">列印</button>
+        <button class="btn-sm" onclick="window.print()">åˆ—å°</button>
       </div>
       <div class="sal-body">
 
-        <!-- 固定項目 -->
+        <!-- å›ºå®šé …ç›® -->
         <div class="sal-row sal-full-only">
-          <span class="sal-label">底薪</span>
+          <span class="sal-label">åº•è–ª</span>
           <span class="sal-amount" id="sal-base">30,500</span>
         </div>
         <div class="sal-row sal-full-only">
           <span class="sal-label">
             <input type="checkbox" id="sal-attendance-chk" checked onchange="recalcSalary()">
-            全勤獎金
+            å…¨å‹¤çŽé‡‘
           </span>
           <span class="sal-amount" id="sal-attendance-amt">2,000</span>
         </div>
         <div class="sal-row sal-full-only">
-          <span class="sal-label">執照費</span>
+          <span class="sal-label">åŸ·ç…§è²»</span>
           <span class="sal-amount">2,000</span>
         </div>
 
-        <div class="sal-part-rate-note">兼職時薪：<strong>250 元/h</strong>（一般）；<strong>335 元/h</strong>（加班，250 × 1.34）</div>
+        <div class="sal-part-rate-note">å…¼è·æ™‚è–ªï¼š<strong>250 å…ƒ/h</strong>ï¼ˆä¸€èˆ¬ï¼‰ï¼›<strong>335 å…ƒ/h</strong>ï¼ˆåŠ ç­ï¼Œ250 Ã— 1.34ï¼‰</div>
 
-        <!-- 加班記錄 (unified) -->
+        <!-- åŠ ç­è¨˜éŒ„ (unified) -->
         <div class="sal-section-head" style="margin-top:18px">
-          加班記錄
-          <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addOtRow()">＋ 新增</button>
-          <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px" onclick="toggleBatchPanel()">批量新增</button>
-          <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px;color:var(--blue)" onclick="toggleImportPanel()">匯入護理師記錄</button>
+          åŠ ç­è¨˜éŒ„
+          <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addOtRow()">ï¼‹ æ–°å¢ž</button>
+          <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px" onclick="toggleBatchPanel()">æ‰¹é‡æ–°å¢ž</button>
+          <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px;color:var(--blue)" onclick="toggleImportPanel()">åŒ¯å…¥è­·ç†å¸«è¨˜éŒ„</button>
         </div>
         <div id="sal-import-panel" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-s);padding:12px 14px;margin-top:8px;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">護理師</span>
-            <span id="sal-import-nurse" style="font-size:13px;font-weight:600;color:var(--text-1)">—</span>
-            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">月份</span>
-            <span id="sal-import-month" style="font-size:13px;font-weight:600;color:var(--text-1)">—</span>
-            <button class="btn-sm" style="font-size:11px;padding:4px 12px" onclick="fetchImportLogs()">載入記錄</button>
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">è­·ç†å¸«</span>
+            <span id="sal-import-nurse" style="font-size:13px;font-weight:600;color:var(--text-1)">â€”</span>
+            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">æœˆä»½</span>
+            <span id="sal-import-month" style="font-size:13px;font-weight:600;color:var(--text-1)">â€”</span>
+            <button class="btn-sm" style="font-size:11px;padding:4px 12px" onclick="fetchImportLogs()">è¼‰å…¥è¨˜éŒ„</button>
           </div>
           <div id="sal-import-preview" style="display:none;margin-top:10px;font-size:12.5px;color:var(--text-2)"></div>
           <div id="sal-import-actions" style="display:none;margin-top:10px;gap:8px">
-            <button class="btn-sm" style="font-size:11px;padding:4px 12px" onclick="applyImport(false)">匯入並合併</button>
-            <button class="btn-sm" style="font-size:11px;padding:4px 12px;color:var(--red)" onclick="applyImport(true)">清空並匯入</button>
+            <button class="btn-sm" style="font-size:11px;padding:4px 12px" onclick="applyImport(false)">åŒ¯å…¥ä¸¦åˆä½µ</button>
+            <button class="btn-sm" style="font-size:11px;padding:4px 12px;color:var(--red)" onclick="applyImport(true)">æ¸…ç©ºä¸¦åŒ¯å…¥</button>
           </div>
         </div>
         <div class="sal-batch-panel" id="sal-batch-panel" style="display:none;margin-top:8px">
           <div class="sal-batch-row">
             <div class="sal-batch-field">
-              <span class="sal-batch-lbl">日期範圍</span>
+              <span class="sal-batch-lbl">æ—¥æœŸç¯„åœ</span>
               <div style="display:flex;align-items:center;gap:6px">
                 <input type="date" id="bi-batch-from" class="sal-date-input">
                 <span style="color:var(--text-3)">~</span>
@@ -1491,238 +1491,238 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
               </div>
             </div>
             <div class="sal-batch-field">
-              <span class="sal-batch-lbl">時間</span>
+              <span class="sal-batch-lbl">æ™‚é–“</span>
               <div style="display:flex;align-items:center;gap:6px">
                 <input type="time" id="bi-batch-start" class="sal-time-inp" value="18:00">
-                <span class="sal-time-sep">—</span>
+                <span class="sal-time-sep">â€”</span>
                 <input type="time" id="bi-batch-end" class="sal-time-inp" value="20:00">
               </div>
             </div>
           </div>
           <div class="sal-batch-row">
-            <span class="sal-batch-lbl">星期幾</span>
+            <span class="sal-batch-lbl">æ˜ŸæœŸå¹¾</span>
             <div style="display:flex;gap:4px">
-              <button class="sal-day-btn active" data-day="1" onclick="this.classList.toggle('active')">一</button>
-              <button class="sal-day-btn active" data-day="2" onclick="this.classList.toggle('active')">二</button>
-              <button class="sal-day-btn active" data-day="3" onclick="this.classList.toggle('active')">三</button>
-              <button class="sal-day-btn active" data-day="4" onclick="this.classList.toggle('active')">四</button>
-              <button class="sal-day-btn active" data-day="5" onclick="this.classList.toggle('active')">五</button>
-              <button class="sal-day-btn" data-day="6" onclick="this.classList.toggle('active')">六</button>
-              <button class="sal-day-btn" data-day="0" onclick="this.classList.toggle('active')">日</button>
+              <button class="sal-day-btn active" data-day="1" onclick="this.classList.toggle('active')">ä¸€</button>
+              <button class="sal-day-btn active" data-day="2" onclick="this.classList.toggle('active')">äºŒ</button>
+              <button class="sal-day-btn active" data-day="3" onclick="this.classList.toggle('active')">ä¸‰</button>
+              <button class="sal-day-btn active" data-day="4" onclick="this.classList.toggle('active')">å››</button>
+              <button class="sal-day-btn active" data-day="5" onclick="this.classList.toggle('active')">äº”</button>
+              <button class="sal-day-btn" data-day="6" onclick="this.classList.toggle('active')">å…­</button>
+              <button class="sal-day-btn" data-day="0" onclick="this.classList.toggle('active')">æ—¥</button>
             </div>
-            <button class="btn-sm" style="margin-left:auto;font-size:11px;padding:4px 12px" onclick="applyBatch()">批量新增</button>
+            <button class="btn-sm" style="margin-left:auto;font-size:11px;padding:4px 12px" onclick="applyBatch()">æ‰¹é‡æ–°å¢ž</button>
           </div>
         </div>
         <div class="sal-ot-list" id="sal-ot-list" style="margin-bottom:12px"></div>
 
-        <!-- 自動計算小計 -->
+        <!-- è‡ªå‹•è¨ˆç®—å°è¨ˆ -->
         <div class="sal-row sal-full-only">
-          <span class="sal-label">周六加班費</span>
+          <span class="sal-label">å‘¨å…­åŠ ç­è²»</span>
           <span class="sal-amount" id="sal-sat-amt">0</span>
         </div>
         <div class="sal-row sal-full-only">
-          <span class="sal-label">浮動獎金</span>
+          <span class="sal-label">æµ®å‹•çŽé‡‘</span>
           <span class="sal-amount" id="sal-float-amt">8,000</span>
         </div>
         <div class="sal-row">
-          <span class="sal-label" id="sal-ot-label">一般加班費</span>
+          <span class="sal-label" id="sal-ot-label">ä¸€èˆ¬åŠ ç­è²»</span>
           <span class="sal-amount" id="sal-ot-total">0</span>
         </div>
 
-        <!-- 不定期獎金 inline calculator -->
-        <div class="sal-section-head sal-full-only" style="margin-top:18px">不定期獎金</div>
+        <!-- ä¸å®šæœŸçŽé‡‘ inline calculator -->
+        <div class="sal-section-head sal-full-only" style="margin-top:18px">ä¸å®šæœŸçŽé‡‘</div>
         <div class="bi-wrap sal-full-only" id="bi-wrap">
           <!-- Period + amount row -->
           <div class="bi-row">
-            <span class="bi-label">計算期間</span>
+            <span class="bi-label">è¨ˆç®—æœŸé–“</span>
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <input type="date" id="bi-start" class="sal-date-input" style="width:136px" oninput="recalcBonusInline()">
-              <span class="sal-time-sep">至</span>
+              <span class="sal-time-sep">è‡³</span>
               <input type="date" id="bi-end" class="sal-date-input" style="width:136px" oninput="recalcBonusInline()">
               <span id="bi-days" style="font-size:12px;color:var(--text-3)"></span>
             </div>
           </div>
           <div class="bi-row">
-            <span class="bi-label">獎金金額</span>
+            <span class="bi-label">çŽé‡‘é‡‘é¡</span>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <div class="seg-toggle" style="margin:0" id="bi-mode-toggle">
-                <button class="seg-btn active" data-bmode="fixed" onclick="setBonusMode('fixed')">固定金額</button>
-                <button class="seg-btn" data-bmode="prorata" onclick="setBonusMode('prorata')">依比例</button>
+                <button class="seg-btn active" data-bmode="fixed" onclick="setBonusMode('fixed')">å›ºå®šé‡‘é¡</button>
+                <button class="seg-btn" data-bmode="prorata" onclick="setBonusMode('prorata')">ä¾æ¯”ä¾‹</button>
               </div>
               <div id="bi-fixed-wrap" class="bc-money-row" style="width:160px">
                 <span class="bc-currency">NT$</span>
                 <input type="number" id="bi-fixed-amt" min="0" placeholder="0" oninput="recalcBonusInline()" style="border:none;width:100%;padding:7px 10px;font-size:13px;background:transparent;color:var(--text-1)">
               </div>
               <div id="bi-prorata-wrap" style="display:none;align-items:center;gap:5px;flex-wrap:wrap">
-                <span style="font-size:12px;color:var(--text-2)">總額</span>
+                <span style="font-size:12px;color:var(--text-2)">ç¸½é¡</span>
                 <div class="bc-money-row" style="width:136px">
                   <span class="bc-currency">NT$</span>
                   <input type="number" id="bi-pool" min="0" placeholder="0" oninput="recalcBonusInline()" style="border:none;width:100%;padding:7px 8px;font-size:13px;background:transparent;color:var(--text-1)">
                 </div>
-                <span style="font-size:12px;color:var(--text-2)">÷ 基準</span>
+                <span style="font-size:12px;color:var(--text-2)">Ã· åŸºæº–</span>
                 <input type="number" id="bi-ref-days" min="1" value="30" class="sal-input-sm" style="text-align:right" oninput="recalcBonusInline()">
-                <span style="font-size:12px;color:var(--text-2)">天</span>
+                <span style="font-size:12px;color:var(--text-2)">å¤©</span>
               </div>
             </div>
           </div>
           <!-- Score grid -->
           <div class="bi-row">
-            <span class="bi-label">績效評分</span>
+            <span class="bi-label">ç¸¾æ•ˆè©•åˆ†</span>
             <div class="bi-score-grid" id="bi-score-grid"></div>
           </div>
           <!-- Result summary -->
           <div class="bi-result-bar">
-            <span style="font-size:12px;color:var(--text-2)">平均分數 <strong id="bi-avg">100.0%</strong></span>
-            <span style="font-size:13px;font-weight:700;color:var(--text-2)">計算結果 <span id="bi-result" style="color:var(--blue)">—</span> <span style="font-size:11px;font-weight:400;color:var(--text-3)">（自動套用）</span></span>
+            <span style="font-size:12px;color:var(--text-2)">å¹³å‡åˆ†æ•¸ <strong id="bi-avg">100.0%</strong></span>
+            <span style="font-size:13px;font-weight:700;color:var(--text-2)">è¨ˆç®—çµæžœ <span id="bi-result" style="color:var(--blue)">â€”</span> <span style="font-size:11px;font-weight:400;color:var(--text-3)">ï¼ˆè‡ªå‹•å¥—ç”¨ï¼‰</span></span>
           </div>
         </div>
         <div class="sal-row sal-full-only">
-          <span class="sal-label">不定期獎金</span>
-          <span class="sal-amount muted" id="sal-bonus-amt">—</span>
+          <span class="sal-label">ä¸å®šæœŸçŽé‡‘</span>
+          <span class="sal-amount muted" id="sal-bonus-amt">â€”</span>
         </div>
 
-        <!-- 其他獎金 / 扣款 -->
+        <!-- å…¶ä»–çŽé‡‘ / æ‰£æ¬¾ -->
         <div class="sal-section-head" style="margin-top:18px">
-          其他獎金 / 扣款
-          <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addSalExtra()">＋ 新增</button>
+          å…¶ä»–çŽé‡‘ / æ‰£æ¬¾
+          <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addSalExtra()">ï¼‹ æ–°å¢ž</button>
         </div>
         <div id="sal-extras-list" style="margin-bottom:4px"></div>
         <div class="sal-row" id="sal-extras-row" style="display:none">
-          <span class="sal-label" style="color:var(--muted)">其他合計</span>
-          <span class="sal-amount" id="sal-extras-total">—</span>
+          <span class="sal-label" style="color:var(--muted)">å…¶ä»–åˆè¨ˆ</span>
+          <span class="sal-amount" id="sal-extras-total">â€”</span>
         </div>
 
-        <!-- 病假扣款 -->
+        <!-- ç—…å‡æ‰£æ¬¾ -->
         <div class="sal-section-head sal-full-only" style="margin-top:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span>病假（勞基法半薪）</span>
+          <span>ç—…å‡ï¼ˆå‹žåŸºæ³•åŠè–ªï¼‰</span>
           <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
             <input type="number" id="sal-sick-days" min="0" max="30" value="0" step="1"
               style="width:52px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:center"
-              oninput="recalcSalary();loadYearlySickDays()"> 天
+              oninput="recalcSalary();loadYearlySickDays()"> å¤©
             <span id="sal-sick-yearly" style="font-size:11.5px;color:var(--muted)"></span>
           </div>
         </div>
         <div class="sal-row sal-full-only" id="sal-sick-row" style="display:none">
-          <span class="sal-label" style="color:var(--red)">病假扣款</span>
-          <span class="sal-amount" id="sal-sick-deduct" style="color:var(--red)">—</span>
+          <span class="sal-label" style="color:var(--red)">ç—…å‡æ‰£æ¬¾</span>
+          <span class="sal-amount" id="sal-sick-deduct" style="color:var(--red)">â€”</span>
         </div>
 
-        <!-- 勞保/健保扣款 -->
+        <!-- å‹žä¿/å¥ä¿æ‰£æ¬¾ -->
         <div class="sal-section-head" style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span>法定扣款</span>
+          <span>æ³•å®šæ‰£æ¬¾</span>
           <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-left:auto">
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
-              勞保
+              å‹žä¿
               <input type="number" id="sal-labor-ins" min="0" value="0" step="1"
                 style="width:72px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
-                oninput="recalcSalary()"> 元
+                oninput="recalcSalary()"> å…ƒ
             </label>
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
-              健保
+              å¥ä¿
               <input type="number" id="sal-health-ins" min="0" value="0" step="1"
                 style="width:72px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
-                oninput="recalcSalary()"> 元
+                oninput="recalcSalary()"> å…ƒ
             </label>
           </div>
         </div>
         <div class="sal-row" id="sal-ins-row" style="display:none">
-          <span class="sal-label" style="color:var(--red)">勞健保扣款</span>
-          <span class="sal-amount" id="sal-ins-deduct" style="color:var(--red)">—</span>
+          <span class="sal-label" style="color:var(--red)">å‹žå¥ä¿æ‰£æ¬¾</span>
+          <span class="sal-amount" id="sal-ins-deduct" style="color:var(--red)">â€”</span>
         </div>
 
-        <!-- 到職日比例計算（新進員工）-->
+        <!-- åˆ°è·æ—¥æ¯”ä¾‹è¨ˆç®—ï¼ˆæ–°é€²å“¡å·¥ï¼‰-->
         <div class="sal-section-head sal-full-only" style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-          <span>到職日調整</span>
+          <span>åˆ°è·æ—¥èª¿æ•´</span>
           <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-left:auto">
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
-              月初未出勤
+              æœˆåˆæœªå‡ºå‹¤
               <input type="number" id="sal-unworked-days" min="0" max="30" value="0" step="1"
                 style="width:52px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:center"
-                oninput="recalcSalary()"> 天
+                oninput="recalcSalary()"> å¤©
             </label>
             <span id="sal-prorate-note" style="font-size:11.5px;color:var(--muted)"></span>
           </div>
         </div>
         <div class="sal-row sal-full-only" id="sal-prorate-row" style="display:none">
-          <span class="sal-label" style="color:var(--red)">到職日薪資調整</span>
-          <span class="sal-amount" id="sal-prorate-deduct" style="color:var(--red)">—</span>
+          <span class="sal-label" style="color:var(--red)">åˆ°è·æ—¥è–ªè³‡èª¿æ•´</span>
+          <span class="sal-amount" id="sal-prorate-deduct" style="color:var(--red)">â€”</span>
         </div>
 
-        <!-- 合計 -->
+        <!-- åˆè¨ˆ -->
         <hr class="sal-divider">
         <div class="sal-total-row">
-          <span class="sal-total-label">本月薪資合計</span>
-          <span class="sal-total-amount" id="sal-grand-total">—</span>
+          <span class="sal-total-label">æœ¬æœˆè–ªè³‡åˆè¨ˆ</span>
+          <span class="sal-total-amount" id="sal-grand-total">â€”</span>
         </div>
         <div class="sal-note" id="sal-hourly-note"></div>
 
-        <!-- 儲存 -->
+        <!-- å„²å­˜ -->
         <div style="margin-top:20px;display:flex;align-items:center;gap:10px;justify-content:flex-end">
           <span id="sal-editing-badge" style="display:none;font-size:12px;color:var(--blue);font-weight:600">
-            ✎ 編輯中
+            âœŽ ç·¨è¼¯ä¸­
           </span>
-          <button class="btn-sm" onclick="newSalaryRecord()" id="sal-new-btn" style="display:none">新增記錄</button>
-          <button class="btn-sm" onclick="printPaySlip()" id="sal-print-btn">列印薪資條</button>
-          <button class="btn-sm primary" onclick="saveSalaryRecord()" id="sal-save-btn">儲存薪資記錄</button>
+          <button class="btn-sm" onclick="newSalaryRecord()" id="sal-new-btn" style="display:none">æ–°å¢žè¨˜éŒ„</button>
+          <button class="btn-sm" onclick="printPaySlip()" id="sal-print-btn">åˆ—å°è–ªè³‡æ¢</button>
+          <button class="btn-sm primary" onclick="saveSalaryRecord()" id="sal-save-btn">å„²å­˜è–ªè³‡è¨˜éŒ„</button>
         </div>
       </div>
     </div>
 
-    <!-- 歷史紀錄 -->
+    <!-- æ­·å²ç´€éŒ„ -->
     <div class="card" id="sal-history-card" style="margin-top:16px;display:none">
       <div class="card-head">
-        <span class="card-title">已儲存的薪資紀錄</span>
+        <span class="card-title">å·²å„²å­˜çš„è–ªè³‡ç´€éŒ„</span>
         <span class="card-spacer"></span>
         <span class="card-meta" id="sal-history-meta"></span>
       </div>
       <div id="sal-history-list"></div>
     </div>
 
-    <!-- 全員獎金計算 -->
+    <!-- å…¨å“¡çŽé‡‘è¨ˆç®— -->
     <div class="card" style="margin-top:16px">
       <div class="card-head" style="cursor:pointer" onclick="toggleBatchBonus()">
-        <span class="card-title">全員獎金計算</span>
-        <span class="card-badge">依比例分配獎金池</span>
+        <span class="card-title">å…¨å“¡çŽé‡‘è¨ˆç®—</span>
+        <span class="card-badge">ä¾æ¯”ä¾‹åˆ†é…çŽé‡‘æ± </span>
         <span class="card-spacer"></span>
-        <span style="font-size:12px;color:var(--text-3)" id="batch-toggle-hint">展開</span>
+        <span style="font-size:12px;color:var(--text-3)" id="batch-toggle-hint">å±•é–‹</span>
       </div>
       <div id="batch-bonus-wrap" style="display:none">
         <div class="bonus-toolbar" style="padding:16px 20px 0;margin-bottom:0">
           <div style="display:flex;gap:8px;align-items:center">
-            <button class="btn-sm primary" onclick="addBonusCardPrompt()">＋ 新增護理師</button>
-            <button class="btn-sm" id="btn-prorata" onclick="toggleProrata()">依比例計算</button>
+            <button class="btn-sm primary" onclick="addBonusCardPrompt()">ï¼‹ æ–°å¢žè­·ç†å¸«</button>
+            <button class="btn-sm" id="btn-prorata" onclick="toggleProrata()">ä¾æ¯”ä¾‹è¨ˆç®—</button>
           </div>
-          <button class="btn-sm" onclick="window.print()">列印</button>
+          <button class="btn-sm" onclick="window.print()">åˆ—å°</button>
         </div>
         <div class="bonus-std-bar" id="bonus-std-bar" style="display:none;margin:12px 20px 0">
-          <label>標準金額</label>
+          <label>æ¨™æº–é‡‘é¡</label>
           <div class="bc-money-row" style="width:150px">
             <span class="bc-currency">NT$</span>
             <input type="number" class="bonus-std-input" id="bonus-std-amt" min="0" placeholder="0"
                    style="border:none;width:100%" oninput="recalcAllBonus()">
           </div>
-          <label>基準護理師</label>
+          <label>åŸºæº–è­·ç†å¸«</label>
           <select id="bonus-std-ref" class="bonus-std-select" onchange="recalcAllBonus()">
-            <option value="">— 選擇 —</option>
+            <option value="">â€” é¸æ“‡ â€”</option>
           </select>
-          <span style="font-size:12px;color:#3B82F6;margin-left:4px">（其他護理師依天數比例換算）</span>
+          <span style="font-size:12px;color:#3B82F6;margin-left:4px">ï¼ˆå…¶ä»–è­·ç†å¸«ä¾å¤©æ•¸æ¯”ä¾‹æ›ç®—ï¼‰</span>
         </div>
         <div class="bonus-grid" id="bonus-grid" style="padding:16px 20px 20px"></div>
       </div>
     </div>
   </section>
 
-  <!-- ── Lab code settings ── -->
+  <!-- â”€â”€ Lab code settings â”€â”€ -->
   <section id="labcodes" class="section">
     <div style="max-width:720px">
 
       <!-- Search / add bar -->
       <div class="card" style="margin-bottom:14px">
         <div style="padding:16px 20px 14px">
-          <div style="font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:3px">搜尋並新增代碼</div>
-          <div style="font-size:12px;color:var(--text-3);margin-bottom:10px">輸入 NHI 醫令代碼（如 09001C）或中文名稱，找到後點擊加入自訂清單</div>
+          <div style="font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:3px">æœå°‹ä¸¦æ–°å¢žä»£ç¢¼</div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:10px">è¼¸å…¥ NHI é†«ä»¤ä»£ç¢¼ï¼ˆå¦‚ 09001Cï¼‰æˆ–ä¸­æ–‡åç¨±ï¼Œæ‰¾åˆ°å¾Œé»žæ“ŠåŠ å…¥è‡ªè¨‚æ¸…å–®</div>
           <div style="position:relative">
-            <input id="lc-search" type="text" autocomplete="off" placeholder="搜尋代碼或名稱…"
+            <input id="lc-search" type="text" autocomplete="off" placeholder="æœå°‹ä»£ç¢¼æˆ–åç¨±â€¦"
               style="width:100%;border:1.5px solid var(--border-mid);border-radius:8px;padding:9px 12px;background:var(--surface);color:var(--text-1);font-size:13px;font-family:var(--font);outline:none"
               onfocus="this.style.borderColor='var(--blue)'" onblur="setTimeout(()=>{lcHideDrop()},180)"
               oninput="lcSearch(this.value)">
@@ -1734,9 +1734,9 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       <!-- Chapter cards -->
       <div class="card" style="margin-bottom:14px;overflow:visible">
         <div class="card-head">
-          <span class="card-title">章別設定</span>
+          <span class="card-title">ç« åˆ¥è¨­å®š</span>
           <span class="card-spacer"></span>
-          <button class="btn-sm primary" id="btn-labcodes-save" onclick="saveLabCodes()">儲存設定</button>
+          <button class="btn-sm primary" id="btn-labcodes-save" onclick="saveLabCodes()">å„²å­˜è¨­å®š</button>
         </div>
         <div id="lc-chapters"></div>
       </div>
@@ -1744,10 +1744,10 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       <!-- Custom individual codes -->
       <div class="card" id="lc-custom-card" style="display:none">
         <div class="card-head">
-          <span class="card-title">自訂代碼</span>
+          <span class="card-title">è‡ªè¨‚ä»£ç¢¼</span>
           <span class="card-badge" id="lc-custom-badge">0</span>
           <span class="card-spacer"></span>
-          <span style="font-size:12px;color:var(--text-3)">章別以外手動加入的代碼</span>
+          <span style="font-size:12px;color:var(--text-3)">ç« åˆ¥ä»¥å¤–æ‰‹å‹•åŠ å…¥çš„ä»£ç¢¼</span>
         </div>
         <div id="lc-custom-chips" style="padding:14px 18px;display:flex;flex-wrap:wrap;gap:8px"></div>
       </div>
@@ -1764,17 +1764,17 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
 <div class="sched-staff-overlay" id="sched-staff-overlay" onclick="if (event.target === this) closeStaffModal()">
   <div class="sched-staff-modal">
-    <h3>排班人員管理</h3>
-    <p class="sched-staff-sub">新增、重新命名或移除排班表上的人員（包含兼職人員）</p>
+    <h3>æŽ’ç­äººå“¡ç®¡ç†</h3>
+    <p class="sched-staff-sub">æ–°å¢žã€é‡æ–°å‘½åæˆ–ç§»é™¤æŽ’ç­è¡¨ä¸Šçš„äººå“¡ï¼ˆåŒ…å«å…¼è·äººå“¡ï¼‰</p>
     <div id="sched-staff-list"></div>
     <div class="sched-staff-foot">
-      <button class="btn-sm primary" onclick="addNursePrompt()">＋ 新增人員</button>
-      <button class="btn-sm" onclick="closeStaffModal()">關閉</button>
+      <button class="btn-sm primary" onclick="addNursePrompt()">ï¼‹ æ–°å¢žäººå“¡</button>
+      <button class="btn-sm" onclick="closeStaffModal()">é—œé–‰</button>
     </div>
   </div>
 </div>
 
-<button id="back-to-top" onclick="document.getElementById('admin-ct').scrollTo({top:0,behavior:'smooth'})" title="回到頂端">
+<button id="back-to-top" onclick="document.getElementById('admin-ct').scrollTo({top:0,behavior:'smooth'})" title="å›žåˆ°é ‚ç«¯">
   <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
     <path fill-rule="evenodd" d="M7.646 4.646a.5.5 0 0 1 .708 0l6 6a.5.5 0 0 1-.708.708L8 5.707l-5.646 5.647a.5.5 0 0 1-.708-.708l6-6z"/>
   </svg>
@@ -1785,12 +1785,12 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
 Layout.init({ activePage: '' });
 
-// ── State ─────────────────────────────────────────────────────────────────────
+// â”€â”€ State â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const today = new Date();
 let month = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}`;
 let activeSection = 'nurses';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const $ = id => document.getElementById(id);
 
 function shiftMonth(m, delta) {
@@ -1818,7 +1818,7 @@ function fmtMD(iso) {
   const [, m, d] = iso.split('-').map(Number);
   return `${m}/${d}`;
 }
-const DOW_LABELS = ['一', '二', '三', '四', '五', '六'];  // 診所週日不營業，排班表不顯示週日
+const DOW_LABELS = ['ä¸€', 'äºŒ', 'ä¸‰', 'å››', 'äº”', 'å…­'];  // è¨ºæ‰€é€±æ—¥ä¸ç‡Ÿæ¥­ï¼ŒæŽ’ç­è¡¨ä¸é¡¯ç¤ºé€±æ—¥
 let weekStart = mondayOf(today);
 
 async function api(path, options = {}) {
@@ -1844,15 +1844,15 @@ function shimTable(rows, cols) {
   return `<table><tbody>${tr.repeat(rows)}</tbody></table>`;
 }
 
-// ── Month nav ─────────────────────────────────────────────────────────────────
+// â”€â”€ Month nav â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.querySelectorAll('.prev-month').forEach(b => b.onclick = () => { month = shiftMonth(month, -1); refresh(); });
 document.querySelectorAll('.next-month').forEach(b => b.onclick = () => { month = shiftMonth(month, +1); refresh(); });
 
-// ── Week nav (schedule) ──────────────────────────────────────────────────────
+// â”€â”€ Week nav (schedule) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.querySelectorAll('.prev-week').forEach(b => b.onclick = () => { weekStart = addDays(weekStart, -7); loadSchedule(); });
 document.querySelectorAll('.next-week').forEach(b => b.onclick = () => { weekStart = addDays(weekStart, 7); loadSchedule(); });
 
-// ── Tabs ──────────────────────────────────────────────────────────────────────
+// â”€â”€ Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 document.querySelectorAll('.tab').forEach(btn => {
   btn.onclick = () => {
     document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
@@ -1862,22 +1862,22 @@ document.querySelectorAll('.tab').forEach(btn => {
     $(activeSection).classList.add('active');
     localStorage.setItem('admin_tab', activeSection);
     if (activeSection === 'schedule') {
-      $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
+      $('sched-week-display').textContent = `${fmtMD(weekStart)} â€“ ${fmtMD(addDays(weekStart, 5))}`;
     }
     load(activeSection);
   };
 });
 
-// ── Nurse constants ───────────────────────────────────────────────────────────
+// â”€â”€ Nurse constants â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const COLS = [
-  ['contacted', '已通知'],
-  ['called',    '再次通知'],
-  ['mspt',      '完成MSPT'],
-  ['excluded',  '排除'],
-  ['pickup',    '手動取藥'],
+  ['contacted', 'å·²é€šçŸ¥'],
+  ['called',    'å†æ¬¡é€šçŸ¥'],
+  ['mspt',      'å®ŒæˆMSPT'],
+  ['excluded',  'æŽ’é™¤'],
+  ['pickup',    'æ‰‹å‹•å–è—¥'],
 ];
 
-// ── Nurses ────────────────────────────────────────────────────────────────────
+// â”€â”€ Nurses â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadNurses() {
   $('nurse-kpis').innerHTML = shimKPI(4);
   $('nurses-body').innerHTML = shimTable(5, 7);
@@ -1900,10 +1900,10 @@ function renderNurses(stats) {
 
   // KPIs
   const kpiDefs = [
-    { label: '已通知',   value: tot.contacted, cls: 'blue'  },
-    { label: '再次通知', value: tot.called,    cls: ''      },
-    { label: '完成MSPT', value: tot.mspt,      cls: 'green' },
-    { label: '手動取藥', value: tot.pickup,    cls: ''      },
+    { label: 'å·²é€šçŸ¥',   value: tot.contacted, cls: 'blue'  },
+    { label: 'å†æ¬¡é€šçŸ¥', value: tot.called,    cls: ''      },
+    { label: 'å®ŒæˆMSPT', value: tot.mspt,      cls: 'green' },
+    { label: 'æ‰‹å‹•å–è—¥', value: tot.pickup,    cls: ''      },
   ];
   $('nurse-kpis').innerHTML = kpiDefs.map(k =>
     `<div class="kpi-card">
@@ -1912,22 +1912,22 @@ function renderNurses(stats) {
     </div>`
   ).join('');
 
-  $('nurse-meta').textContent = grand ? `共 ${grand} 筆` : '';
+  $('nurse-meta').textContent = grand ? `å…± ${grand} ç­†` : '';
 
-  // sort nurses: alphabetical, （未選擇） last
+  // sort nurses: alphabetical, ï¼ˆæœªé¸æ“‡ï¼‰ last
   const nurses = Object.keys(stats).sort((a, b) =>
-    (a === '（未選擇）') - (b === '（未選擇）') || a.localeCompare(b, 'zh-TW')
+    (a === 'ï¼ˆæœªé¸æ“‡ï¼‰') - (b === 'ï¼ˆæœªé¸æ“‡ï¼‰') || a.localeCompare(b, 'zh-TW')
   );
 
   if (!nurses.length) {
-    $('nurses-body').innerHTML = emptyState('📭', '本月尚無紀錄', '');
+    $('nurses-body').innerHTML = emptyState('ðŸ“­', 'æœ¬æœˆå°šç„¡ç´€éŒ„', '');
     return;
   }
 
   const rows = nurses.map(n => {
     const s = stats[n] || {};
     const rowTot = COLS.reduce((a,[k]) => a + (s[k]||0), 0);
-    const initial = n === '（未選擇）' ? '?' : n[0];
+    const initial = n === 'ï¼ˆæœªé¸æ“‡ï¼‰' ? '?' : n[0];
     return `<tr>
       <td class="l">
         <span class="chip">
@@ -1944,22 +1944,22 @@ function renderNurses(stats) {
   }).join('');
 
   const totalRow = `<tr class="total-row">
-    <td class="l">合計</td>
+    <td class="l">åˆè¨ˆ</td>
     ${COLS.map(([k]) => `<td>${tot[k]}</td>`).join('')}
     <td>${grand}</td>
   </tr>`;
 
   const thead = `<tr>
-    <th class="l">護理師</th>
+    <th class="l">è­·ç†å¸«</th>
     ${COLS.map(([,l]) => `<th>${l}</th>`).join('')}
-    <th>合計</th>
+    <th>åˆè¨ˆ</th>
   </tr>`;
 
   $('nurses-body').innerHTML =
     `<table><thead>${thead}</thead><tbody>${rows}${totalRow}</tbody></table>`;
 }
 
-// ── Doctors ───────────────────────────────────────────────────────────────────
+// â”€â”€ Doctors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadDoctors() {
   $('doctor-kpis').innerHTML = shimKPI(3);
   $('doctors-body').innerHTML = shimTable(4, 4);
@@ -1978,21 +1978,21 @@ function renderDoctors(doctors) {
   if (!doctors.length) {
     $('doctor-kpis').innerHTML = '';
     $('doctors-body').innerHTML = emptyState(
-      '📊', '本月暫無資料',
-      'IC檔案可能尚未生成，或該月份無診次'
+      'ðŸ“Š', 'æœ¬æœˆæš«ç„¡è³‡æ–™',
+      'ICæª”æ¡ˆå¯èƒ½å°šæœªç”Ÿæˆï¼Œæˆ–è©²æœˆä»½ç„¡è¨ºæ¬¡'
     );
     return;
   }
 
   const totalPts = doctors.reduce((a,d) => a + d.total, 0);
   const totalRet = doctors.reduce((a,d) => a + d.returned, 0);
-  const avg = totalPts ? (totalRet / totalPts * 100).toFixed(1) : '—';
+  const avg = totalPts ? (totalRet / totalPts * 100).toFixed(1) : 'â€”';
   const avgLevel = totalPts ? rateLevel(+avg) : '';
 
   $('doctor-kpis').innerHTML = [
-    { label: '整體回診率', value: totalPts ? `${avg}%` : '—', cls: avgLevel === 'hi' ? 'green' : avgLevel === 'md' ? 'amber' : 'blue' },
-    { label: '總看診人次', value: totalPts, cls: '' },
-    { label: '已回診人次', value: totalRet, cls: '' },
+    { label: 'æ•´é«”å›žè¨ºçŽ‡', value: totalPts ? `${avg}%` : 'â€”', cls: avgLevel === 'hi' ? 'green' : avgLevel === 'md' ? 'amber' : 'blue' },
+    { label: 'ç¸½çœ‹è¨ºäººæ¬¡', value: totalPts, cls: '' },
+    { label: 'å·²å›žè¨ºäººæ¬¡', value: totalRet, cls: '' },
   ].map(k =>
     `<div class="kpi-card">
       <div class="kpi-label">${k.label}</div>
@@ -2000,12 +2000,12 @@ function renderDoctors(doctors) {
     </div>`
   ).join('');
 
-  $('doctor-meta').textContent = `${doctors.length} 位醫師`;
+  $('doctor-meta').textContent = `${doctors.length} ä½é†«å¸«`;
 
   const rows = doctors.map(d => {
     const lv = rateLevel(d.rate);
     return `<tr>
-      <td class="l"><strong>${d.doctor || '（未知）'}</strong></td>
+      <td class="l"><strong>${d.doctor || 'ï¼ˆæœªçŸ¥ï¼‰'}</strong></td>
       <td>${d.total}</td>
       <td>${d.returned}</td>
       <td>
@@ -2020,17 +2020,17 @@ function renderDoctors(doctors) {
   }).join('');
 
   const thead = `<tr>
-    <th class="l">醫師</th>
-    <th>看診人次</th>
-    <th>回診人次</th>
-    <th style="min-width:190px">回診率</th>
+    <th class="l">é†«å¸«</th>
+    <th>çœ‹è¨ºäººæ¬¡</th>
+    <th>å›žè¨ºäººæ¬¡</th>
+    <th style="min-width:190px">å›žè¨ºçŽ‡</th>
   </tr>`;
 
   $('doctors-body').innerHTML =
     `<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
 }
 
-// ── UI helpers ────────────────────────────────────────────────────────────────
+// â”€â”€ UI helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function emptyState(icon, title, sub) {
   return `<div class="empty">
     <div class="empty-icon">${icon}</div>
@@ -2040,13 +2040,13 @@ function emptyState(icon, title, sub) {
 }
 function errState(msg) {
   return `<div class="empty err">
-    <div class="empty-icon">⚠</div>
-    <div class="empty-title">載入失敗</div>
+    <div class="empty-icon">âš </div>
+    <div class="empty-title">è¼‰å…¥å¤±æ•—</div>
     <div class="empty-sub">${msg}</div>
   </div>`;
 }
 
-// ── Lab report ────────────────────────────────────────────────────────────────
+// â”€â”€ Lab report â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 async function loadLabReport() {
   try {
     const reports = await api('/api/admin/lab-reports');
@@ -2057,7 +2057,7 @@ async function loadLabReport() {
     }
     $('lab-layout').style.display = 'grid';
     $('report-list').innerHTML =
-      `<div class="rp-header">已儲存報告 <span style="font-weight:400">(${reports.length})</span></div>` +
+      `<div class="rp-header">å·²å„²å­˜å ±å‘Š <span style="font-weight:400">(${reports.length})</span></div>` +
       reports.map(r => {
         const label = formatPeriod(r.period) || r.filename;
         const date  = (r.uploaded_at || '').slice(0, 10);
@@ -2066,7 +2066,7 @@ async function loadLabReport() {
             <div class="rp-period">${label}</div>
             <div class="rp-date">${date}</div>
           </div>
-          <button class="rp-del" onclick="deleteReport(event,${r.id})" title="刪除">×</button>
+          <button class="rp-del" onclick="deleteReport(event,${r.id})" title="åˆªé™¤">Ã—</button>
         </div>`;
       }).join('');
     selectReport(reports[0].id);
@@ -2094,13 +2094,13 @@ async function showReport(id) {
 
 async function deleteReport(e, id) {
   e.stopPropagation();
-  if (!confirm('確定刪除此報告？')) return;
+  if (!confirm('ç¢ºå®šåˆªé™¤æ­¤å ±å‘Šï¼Ÿ')) return;
   try {
     const res = await fetch(`/api/admin/lab-report/${id}`, { method: 'DELETE', credentials: 'include' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     await loadLabReport();
   } catch(e2) {
-    alert(`刪除失敗：${e2.message}`);
+    alert(`åˆªé™¤å¤±æ•—ï¼š${e2.message}`);
   }
 }
 
@@ -2120,12 +2120,12 @@ uploadZone.addEventListener('drop', e => {
   uploadZone.classList.remove('drag');
   const f = e.dataTransfer.files[0];
   if (f && f.name.endsWith('.xlsx')) doUpload(f);
-  else uploadStatus.textContent = '請選擇 .xlsx 檔案';
+  else uploadStatus.textContent = 'è«‹é¸æ“‡ .xlsx æª”æ¡ˆ';
 });
 
 async function doUpload(file) {
   uploadZone.style.pointerEvents = 'none';
-  uploadStatus.textContent = `正在解析 ${file.name}…`;
+  uploadStatus.textContent = `æ­£åœ¨è§£æž ${file.name}â€¦`;
   try {
     const fd = new FormData();
     fd.append('file', file);
@@ -2136,10 +2136,10 @@ async function doUpload(file) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${res.status}`);
     }
-    uploadStatus.textContent = '上傳成功！';
+    uploadStatus.textContent = 'ä¸Šå‚³æˆåŠŸï¼';
     await loadLabReport();
   } catch(e) {
-    uploadStatus.textContent = `上傳失敗：${e.message}`;
+    uploadStatus.textContent = `ä¸Šå‚³å¤±æ•—ï¼š${e.message}`;
   } finally {
     uploadZone.style.pointerEvents = '';
     fileInput.value = '';
@@ -2147,7 +2147,7 @@ async function doUpload(file) {
 }
 
 function fmt(n) {
-  if (n == null) return '—';
+  if (n == null) return 'â€”';
   return Number(n).toLocaleString('zh-TW');
 }
 
@@ -2155,7 +2155,7 @@ function formatPeriod(period) {
   if (!period) return null;
   const m = period.match(/^(\d+)-(\d+)$/);
   if (!m) return period;
-  return `${m[1]}年${parseInt(m[2])}月`;
+  return `${m[1]}å¹´${parseInt(m[2])}æœˆ`;
 }
 
 function verifyCard(label, computed, stated, opts = {}) {
@@ -2164,9 +2164,9 @@ function verifyCard(label, computed, stated, opts = {}) {
   const roundingOnly = diff < 1 && diff > 0;
   const match = diff === 0;
   const cls = match ? 'ok' : roundingOnly ? 'warn' : 'fail';
-  const icon = match ? '✓' : roundingOnly ? '≈' : '✗';
-  const statedNote = opts.statedLabel || `申報值 ${fmt(stated)}`;
-  const diffNote = (!match && !roundingOnly) ? `　差 ${fmt(diff)}` : roundingOnly ? '　（小數四捨五入）' : '';
+  const icon = match ? 'âœ“' : roundingOnly ? 'â‰ˆ' : 'âœ—';
+  const statedNote = opts.statedLabel || `ç”³å ±å€¼ ${fmt(stated)}`;
+  const diffNote = (!match && !roundingOnly) ? `ã€€å·® ${fmt(diff)}` : roundingOnly ? 'ã€€ï¼ˆå°æ•¸å››æ¨äº”å…¥ï¼‰' : '';
   return `<div class="verify-card ${cls}">
     <div class="verify-badge">${icon}</div>
     <div class="verify-label">${label}</div>
@@ -2182,39 +2182,39 @@ function renderLabReport(r) {
   // Verification cards
   const verifySection = `
     <div class="verify-grid">
-      ${verifyCard('申報點數', computed['申報點數'], s['申報點數'])}
-      ${verifyCard('代收稅額', computed['代收稅額'], s['代收稅額'])}
-      ${verifyCard('代檢費用', computed['代檢費用'], s['代檢費用'])}
-      ${verifyCard('申報件數', computed['申報件數'], s['申報件數'])}
+      ${verifyCard('ç”³å ±é»žæ•¸', computed['ç”³å ±é»žæ•¸'], s['ç”³å ±é»žæ•¸'])}
+      ${verifyCard('ä»£æ”¶ç¨…é¡', computed['ä»£æ”¶ç¨…é¡'], s['ä»£æ”¶ç¨…é¡'])}
+      ${verifyCard('ä»£æª¢è²»ç”¨', computed['ä»£æª¢è²»ç”¨'], s['ä»£æª¢è²»ç”¨'])}
+      ${verifyCard('ç”³å ±ä»¶æ•¸', computed['ç”³å ±ä»¶æ•¸'], s['ç”³å ±ä»¶æ•¸'])}
     </div>`;
 
   // Summary KPIs
   const summaryKPIs = `
     <div class="kpi-row" style="margin-bottom:22px">
       <div class="kpi-card">
-        <div class="kpi-label">應收金額</div>
-        <div class="kpi-value" style="font-size:22px">${fmt(s['應收金額'])}</div>
+        <div class="kpi-label">æ‡‰æ”¶é‡‘é¡</div>
+        <div class="kpi-value" style="font-size:22px">${fmt(s['æ‡‰æ”¶é‡‘é¡'])}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">暫收款</div>
-        <div class="kpi-value" style="font-size:22px">${fmt(s['暫收款'])}</div>
+        <div class="kpi-label">æš«æ”¶æ¬¾</div>
+        <div class="kpi-value" style="font-size:22px">${fmt(s['æš«æ”¶æ¬¾'])}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">受檢患者數</div>
+        <div class="kpi-label">å—æª¢æ‚£è€…æ•¸</div>
         <div class="kpi-value blue" style="font-size:22px">${summary.unique_patients}</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">工作天數</div>
+        <div class="kpi-label">å·¥ä½œå¤©æ•¸</div>
         <div class="kpi-value" style="font-size:22px">${summary.working_days}</div>
       </div>
     </div>`;
 
-  // 備註 pills
+  // å‚™è¨» pills
   const nc = summary.note_counts || {};
   const pills = Object.entries(nc).map(([k, v]) => {
     const cls = k === 'NP' ? 'np' : k === 'N' ? 'n' : k === 'P' ? 'p' : 'other';
-    const desc = k === 'NP' ? '申報＋代檢' : k === 'N' ? '申報' : k === 'P' ? '代檢' : k;
-    return `<span class="note-pill ${cls}">${desc} ${v} 筆</span>`;
+    const desc = k === 'NP' ? 'ç”³å ±ï¼‹ä»£æª¢' : k === 'N' ? 'ç”³å ±' : k === 'P' ? 'ä»£æª¢' : k;
+    return `<span class="note-pill ${cls}">${desc} ${v} ç­†</span>`;
   }).join('');
 
   // Top tests tables
@@ -2226,29 +2226,29 @@ function renderLabReport(r) {
   const testTables = `
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px">
       <div class="card">
-        <div class="card-head"><span class="card-title">最多申請項目</span><span class="card-meta">依件數</span></div>
-        <div class="tbl-wrap"><table><thead><tr><th class="l">項目名稱</th><th>件數</th></tr></thead>
+        <div class="card-head"><span class="card-title">æœ€å¤šç”³è«‹é …ç›®</span><span class="card-meta">ä¾ä»¶æ•¸</span></div>
+        <div class="tbl-wrap"><table><thead><tr><th class="l">é …ç›®åç¨±</th><th>ä»¶æ•¸</th></tr></thead>
         <tbody>${freqRows}</tbody></table></div>
       </div>
       <div class="card">
-        <div class="card-head"><span class="card-title">最多申報點數項目</span><span class="card-meta">依點數</span></div>
-        <div class="tbl-wrap"><table><thead><tr><th class="l">項目名稱</th><th>點數</th></tr></thead>
+        <div class="card-head"><span class="card-title">æœ€å¤šç”³å ±é»žæ•¸é …ç›®</span><span class="card-meta">ä¾é»žæ•¸</span></div>
+        <div class="tbl-wrap"><table><thead><tr><th class="l">é …ç›®åç¨±</th><th>é»žæ•¸</th></tr></thead>
         <tbody>${ptsRows}</tbody></table></div>
       </div>
     </div>`;
 
   const meta = `<div style="font-size:12px;color:var(--text-3);margin-bottom:16px">
-    ${s['院所名稱'] || ''}&ensp;${s['院所代號'] ? `(${s['院所代號']})` : ''}&ensp;
-    ${r.period ? `期間：${formatPeriod(r.period)}` : ''}&ensp;
-    上傳日：${(r.uploaded_at || '').slice(0,10)}
+    ${s['é™¢æ‰€åç¨±'] || ''}&ensp;${s['é™¢æ‰€ä»£è™Ÿ'] ? `(${s['é™¢æ‰€ä»£è™Ÿ']})` : ''}&ensp;
+    ${r.period ? `æœŸé–“ï¼š${formatPeriod(r.period)}` : ''}&ensp;
+    ä¸Šå‚³æ—¥ï¼š${(r.uploaded_at || '').slice(0,10)}
   </div>`;
 
   const noteCard = `<div class="card" style="margin-bottom:0">
-    <div class="card-head"><span class="card-title">項目類型分布</span></div>
+    <div class="card-head"><span class="card-title">é …ç›®é¡žåž‹åˆ†å¸ƒ</span></div>
     <div style="padding:16px 24px">
       <div class="note-pills">${pills}</div>
       <div style="margin-top:12px;font-size:12px;color:var(--text-3)">
-        NP = 同時申報健保＋代檢費　N = 僅健保申報　P = 僅代檢費
+        NP = åŒæ™‚ç”³å ±å¥ä¿ï¼‹ä»£æª¢è²»ã€€N = åƒ…å¥ä¿ç”³å ±ã€€P = åƒ…ä»£æª¢è²»
       </div>
     </div>
   </div>`;
@@ -2256,8 +2256,8 @@ function renderLabReport(r) {
   return meta + verifySection + summaryKPIs + noteCard + testTables;
 }
 
-// ── Bonus calculator ──────────────────────────────────────────────────────────
-const BONUS_CATS = ['出勤狀況', '工作態度', '工作表現', '團隊合作', '服務品質', '追蹤效率'];
+// â”€â”€ Bonus calculator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+const BONUS_CATS = ['å‡ºå‹¤ç‹€æ³', 'å·¥ä½œæ…‹åº¦', 'å·¥ä½œè¡¨ç¾', 'åœ˜éšŠåˆä½œ', 'æœå‹™å“è³ª', 'è¿½è¹¤æ•ˆçŽ‡'];
 
 async function loadBonus() {
   const grid = $('bonus-grid');
@@ -2267,10 +2267,10 @@ async function loadBonus() {
     if (nurses.length) {
       nurses.forEach(addBonusCard);
     } else {
-      grid.innerHTML = emptyState('📋', '尚無護理師名單', '請點擊「新增護理師」手動加入');
+      grid.innerHTML = emptyState('ðŸ“‹', 'å°šç„¡è­·ç†å¸«åå–®', 'è«‹é»žæ“Šã€Œæ–°å¢žè­·ç†å¸«ã€æ‰‹å‹•åŠ å…¥');
     }
   } catch(e) {
-    grid.innerHTML = emptyState('📋', '無法載入護理師名單', '請點擊「新增護理師」手動加入');
+    grid.innerHTML = emptyState('ðŸ“‹', 'ç„¡æ³•è¼‰å…¥è­·ç†å¸«åå–®', 'è«‹é»žæ“Šã€Œæ–°å¢žè­·ç†å¸«ã€æ‰‹å‹•åŠ å…¥');
   }
 }
 
@@ -2299,38 +2299,38 @@ function addBonusCard(name) {
   card.className = 'bc';
   card.innerHTML = `
     <div class="bc-hd">
-      <span class="bc-grip" title="拖曳排序">⠿</span>
+      <span class="bc-grip" title="æ‹–æ›³æŽ’åº">â ¿</span>
       <span class="bc-avatar">${initial}</span>
       <span class="bc-name">${name}</span>
-      <button class="bc-del" onclick="removeBonusCard(this)" title="移除">×</button>
+      <button class="bc-del" onclick="removeBonusCard(this)" title="ç§»é™¤">Ã—</button>
     </div>
     <div class="bc-body">
       <div>
-        <div class="bc-field-label">計算期間</div>
+        <div class="bc-field-label">è¨ˆç®—æœŸé–“</div>
         <div class="bc-dates">
           <input type="date" class="bc-start" value="${defaultStart}" oninput="recalcCard(this)">
-          <span class="bc-dates-sep">至</span>
+          <span class="bc-dates-sep">è‡³</span>
           <input type="date" class="bc-end" value="${defaultEnd}" oninput="recalcCard(this)">
         </div>
         <div class="bc-days"></div>
       </div>
       <div class="bc-manual-block">
-        <div class="bc-field-label">底薪獎金</div>
+        <div class="bc-field-label">åº•è–ªçŽé‡‘</div>
         <div class="bc-money-row">
           <span class="bc-currency">NT$</span>
-          <input type="number" class="bc-base-amt" min="0" placeholder="請輸入金額"
+          <input type="number" class="bc-base-amt" min="0" placeholder="è«‹è¼¸å…¥é‡‘é¡"
                  oninput="recalcCard(this)">
         </div>
       </div>
       <div class="bc-auto-block" style="display:none">
-        <div class="bc-field-label">底薪獎金（依比例）</div>
-        <div class="bc-auto-amt">—</div>
+        <div class="bc-field-label">åº•è–ªçŽé‡‘ï¼ˆä¾æ¯”ä¾‹ï¼‰</div>
+        <div class="bc-auto-amt">â€”</div>
         <div class="bc-auto-formula"></div>
       </div>
       <div>
-        <div class="bc-field-label">工時類型</div>
+        <div class="bc-field-label">å·¥æ™‚é¡žåž‹</div>
         <div class="bc-parttime-row">
-          <button class="bc-pt-btn" onclick="toggleParttime(this)">兼職</button>
+          <button class="bc-pt-btn" onclick="toggleParttime(this)">å…¼è·</button>
           <span class="bc-pt-wrap">
             <input type="number" class="bc-pt-input-num" min="1" max="100" value="50" oninput="recalcCard(this)">
             <span class="bc-pct">%</span>
@@ -2338,18 +2338,18 @@ function addBonusCard(name) {
         </div>
       </div>
       <div>
-        <div class="bc-field-label">績效評分</div>
+        <div class="bc-field-label">ç¸¾æ•ˆè©•åˆ†</div>
         <div class="bc-score-rows">${scoreRows}</div>
       </div>
     </div>
     <div class="bc-result">
       <div class="bc-result-item">
-        <span class="bc-result-label">平均分數</span>
-        <span class="bc-avg-val bc-avg">—</span>
+        <span class="bc-result-label">å¹³å‡åˆ†æ•¸</span>
+        <span class="bc-avg-val bc-avg">â€”</span>
       </div>
       <div class="bc-result-item">
-        <span class="bc-result-label">實際獎金</span>
-        <span class="bc-final-val bc-final">—</span>
+        <span class="bc-result-label">å¯¦éš›çŽé‡‘</span>
+        <span class="bc-final-val bc-final">â€”</span>
       </div>
     </div>`;
 
@@ -2380,7 +2380,7 @@ function _recalcOne(card) {
   let days = 0;
   if (start && end && end >= start) {
     days = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
-    daysEl.textContent = `共 ${days} 天`;
+    daysEl.textContent = `å…± ${days} å¤©`;
   } else {
     daysEl.textContent = '';
   }
@@ -2396,11 +2396,11 @@ function _recalcOne(card) {
       card.querySelector('.bc-auto-amt').textContent =
         'NT$ ' + Math.round(base).toLocaleString('zh-TW');
       card.querySelector('.bc-auto-formula').textContent =
-        `${stdAmt.toLocaleString('zh-TW')} × ${days} ÷ ${refD} 天（${refName}）`;
+        `${stdAmt.toLocaleString('zh-TW')} Ã— ${days} Ã· ${refD} å¤©ï¼ˆ${refName}ï¼‰`;
     } else {
-      card.querySelector('.bc-auto-amt').textContent = '—';
+      card.querySelector('.bc-auto-amt').textContent = 'â€”';
       card.querySelector('.bc-auto-formula').textContent =
-        refName ? '請確認基準護理師的日期範圍' : '請選擇基準護理師';
+        refName ? 'è«‹ç¢ºèªåŸºæº–è­·ç†å¸«çš„æ—¥æœŸç¯„åœ' : 'è«‹é¸æ“‡åŸºæº–è­·ç†å¸«';
     }
   } else {
     base = parseFloat(card.querySelector('.bc-base-amt').value) || 0;
@@ -2419,17 +2419,17 @@ function _recalcOne(card) {
   const avgLabel = card.querySelector('.bc-result-label');
   const avgVal   = card.querySelector('.bc-avg');
   if (ptActive) {
-    avgLabel.textContent = '兼職 × 分數';
-    avgVal.textContent   = `${ptPct}% × ${avg.toFixed(1)}%`;
+    avgLabel.textContent = 'å…¼è· Ã— åˆ†æ•¸';
+    avgVal.textContent   = `${ptPct}% Ã— ${avg.toFixed(1)}%`;
   } else {
-    avgLabel.textContent = '平均分數';
+    avgLabel.textContent = 'å¹³å‡åˆ†æ•¸';
     avgVal.textContent   = avg.toFixed(1) + '%';
   }
 
   // Final
   const final = base * (ptPct / 100) * (avg / 100);
   card.querySelector('.bc-final').textContent =
-    base > 0 ? 'NT$ ' + Math.round(final).toLocaleString('zh-TW') : '—';
+    base > 0 ? 'NT$ ' + Math.round(final).toLocaleString('zh-TW') : 'â€”';
 }
 
 function recalcCard(el) {
@@ -2454,7 +2454,7 @@ function updateRefDropdown() {
   if (!sel) return;
   const prev  = sel.value;
   const names = [...document.querySelectorAll('#bonus-grid > .bc .bc-name')].map(el => el.textContent);
-  sel.innerHTML = '<option value="">— 選擇 —</option>' +
+  sel.innerHTML = '<option value="">â€” é¸æ“‡ â€”</option>' +
     names.map(n => `<option value="${n}"${n === prev ? ' selected' : ''}>${n}</option>`).join('');
 }
 
@@ -2537,14 +2537,14 @@ function initBonusDrag(card) {
 }
 
 function addBonusCardPrompt() {
-  const name = prompt('輸入護理師姓名：');
+  const name = prompt('è¼¸å…¥è­·ç†å¸«å§“åï¼š');
   if (name && name.trim()) addBonusCard(name.trim());
 }
 
-// ── LINE notification ─────────────────────────────────────────────────────────
+// â”€â”€ LINE notification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const LN_STATUS_LABEL = {
-  sent: '已發送', dry_run_ok: '測試通過', not_found: '找不到病患',
-  template_not_found: '找不到範本', tag_not_found: '找不到標籤', error: '錯誤',
+  sent: 'å·²ç™¼é€', dry_run_ok: 'æ¸¬è©¦é€šéŽ', not_found: 'æ‰¾ä¸åˆ°ç—…æ‚£',
+  template_not_found: 'æ‰¾ä¸åˆ°ç¯„æœ¬', tag_not_found: 'æ‰¾ä¸åˆ°æ¨™ç±¤', error: 'éŒ¯èª¤',
 };
 const LN_STATUS_COLOR = {
   sent: 'var(--emerald)', dry_run_ok: 'var(--blue)', not_found: 'var(--amber)',
@@ -2559,12 +2559,12 @@ async function startLineBatch() {
   const limit = limitVal ? parseInt(limitVal, 10) : null;
   const dryRun = $('ln-dryrun').checked;
 
-  const modeLabel = dryRun ? '測試模式（不會真的發送）' : '正式發送';
-  const countLabel = limit ? `最多 ${limit} 位` : '全部待聯絡';
-  if (!confirm(`即將以「${modeLabel}」處理 ${category}（${countLabel}）病患的LINE通知，確定繼續嗎？`)) return;
+  const modeLabel = dryRun ? 'æ¸¬è©¦æ¨¡å¼ï¼ˆä¸æœƒçœŸçš„ç™¼é€ï¼‰' : 'æ­£å¼ç™¼é€';
+  const countLabel = limit ? `æœ€å¤š ${limit} ä½` : 'å…¨éƒ¨å¾…è¯çµ¡';
+  if (!confirm(`å³å°‡ä»¥ã€Œ${modeLabel}ã€è™•ç† ${category}ï¼ˆ${countLabel}ï¼‰ç—…æ‚£çš„LINEé€šçŸ¥ï¼Œç¢ºå®šç¹¼çºŒå—Žï¼Ÿ`)) return;
 
   $('ln-progress-wrap').style.display = 'block';
-  $('ln-status').textContent = '啟動中…';
+  $('ln-status').textContent = 'å•Ÿå‹•ä¸­â€¦';
   $('ln-progress-bar').style.width = '0%';
 
   try {
@@ -2576,12 +2576,12 @@ async function startLineBatch() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
     if (!data.started) {
-      $('ln-status').textContent = data.detail || '沒有符合條件的病患';
+      $('ln-status').textContent = data.detail || 'æ²’æœ‰ç¬¦åˆæ¢ä»¶çš„ç—…æ‚£';
       return;
     }
     _pollLineBatch();
   } catch (err) {
-    $('ln-status').textContent = '啟動失敗：' + err.message;
+    $('ln-status').textContent = 'å•Ÿå‹•å¤±æ•—ï¼š' + err.message;
   }
 }
 
@@ -2594,9 +2594,9 @@ async function _pollLineBatch() {
     const pct = total ? Math.round((done / total) * 100) : 0;
     $('ln-progress-bar').style.width = pct + '%';
 
-    let label = state.running ? `處理中… ${done}/${total}` : `完成：${done}/${total}`;
-    if (state.dry_run) label = `[測試模式] ${label}`;
-    if (state.error) label += ` — 發生錯誤：${state.error}`;
+    let label = state.running ? `è™•ç†ä¸­â€¦ ${done}/${total}` : `å®Œæˆï¼š${done}/${total}`;
+    if (state.dry_run) label = `[æ¸¬è©¦æ¨¡å¼] ${label}`;
+    if (state.error) label += ` â€” ç™¼ç”ŸéŒ¯èª¤ï¼š${state.error}`;
     $('ln-status').textContent = label;
 
     if (state.running) {
@@ -2606,12 +2606,12 @@ async function _pollLineBatch() {
       loadLineLog();
     }
   } catch (err) {
-    $('ln-status').textContent = '查詢進度失敗：' + err.message;
+    $('ln-status').textContent = 'æŸ¥è©¢é€²åº¦å¤±æ•—ï¼š' + err.message;
   }
 }
 
 async function stopLineAutomation() {
-  if (!confirm('確定要停止目前的批次發送並關閉自動化瀏覽器嗎？\n注意：瀏覽器關閉後，下次使用可能需要重新登入 Alleypin。')) return;
+  if (!confirm('ç¢ºå®šè¦åœæ­¢ç›®å‰çš„æ‰¹æ¬¡ç™¼é€ä¸¦é—œé–‰è‡ªå‹•åŒ–ç€è¦½å™¨å—Žï¼Ÿ\næ³¨æ„ï¼šç€è¦½å™¨é—œé–‰å¾Œï¼Œä¸‹æ¬¡ä½¿ç”¨å¯èƒ½éœ€è¦é‡æ–°ç™»å…¥ Alleypinã€‚')) return;
   try {
     const res = await fetch('/api/send-line-notifications/cancel', { method: 'POST', credentials: 'include' });
     const data = await res.json();
@@ -2619,14 +2619,14 @@ async function stopLineAutomation() {
 
     if (_lnPolling) { clearTimeout(_lnPolling); _lnPolling = null; }
 
-    let msg = data.cancelled ? '已取消目前的批次發送。' : '目前沒有正在執行的批次。';
-    msg += data.browser_stopped ? ' 自動化瀏覽器已關閉，下次使用會重新開啟一個新的。' : ' 自動化瀏覽器目前不是執行中的狀態。';
+    let msg = data.cancelled ? 'å·²å–æ¶ˆç›®å‰çš„æ‰¹æ¬¡ç™¼é€ã€‚' : 'ç›®å‰æ²’æœ‰æ­£åœ¨åŸ·è¡Œçš„æ‰¹æ¬¡ã€‚';
+    msg += data.browser_stopped ? ' è‡ªå‹•åŒ–ç€è¦½å™¨å·²é—œé–‰ï¼Œä¸‹æ¬¡ä½¿ç”¨æœƒé‡æ–°é–‹å•Ÿä¸€å€‹æ–°çš„ã€‚' : ' è‡ªå‹•åŒ–ç€è¦½å™¨ç›®å‰ä¸æ˜¯åŸ·è¡Œä¸­çš„ç‹€æ…‹ã€‚';
     alert(msg);
 
-    $('ln-status').textContent = '已停止';
+    $('ln-status').textContent = 'å·²åœæ­¢';
     loadLineLog();
   } catch (err) {
-    alert('停止失敗：' + err.message);
+    alert('åœæ­¢å¤±æ•—ï¼š' + err.message);
   }
 }
 
@@ -2642,36 +2642,36 @@ async function loadLineLog() {
 
 function renderLineLog(rows) {
   if (!rows.length) {
-    $('linenotify-body').innerHTML = emptyState('📨', '尚無發送記錄', '');
+    $('linenotify-body').innerHTML = emptyState('ðŸ“¨', 'å°šç„¡ç™¼é€è¨˜éŒ„', '');
     return;
   }
   const trs = rows.map(r => {
     const canUndo = r.status === 'sent' && !r.dry_run && !r.undone_at;
     const statusHtml = r.undone_at
-      ? `<span style="color:var(--text-3)">已復原</span>`
+      ? `<span style="color:var(--text-3)">å·²å¾©åŽŸ</span>`
       : `<span style="color:${LN_STATUS_COLOR[r.status] || 'var(--text-2)'};font-weight:600">${LN_STATUS_LABEL[r.status] || r.status}</span>`;
     return `<tr>
       <td class="l">${r.name} <span style="color:var(--text-3);font-size:11px">${r.chart_number}</span></td>
       <td class="l">${r.category}</td>
       <td class="l">${r.template}</td>
       <td class="l">${statusHtml}<div class="ln-detail">${r.detail || ''}</div></td>
-      <td>${r.dry_run ? '測試' : '正式'}</td>
+      <td>${r.dry_run ? 'æ¸¬è©¦' : 'æ­£å¼'}</td>
       <td class="l">${r.sent_at} ${r.sent_time || ''}</td>
       <td class="l">${r.nurse || ''}</td>
-      <td>${canUndo ? `<button class="btn-sm" onclick="undoLineLog(${r.id}, this)">復原</button>` : ''}</td>
+      <td>${canUndo ? `<button class="btn-sm" onclick="undoLineLog(${r.id}, this)">å¾©åŽŸ</button>` : ''}</td>
     </tr>`;
   }).join('');
   const thead = `<tr>
-    <th class="l">病患</th><th class="l">類別</th><th class="l">範本</th><th class="l">狀態</th>
-    <th>模式</th><th class="l">發送時間</th><th class="l">操作人員</th><th></th>
+    <th class="l">ç—…æ‚£</th><th class="l">é¡žåˆ¥</th><th class="l">ç¯„æœ¬</th><th class="l">ç‹€æ…‹</th>
+    <th>æ¨¡å¼</th><th class="l">ç™¼é€æ™‚é–“</th><th class="l">æ“ä½œäººå“¡</th><th></th>
   </tr>`;
   $('linenotify-body').innerHTML = `<table><thead>${thead}</thead><tbody>${trs}</tbody></table>`;
 }
 
 async function undoLineLog(id, btn) {
-  if (!confirm('確定要從 Alleypin 移除這則通知標籤嗎？')) return;
+  if (!confirm('ç¢ºå®šè¦å¾ž Alleypin ç§»é™¤é€™å‰‡é€šçŸ¥æ¨™ç±¤å—Žï¼Ÿ')) return;
   btn.disabled = true;
-  btn.textContent = '處理中…';
+  btn.textContent = 'è™•ç†ä¸­â€¦';
   try {
     const res = await fetch(`/api/admin/line-notification-log/${id}/undo`, {
       method: 'POST', credentials: 'include',
@@ -2683,21 +2683,21 @@ async function undoLineLog(id, btn) {
     if (data.status !== 'sent') throw new Error(data.detail || data.status);
     await loadLineLog();
   } catch (err) {
-    alert('復原失敗：' + err.message);
+    alert('å¾©åŽŸå¤±æ•—ï¼š' + err.message);
     btn.disabled = false;
-    btn.textContent = '復原';
+    btn.textContent = 'å¾©åŽŸ';
   }
 }
 
-// ── Schedule ──────────────────────────────────────────────────────────────────
+// â”€â”€ Schedule â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let nursesCache = [];
 let shiftsCache = [];
-const SLOTS = ['早診', '午診', '晚診'];
+const SLOTS = ['æ—©è¨º', 'åˆè¨º', 'æ™šè¨º'];
 
 const SLOT_RANGE = {
-  '早診': ['08:00', '13:00'],
-  '午診': ['15:00', '20:00'],
-  '晚診': ['18:00', '21:30'],
+  'æ—©è¨º': ['08:00', '13:00'],
+  'åˆè¨º': ['15:00', '20:00'],
+  'æ™šè¨º': ['18:00', '21:30'],
 };
 
 function timeRangeOptions([startStr, endStr]) {
@@ -2747,7 +2747,7 @@ document.querySelectorAll('#sal-mode-toggle .seg-btn').forEach(btn => {
 let weekPublished = false;
 
 async function loadSchedule() {
-  $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
+  $('sched-week-display').textContent = `${fmtMD(weekStart)} â€“ ${fmtMD(addDays(weekStart, 5))}`;
   $('sched-grid').innerHTML = shimTable(4, 8);
   try {
     const [nurses, shifts, pub] = await Promise.all([
@@ -2769,14 +2769,14 @@ async function loadSchedule() {
 function renderPublishBtn() {
   const btn = $('sched-publish-btn');
   btn.classList.toggle('published', weekPublished);
-  btn.textContent = weekPublished ? '✓ 已發布給護理師' : '發布給護理師';
+  btn.textContent = weekPublished ? 'âœ“ å·²ç™¼å¸ƒçµ¦è­·ç†å¸«' : 'ç™¼å¸ƒçµ¦è­·ç†å¸«';
 }
 
 async function togglePublish() {
   const willPublish = !weekPublished;
   const msg = willPublish
-    ? '發布後，護理師將可以在主控台看到本週排班表，確定？'
-    : '取消發布後，護理師將無法在主控台看到本週排班表，確定？';
+    ? 'ç™¼å¸ƒå¾Œï¼Œè­·ç†å¸«å°‡å¯ä»¥åœ¨ä¸»æŽ§å°çœ‹åˆ°æœ¬é€±æŽ’ç­è¡¨ï¼Œç¢ºå®šï¼Ÿ'
+    : 'å–æ¶ˆç™¼å¸ƒå¾Œï¼Œè­·ç†å¸«å°‡ç„¡æ³•åœ¨ä¸»æŽ§å°çœ‹åˆ°æœ¬é€±æŽ’ç­è¡¨ï¼Œç¢ºå®šï¼Ÿ';
   if (!confirm(msg)) return;
   try {
     const res = await fetch(`/api/admin/shifts/${willPublish ? 'publish' : 'unpublish'}`, {
@@ -2791,20 +2791,20 @@ async function togglePublish() {
     weekPublished = willPublish;
     renderPublishBtn();
   } catch (e) {
-    alert((willPublish ? '發布' : '取消發布') + '失敗：' + e.message);
+    alert((willPublish ? 'ç™¼å¸ƒ' : 'å–æ¶ˆç™¼å¸ƒ') + 'å¤±æ•—ï¼š' + e.message);
   }
 }
 
 function renderGrid(nurses) {
   if (!nurses.length) {
-    $('sched-grid').innerHTML = emptyState('🗓️', '尚無護理師名單', '');
+    $('sched-grid').innerHTML = emptyState('ðŸ—“ï¸', 'å°šç„¡è­·ç†å¸«åå–®', '');
     return;
   }
 
   const cellMap = {};
   shiftsCache.forEach(s => { cellMap[`${s.nurse}|${s.shift_date}|${s.slot}`] = s; });
 
-  const days = Array.from({length: 6}, (_, i) => addDays(weekStart, i));  // Mon–Sat only, clinic is closed Sundays
+  const days = Array.from({length: 6}, (_, i) => addDays(weekStart, i));  // Monâ€“Sat only, clinic is closed Sundays
   const dayHeadCells = days.map((d, i) =>
     `<th class="sched-day-head"><span class="dow">${DOW_LABELS[i]}</span><span class="dnum">${fmtMD(d)}</span></th>`
   ).join('');
@@ -2815,8 +2815,8 @@ function renderGrid(nurses) {
         const entry = cellMap[`${nurse}|${d}|${slot}`] || {};
         const hasValue = entry.start_time && entry.end_time;
         const hasClean = entry.clean_start && entry.clean_end;
-        const label = hasValue ? `${entry.start_time}–${entry.end_time}` : '－';
-        const title = hasClean ? ` title="清潔時段 ${entry.clean_start}–${entry.clean_end}"` : '';
+        const label = hasValue ? `${entry.start_time}â€“${entry.end_time}` : 'ï¼';
+        const title = hasClean ? ` title="æ¸…æ½”æ™‚æ®µ ${entry.clean_start}â€“${entry.clean_end}"` : '';
         return `<td>
           <button class="sched-time-btn${hasValue ? '' : ' is-empty'}${hasClean ? ' has-clean' : ''}"${title}
             data-nurse="${nurse}" data-date="${d}" data-slot="${slot}"
@@ -2824,14 +2824,14 @@ function renderGrid(nurses) {
             data-clean-start="${entry.clean_start || ''}" data-clean-end="${entry.clean_end || ''}">${label}</button>
         </td>`;
       }).join('');
-      return `<tr><td class="l">${slot}<button class="sched-fill-btn" title="將週一的時間套用到本週其他天" onclick="applyRowToWeek('${nurse}','${slot}')">⤵</button></td>${cells}</tr>`;
+      return `<tr><td class="l">${slot}<button class="sched-fill-btn" title="å°‡é€±ä¸€çš„æ™‚é–“å¥—ç”¨åˆ°æœ¬é€±å…¶ä»–å¤©" onclick="applyRowToWeek('${nurse}','${slot}')">â¤µ</button></td>${cells}</tr>`;
     }).join('');
 
     return `<div class="card sched-nurse-card">
       <div class="card-head">
         <span class="card-title">${nurse}</span>
         <span class="card-spacer"></span>
-        <span class="sched-total-badge" data-nurse-total="${nurse}">${calcWeeklyHours(nurse).toFixed(2)} 小時</span>
+        <span class="sched-total-badge" data-nurse-total="${nurse}">${calcWeeklyHours(nurse).toFixed(2)} å°æ™‚</span>
       </div>
       <table class="sched-mini">
         <thead><tr><th class="l"></th>${dayHeadCells}</tr></thead>
@@ -2844,7 +2844,7 @@ function renderGrid(nurses) {
 }
 
 const NURSE_COLORS = ['#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777', '#0891B2'];
-const COV_WINDOW = ['08:00', '21:30'];  // covers the earliest 早診 start to the latest 晚診 end
+const COV_WINDOW = ['08:00', '21:30'];  // covers the earliest æ—©è¨º start to the latest æ™šè¨º end
 
 function toMinutes(t) {
   const [h, m] = t.split(':').map(Number);
@@ -2858,7 +2858,7 @@ function nurseColor(nurse) {
 
 function renderCoverage(nurses) {
   if (!nurses.length) {
-    $('sched-grid').innerHTML = emptyState('🗓️', '尚無護理師名單', '');
+    $('sched-grid').innerHTML = emptyState('ðŸ—“ï¸', 'å°šç„¡è­·ç†å¸«åå–®', '');
     return;
   }
 
@@ -2881,7 +2881,7 @@ function renderCoverage(nurses) {
         const left = ((toMinutes(s.start_time) - winStart) / winSpan) * 100;
         const width = ((toMinutes(s.end_time) - toMinutes(s.start_time)) / winSpan) * 100;
         return `<div class="cov-bar" style="left:${left}%;width:${width}%;background:${nurseColor(nurse)}"
-          title="${nurse} ${s.slot} ${s.start_time}–${s.end_time}">${s.start_time}–${s.end_time}</div>`;
+          title="${nurse} ${s.slot} ${s.start_time}â€“${s.end_time}">${s.start_time}â€“${s.end_time}</div>`;
       }).join('');
       return `<div class="cov-row"><div class="cov-row-label">${nurse}</div><div class="cov-row-track">${bars}</div></div>`;
     }).join('');
@@ -2914,7 +2914,7 @@ function renderCoverage(nurses) {
     return `<div class="cov-day-group">
       <div class="cov-day-label">${DOW_LABELS[i]} ${fmtMD(d)}</div>
       ${nurseRows}
-      <div class="cov-row"><div class="cov-row-label">人數</div><div class="cov-row-track cov-head-track">${headcountHtml}</div></div>
+      <div class="cov-row"><div class="cov-row-label">äººæ•¸</div><div class="cov-row-track cov-head-track">${headcountHtml}</div></div>
     </div>`;
   }).join('');
 
@@ -2925,10 +2925,10 @@ function renderCoverage(nurses) {
       </div>
     </div>
     <div class="cov-legend">
-      <div class="cov-legend-item"><span class="cov-legend-dot" style="background:var(--red)"></span>0 人（無人值班）</div>
-      <div class="cov-legend-item"><span class="cov-legend-dot" style="background:var(--amber)"></span>1 人</div>
-      <div class="cov-legend-item"><span class="cov-legend-dot" style="background:var(--blue)"></span>2 人</div>
-      <div class="cov-legend-item"><span class="cov-legend-dot" style="background:var(--emerald)"></span>3 人以上</div>
+      <div class="cov-legend-item"><span class="cov-legend-dot" style="background:var(--red)"></span>0 äººï¼ˆç„¡äººå€¼ç­ï¼‰</div>
+      <div class="cov-legend-item"><span class="cov-legend-dot" style="background:var(--amber)"></span>1 äºº</div>
+      <div class="cov-legend-item"><span class="cov-legend-dot" style="background:var(--blue)"></span>2 äºº</div>
+      <div class="cov-legend-item"><span class="cov-legend-dot" style="background:var(--emerald)"></span>3 äººä»¥ä¸Š</div>
     </div>`;
 }
 
@@ -2950,14 +2950,14 @@ function renderStaffList() {
   $('sched-staff-list').innerHTML = nursesCache.map(nurse => `
     <div class="sched-staff-row">
       <span class="sched-staff-name">${nurse}</span>
-      <button class="btn-sm" onclick="renameNursePrompt('${nurse}')">重新命名</button>
-      <button class="btn-sm" onclick="removeNursePrompt('${nurse}')">移除</button>
+      <button class="btn-sm" onclick="renameNursePrompt('${nurse}')">é‡æ–°å‘½å</button>
+      <button class="btn-sm" onclick="removeNursePrompt('${nurse}')">ç§»é™¤</button>
     </div>
-  `).join('') || '<p class="sched-staff-sub">尚無人員，請新增。</p>';
+  `).join('') || '<p class="sched-staff-sub">å°šç„¡äººå“¡ï¼Œè«‹æ–°å¢žã€‚</p>';
 }
 
 async function addNursePrompt() {
-  const name = prompt('輸入新人員姓名：');
+  const name = prompt('è¼¸å…¥æ–°äººå“¡å§“åï¼š');
   if (!name || !name.trim()) return;
   try {
     const res = await fetch('/api/admin/nurses', {
@@ -2972,12 +2972,12 @@ async function addNursePrompt() {
     await loadSchedule();
     renderStaffList();
   } catch (e) {
-    alert('新增失敗：' + e.message);
+    alert('æ–°å¢žå¤±æ•—ï¼š' + e.message);
   }
 }
 
 async function renameNursePrompt(oldName) {
-  const name = prompt('修改姓名：', oldName);
+  const name = prompt('ä¿®æ”¹å§“åï¼š', oldName);
   if (!name || !name.trim() || name.trim() === oldName) return;
   try {
     const res = await fetch(`/api/admin/nurses/${encodeURIComponent(oldName)}`, {
@@ -2992,12 +2992,12 @@ async function renameNursePrompt(oldName) {
     await loadSchedule();
     renderStaffList();
   } catch (e) {
-    alert('更新失敗：' + e.message);
+    alert('æ›´æ–°å¤±æ•—ï¼š' + e.message);
   }
 }
 
 async function removeNursePrompt(name) {
-  if (!confirm(`確定要將「${name}」從排班人員中移除嗎？\n（過去的排班記錄不會被刪除，但不會再顯示在排班表中）`)) return;
+  if (!confirm(`ç¢ºå®šè¦å°‡ã€Œ${name}ã€å¾žæŽ’ç­äººå“¡ä¸­ç§»é™¤å—Žï¼Ÿ\nï¼ˆéŽåŽ»çš„æŽ’ç­è¨˜éŒ„ä¸æœƒè¢«åˆªé™¤ï¼Œä½†ä¸æœƒå†é¡¯ç¤ºåœ¨æŽ’ç­è¡¨ä¸­ï¼‰`)) return;
   try {
     const res = await fetch(`/api/admin/nurses/${encodeURIComponent(name)}`, {
       method: 'DELETE', credentials: 'include',
@@ -3009,7 +3009,7 @@ async function removeNursePrompt(name) {
     await loadSchedule();
     renderStaffList();
   } catch (e) {
-    alert('移除失敗：' + e.message);
+    alert('ç§»é™¤å¤±æ•—ï¼š' + e.message);
   }
 }
 
@@ -3064,7 +3064,7 @@ function renderTimePopover() {
     const disabled = start && t <= start;
     return `<button class="stp-chip${t === end ? ' selected' : ''}${disabled ? ' disabled' : ''}" data-role="end" data-time="${t}">${t}</button>`;
   }).join('');
-  const duration = (start && end) ? `${timeDiffHours(start, end).toFixed(2)} 小時` : '';
+  const duration = (start && end) ? `${timeDiffHours(start, end).toFixed(2)} å°æ™‚` : '';
 
   let cleanHtml = '';
   if (start && end) {
@@ -3074,34 +3074,34 @@ function renderTimePopover() {
     const dur15Disabled = cleanStart && toMinutes(cleanStart) + 15 > toMinutes(end);
     const dur30Disabled = cleanStart && toMinutes(cleanStart) + 30 > toMinutes(end);
     const clearCleanBtn = (cleanStart && cleanEnd)
-      ? `<button class="stp-clear" data-role="clear-clean">清除清潔時段</button>` : '';
+      ? `<button class="stp-clear" data-role="clear-clean">æ¸…é™¤æ¸…æ½”æ™‚æ®µ</button>` : '';
     cleanHtml = `
       <div class="stp-sep"></div>
-      <div class="stp-label"><span class="sched-legend-swatch"></span> 清潔時段（選填）</div>
+      <div class="stp-label"><span class="sched-legend-swatch"></span> æ¸…æ½”æ™‚æ®µï¼ˆé¸å¡«ï¼‰</div>
       <div class="stp-chips">${cleanChips}</div>
       <div class="stp-clean-footer">
         <div class="stp-dur-group">
-          <button class="stp-dur-btn${dur15Disabled ? ' disabled' : ''}" data-dur="15">15分</button>
-          <button class="stp-dur-btn${dur30Disabled ? ' disabled' : ''}" data-dur="30">30分</button>
+          <button class="stp-dur-btn${dur15Disabled ? ' disabled' : ''}" data-dur="15">15åˆ†</button>
+          <button class="stp-dur-btn${dur30Disabled ? ' disabled' : ''}" data-dur="30">30åˆ†</button>
         </div>
         ${clearCleanBtn}
       </div>`;
   }
 
   $('sched-time-popover').innerHTML = `
-    <div class="stp-label">開始時間</div>
+    <div class="stp-label">é–‹å§‹æ™‚é–“</div>
     <div class="stp-chips">${startChips}</div>
-    <div class="stp-label">結束時間</div>
+    <div class="stp-label">çµæŸæ™‚é–“</div>
     <div class="stp-chips">${endChips}</div>
     ${cleanHtml}
     <div class="stp-footer">
       <span class="stp-duration">${duration}</span>
-      <button class="stp-clear">清除</button>
+      <button class="stp-clear">æ¸…é™¤</button>
     </div>`;
 }
 
 $('sched-time-popover').addEventListener('click', (e) => {
-  e.stopPropagation();  // prevent the document-level outside-click listener from seeing this —
+  e.stopPropagation();  // prevent the document-level outside-click listener from seeing this â€”
                          // it mutates innerHTML below, which detaches e.target before bubbling reaches document
 
   if (e.target.closest('[data-role="clear-clean"]')) {
@@ -3156,8 +3156,8 @@ function commitTimeSelection(start, end, cleanStart, cleanEnd) {
   btn.dataset.end = end;
   btn.dataset.cleanStart = cleanStart;
   btn.dataset.cleanEnd = cleanEnd;
-  btn.textContent = (start && end) ? `${start}–${end}` : '－';
-  btn.title = hasClean ? `清潔時段 ${cleanStart}–${cleanEnd}` : '';
+  btn.textContent = (start && end) ? `${start}â€“${end}` : 'ï¼';
+  btn.title = hasClean ? `æ¸…æ½”æ™‚æ®µ ${cleanStart}â€“${cleanEnd}` : '';
   btn.classList.toggle('is-empty', !(start && end));
   btn.classList.toggle('has-clean', !!hasClean);
   $('sched-time-popover').classList.remove('show');
@@ -3187,9 +3187,9 @@ async function saveShiftEntry(nurse, shiftDate, slot, start, end, cleanStart, cl
       });
     }
     const totalCell = document.querySelector(`[data-nurse-total="${nurse}"]`);
-    if (totalCell) totalCell.textContent = `${calcWeeklyHours(nurse).toFixed(2)} 小時`;
+    if (totalCell) totalCell.textContent = `${calcWeeklyHours(nurse).toFixed(2)} å°æ™‚`;
   } catch (e) {
-    alert('儲存排班失敗：' + e.message);
+    alert('å„²å­˜æŽ’ç­å¤±æ•—ï¼š' + e.message);
   }
 }
 
@@ -3204,10 +3204,10 @@ function applyRowToWeek(nurse, slot) {
   const cleanEnd = sourceBtn.dataset.cleanEnd || null;
   const hasClean = cleanStart && cleanEnd;
   if (!start || !end) {
-    alert('請先在週一設定好這一格的時間，再套用到本週其他天。');
+    alert('è«‹å…ˆåœ¨é€±ä¸€è¨­å®šå¥½é€™ä¸€æ ¼çš„æ™‚é–“ï¼Œå†å¥—ç”¨åˆ°æœ¬é€±å…¶ä»–å¤©ã€‚');
     return;
   }
-  if (!confirm(`將週一的時間（${start}–${end}）套用到本週剩下的天數，確定？`)) return;
+  if (!confirm(`å°‡é€±ä¸€çš„æ™‚é–“ï¼ˆ${start}â€“${end}ï¼‰å¥—ç”¨åˆ°æœ¬é€±å‰©ä¸‹çš„å¤©æ•¸ï¼Œç¢ºå®šï¼Ÿ`)) return;
 
   for (let i = 1; i < 6; i++) {
     const d = addDays(weekStart, i);
@@ -3218,8 +3218,8 @@ function applyRowToWeek(nurse, slot) {
     btn.dataset.end = end;
     btn.dataset.cleanStart = cleanStart || '';
     btn.dataset.cleanEnd = cleanEnd || '';
-    btn.textContent = `${start}–${end}`;
-    btn.title = hasClean ? `清潔時段 ${cleanStart}–${cleanEnd}` : '';
+    btn.textContent = `${start}â€“${end}`;
+    btn.title = hasClean ? `æ¸…æ½”æ™‚æ®µ ${cleanStart}â€“${cleanEnd}` : '';
     btn.classList.remove('is-empty');
     btn.classList.toggle('has-clean', !!hasClean);
     saveShiftEntry(nurse, d, slot, start, end, cleanStart, cleanEnd);
@@ -3227,7 +3227,7 @@ function applyRowToWeek(nurse, slot) {
 }
 
 async function copyLastWeek() {
-  if (!confirm('此操作將覆蓋本週已輸入的時段，確定？')) return;
+  if (!confirm('æ­¤æ“ä½œå°‡è¦†è“‹æœ¬é€±å·²è¼¸å…¥çš„æ™‚æ®µï¼Œç¢ºå®šï¼Ÿ')) return;
   try {
     const res = await fetch('/api/admin/shifts/copy-week', {
       method: 'POST', credentials: 'include',
@@ -3240,25 +3240,25 @@ async function copyLastWeek() {
     }
     await loadSchedule();
   } catch (e) {
-    alert('複製失敗：' + e.message);
+    alert('è¤‡è£½å¤±æ•—ï¼š' + e.message);
   }
 }
 
-// ── 薪資計算 ──────────────────────────────────────────────────────────────────
+// â”€â”€ è–ªè³‡è¨ˆç®— â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const SAL_BASE       = 30500;
 const SAL_LICENSE    = 2000;
 const SAL_ATTENDANCE = 2000;
 const SAL_FLOAT_BASE = 7500;
-const SAL_SAT_RATE   = 175;   // (42000/30)/8 — Saturday overtime base rate
+const SAL_SAT_RATE   = 175;   // (42000/30)/8 â€” Saturday overtime base rate
 
 // full: {date:'YYYY-MM-DD', start:'HH:MM', end:'HH:MM'}
 // part: same + isOt:bool
 let _salOtRows = [];
 let _salMode = 'full';  // 'full' or 'part'
 
-// ── Month picker ──
-const ZH_MON = ['一','二','三','四','五','六','七','八','九','十','十一','十二'];
+// â”€â”€ Month picker â”€â”€
+const ZH_MON = ['ä¸€','äºŒ','ä¸‰','å››','äº”','å…­','ä¸ƒ','å…«','ä¹','å','åä¸€','åäºŒ'];
 let _salYear = new Date().getFullYear();
 let _salMon  = new Date().getMonth() + 1;
 
@@ -3267,7 +3267,7 @@ function salMonthStr() {
 }
 function updateSalMonthDisplay() {
   const el = $('sal-month-display');
-  if (el) el.textContent = `${_salYear} 年 ${ZH_MON[_salMon - 1]} 月`;
+  if (el) el.textContent = `${_salYear} å¹´ ${ZH_MON[_salMon - 1]} æœˆ`;
 }
 function stepSalMonth(dir) {
   _salMon += dir;
@@ -3279,7 +3279,7 @@ function stepSalMonth(dir) {
   loadYearlySickDays();
 }
 
-// ── Salary row custom pickers ─────────────────────────────────────────────
+// â”€â”€ Salary row custom pickers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 const _SPK_CAL = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 7h12M5 2v2M11 2v2"/></svg>';
 const _SPK_CLK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>';
 const _SPK_MONS = ['','1','2','3','4','5','6','7','8','9','10','11','12'];
@@ -3298,7 +3298,7 @@ function salDpRender() {
   const [tY, tM, tD] = [today.getFullYear(), today.getMonth()+1, today.getDate()];
   const daysInMon = new Date(_salDpNavY, _salDpNavM, 0).getDate();
   const firstDow  = new Date(_salDpNavY, _salDpNavM-1, 1).getDay();
-  const label     = _salDpNavY + ' 年 ' + _SPK_MONS[_salDpNavM] + ' 月';
+  const label     = _salDpNavY + ' å¹´ ' + _SPK_MONS[_salDpNavM] + ' æœˆ';
   let cells = '';
   for (let b = 0; b < firstDow; b++) cells += '<button class="scal-day sc-other" disabled></button>';
   for (let d = 1; d <= daysInMon; d++) {
@@ -3315,7 +3315,7 @@ function salDpRender() {
       '<button class="scal-nav" onclick="salDpNav(1)">&#8250;</button>' +
     '</div>' +
     '<div class="scal-grid">' +
-      ['日','一','二','三','四','五','六'].map(d => '<div class="scal-dow">' + d + '</div>').join('') +
+      ['æ—¥','ä¸€','äºŒ','ä¸‰','å››','äº”','å…­'].map(d => '<div class="scal-dow">' + d + '</div>').join('') +
       cells +
     '</div>';
 }
@@ -3431,7 +3431,7 @@ document.addEventListener('mousedown', function(e) {
   salClosePicker();
 }, true);
 
-// ── Extras (other bonuses/deductions) ──
+// â”€â”€ Extras (other bonuses/deductions) â”€â”€
 let _salExtras = [];  // [{name, amount}]  amount can be negative
 
 function addSalExtra() {
@@ -3449,18 +3449,18 @@ function renderSalExtras() {
   if (!list) return;
   list.innerHTML = _salExtras.map((ex, i) => `
     <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
-      <input type="text" value="${ex.name.replace(/"/g,'&quot;')}" placeholder="名稱（例：端午節獎金）"
+      <input type="text" value="${ex.name.replace(/"/g,'&quot;')}" placeholder="åç¨±ï¼ˆä¾‹ï¼šç«¯åˆç¯€çŽé‡‘ï¼‰"
         style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;background:var(--card);color:var(--text)"
         oninput="_salExtras[${i}].name=this.value">
-      <input type="number" value="${ex.amount}" placeholder="金額（負數為扣款）"
+      <input type="number" value="${ex.amount}" placeholder="é‡‘é¡ï¼ˆè² æ•¸ç‚ºæ‰£æ¬¾ï¼‰"
         style="width:130px;border:1.5px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
         oninput="_salExtras[${i}].amount=parseInt(this.value)||0;recalcSalary()">
-      <button class="sal-del" onclick="removeSalExtra(${i})">×</button>
+      <button class="sal-del" onclick="removeSalExtra(${i})">Ã—</button>
     </div>`).join('');
   $('sal-extras-row').style.display = _salExtras.length ? '' : 'none';
 }
 
-// ── Yearly sick days ──
+// â”€â”€ Yearly sick days â”€â”€
 async function loadYearlySickDays() {
   const nurse = $('sal-nurse') ? $('sal-nurse').value : '';
   if (!nurse) { const el=$('sal-sick-yearly'); if(el) el.textContent=''; return; }
@@ -3468,7 +3468,7 @@ async function loadYearlySickDays() {
     const res = await api(`/api/admin/salary/sick-days?nurse=${encodeURIComponent(nurse)}&year=${_salYear}`);
     const el = $('sal-sick-yearly');
     if (!el) return;
-    el.textContent = `今年已用 ${res.total} / 30 天`;
+    el.textContent = `ä»Šå¹´å·²ç”¨ ${res.total} / 30 å¤©`;
   } catch(_) {}
 }
 
@@ -3480,7 +3480,7 @@ function setSalMode(mode) {
   const body = document.querySelector('#salary .sal-body');
   if (body) body.classList.toggle('mode-part', mode === 'part');
   const otLabel = $('sal-ot-label');
-  if (otLabel) otLabel.textContent = mode === 'part' ? '工時薪資' : '一般加班費';
+  if (otLabel) otLabel.textContent = mode === 'part' ? 'å·¥æ™‚è–ªè³‡' : 'ä¸€èˆ¬åŠ ç­è²»';
   renderOtRows();
 }
 
@@ -3518,7 +3518,7 @@ function setEditingRecord(id) {
   _salEditingId = id;
   $('sal-editing-badge').style.display = id ? '' : 'none';
   $('sal-new-btn').style.display = id ? '' : 'none';
-  $('sal-save-btn').textContent = id ? '更新記錄' : '儲存薪資記錄';
+  $('sal-save-btn').textContent = id ? 'æ›´æ–°è¨˜éŒ„' : 'å„²å­˜è–ªè³‡è¨˜éŒ„';
 }
 
 function newSalaryRecord() {
@@ -3557,8 +3557,8 @@ function _currentSalaryPayload() {
 
 async function saveSalaryRecord() {
   const nurse = $('sal-nurse').value;
-  if (!nurse) { alert('請先選擇護理師'); return; }
-  if ($('sal-grand-total').textContent === '—') { alert('請先計算薪資'); return; }
+  if (!nurse) { alert('è«‹å…ˆé¸æ“‡è­·ç†å¸«'); return; }
+  if ($('sal-grand-total').textContent === 'â€”') { alert('è«‹å…ˆè¨ˆç®—è–ªè³‡'); return; }
 
   const btn = $('sal-save-btn');
   btn.disabled = true;
@@ -3583,7 +3583,7 @@ async function saveSalaryRecord() {
       if (rows[0]) rows[0].click();
     }
   } catch (err) {
-    alert('儲存失敗：' + err.message);
+    alert('å„²å­˜å¤±æ•—ï¼š' + err.message);
   } finally {
     btn.disabled = false;
   }
@@ -3650,23 +3650,23 @@ function renderSalaryHistory(records, nurse, month) {
   const card = $('sal-history-card');
   if (!records.length) { card.style.display = 'none'; return; }
   card.style.display = '';
-  $('sal-history-meta').textContent = `${nurse} · ${month} · ${records.length} 筆`;
+  $('sal-history-meta').textContent = `${nurse} Â· ${month} Â· ${records.length} ç­†`;
   $('sal-history-list').innerHTML = records.map(r => {
     let recMode = 'full';
     try { const p = JSON.parse(r.ot_entries || '[]'); if (!Array.isArray(p)) recMode = p.mode || 'full'; } catch (_) {}
     const breakdown = recMode === 'part'
-      ? `兼職工時薪資 ${r.ot_pay}`
-      : `底薪 30,500 ＋ 全勤 ${r.attendance} ＋ 執照 2,000 ＋ 周六 ${r.sat_pay} ＋ 浮動 ${r.float_bonus} ＋ 不定期獎金 ${r.performance} ＋ 加班 ${r.ot_pay}`;
+      ? `å…¼è·å·¥æ™‚è–ªè³‡ ${r.ot_pay}`
+      : `åº•è–ª 30,500 ï¼‹ å…¨å‹¤ ${r.attendance} ï¼‹ åŸ·ç…§ 2,000 ï¼‹ å‘¨å…­ ${r.sat_pay} ï¼‹ æµ®å‹• ${r.float_bonus} ï¼‹ ä¸å®šæœŸçŽé‡‘ ${r.performance} ï¼‹ åŠ ç­ ${r.ot_pay}`;
     return `
     <div class="sal-hist-row${_salEditingId === r.id ? ' selected' : ''}"
          onclick="selectSalHistRow(this, ${JSON.stringify(r).replace(/"/g, '&quot;')})">
-      <span class="sal-hist-total">${parseInt(r.total).toLocaleString('zh-TW')} 元</span>
+      <span class="sal-hist-total">${parseInt(r.total).toLocaleString('zh-TW')} å…ƒ</span>
       <div class="sal-hist-detail">
         <span class="sal-hist-breakdown">${breakdown}</span>
         <span class="sal-hist-time">${r.created_at}</span>
       </div>
       <div class="sal-hist-actions">
-        <button class="sal-del" onclick="event.stopPropagation();deleteSalaryRecord(${r.id})">×</button>
+        <button class="sal-del" onclick="event.stopPropagation();deleteSalaryRecord(${r.id})">Ã—</button>
       </div>
     </div>`;
   }).join('');
@@ -3681,13 +3681,13 @@ function selectSalHistRow(el, record) {
 }
 
 async function deleteSalaryRecord(id) {
-  if (!confirm('確定刪除這筆薪資記錄？')) return;
+  if (!confirm('ç¢ºå®šåˆªé™¤é€™ç­†è–ªè³‡è¨˜éŒ„ï¼Ÿ')) return;
   try {
     await api(`/api/admin/salary/${id}`, { method: 'DELETE' });
     if (_salEditingId === id) setEditingRecord(null);
     loadSalaryHistory();
   } catch (err) {
-    alert('刪除失敗：' + err.message);
+    alert('åˆªé™¤å¤±æ•—ï¼š' + err.message);
   }
 }
 
@@ -3709,8 +3709,8 @@ function toggleImportPanel() {
   p.style.display = opening ? '' : 'none';
   if (opening) {
     const nurse = $('sal-nurse') ? $('sal-nurse').value : '';
-    $('sal-import-nurse').textContent = nurse || '（未選擇）';
-    $('sal-import-month').textContent = `${_salYear} 年 ${ZH_MON[_salMon-1]} 月`;
+    $('sal-import-nurse').textContent = nurse || 'ï¼ˆæœªé¸æ“‡ï¼‰';
+    $('sal-import-month').textContent = `${_salYear} å¹´ ${ZH_MON[_salMon-1]} æœˆ`;
     $('sal-import-preview').style.display = 'none';
     $('sal-import-actions').style.display = 'none';
     _importedLogs = [];
@@ -3720,15 +3720,15 @@ function toggleImportPanel() {
 async function fetchImportLogs() {
   const nurse = $('sal-nurse') ? $('sal-nurse').value : '';
   const month = salMonthStr();
-  if (!nurse) { $('sal-import-preview').style.display=''; $('sal-import-preview').textContent='請先選擇護理師'; return; }
+  if (!nurse) { $('sal-import-preview').style.display=''; $('sal-import-preview').textContent='è«‹å…ˆé¸æ“‡è­·ç†å¸«'; return; }
   $('sal-import-preview').style.display = '';
-  $('sal-import-preview').textContent = '載入中…';
+  $('sal-import-preview').textContent = 'è¼‰å…¥ä¸­â€¦';
   $('sal-import-actions').style.display = 'none';
   try {
     const logs = await L.apiFetch(`/api/admin/nurse-ot-logs?nurse=${encodeURIComponent(nurse)}&month=${encodeURIComponent(month)}`);
     _importedLogs = logs;
     if (!logs.length) {
-      $('sal-import-preview').textContent = '該月份尚無護理師自登記錄';
+      $('sal-import-preview').textContent = 'è©²æœˆä»½å°šç„¡è­·ç†å¸«è‡ªç™»è¨˜éŒ„';
       return;
     }
     let totalMin = 0;
@@ -3737,11 +3737,11 @@ async function fetchImportLogs() {
       const [eh, em] = r.end_time.split(':').map(Number);
       totalMin += (eh * 60 + em) - (sh * 60 + sm);
     });
-    const hoursStr = (totalMin / 60).toFixed(1) + ' 小時';
-    $('sal-import-preview').textContent = `找到 ${logs.length} 筆記錄（共 ${hoursStr}）`;
+    const hoursStr = (totalMin / 60).toFixed(1) + ' å°æ™‚';
+    $('sal-import-preview').textContent = `æ‰¾åˆ° ${logs.length} ç­†è¨˜éŒ„ï¼ˆå…± ${hoursStr}ï¼‰`;
     $('sal-import-actions').style.display = '';
   } catch(e) {
-    $('sal-import-preview').textContent = '載入失敗';
+    $('sal-import-preview').textContent = 'è¼‰å…¥å¤±æ•—';
   }
 }
 
@@ -3808,7 +3808,7 @@ function getDayInfo(dateStr) {
   if (!dateStr) return {dow: -1, label: '', cls: '', isWeekend: false, isSaturday: false};
   const d = new Date(dateStr + 'T00:00:00');
   const dow = d.getDay();
-  const names = ['週日', '週一', '週二', '週三', '週四', '週五', '週六'];
+  const names = ['é€±æ—¥', 'é€±ä¸€', 'é€±äºŒ', 'é€±ä¸‰', 'é€±å››', 'é€±äº”', 'é€±å…­'];
   const isSaturday = dow === 6;
   const isSunday   = dow === 0;
   return {
@@ -3831,12 +3831,12 @@ function calcMinutes(start, end) {
 
 function calcOvertimePay(minutes, type, hourlyRate) {
   const h = minutes / 60;
-  if (type === '平日') {
-    // 前2h: ×1.34；第3~4h: ×1.67
+  if (type === 'å¹³æ—¥') {
+    // å‰2h: Ã—1.34ï¼›ç¬¬3~4h: Ã—1.67
     return Math.min(h, 2) * hourlyRate * 1.34
          + Math.max(0, Math.min(h - 2, 2)) * hourlyRate * 1.67;
-  } else {  // 休息日 — 勞基法 §24 rounded-up rates
-    // 前2h: ×1.34；第3~8h: ×1.67；第9~12h: ×2.67
+  } else {  // ä¼‘æ¯æ—¥ â€” å‹žåŸºæ³• Â§24 rounded-up rates
+    // å‰2h: Ã—1.34ï¼›ç¬¬3~8h: Ã—1.67ï¼›ç¬¬9~12h: Ã—2.67
     return Math.min(h, 2) * hourlyRate * 1.34
          + Math.max(0, Math.min(h - 2, 6)) * hourlyRate * 1.67
          + Math.max(0, Math.min(h - 8, 4)) * hourlyRate * 2.67;
@@ -3845,7 +3845,7 @@ function calcOvertimePay(minutes, type, hourlyRate) {
 
 function fmtNT(n) { return Math.ceil(n).toLocaleString('zh-TW'); }
 
-// ── Bonus inline calculator ────────────────────────────────────────────────
+// â”€â”€ Bonus inline calculator â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _biMode = 'fixed';
 let _bonusCalculated = 0;
 
@@ -3888,7 +3888,7 @@ function recalcBonusInline() {
   let days = 0;
   if (start && end && end >= start) {
     days = Math.round((new Date(end) - new Date(start)) / 86400000) + 1;
-    if ($('bi-days')) $('bi-days').textContent = `（${days} 天）`;
+    if ($('bi-days')) $('bi-days').textContent = `ï¼ˆ${days} å¤©ï¼‰`;
   } else {
     if ($('bi-days')) $('bi-days').textContent = '';
   }
@@ -3910,11 +3910,11 @@ function recalcBonusInline() {
   _bonusCalculated = base > 0 ? Math.round(base * avg / 100) : 0;
 
   if ($('bi-avg')) $('bi-avg').textContent = avg.toFixed(1) + '%';
-  if ($('bi-result')) $('bi-result').textContent = base > 0 ? 'NT$ ' + _bonusCalculated.toLocaleString('zh-TW') : '—';
+  if ($('bi-result')) $('bi-result').textContent = base > 0 ? 'NT$ ' + _bonusCalculated.toLocaleString('zh-TW') : 'â€”';
 
   const bonusAmt = $('sal-bonus-amt');
   if (bonusAmt) {
-    bonusAmt.textContent = _bonusCalculated > 0 ? fmtNT(_bonusCalculated) : '—';
+    bonusAmt.textContent = _bonusCalculated > 0 ? fmtNT(_bonusCalculated) : 'â€”';
     bonusAmt.className = 'sal-amount' + (_bonusCalculated > 0 ? '' : ' muted');
   }
   recalcSalary();
@@ -3925,7 +3925,7 @@ function toggleBatchBonus() {
   const hint = $('batch-toggle-hint');
   const open = wrap.style.display === 'none';
   wrap.style.display = open ? '' : 'none';
-  if (hint) hint.textContent = open ? '收起' : '展開';
+  if (hint) hint.textContent = open ? 'æ”¶èµ·' : 'å±•é–‹';
   if (open && $('bonus-grid').children.length === 0) loadBonus();
 }
 
@@ -3933,7 +3933,7 @@ function renderOtRows() {
   salClosePicker();
   const isPart = _salMode === 'part';
   $('sal-ot-list').innerHTML = _salOtRows.map((r, i) => {
-    const dv = r.date  || '選擇日期';
+    const dv = r.date  || 'é¸æ“‡æ—¥æœŸ';
     const sv = r.start || '18:00';
     const ev = r.end   || '20:00';
     return (
@@ -3944,13 +3944,13 @@ function renderOtRows() {
         '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'start\',this)">' +
           _SPK_CLK + '<span class="spk-val">' + sv + '</span>' +
         '</button>' +
-        '<span class="sal-time-sep">—</span>' +
+        '<span class="sal-time-sep">â€”</span>' +
         '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'end\',this)">' +
           _SPK_CLK + '<span class="spk-val">' + ev + '</span>' +
         '</button>' +
         (isPart
           ? '<label class="sal-part-ot-chk"><input type="checkbox" id="sal-ot-isot-' + i + '"' + (r.isOt ? ' checked' : '') +
-            ' onchange="_salOtRows[' + i + '].isOt=this.checked;recalcSalary()"> 加班</label>'
+            ' onchange="_salOtRows[' + i + '].isOt=this.checked;recalcSalary()"> åŠ ç­</label>'
           : '<span class="sal-ot-tag" id="sal-ot-tag-' + i + '"></span>') +
         '<span style="color:var(--text-2);font-size:12.5px;font-variant-numeric:tabular-nums;flex:1"' +
               ' id="sal-ot-result-' + i + '"></span>' +
@@ -3963,7 +3963,7 @@ function renderOtRows() {
 
 
 function recalcSalary() {
-  // NOTE: does NOT call renderOtRows() — that would destroy date-pickers.
+  // NOTE: does NOT call renderOtRows() â€” that would destroy date-pickers.
   // Instead, update only the tag/result spans by id.
 
   if (_salMode === 'part') {
@@ -3978,7 +3978,7 @@ function recalcSalary() {
       const rate = r.isOt ? PART_OT_RATE : PART_RATE;
       const pay  = h * rate;
       partPay += pay;
-      if (resEl) resEl.textContent = `${h.toFixed(1)}h × ${fmtNT(rate)} 元/h → ${fmtNT(Math.ceil(pay))} 元`;
+      if (resEl) resEl.textContent = `${h.toFixed(1)}h Ã— ${fmtNT(rate)} å…ƒ/h â†’ ${fmtNT(Math.ceil(pay))} å…ƒ`;
     });
     partPay = Math.ceil(partPay);
     const partLaborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
@@ -3986,10 +3986,10 @@ function recalcSalary() {
     const partInsDeduct = partLaborIns + partHealthIns;
     const partInsRow = $('sal-ins-row');
     if (partInsRow) partInsRow.style.display = partInsDeduct > 0 ? '' : 'none';
-    if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = partInsDeduct > 0 ? `−${fmtNT(partInsDeduct)}` : '—';
+    if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = partInsDeduct > 0 ? `âˆ’${fmtNT(partInsDeduct)}` : 'â€”';
     $('sal-ot-total').textContent    = fmtNT(partPay);
-    $('sal-grand-total').textContent = fmtNT(partPay - partInsDeduct) + ' 元';
-    $('sal-hourly-note').textContent = '兼職時薪：250 元/h（一般）；335 元/h（加班，250 × 1.34）';
+    $('sal-grand-total').textContent = fmtNT(partPay - partInsDeduct) + ' å…ƒ';
+    $('sal-hourly-note').textContent = 'å…¼è·æ™‚è–ªï¼š250 å…ƒ/hï¼ˆä¸€èˆ¬ï¼‰ï¼›335 å…ƒ/hï¼ˆåŠ ç­ï¼Œ250 Ã— 1.34ï¼‰';
     return;
   }
 
@@ -3997,7 +3997,7 @@ function recalcSalary() {
   const perf = _bonusCalculated || 0;
   const _daysInMonth = new Date(_salYear, _salMon, 0).getDate();
   const _sickDays    = parseInt(($('sal-sick-days') || {}).value) || 0;
-  // prorate 全勤獎金: always divide by 30 regardless of month
+  // prorate å…¨å‹¤çŽé‡‘: always divide by 30 regardless of month
   const attendance = hasAttendance
     ? (_sickDays > 0
         ? Math.round(SAL_ATTENDANCE * (30 - _sickDays) / 30)
@@ -4017,12 +4017,12 @@ function recalcSalary() {
     group.sort((a, b) => a.r.start.localeCompare(b.r.start));
     const info = getDayInfo(group[0].r.date);
     const isSat  = info.isSaturday;
-    const rate   = SAL_SAT_RATE;  // 42,000 ÷ 240 = 175 元/h for all overtime
+    const rate   = SAL_SAT_RATE;  // 42,000 Ã· 240 = 175 å…ƒ/h for all overtime
     const tiers  = (isSat || info.isRestDay)
       ? [{limit: 2, mult: 1.34}, {limit: 8, mult: 1.67}, {limit: 12, mult: 2.67}]
       : [{limit: 2, mult: 1.34}, {limit: 4, mult: 1.67}];
 
-    const SAT_SAT_LIMIT = 4; // first 4h of Saturday → 周六加班費; beyond → 一般加班費
+    const SAT_SAT_LIMIT = 4; // first 4h of Saturday â†’ å‘¨å…­åŠ ç­è²»; beyond â†’ ä¸€èˆ¬åŠ ç­è²»
 
     let cumH = 0;
     group.forEach(({r, i}) => {
@@ -4030,7 +4030,7 @@ function recalcSalary() {
       const tagEl = document.getElementById(`sal-ot-tag-${i}`);
       const resEl = document.getElementById(`sal-ot-result-${i}`);
       if (tagEl) {
-        tagEl.textContent = info.label + (isSat ? '（周六）' : info.cls === 'sunday' ? '（周日）' : '');
+        tagEl.textContent = info.label + (isSat ? 'ï¼ˆå‘¨å…­ï¼‰' : info.cls === 'sunday' ? 'ï¼ˆå‘¨æ—¥ï¼‰' : '');
         tagEl.className = `sal-ot-tag ${info.cls}`;
       }
       if (mins <= 0) { if (resEl) resEl.textContent = ''; return; }
@@ -4043,7 +4043,7 @@ function recalcSalary() {
         if (remaining <= 0 || pos >= limit) continue;
         const used = Math.min(remaining, limit - pos);
         if (isSat) {
-          // split at SAT_SAT_LIMIT: before → 周六加班費, after → 一般加班費
+          // split at SAT_SAT_LIMIT: before â†’ å‘¨å…­åŠ ç­è²», after â†’ ä¸€èˆ¬åŠ ç­è²»
           const inSat = Math.max(0, Math.min(used, SAT_SAT_LIMIT - pos));
           const inOt  = used - inSat;
           entrySatPay += inSat * rate * mult;
@@ -4063,9 +4063,9 @@ function recalcSalary() {
       const totalPay = ceilSat + ceilOt;
       if (resEl) {
         const note = isSat && entryOtPay > 0
-          ? ` （周六 ${fmtNT(Math.ceil(entrySatPay))} ＋ 一般 ${fmtNT(Math.ceil(entryOtPay))}）`
+          ? ` ï¼ˆå‘¨å…­ ${fmtNT(Math.ceil(entrySatPay))} ï¼‹ ä¸€èˆ¬ ${fmtNT(Math.ceil(entryOtPay))}ï¼‰`
           : '';
-        resEl.textContent = `${(mins/60).toFixed(1)}h → ${fmtNT(Math.ceil(totalPay))} 元${note}`;
+        resEl.textContent = `${(mins/60).toFixed(1)}h â†’ ${fmtNT(Math.ceil(totalPay))} å…ƒ${note}`;
       }
     });
   }
@@ -4076,60 +4076,60 @@ function recalcSalary() {
   const extrasTotal = _salExtras.reduce((s, ex) => s + (parseInt(ex.amount) || 0), 0);
   const extrasEl = $('sal-extras-total');
   if (extrasEl) {
-    extrasEl.textContent = (extrasTotal >= 0 ? '' : '−') + fmtNT(Math.abs(extrasTotal));
+    extrasEl.textContent = (extrasTotal >= 0 ? '' : 'âˆ’') + fmtNT(Math.abs(extrasTotal));
     extrasEl.className = 'sal-amount' + (extrasTotal < 0 ? '' : '');
   }
 
-  // Sick deduction: 42,000 ÷ days_in_month × sick_days × 50%  (勞基法病假半薪)
+  // Sick deduction: 42,000 Ã· days_in_month Ã— sick_days Ã— 50%  (å‹žåŸºæ³•ç—…å‡åŠè–ª)
   const fixedMonthly  = SAL_BASE + attendance + SAL_LICENSE + floatPay;
   const sickDailyRate = (SAL_BASE + SAL_ATTENDANCE + SAL_LICENSE + SAL_FLOAT_BASE) / _daysInMonth;
   const sickDeduct    = _sickDays > 0 ? Math.round(sickDailyRate * _sickDays * 0.5) : 0;
   const sickRow = $('sal-sick-row');
   if (sickRow) sickRow.style.display = sickDeduct > 0 ? '' : 'none';
-  if ($('sal-sick-deduct')) $('sal-sick-deduct').textContent = sickDeduct > 0 ? `−${fmtNT(sickDeduct)}` : '—';
+  if ($('sal-sick-deduct')) $('sal-sick-deduct').textContent = sickDeduct > 0 ? `âˆ’${fmtNT(sickDeduct)}` : 'â€”';
 
   const laborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
   const healthIns = parseInt(($('sal-health-ins') || {}).value) || 0;
   const insDeduct = laborIns + healthIns;
   const insRow = $('sal-ins-row');
   if (insRow) insRow.style.display = insDeduct > 0 ? '' : 'none';
-  if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = insDeduct > 0 ? `−${fmtNT(insDeduct)}` : '—';
+  if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = insDeduct > 0 ? `âˆ’${fmtNT(insDeduct)}` : 'â€”';
 
   const unworkedDays    = parseInt(($('sal-unworked-days') || {}).value) || 0;
   const prorateBase     = SAL_BASE + SAL_ATTENDANCE + SAL_LICENSE + SAL_FLOAT_BASE;  // always 42,000
   const prorateDeduct   = unworkedDays > 0 ? Math.round(prorateBase / _daysInMonth * unworkedDays) : 0;
   const prorateRow      = $('sal-prorate-row');
   if (prorateRow) prorateRow.style.display = prorateDeduct > 0 ? '' : 'none';
-  if ($('sal-prorate-deduct')) $('sal-prorate-deduct').textContent = prorateDeduct > 0 ? `−${fmtNT(prorateDeduct)}` : '—';
+  if ($('sal-prorate-deduct')) $('sal-prorate-deduct').textContent = prorateDeduct > 0 ? `âˆ’${fmtNT(prorateDeduct)}` : 'â€”';
   const prorateNote = $('sal-prorate-note');
   if (prorateNote) prorateNote.textContent = unworkedDays > 0
-    ? `${fmtNT(prorateBase)} ÷ ${_daysInMonth}天 × ${unworkedDays}天`
+    ? `${fmtNT(prorateBase)} Ã· ${_daysInMonth}å¤© Ã— ${unworkedDays}å¤©`
     : '';
 
   const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otPay + extrasTotal - sickDeduct - insDeduct - prorateDeduct;
 
   $('sal-attendance-amt').textContent = hasAttendance
-    ? (attendance < SAL_ATTENDANCE ? `${fmtNT(attendance)} （指勤比例）` : '2,000')
-    : '—';
+    ? (attendance < SAL_ATTENDANCE ? `${fmtNT(attendance)} ï¼ˆæŒ‡å‹¤æ¯”ä¾‹ï¼‰` : '2,000')
+    : 'â€”';
   $('sal-attendance-amt').className   = 'sal-amount' + (hasAttendance ? '' : ' muted');
   $('sal-sat-amt').textContent        = fmtNT(satPay);
   $('sal-float-amt').textContent      = fmtNT(floatPay);
   $('sal-ot-total').textContent       = fmtNT(otPay);
-  $('sal-grand-total').textContent    = fmtNT(grand) + ' 元';
-  $('sal-hourly-note').textContent    = '加班基準時薪：175 元/h（42,000 ÷ 240）';
+  $('sal-grand-total').textContent    = fmtNT(grand) + ' å…ƒ';
+  $('sal-hourly-note').textContent    = 'åŠ ç­åŸºæº–æ™‚è–ªï¼š175 å…ƒ/hï¼ˆ42,000 Ã· 240ï¼‰';
 }
 
 function printPaySlip() {
   const nurse = $('sal-nurse').value;
   const totalText = $('sal-grand-total').textContent;
-  if (!nurse || totalText === '—') { alert('請先完成薪資計算'); return; }
+  if (!nurse || totalText === 'â€”') { alert('è«‹å…ˆå®Œæˆè–ªè³‡è¨ˆç®—'); return; }
 
   const isPart = _salMode === 'part';
-  const monthLabel = `${_salYear} 年 ${ZH_MON[_salMon-1]} 月`;
+  const monthLabel = `${_salYear} å¹´ ${ZH_MON[_salMon-1]} æœˆ`;
 
   const fmt = v => parseInt(v.replace(/,/g,'')) > 0
     ? 'NT$ ' + parseInt(v.replace(/,/g,'')).toLocaleString('zh-TW')
-    : '—';
+    : 'â€”';
 
   let rows = '';
   if (isPart) {
@@ -4149,11 +4149,11 @@ function printPaySlip() {
     const partLaborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
     const partHealthIns = parseInt(($('sal-health-ins') || {}).value) || 0;
     rows = `
-      ${partDays     > 0 ? `<tr><td>工作天數</td><td>${partDays} 天</td></tr>` : ''}
-      ${partRegular  > 0 ? `<tr><td>工時薪資</td><td>NT$ ${partRegular.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${partOt       > 0 ? `<tr><td>加班費</td><td>NT$ ${partOt.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${partLaborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${partLaborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${partHealthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${partHealthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${partDays     > 0 ? `<tr><td>å·¥ä½œå¤©æ•¸</td><td>${partDays} å¤©</td></tr>` : ''}
+      ${partRegular  > 0 ? `<tr><td>å·¥æ™‚è–ªè³‡</td><td>NT$ ${partRegular.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${partOt       > 0 ? `<tr><td>åŠ ç­è²»</td><td>NT$ ${partOt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${partLaborIns  > 0 ? `<tr style="color:#dc2626"><td>å‹žä¿è‡ªä»˜é¡</td><td>âˆ’NT$ ${partLaborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${partHealthIns > 0 ? `<tr style="color:#dc2626"><td>å¥ä¿è‡ªä»˜é¡</td><td>âˆ’NT$ ${partHealthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   } else {
     const att  = $('sal-attendance-chk').checked;
@@ -4169,26 +4169,26 @@ function printPaySlip() {
     const sickDays = parseInt(($('sal-sick-days') || {}).value) || 0;
     const sickDeductAmt = sickDays > 0 ? (parseInt(($('sal-sick-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
     rows = `
-      <tr><td>底薪</td><td>NT$ 30,500</td></tr>
-      <tr><td>全勤獎金</td><td>${att ? 'NT$ ' + parseInt($('sal-attendance-amt').textContent.replace(/[^0-9]/g,'') || '0').toLocaleString('zh-TW') : '—'}</td></tr>
-      <tr><td>執照津貼</td><td>NT$ 2,000</td></tr>
-      <tr><td>周六加班費</td><td>${fmt(sat)}</td></tr>
-      <tr><td>浮動獎金</td><td>${fmt(flt)}</td></tr>
-      ${perf > 0 ? `<tr><td>不定期獎金</td><td>NT$ ${perf.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${parseInt(ot.replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
-      ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
-      ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
-      ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${laborInsAmt > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${healthInsAmt > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${prorateDeductAmt > 0 ? `<tr style="color:#dc2626"><td>到職日調整</td><td>−NT$ ${prorateDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      <tr><td>åº•è–ª</td><td>NT$ 30,500</td></tr>
+      <tr><td>å…¨å‹¤çŽé‡‘</td><td>${att ? 'NT$ ' + parseInt($('sal-attendance-amt').textContent.replace(/[^0-9]/g,'') || '0').toLocaleString('zh-TW') : 'â€”'}</td></tr>
+      <tr><td>åŸ·ç…§æ´¥è²¼</td><td>NT$ 2,000</td></tr>
+      <tr><td>å‘¨å…­åŠ ç­è²»</td><td>${fmt(sat)}</td></tr>
+      <tr><td>æµ®å‹•çŽé‡‘</td><td>${fmt(flt)}</td></tr>
+      ${perf > 0 ? `<tr><td>ä¸å®šæœŸçŽé‡‘</td><td>NT$ ${perf.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${parseInt(ot.replace(/,/g,'')) > 0 ? `<tr><td>åŠ ç­è²»</td><td>${fmt(ot)}</td></tr>` : ''}
+      ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'å…¶ä»–çŽé‡‘'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'å…¶ä»–æ‰£æ¬¾'}</td><td>âˆ’NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${sickDays > 0 ? `<tr style="color:#dc2626"><td>ç—…å‡æ‰£æ¬¾</td><td>âˆ’NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${laborInsAmt > 0 ? `<tr style="color:#dc2626"><td>å‹žä¿è‡ªä»˜é¡</td><td>âˆ’NT$ ${laborInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${healthInsAmt > 0 ? `<tr style="color:#dc2626"><td>å¥ä¿è‡ªä»˜é¡</td><td>âˆ’NT$ ${healthInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${prorateDeductAmt > 0 ? `<tr style="color:#dc2626"><td>åˆ°è·æ—¥èª¿æ•´</td><td>âˆ’NT$ ${prorateDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   }
 
   const html = `<!DOCTYPE html><html lang="zh-TW"><head>
 <meta charset="UTF-8">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-<title>薪資條 ${nurse} ${monthLabel}</title>
+<title>è–ªè³‡æ¢ ${nurse} ${monthLabel}</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif; padding:40px 48px; color:#111; font-size:14px; }
@@ -4209,30 +4209,30 @@ function printPaySlip() {
   @media print { body { padding:24px 32px; } button { display:none; } }
 </style>
 </head><body>
-<h1>薪資條</h1>
-<div class="sub">本薪資條僅供個人核對使用</div>
+<h1>è–ªè³‡æ¢</h1>
+<div class="sub">æœ¬è–ªè³‡æ¢åƒ…ä¾›å€‹äººæ ¸å°ä½¿ç”¨</div>
 <div class="meta">
-  <div class="meta-item"><span class="meta-lbl">護理師</span><span class="meta-val">${nurse}</span></div>
-  <div class="meta-item"><span class="meta-lbl">月份</span><span class="meta-val">${monthLabel}</span></div>
+  <div class="meta-item"><span class="meta-lbl">è­·ç†å¸«</span><span class="meta-val">${nurse}</span></div>
+  <div class="meta-item"><span class="meta-lbl">æœˆä»½</span><span class="meta-val">${monthLabel}</span></div>
 </div>
 <table>
   <tbody>${rows}</tbody>
-  <tfoot><tr class="total-row"><td>本月薪資合計</td><td>${totalText}</td></tr></tfoot>
+  <tfoot><tr class="total-row"><td>æœ¬æœˆè–ªè³‡åˆè¨ˆ</td><td>${totalText}</td></tr></tfoot>
 </table>
 <div class="sigs">
-  <div class="sig"><div class="sig-line"></div><div class="sig-lbl">主管簽名</div></div>
-  <div class="sig"><div class="sig-line"></div><div class="sig-lbl">護理師簽名</div></div>
+  <div class="sig"><div class="sig-line"></div><div class="sig-lbl">ä¸»ç®¡ç°½å</div></div>
+  <div class="sig"><div class="sig-line"></div><div class="sig-lbl">è­·ç†å¸«ç°½å</div></div>
 </div>
 <script>window.onload = () => window.print();<\/script>
 </body></html>`;
 
   const w = window.open('', '_blank', 'width=600,height=700');
-  if (!w) { alert('請允許彈出視窗（pop-up），再點一次列印'); return; }
+  if (!w) { alert('è«‹å…è¨±å½ˆå‡ºè¦–çª—ï¼ˆpop-upï¼‰ï¼Œå†é»žä¸€æ¬¡åˆ—å°'); return; }
   w.document.write(html);
   w.document.close();
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
+// â”€â”€ Boot â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function load(section) {
   if (section === 'nurses')    loadNurses();
   else if (section === 'doctors')   loadDoctors();
@@ -4260,8 +4260,8 @@ if (_savedAdminTab && $(_savedAdminTab)) {
   $(_savedAdminTab).classList.add('active');
   activeSection = _savedAdminTab;
 }
-// ── Lab code settings ─────────────────────────────────────────────────────────
-// ── Lab code settings ─────────────────────────────────────────────────────────
+// â”€â”€ Lab code settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// â”€â”€ Lab code settings â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 let _labCatalog = null;         // { chapters: {08:{label,codes:[]}}, names:{code:name} }
 let _labActiveChapters = [];    // 2-char chapter prefixes currently enabled
 let _labCustomCodes = [];       // individual code IDs added on top of chapters
@@ -4272,7 +4272,7 @@ function esc(s) {
 }
 
 async function loadLabCodes() {
-  $('lc-chapters').innerHTML = '<div style="padding:24px 20px;color:var(--text-3);font-size:13px">載入中…</div>';
+  $('lc-chapters').innerHTML = '<div style="padding:24px 20px;color:var(--text-3);font-size:13px">è¼‰å…¥ä¸­â€¦</div>';
   try {
     const [settings, catalog] = await Promise.all([
       api('/api/admin/settings/lab-codes'),
@@ -4285,7 +4285,7 @@ async function loadLabCodes() {
     _labCustomCodes    = prefixes.filter(p => !chapterSet.has(p));
     renderLabChapters();
     renderLabCustomChips();
-  } catch(e) { $('lc-chapters').innerHTML = `<div style="padding:20px;color:var(--red)">${esc(e.message||'讀取失敗')}</div>`; }
+  } catch(e) { $('lc-chapters').innerHTML = `<div style="padding:20px;color:var(--red)">${esc(e.message||'è®€å–å¤±æ•—')}</div>`; }
 }
 
 function renderLabChapters() {
@@ -4296,7 +4296,7 @@ function renderLabChapters() {
     let codeGrid = '';
     if (expanded) {
       const chips = ch.codes.map(c =>
-        `<span class="lc-chip" title="${esc(c)}">${esc(c)} · ${esc(_labCatalog.names[c] || c)}</span>`
+        `<span class="lc-chip" title="${esc(c)}">${esc(c)} Â· ${esc(_labCatalog.names[c] || c)}</span>`
       ).join('');
       codeGrid = `<div class="lc-code-grid">${chips}</div>`;
     }
@@ -4304,9 +4304,9 @@ function renderLabChapters() {
       <div class="lc-chapter-head" onclick="lcToggleChapter('${esc(prefix)}')">
         <input type="checkbox" id="lc-ch-${esc(prefix)}" style="accent-color:var(--blue);width:16px;height:16px;cursor:pointer;flex-shrink:0"
           ${active ? 'checked' : ''} onclick="event.stopPropagation();lcCheckChapter('${esc(prefix)}',this.checked)">
-        <span class="lc-ch-label">${esc(prefix)} · ${esc(ch.label)}</span>
-        <span class="lc-ch-sub">${ch.codes.length} 項</span>
-        <span class="lc-chevron${expanded?' open':''}">▼</span>
+        <span class="lc-ch-label">${esc(prefix)} Â· ${esc(ch.label)}</span>
+        <span class="lc-ch-sub">${ch.codes.length} é …</span>
+        <span class="lc-chevron${expanded?' open':''}">â–¼</span>
       </div>
       ${codeGrid}
     </div>`;
@@ -4335,8 +4335,8 @@ function renderLabCustomChips() {
   chips.innerHTML = _labCustomCodes.map(c => {
     const name = _labCatalog ? (_labCatalog.names[c] || '') : '';
     return `<span class="lc-custom-chip">
-      <span>${esc(c)}${name ? ' · ' + esc(name) : ''}</span>
-      <button onclick="lcRemoveCustom('${esc(c)}')" title="移除">×</button>
+      <span>${esc(c)}${name ? ' Â· ' + esc(name) : ''}</span>
+      <button onclick="lcRemoveCustom('${esc(c)}')" title="ç§»é™¤">Ã—</button>
     </span>`;
   }).join('');
 }
@@ -4346,7 +4346,7 @@ function lcRemoveCustom(code) {
   renderLabCustomChips();
 }
 
-// ── Search ─────────────────────────────────────────────────────────────────────
+// â”€â”€ Search â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 function lcSearch(q) {
   const drop = $('lc-drop');
   q = q.trim().toUpperCase();
@@ -4363,7 +4363,7 @@ function lcSearch(q) {
   }).slice(0, 20);
 
   if (!results.length) {
-    drop.innerHTML = `<div class="lc-empty-drop">找不到符合的代碼</div>`;
+    drop.innerHTML = `<div class="lc-empty-drop">æ‰¾ä¸åˆ°ç¬¦åˆçš„ä»£ç¢¼</div>`;
     drop.style.display = '';
     return;
   }
@@ -4373,9 +4373,9 @@ function lcSearch(q) {
     const chActive = ch && _labActiveChapters.includes(ch);
     const isCustom = _labCustomCodes.includes(code);
     let tag, clickable = false;
-    if (chActive)       tag = `<span class="lc-drop-tag in-ch">已含（${esc(ch)}章）</span>`;
-    else if (isCustom)  tag = `<span class="lc-drop-tag custom">已加入</span>`;
-    else { tag = `<span class="lc-drop-tag add">＋ 新增</span>`; clickable = true; }
+    if (chActive)       tag = `<span class="lc-drop-tag in-ch">å·²å«ï¼ˆ${esc(ch)}ç« ï¼‰</span>`;
+    else if (isCustom)  tag = `<span class="lc-drop-tag custom">å·²åŠ å…¥</span>`;
+    else { tag = `<span class="lc-drop-tag add">ï¼‹ æ–°å¢ž</span>`; clickable = true; }
     return `<div class="lc-drop-item${clickable?' lc-add-btn':''}" ${clickable?`onclick="lcAddCustom('${esc(code)}')"`:''}
       style="${clickable?'':'opacity:.65;cursor:default'}">
       <span class="lc-drop-code">${esc(code)}</span>
@@ -4399,18 +4399,18 @@ function lcAddCustom(code) {
 
 async function saveLabCodes() {
   const prefixes = [..._labActiveChapters, ..._labCustomCodes];
-  if (!prefixes.length) { alert('至少需選擇一個章別或代碼'); return; }
+  if (!prefixes.length) { alert('è‡³å°‘éœ€é¸æ“‡ä¸€å€‹ç« åˆ¥æˆ–ä»£ç¢¼'); return; }
   const btn = $('btn-labcodes-save');
-  btn.disabled = true; btn.textContent = '儲存中…';
+  btn.disabled = true; btn.textContent = 'å„²å­˜ä¸­â€¦';
   try {
     await api('/api/admin/settings/lab-codes', { method: 'PUT', body: JSON.stringify({ prefixes }) });
-    alert('代碼設定已儲存');
-  } catch(e) { alert('儲存失敗：' + (e.message || '')); }
-  finally { btn.disabled = false; btn.textContent = '儲存設定'; }
+    alert('ä»£ç¢¼è¨­å®šå·²å„²å­˜');
+  } catch(e) { alert('å„²å­˜å¤±æ•—ï¼š' + (e.message || '')); }
+  finally { btn.disabled = false; btn.textContent = 'å„²å­˜è¨­å®š'; }
 }
 
-// Always initialize the schedule week label synchronously so it never shows "—"
-$('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
+// Always initialize the schedule week label synchronously so it never shows "â€”"
+$('sched-week-display').textContent = `${fmtMD(weekStart)} â€“ ${fmtMD(addDays(weekStart, 5))}`;
 refresh();
 </script>
 <!-- salary picker dropdowns -->
