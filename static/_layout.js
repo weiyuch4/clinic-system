@@ -296,6 +296,35 @@
 
     if (backdrop) backdrop.addEventListener('click', closeDd);
 
+    // Drag-to-dismiss: swipe the handle/header area downward to close
+    if (_isMobile) {
+      var _dragStart = 0, _dragDy = 0, _dragging = false;
+      dd.addEventListener('touchstart', function (e) {
+        var rect = dd.getBoundingClientRect();
+        if (e.touches[0].clientY - rect.top > 72) return; // handle + title zone only
+        _dragStart = e.touches[0].clientY;
+        _dragDy = 0;
+        _dragging = true;
+        dd.style.transition = 'none';
+      }, { passive: true });
+      document.addEventListener('touchmove', function (e) {
+        if (!_dragging) return;
+        _dragDy = Math.max(0, e.touches[0].clientY - _dragStart);
+        dd.style.transform = 'translateY(' + _dragDy + 'px)';
+      }, { passive: true });
+      document.addEventListener('touchend', function () {
+        if (!_dragging) return;
+        _dragging = false;
+        dd.style.transition = ''; // restore CSS transition
+        if (_dragDy > 80) {
+          closeDd();             // removes .open → CSS animates sheet to translateY(110%)
+          dd.style.transform = ''; // release inline override so CSS transition fires
+        } else {
+          dd.style.transform = ''; // snap back → CSS .open animates to translateY(0)
+        }
+      });
+    }
+
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
       dd.classList.contains('open') ? closeDd() : openDd();

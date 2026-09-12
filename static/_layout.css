@@ -506,14 +506,14 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .nurse-lbl{display:none!important}
   .nurse-chev{display:none!important}
   /* Nurse selector as a bottom sheet */
-  .nurse-dd{position:fixed!important;bottom:0!important;left:0!important;right:0!important;top:auto!important;min-width:unset!important;border-radius:20px 20px 0 0!important;transform:translateY(110%)!important;transform-origin:bottom center!important;transition:transform .3s cubic-bezier(.32,.72,0,1)!important;opacity:1!important;pointer-events:none!important;z-index:500!important;padding-bottom:env(safe-area-inset-bottom,0px)!important}
+  .nurse-dd{position:fixed!important;bottom:0!important;left:0!important;right:0!important;top:auto!important;min-width:unset!important;border-radius:20px 20px 0 0!important;transform:translateY(110%);transform-origin:bottom center!important;transition:transform .3s cubic-bezier(.32,.72,0,1)!important;opacity:1!important;pointer-events:none!important;z-index:500!important;padding-bottom:env(safe-area-inset-bottom,0px)!important}
   .nurse-dd::before{content:'';display:block;width:36px;height:4px;border-radius:2px;background:var(--border);margin:12px auto 4px}
   .nurse-dd-hd{font-size:13px!important;padding:4px 20px 10px!important}
   .nurse-opts{padding:0 10px!important}
   .nurse-opt{padding:12px 10px!important;font-size:15px!important}
   .nurse-opt-av{width:34px!important;height:34px!important;font-size:14px!important}
   .nurse-clear,.nurse-change-pin{font-size:14px!important;padding:12px 20px!important}
-  .nurse-dd.open{transform:translateY(0)!important;pointer-events:auto!important}
+  .nurse-dd.open{transform:translateY(0);pointer-events:auto!important}
   /* Backdrop */
   .nurse-sheet-bd{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:499;opacity:0;transition:opacity .25s;pointer-events:none}
   .nurse-sheet-bd.show{opacity:1;pointer-events:auto}
