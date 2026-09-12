@@ -1,20 +1,20 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>æª¢é©—è¿½è¹¤ â€” è¨ºæ‰€è¿½è¹¤ç³»çµ±</title>
+<title>檢驗追蹤 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=46">
 <style>
-/* â”€â”€ tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── tabs ────────────────────────────────────────────────────────── */
 .lab-tabs{display:flex;gap:2px;background:var(--border);border-radius:9px;padding:3px;margin-bottom:14px;width:fit-content}
 .lab-tab{font-size:13px;font-weight:600;padding:6px 18px;border-radius:7px;border:none;cursor:pointer;font-family:inherit;background:transparent;color:var(--sub);transition:background .15s,color .15s}
 .lab-tab.active{background:var(--card);color:var(--text);box-shadow:0 1px 3px rgba(0,0,0,.08)}
 .lab-panel{display:none}
 .lab-panel.active{display:flex;flex-direction:column;gap:12px;flex:1}
 
-/* â”€â”€ group card â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── group card ──────────────────────────────────────────────────── */
 .lab-group{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;flex-shrink:0}
 .lab-ghead{display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid var(--border)}
 .lab-gdate{font-size:14px;font-weight:700;color:var(--text)}
@@ -28,14 +28,14 @@
 :root[data-theme="dark"] .lab-goverdue{background:#2A1600;color:#FBD38D}
 :root[data-theme="dark"] .lab-gnotify{background:#042B18;color:#6EE7B7}
 
-/* â”€â”€ patient row â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── patient row ─────────────────────────────────────────────────── */
 .lab-row{display:flex;align-items:center;gap:12px;padding:11px 17px;border-bottom:1px solid var(--border)}
 .lab-row:last-child{border-bottom:none}
 .lab-row.needs-notify{background:#EFF6FF;border-left:3px solid #3B82F6;padding-left:14px}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .lab-row.needs-notify{background:#0C1829;border-left-color:#60A5FA}}
 :root[data-theme="dark"] .lab-row.needs-notify{background:#0C1829;border-left-color:#60A5FA}
 
-/* â”€â”€ patient info â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── patient info ────────────────────────────────────────────────── */
 .lab-pt{display:flex;flex-direction:column;gap:2px;min-width:0}
 .lab-name{font-size:14px;font-weight:600;color:var(--text)}
 .lab-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
@@ -48,7 +48,7 @@
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .allergy-chip{background:#2A0A0F;color:#FCA5A5}}
 :root[data-theme="dark"] .allergy-chip{background:#2A0A0F;color:#FCA5A5}
 
-/* â”€â”€ right side: status + action â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── right side: status + action ────────────────────────────────── */
 .lab-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
 .lab-back{font-size:12px;color:#047857;font-weight:600;display:flex;align-items:center;gap:4px}
 .lab-back svg{flex-shrink:0}
@@ -69,7 +69,7 @@
 :root[data-theme="dark"] .lab-notified{color:#9CA3AF}
 :root[data-theme="dark"] .lab-physical-tag{color:#A78BFA}
 
-/* â”€â”€ action buttons â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── action buttons ──────────────────────────────────────────────── */
 .lab-btn{font-size:12px;font-weight:600;padding:4px 12px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;transition:background .15s,opacity .15s}
 .lab-btn:disabled{opacity:.5;cursor:default}
 .lab-btn-notify{background:#D1FAE5;color:#065F46}
@@ -95,7 +95,7 @@
 :root[data-theme="dark"] .lab-btn-done{background:#042B18;color:#6EE7B7}
 :root[data-theme="dark"] .lab-btn-done:hover:not(:disabled){background:#064E2D;color:#6EE7B7}
 
-/* â”€â”€ physical tab cards â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── physical tab cards ──────────────────────────────────────────── */
 .phys-group{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;flex-shrink:0}
 .phys-ghead{display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid var(--border)}
 .phys-gdate{font-size:14px;font-weight:700;color:var(--text)}
@@ -108,7 +108,7 @@
 .phys-row:last-child{border-bottom:none}
 .phys-days{font-size:12px;color:#6B7280;font-style:italic}
 
-/* â”€â”€ layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* ── layout ──────────────────────────────────────────────────────── */
 .scroll-area{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
 .lab-section-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em;padding:0 2px;margin-bottom:-4px}
 </style>
@@ -126,26 +126,26 @@
       </div>
 
       <div class="ph">
-        <div><h1>æª¢é©—è¿½è¹¤</h1><p id="page-date">å¤–é€æŠ½è¡€çµæžœè¿½è¹¤</p></div>
+        <div><h1>檢驗追蹤</h1><p id="page-date">外送抽血結果追蹤</p></div>
       </div>
 
       <!-- Tab switcher -->
       <div class="lab-tabs">
-        <button class="lab-tab active" id="tab-digital" onclick="switchTab('digital')">æ•¸ä½è¿½è¹¤</button>
-        <button class="lab-tab" id="tab-physical" onclick="switchTab('physical')">å¯¦é«”å ±å‘Š <span id="phys-badge" style="display:none"></span></button>
+        <button class="lab-tab active" id="tab-digital" onclick="switchTab('digital')">數位追蹤</button>
+        <button class="lab-tab" id="tab-physical" onclick="switchTab('physical')">實體報告 <span id="phys-badge" style="display:none"></span></button>
       </div>
 
       <!-- Digital tab -->
       <div class="lab-panel active" id="panel-digital">
         <div class="scroll-area" id="lab-list">
-          <div style="text-align:center;padding:30px;color:var(--muted)">è¼‰å…¥ä¸­â€¦</div>
+          <div style="text-align:center;padding:30px;color:var(--muted)">載入中…</div>
         </div>
       </div>
 
       <!-- Physical tab -->
       <div class="lab-panel" id="panel-physical">
         <div class="scroll-area" id="phys-list">
-          <div style="text-align:center;padding:30px;color:var(--muted)">è¼‰å…¥ä¸­â€¦</div>
+          <div style="text-align:center;padding:30px;color:var(--muted)">載入中…</div>
         </div>
       </div>
 
@@ -173,7 +173,7 @@
   // Expose for onclick
   window.switchTab = switchTab;
 
-  // â”€â”€ helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── helpers ───────────────────────────────────────────────────────
 
   function daysSince(isoDate) {
     var d = new Date(isoDate), now = new Date();
@@ -182,25 +182,25 @@
 
   function makeMeta(natId, birthDate) {
     var parts = [];
-    if (natId) parts.push('<span class="pr-copy" data-copy="' + L.escHtml(natId) + '" title="é»žæ“Šè¤‡è£½èº«ä»½è­‰">' + L.escHtml(natId) + '</span>');
+    if (natId) parts.push('<span class="pr-copy" data-copy="' + L.escHtml(natId) + '" title="點擊複製身份證">' + L.escHtml(natId) + '</span>');
     if (birthDate) {
       var bp = birthDate.split('-');
       var roc = bp.length === 3 ? ((parseInt(bp[0], 10) - 1911) + '/' + bp[1] + '/' + bp[2]) : birthDate;
-      parts.push('<span class="pr-copy" data-copy="' + L.escHtml(birthDate) + '" title="é»žæ“Šè¤‡è£½ç”Ÿæ—¥ï¼ˆISOï¼‰">' + L.escHtml(roc) + '</span>');
+      parts.push('<span class="pr-copy" data-copy="' + L.escHtml(birthDate) + '" title="點擊複製生日（ISO）">' + L.escHtml(roc) + '</span>');
     }
-    return parts.length ? '<div class="lab-meta">' + parts.join('<span class="lab-meta-sep">Â·</span>') + '</div>' : '';
+    return parts.length ? '<div class="lab-meta">' + parts.join('<span class="lab-meta-sep">·</span>') + '</div>' : '';
   }
 
   function bindCopyClicks(container) {
     container.querySelectorAll('.pr-copy').forEach(function (el) {
       el.addEventListener('click', function () {
         navigator.clipboard && navigator.clipboard.writeText(el.dataset.copy);
-        L.showToast('å·²è¤‡è£½ï¼š' + el.dataset.copy);
+        L.showToast('已複製：' + el.dataset.copy);
       });
     });
   }
 
-  // â”€â”€ Digital tab render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Digital tab render ────────────────────────────────────────────
 
   function renderDays(days) {
     var container = document.getElementById('lab-list');
@@ -213,10 +213,10 @@
     });
 
     document.getElementById('page-date').textContent =
-      needsNotify > 0 ? 'å¾…é€šçŸ¥ï¼š' + needsNotify + ' äºº' : 'å¤–é€æŠ½è¡€çµæžœè¿½è¹¤';
+      needsNotify > 0 ? '待通知：' + needsNotify + ' 人' : '外送抽血結果追蹤';
 
     if (!days.length || days.every(function (d) { return !(d.patients || []).length; })) {
-      container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">è¿‘æœŸç„¡å¤–é€æŠ½è¡€è¨˜éŒ„</div>';
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">近期無外送抽血記錄</div>';
       return;
     }
 
@@ -229,10 +229,10 @@
 
       return '<div class="lab-group">' +
         '<div class="lab-ghead">' +
-          '<span class="lab-gdate">æŠ½è¡€æ—¥ï¼š' + L.escHtml(day.date) + '</span>' +
-          '<span class="lab-gcount">' + pts.length + ' äºº</span>' +
-          (overdueCount ? '<span class="lab-goverdue">è¶…æ™‚å¾…å‡º ' + overdueCount + '</span>' : '') +
-          (needNotifyCount ? '<span class="lab-gnotify">å¾…é€šçŸ¥ ' + needNotifyCount + '</span>' : '') +
+          '<span class="lab-gdate">抽血日：' + L.escHtml(day.date) + '</span>' +
+          '<span class="lab-gcount">' + pts.length + ' 人</span>' +
+          (overdueCount ? '<span class="lab-goverdue">超時待出 ' + overdueCount + '</span>' : '') +
+          (needNotifyCount ? '<span class="lab-gnotify">待通知 ' + needNotifyCount + '</span>' : '') +
         '</div>' +
         pts.map(function (p) {
           var codes = Array.isArray(p.draw_codes)
@@ -243,28 +243,28 @@
             return '<span class="lab-code-chip" title="' + L.escHtml(c) + '">' + L.escHtml(names[i] || c) + '</span>';
           }).join('');
 
-          var allergyHtml = p.is_allergy ? '<span class="allergy-chip">éŽæ•</span>' : '';
+          var allergyHtml = p.is_allergy ? '<span class="allergy-chip">過敏</span>' : '';
 
           var statusHtml;
           if (p.notified) {
-            statusHtml = '<div class="lab-notified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>å·²é€šçŸ¥</div>';
+            statusHtml = '<div class="lab-notified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已通知</div>';
           } else if (p.results_back) {
-            statusHtml = '<div class="lab-back"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>å·²å‡ºå ±å‘Š</div>';
+            statusHtml = '<div class="lab-back"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已出報告</div>';
           } else if (p.overdue) {
-            statusHtml = '<div class="lab-overdue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>è¶…æ™‚å¾…å‡º</div>';
+            statusHtml = '<div class="lab-overdue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>超時待出</div>';
           } else {
-            statusHtml = '<div class="lab-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>å¾…å‡ºå ±å‘Š</div>';
+            statusHtml = '<div class="lab-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>待出報告</div>';
           }
 
           var actionHtml = '';
           if (!p.notified) {
-            // å…¶ä»–æª¢é©—æ‰€: only when results haven't arrived digitally yet
+            // 其他檢驗所: only when results haven't arrived digitally yet
             if (!p.results_back) {
-              actionHtml += '<button class="lab-btn lab-btn-physical" data-action="to-physical" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '" data-name="' + L.escHtml(p.name) + '" title="ç§»è‡³å¯¦é«”å ±å‘Šè¿½è¹¤">å…¶ä»–æª¢é©—æ‰€</button>';
+              actionHtml += '<button class="lab-btn lab-btn-physical" data-action="to-physical" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '" data-name="' + L.escHtml(p.name) + '" title="移至實體報告追蹤">其他檢驗所</button>';
             }
-            actionHtml += '<button class="lab-btn lab-btn-notify" data-action="notify" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '">å·²é€šçŸ¥ç—…æ‚£</button>';
+            actionHtml += '<button class="lab-btn lab-btn-notify" data-action="notify" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '">已通知病患</button>';
           } else {
-            actionHtml += '<button class="lab-btn lab-btn-undo" data-action="undo-notify" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '">æ’¤éŠ·</button>';
+            actionHtml += '<button class="lab-btn lab-btn-undo" data-action="undo-notify" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '">撤銷</button>';
           }
 
           var rowClass = 'lab-row' + (p.results_back && !p.notified ? ' needs-notify' : '');
@@ -281,7 +281,7 @@
     bindCopyClicks(container);
   }
 
-  // â”€â”€ Physical tab render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Physical tab render ───────────────────────────────────────────
 
   function renderPhysical(items) {
     var container = document.getElementById('phys-list');
@@ -302,7 +302,7 @@
     }
 
     if (!items.length) {
-      container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">ç›®å‰ç„¡ç­‰å¾…å¯¦é«”å ±å‘Šçš„æ‚£è€…</div>';
+      container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">目前無等待實體報告的患者</div>';
       return;
     }
 
@@ -319,15 +319,15 @@
       var pts = byDate[drawDate];
       return '<div class="phys-group">' +
         '<div class="phys-ghead">' +
-          '<span class="phys-gdate">æŠ½è¡€æ—¥ï¼š' + L.escHtml(drawDate) + '</span>' +
-          '<span class="phys-waiting-badge">å¾…æ”¶å ±å‘Š ' + pts.length + ' äºº</span>' +
+          '<span class="phys-gdate">抽血日：' + L.escHtml(drawDate) + '</span>' +
+          '<span class="phys-waiting-badge">待收報告 ' + pts.length + ' 人</span>' +
         '</div>' +
         pts.map(function (item) {
           var daysWaiting = daysSince(item.draw_date);
-          var daysLabel = daysWaiting === 0 ? 'ä»Šå¤©æŠ½è¡€' : 'ç­‰å¾… ' + daysWaiting + ' å¤©';
+          var daysLabel = daysWaiting === 0 ? '今天抽血' : '等待 ' + daysWaiting + ' 天';
           return '<div class="phys-row">' +
             '<div class="lab-pt"><span class="lab-name">' + L.escHtml(item.name || item.nat_id) + '</span>' +
-              '<div class="lab-meta"><span class="pr-copy" data-copy="' + L.escHtml(item.nat_id) + '" title="é»žæ“Šè¤‡è£½">' + L.escHtml(item.nat_id) + '</span></div>' +
+              '<div class="lab-meta"><span class="pr-copy" data-copy="' + L.escHtml(item.nat_id) + '" title="點擊複製">' + L.escHtml(item.nat_id) + '</span></div>' +
             '</div>' +
             (function () {
               var pcodes = []; try { pcodes = JSON.parse(item.draw_codes || '[]'); } catch(e) {}
@@ -338,8 +338,8 @@
               return '<div class="lab-codes">' + pChips + '<span class="phys-days">' + L.escHtml(daysLabel) + '</span></div>';
             }()) +
             '<div class="lab-right">' +
-              '<button class="lab-btn lab-btn-undo" data-action="phys-back" data-nat="' + L.escHtml(item.nat_id) + '" data-date="' + L.escHtml(item.draw_date) + '" title="ç§»å›žæ•¸ä½è¿½è¹¤">ç§»å›ž</button>' +
-              '<button class="lab-btn lab-btn-done" data-action="phys-done" data-nat="' + L.escHtml(item.nat_id) + '" data-date="' + L.escHtml(item.draw_date) + '" data-name="' + L.escHtml(item.name || '') + '">å·²é€šçŸ¥ç—…æ‚£</button>' +
+              '<button class="lab-btn lab-btn-undo" data-action="phys-back" data-nat="' + L.escHtml(item.nat_id) + '" data-date="' + L.escHtml(item.draw_date) + '" title="移回數位追蹤">移回</button>' +
+              '<button class="lab-btn lab-btn-done" data-action="phys-done" data-nat="' + L.escHtml(item.nat_id) + '" data-date="' + L.escHtml(item.draw_date) + '" data-name="' + L.escHtml(item.name || '') + '">已通知病患</button>' +
             '</div>' +
           '</div>';
         }).join('') +
@@ -349,7 +349,7 @@
     bindCopyClicks(container);
   }
 
-  // â”€â”€ Delegated event handler on digital tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Delegated event handler on digital tab ────────────────────────
 
   document.getElementById('lab-list').addEventListener('click', function (ev) {
     var btn = ev.target.closest('[data-action]'); if (!btn) return;
@@ -381,10 +381,10 @@
             draw_codes: drawCodes, draw_code_names: drawCodeNames,
           });
           renderPhysical(_physical);
-          L.showToast('å·²ç§»è‡³å¯¦é«”å ±å‘Šè¿½è¹¤');
+          L.showToast('已移至實體報告追蹤');
         })
         .catch(function (e) {
-          L.showToast('æ“ä½œå¤±æ•—ï¼š' + (e.message || ''), 'error');
+          L.showToast('操作失敗：' + (e.message || ''), 'error');
           btn.disabled = false;
         });
       return;
@@ -400,15 +400,15 @@
           });
         });
         renderDays(_days);
-        L.showToast(action === 'notify' ? 'å·²æ¨™è¨˜é€šçŸ¥' : 'å·²æ’¤éŠ·é€šçŸ¥');
+        L.showToast(action === 'notify' ? '已標記通知' : '已撤銷通知');
       })
       .catch(function (e) {
-        L.showToast('æ“ä½œå¤±æ•—ï¼š' + (e.message || ''), 'error');
+        L.showToast('操作失敗：' + (e.message || ''), 'error');
         btn.disabled = false;
       });
   });
 
-  // â”€â”€ Delegated event handler on physical tab â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Delegated event handler on physical tab ───────────────────────
 
   document.getElementById('phys-list').addEventListener('click', function (ev) {
     var btn = ev.target.closest('[data-action]'); if (!btn) return;
@@ -420,12 +420,12 @@
         .then(function () {
           _physical = _physical.filter(function (i) { return !(i.nat_id === nat && i.draw_date === drawDate); });
           renderPhysical(_physical);
-          L.showToast('å·²ç§»å›žæ•¸ä½è¿½è¹¤');
+          L.showToast('已移回數位追蹤');
           // Refresh digital list so the patient reappears
           load();
         })
         .catch(function (e) {
-          L.showToast('æ“ä½œå¤±æ•—ï¼š' + (e.message || ''), 'error');
+          L.showToast('操作失敗：' + (e.message || ''), 'error');
           btn.disabled = false;
         });
       return;
@@ -436,17 +436,17 @@
         .then(function () {
           _physical = _physical.filter(function (i) { return !(i.nat_id === nat && i.draw_date === drawDate); });
           renderPhysical(_physical);
-          L.showToast('å·²æ¨™è¨˜å®Œæˆï¼Œç—…æ‚£å·²é€šçŸ¥');
+          L.showToast('已標記完成，病患已通知');
         })
         .catch(function (e) {
-          L.showToast('æ“ä½œå¤±æ•—ï¼š' + (e.message || ''), 'error');
+          L.showToast('操作失敗：' + (e.message || ''), 'error');
           btn.disabled = false;
         });
       return;
     }
   });
 
-  // â”€â”€ Load â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Load ──────────────────────────────────────────────────────────
 
   function load() {
     L.hideError();
@@ -468,7 +468,7 @@
       renderDays(days);
       renderPhysical(physical);
     }).catch(function (e) {
-      L.showError('æª¢é©—è³‡æ–™è¼‰å…¥å¤±æ•— â€” ' + (e.message || e));
+      L.showError('檢驗資料載入失敗 — ' + (e.message || e));
     });
   }
 

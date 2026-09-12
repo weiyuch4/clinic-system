@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ç—…æ‚£è³‡æ–™ â€” è¨ºæ‰€è¿½è¹¤ç³»çµ±</title>
+<title>病患資料 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=46">
 <style>
 .pt-hero{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;display:flex;align-items:flex-start;gap:18px;margin-bottom:20px}
@@ -103,7 +103,7 @@
   <div class="main">
     <div id="topbar"></div>
     <div class="ct">
-      <div id="pt-root"><div class="pt-loading">è¼‰å…¥ä¸­â€¦</div></div>
+      <div id="pt-root"><div class="pt-loading">載入中…</div></div>
     </div>
   </div>
 </div>
@@ -119,16 +119,16 @@
   var root = document.getElementById('pt-root');
 
   var CAT_CLASS = {
-    'æ…¢ç°½': 'cat-chronic',
-    'ä»£è¬ç—‡å€™ç¾¤': 'cat-meta',
+    '慢簽': 'cat-chronic',
+    '代謝症候群': 'cat-meta',
     'MSPT': 'cat-mspt',
-    'è‚ç‚Ž': 'cat-hep',
+    '肝炎': 'cat-hep',
   };
 
   var CHIP_LABELS = {
-    contacted: 'ä¸€æ¬¡é€šçŸ¥', called: 'äºŒæ¬¡é€šçŸ¥', line: 'LINEè¨Šæ¯',
-    hold: 'æš«ç·©', excluded: 'æŽ’é™¤', mspt_completed: 'MSPTå®Œæˆ',
-    checkedin: 'MSPTå›žè¨º', hep_completed: 'è‚ç‚Žå›žè¨º',
+    contacted: '一次通知', called: '二次通知', line: 'LINE訊息',
+    hold: '暫緩', excluded: '排除', mspt_completed: 'MSPT完成',
+    checkedin: 'MSPT回診', hep_completed: '肝炎回診',
   };
 
   function rocDate(iso) {
@@ -147,9 +147,9 @@
 
   function overdueText(d, dueDate) {
     if (d == null) return '';
-    if (d < 0) return 'æå‰ ' + Math.abs(d) + ' å¤©';
-    if (d === 0) return 'ä»Šæ—¥åˆ°æœŸï¼ˆ' + dueDate + 'ï¼‰';
-    return 'é€¾æœŸ ' + d + ' å¤©ï¼ˆ' + dueDate + 'ï¼‰';
+    if (d < 0) return '提前 ' + Math.abs(d) + ' 天';
+    if (d === 0) return '今日到期（' + dueDate + '）';
+    return '逾期 ' + d + ' 天（' + dueDate + '）';
   }
 
   function render(p) {
@@ -160,31 +160,31 @@
 
     var metaItems = [];
     if (dobDisplay) metaItems.push(
-      '<span class="pt-meta-item"><span class="pt-meta-label">ç”Ÿæ—¥</span>' + L.escHtml(dobDisplay) + '</span>'
+      '<span class="pt-meta-item"><span class="pt-meta-label">生日</span>' + L.escHtml(dobDisplay) + '</span>'
     );
     if (phone) metaItems.push(
-      '<span class="pt-meta-item"><span class="pt-meta-label">é›»è©±</span>' +
-      '<span class="phone-copy pr-copy" data-copy="' + L.escHtml(phone) + '" title="é»žæ“Šè¤‡è£½">' + L.escHtml(phone) + '</span></span>'
+      '<span class="pt-meta-item"><span class="pt-meta-label">電話</span>' +
+      '<span class="phone-copy pr-copy" data-copy="' + L.escHtml(phone) + '" title="點擊複製">' + L.escHtml(phone) + '</span></span>'
     );
     if (mobile) metaItems.push(
-      '<span class="pt-meta-item"><span class="pt-meta-label">æ‰‹æ©Ÿ</span>' +
-      '<span class="phone-copy pr-copy" data-copy="' + L.escHtml(mobile) + '" title="é»žæ“Šè¤‡è£½">' + L.escHtml(mobile) + '</span></span>'
+      '<span class="pt-meta-item"><span class="pt-meta-label">手機</span>' +
+      '<span class="phone-copy pr-copy" data-copy="' + L.escHtml(mobile) + '" title="點擊複製">' + L.escHtml(mobile) + '</span></span>'
     );
 
     var fuCards = (p.followups || []).map(function (f) {
       var cls = CAT_CLASS[f.category] || 'cat-default';
       var details = [];
       if (f.disease_name) details.push(f.disease_name);
-      if (f.mspt_stage) details.push('éšŽæ®µ ' + f.mspt_stage);
+      if (f.mspt_stage) details.push('階段 ' + f.mspt_stage);
       if (f.contact_reason) details.push(f.contact_reason);
-      if (f.last_visit_date) details.push('æœ€å¾Œå°±è¨º ' + f.last_visit_date);
+      if (f.last_visit_date) details.push('最後就診 ' + f.last_visit_date);
       var od = f.days_overdue;
       var odText = overdueText(od, f.due_date);
       var odCls = overdueCls(od);
       return '<div class="fu-card">' +
         '<span class="fu-card-cat ' + L.escHtml(cls) + '">' + L.escHtml(f.category) + '</span>' +
         (details.length ? '<div class="fu-card-disease">' + L.escHtml(details[0]) + '</div>' : '') +
-        (details.slice(1).length ? '<div class="fu-card-detail">' + L.escHtml(details.slice(1).join('ãƒ»')) + '</div>' : '') +
+        (details.slice(1).length ? '<div class="fu-card-detail">' + L.escHtml(details.slice(1).join('・')) + '</div>' : '') +
         (odText ? '<div class="fu-card-overdue ' + odCls + '">' + L.escHtml(odText) + '</div>' : '') +
       '</div>';
     }).join('');
@@ -205,7 +205,7 @@
     root.innerHTML =
       '<a class="back-link" href="javascript:history.back()">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>' +
-        'è¿”å›ž' +
+        '返回' +
       '</a>' +
       '<div class="pt-hero">' +
         '<div class="pt-av">' + L.escHtml(initials) + '</div>' +
@@ -215,10 +215,10 @@
           '<div class="pt-chart">' + L.escHtml(p.chart_number) + '</div>' +
         '</div>' +
       '</div>' +
-      (fuCards ? '<div class="pt-section"><div class="pt-section-title">è¿½è¹¤é …ç›®</div><div class="fu-cards">' + fuCards + '</div></div>' : '') +
-      '<div class="pt-section"><div class="pt-section-title">è¯çµ¡è¨˜éŒ„</div>' +
+      (fuCards ? '<div class="pt-section"><div class="pt-section-title">追蹤項目</div><div class="fu-cards">' + fuCards + '</div></div>' : '') +
+      '<div class="pt-section"><div class="pt-section-title">聯絡記錄</div>' +
         '<div class="hist-list">' +
-          (histRows || '<div class="hist-empty">å°šç„¡è¯çµ¡è¨˜éŒ„</div>') +
+          (histRows || '<div class="hist-empty">尚無聯絡記錄</div>') +
         '</div>' +
       '</div>';
 
@@ -227,7 +227,7 @@
       el.addEventListener('click', function () {
         var text = el.dataset.copy || el.textContent;
         navigator.clipboard.writeText(text).then(function () {
-          L.showToast('å·²è¤‡è£½ï¼š' + text);
+          L.showToast('已複製：' + text);
         }).catch(function () {});
       });
     });
@@ -235,12 +235,12 @@
 
   var chartNumber = new URLSearchParams(location.search).get('chart');
   if (!chartNumber) {
-    root.innerHTML = '<div class="pt-error">æœªæŒ‡å®šç—…æ‚£</div>';
+    root.innerHTML = '<div class="pt-error">未指定病患</div>';
   } else {
     L.apiFetch('/api/patient-profile/' + encodeURIComponent(chartNumber))
       .then(function (data) { render(data); })
       .catch(function (err) {
-        root.innerHTML = '<div class="pt-error">è¼‰å…¥å¤±æ•—' + (err.message === '404' ? 'ï¼šæ‰¾ä¸åˆ°ç—…æ‚£' : '') + '</div>';
+        root.innerHTML = '<div class="pt-error">載入失敗' + (err.message === '404' ? '：找不到病患' : '') + '</div>';
       });
   }
 })();

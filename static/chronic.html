@@ -1,10 +1,10 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>æ…¢ç°½è¿½è¹¤ â€” è¨ºæ‰€è¿½è¹¤ç³»çµ±</title>
+<title>慢簽追蹤 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=46">
 </head>
 <body>
@@ -20,23 +20,23 @@
       </div>
 
       <div class="ph">
-        <div><h1>æ…¢ç°½è¿½è¹¤</h1><p id="page-date">æ…¢æ€§ç—…é€£çºŒè™•æ–¹ç®‹ â€” é€¾æœŸå¾…è¯ç¹«</p></div>
+        <div><h1>慢簽追蹤</h1><p id="page-date">慢性病連續處方箋 — 逾期待聯繫</p></div>
       </div>
 
       <div class="filter-bar" id="filter-bar">
-        <button class="filter-tab on" data-tab="pending">å¾…è¯çµ¡ <span class="tc-count" id="cnt-pending">â€¦</span></button>
-        <button class="filter-tab" data-tab="contacted">å·²è¯ç¹« <span class="tc-count" id="cnt-contacted">â€¦</span></button>
-        <button class="filter-tab" data-tab="hold">æš«ç·©ä¸­ <span class="tc-count" id="cnt-hold">â€¦</span></button>
-              <button class="filter-tab" data-tab="excluded">æŽ’é™¤åå–® <span class="tc-count" id="cnt-excluded">â€¦</span></button>
+        <button class="filter-tab on" data-tab="pending">待聯絡 <span class="tc-count" id="cnt-pending">…</span></button>
+        <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
+        <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
+              <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
       </div>
 
       <div class="search-row">
-        <input class="si" type="text" id="search-input" placeholder="æœå°‹å§“åæˆ–èº«ä»½è­‰â€¦">
+        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
         <span class="sr-count" id="result-count"></span>
       </div>
 
       <div class="list-area" id="list-scroll">
-        <div id="list-pending"><div class="sec-empty">è¼‰å…¥ä¸­â€¦</div></div>
+        <div id="list-pending"><div class="sec-empty">載入中…</div></div>
         <div id="list-contacted" style="display:none"></div>
         <div id="list-hold" style="display:none"></div>
         <div id="list-excluded" style="display:none"></div>
@@ -48,39 +48,39 @@
 
 <div class="modal-overlay" id="modal-contact">
   <div class="modal-box">
-    <div class="modal-title" id="modal-contact-title">è¯çµ¡ç—…æ‚£</div>
+    <div class="modal-title" id="modal-contact-title">聯絡病患</div>
     <div class="modal-sub" id="modal-contact-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">è¯çµ¡æ–¹å¼</label>
+      <label class="modal-label">聯絡方式</label>
       <select class="modal-select" id="modal-contact-type">
-        <option value="contacted">å·²è¯ç¹«ï¼ˆç›´æŽ¥é€šçŸ¥ï¼‰</option>
-        <option value="called">å·²äºŒæ¬¡ç¢ºèªï¼ˆé›»è©±é€šè©±ï¼‰</option>
+        <option value="contacted">已聯繫（直接通知）</option>
+        <option value="called">已二次確認（電話通話）</option>
       </select>
     </div>
     <div class="modal-field">
-      <label class="modal-label">å‚™è¨»ï¼ˆé¸å¡«ï¼‰</label>
-      <textarea class="modal-input" id="modal-contact-note" rows="2" placeholder="ä¾‹ï¼šå·²å‘ŠçŸ¥ä¸‹é€±ä¸‰å›žè¨º"></textarea>
+      <label class="modal-label">備註（選填）</label>
+      <textarea class="modal-input" id="modal-contact-note" rows="2" placeholder="例：已告知下週三回診"></textarea>
     </div>
     <div class="modal-error" id="contact-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-contact')">å–æ¶ˆ</button>
-      <button class="act-btn act-primary" id="btn-contact-confirm">ç¢ºèªé€å‡º</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-contact')">取消</button>
+      <button class="act-btn act-primary" id="btn-contact-confirm">確認送出</button>
     </div>
   </div>
 </div>
 
 <div class="modal-overlay" id="modal-hold">
   <div class="modal-box">
-    <div class="modal-title">è¨­å®šæš«ç·©</div>
+    <div class="modal-title">設定暫緩</div>
     <div class="modal-sub" id="modal-hold-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">å‚™è¨»</label>
-      <textarea class="modal-input" id="modal-hold-note" rows="2" placeholder="ä¾‹ï¼šå‡ºåœ‹ä¸€å€‹æœˆï¼Œ9æœˆå›žä¾†å†è¯çµ¡"></textarea>
+      <label class="modal-label">備註</label>
+      <textarea class="modal-input" id="modal-hold-note" rows="2" placeholder="例：出國一個月，9月回來再聯絡"></textarea>
     </div>
     <div class="modal-error" id="hold-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-hold')">å–æ¶ˆ</button>
-      <button class="act-btn act-warn" id="btn-hold-confirm">è¨­å®šæš«ç·©</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-hold')">取消</button>
+      <button class="act-btn act-warn" id="btn-hold-confirm">設定暫緩</button>
     </div>
   </div>
 </div>
@@ -94,27 +94,27 @@
 
 <div class="modal-overlay" id="modal-exclude">
   <div class="modal-box">
-    <div class="modal-title">æŽ’é™¤ç—…æ‚£</div>
+    <div class="modal-title">排除病患</div>
     <div class="modal-sub" id="modal-exclude-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">æŽ’é™¤åŽŸå› </label>
+      <label class="modal-label">排除原因</label>
       <div class="reason-chips" id="exclude-chips">
-        <button class="reason-chip" data-reason="è½‰è‡³å…¶ä»–è¨ºæ‰€">è½‰è‡³å…¶ä»–è¨ºæ‰€</button>
-        <button class="reason-chip" data-reason="è½‰è‡³å¤§é†«é™¢è¿½è¹¤">è½‰è‡³å¤§é†«é™¢è¿½è¹¤</button>
-        <button class="reason-chip" data-reason="ä¸é¡˜ç¹¼çºŒç”¨è—¥">ä¸é¡˜ç¹¼çºŒç”¨è—¥</button>
-        <button class="reason-chip" data-reason="ç—…æ‚£å·²éŽä¸–">ç—…æ‚£å·²éŽä¸–</button>
-        <button class="reason-chip" data-reason="å·²è‡ªè¡Œåœè—¥">å·²è‡ªè¡Œåœè—¥</button>
-        <button class="reason-chip" data-reason="å…¶ä»–">å…¶ä»–</button>
+        <button class="reason-chip" data-reason="轉至其他診所">轉至其他診所</button>
+        <button class="reason-chip" data-reason="轉至大醫院追蹤">轉至大醫院追蹤</button>
+        <button class="reason-chip" data-reason="不願繼續用藥">不願繼續用藥</button>
+        <button class="reason-chip" data-reason="病患已過世">病患已過世</button>
+        <button class="reason-chip" data-reason="已自行停藥">已自行停藥</button>
+        <button class="reason-chip" data-reason="其他">其他</button>
       </div>
     </div>
     <div class="modal-field">
-      <label class="modal-label">å‚™è¨»ï¼ˆé¸å¡«ï¼‰</label>
-      <textarea class="modal-input" id="modal-exclude-note" rows="2" placeholder="é¸å¡«å‚™è¨»"></textarea>
+      <label class="modal-label">備註（選填）</label>
+      <textarea class="modal-input" id="modal-exclude-note" rows="2" placeholder="選填備註"></textarea>
     </div>
     <div class="modal-error" id="exclude-error"></div>
     <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-exclude')">å–æ¶ˆ</button>
-      <button class="act-btn act-danger" id="btn-exclude-confirm">ç¢ºèªæŽ’é™¤</button>
+      <button class="act-btn" onclick="Layout.hideModal('modal-exclude')">取消</button>
+      <button class="act-btn act-danger" id="btn-exclude-confirm">確認排除</button>
     </div>
   </div>
 </div>
@@ -131,21 +131,21 @@
 
   function applyReport(r) {
     _pending   = r.chronic_prescriptions || [];
-    _contacted = (r.contacted || []).filter(function (e) { return e.category === 'æ…¢ç°½'; })
-                  .concat((r.called || []).filter(function (e) { return e.category === 'æ…¢ç°½'; }));
+    _contacted = (r.contacted || []).filter(function (e) { return e.category === '慢簽'; })
+                  .concat((r.called || []).filter(function (e) { return e.category === '慢簽'; }));
     _contacted.sort(function (a, b) {
       var ka = (a.contacted_at || '') + ' ' + (a.contacted_time || '');
       var kb = (b.contacted_at || '') + ' ' + (b.contacted_time || '');
       return kb < ka ? -1 : kb > ka ? 1 : 0;
     });
-    _hold      = (r.on_hold || []).filter(function (e) { return e.category === 'æ…¢ç°½'; });
+    _hold      = (r.on_hold || []).filter(function (e) { return e.category === '慢簽'; });
     _pendingMap = {}; _pending.forEach(function (e) { _pendingMap[e.patient.chart_number] = e; });
     _contactedMap = {}; _contacted.forEach(function (e) { _contactedMap[e.patient.chart_number] = e; });
     _holdMap = {}; _hold.forEach(function (e) { if (e.patient) _holdMap[e.patient.chart_number] = e; });
-    document.getElementById('page-date').textContent = L.fmtChineseDate() + '  Â·  å…± ' + _pending.length + ' äººå¾…è¯çµ¡';
+    document.getElementById('page-date').textContent = L.fmtChineseDate() + '  ·  共 ' + _pending.length + ' 人待聯絡';
     document.getElementById('cnt-pending').textContent   = _pending.length;
     document.getElementById('cnt-contacted').textContent = _contacted.length;
-    _excluded = (r.excluded || []).filter(function (e) { return e.category === 'æ…¢ç°½'; });
+    _excluded = (r.excluded || []).filter(function (e) { return e.category === '慢簽'; });
     _excludedMap = {}; _excluded.forEach(function (e) { _excludedMap[e.patient.chart_number] = e; });
     document.getElementById('cnt-hold').textContent      = _hold.length;
     document.getElementById('cnt-excluded').textContent  = _excluded.length;
@@ -157,7 +157,7 @@
   function load() {
     L.hideError();
     L.getReport(null, applyReport).then(applyReport)
-      .catch(function (e) { L.showError('è³‡æ–™è¼‰å…¥å¤±æ•— â€” ' + (e.message || '')); });
+      .catch(function (e) { L.showError('資料載入失敗 — ' + (e.message || '')); });
   }
 
   function match(e) {
@@ -168,32 +168,32 @@
 
   function pendingRow(e) {
     return L.patientRow({ entry: e,
-      actions: [{ label: 'å·²è¯ç¹«', cls: 'act-primary', key: 'contact' }],
+      actions: [{ label: '已聯繫', cls: 'act-primary', key: 'contact' }],
       more:    [
-        { label: 'æš«ç·©',   key: 'hold' },
-        { label: 'æŽ’é™¤',   key: 'exclude', cls: 'item-danger' },
+        { label: '暫緩',   key: 'hold' },
+        { label: '排除',   key: 'exclude', cls: 'item-danger' },
       ],
     });
   }
   function contactedRow(e) {
     return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge b-done">å·²è¯ç¹«</span>'],
-      actions: [{ label: 'æ’¤éŠ·', cls: '', key: 'undo-contact' }],
-      more:    [{ label: 'æŽ’é™¤', key: 'exclude', cls: 'item-danger' }],
+      tags: ['<span class="pbadge b-done">已聯繫</span>'],
+      actions: [{ label: '撤銷', cls: '', key: 'undo-contact' }],
+      more:    [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
     });
   }
   function holdRow(e) {
-    var note = e.note || 'æš«ç·©';
+    var note = e.note || '暫緩';
     var adapted = {
       patient: e.patient || { chart_number: 'hold-' + e.hold_id, name: e.manual_name || '?', birth_date: '' },
-      category: 'æ…¢ç°½', mspt_stage: null,
+      category: '慢簽', mspt_stage: null,
       due_date: e.due_date || null, last_visit_date: e.last_visit_date || null, days_overdue: e.days_overdue || 0,
       _hold_id: e.hold_id,
     };
     return L.patientRow({ entry: adapted,
-      tags: ['<span class="pbadge b-hold">' + L.escHtml(note.length > 14 ? note.slice(0,14)+'â€¦' : note) + '</span>'],
-      actions: [{ label: 'è§£é™¤æš«ç·©', cls: '', key: 'undo-hold' }],
-      more:    [{ label: 'æŽ’é™¤', key: 'exclude', cls: 'item-danger' }],
+      tags: ['<span class="pbadge b-hold">' + L.escHtml(note.length > 14 ? note.slice(0,14)+'…' : note) + '</span>'],
+      actions: [{ label: '解除暫緩', cls: '', key: 'undo-hold' }],
+      more:    [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
     });
   }
 
@@ -201,42 +201,42 @@
     var filtered = entries.filter(match);
     var el = document.getElementById(id);
     if (!filtered.length) {
-      el.innerHTML = '<div class="sec-empty">' + (entries.length ? 'æ²’æœ‰ç¬¦åˆæœå°‹æ¢ä»¶çš„ç—…æ‚£' : 'ç›®å‰æ²’æœ‰è¨˜éŒ„') + '</div>';
+      el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件的病患' : '目前沒有記錄') + '</div>';
     } else {
       el.innerHTML = L.patientTable(filtered.map(renderFn).join(''));
     }
     if (_tab === id.replace('list-', ''))
-      document.getElementById('result-count').textContent = 'å…± ' + filtered.length + ' ç­†';
+      document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
 
   function excludedRow(e) {
     var chart  = L.escHtml(e.patient.chart_number);
     var name   = L.escHtml(e.patient.name);
     var reason = L.escHtml(e.reason || '');
-    var note   = e.note ? ' <span style="color:var(--muted)">â€” ' + L.escHtml(e.note) + '</span>' : '';
-    var autoTag = e.auto ? '<span class="pbadge b-hold" style="font-size:10px;padding:1px 6px;margin-right:4px">è‡ªå‹•</span>' : '';
+    var note   = e.note ? ' <span style="color:var(--muted)">— ' + L.escHtml(e.note) + '</span>' : '';
+    var autoTag = e.auto ? '<span class="pbadge b-hold" style="font-size:10px;padding:1px 6px;margin-right:4px">自動</span>' : '';
     var date   = e.excluded_at ? String(e.excluded_at).slice(0,10) : '';
     return '<tr class="pr" data-chart="' + chart + '">' +
       '<td style="color:var(--sub);font-size:12px">' + chart + '</td>' +
       '<td style="font-weight:600">' + autoTag + name + '</td>' +
       '<td style="font-size:12px">' + reason + note + '</td>' +
       '<td style="font-size:12px;color:var(--sub)">' + date + '</td>' +
-      '<td style="text-align:right"><button class="act-btn" data-action="restore">æ¢å¾©è¿½è¹¤</button></td>' +
+      '<td style="text-align:right"><button class="act-btn" data-action="restore">恢復追蹤</button></td>' +
       '</tr>';
   }
   function renderExcluded() {
     var filtered = _excluded.filter(match);
     var el = document.getElementById('list-excluded');
     if (!filtered.length) {
-      el.innerHTML = '<div class="sec-empty">' + (_excluded.length ? 'æ²’æœ‰ç¬¦åˆæœå°‹æ¢ä»¶çš„ç—…æ‚£' : 'å°šç„¡æŽ’é™¤è¨˜éŒ„') + '</div>';
+      el.innerHTML = '<div class="sec-empty">' + (_excluded.length ? '沒有符合搜尋條件的病患' : '尚無排除記錄') + '</div>';
     } else {
       el.innerHTML = '<div class="ptbl-wrap"><table class="p-table" style="table-layout:fixed">' +
         '<colgroup><col style="width:115px"><col><col style="width:160px"><col style="width:90px"><col style="width:110px"></colgroup>' +
-        '<thead><tr><th>èº«ä»½è­‰</th><th>å§“å</th><th>æŽ’é™¤åŽŸå› </th><th>æŽ’é™¤æ—¥æœŸ</th><th></th></tr></thead>' +
+        '<thead><tr><th>身份證</th><th>姓名</th><th>排除原因</th><th>排除日期</th><th></th></tr></thead>' +
         '<tbody>' + filtered.map(excludedRow).join('') + '</tbody></table></div>';
     }
     if (_tab === 'excluded')
-      document.getElementById('result-count').textContent = 'å…± ' + filtered.length + ' ç­†';
+      document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
   function renderAll() {
     renderList(_pending,   pendingRow,   'list-pending');
@@ -254,7 +254,7 @@
       document.getElementById('list-' + t).style.display = t === _tab ? '' : 'none';
     });
     var arr = _tab === 'pending' ? _pending : _tab === 'contacted' ? _contacted : _tab === 'hold' ? _hold : _excluded;
-    document.getElementById('result-count').textContent = 'å…± ' + arr.filter(match).length + ' ç­†';
+    document.getElementById('result-count').textContent = '共 ' + arr.filter(match).length + ' 筆';
   });
 
   document.getElementById('search-input').addEventListener('input', function (e) { _query = e.target.value.trim(); renderAll(); });
@@ -265,8 +265,8 @@
     _actionChart = row.dataset.chart;
     if (action === 'contact') {
       var entry = _pendingMap[_actionChart]; if (!entry) return;
-      document.getElementById('modal-contact-title').textContent = 'è¯çµ¡ ' + entry.patient.name;
-      document.getElementById('modal-contact-sub').textContent = 'èº«ä»½è­‰ ' + entry.patient.chart_number + ' Â· é€¾æœŸ ' + (entry.days_overdue||0) + ' å¤©';
+      document.getElementById('modal-contact-title').textContent = '聯絡 ' + entry.patient.name;
+      document.getElementById('modal-contact-sub').textContent = '身份證 ' + entry.patient.chart_number + ' · 逾期 ' + (entry.days_overdue||0) + ' 天';
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
       L.showModal('modal-contact');
@@ -280,29 +280,29 @@
       var ce = _contactedMap[_actionChart]; if (!ce) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/contacted', { chart_number: ce.patient.chart_number, category: ce.category, due_date: ce.due_date })
-        .then(function () { L.showToast('å·²æ’¤éŠ·è¯çµ¡è¨˜éŒ„'); load(); })
-        .catch(function (e) { L.showToast('æ’¤éŠ·å¤±æ•—ï¼š' + (e.message||''), 'error'); })
+        .then(function () { L.showToast('已撤銷聯絡記錄'); load(); })
+        .catch(function (e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     } else if (action === 'undo-hold') {
       var he = _holdMap[_actionChart]; if (!he) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/on-hold', { hold_id: he.hold_id })
-        .then(function () { L.showToast('å·²è§£é™¤æš«ç·©'); load(); })
-        .catch(function (e) { L.showToast('è§£é™¤å¤±æ•—ï¼š' + (e.message||''), 'error'); })
+        .then(function () { L.showToast('已解除暫緩'); load(); })
+        .catch(function (e) { L.showToast('解除失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     } else if (action === 'restore') {
       var rx = _excludedMap[_actionChart]; if (!rx) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/excluded', { chart_number: rx.patient.chart_number, category: rx.category })
-        .then(function () { L.showToast('å·²æ¢å¾©è¿½è¹¤ï¼š' + rx.patient.name); load(); })
-        .catch(function (e) { L.showToast('æ¢å¾©å¤±æ•—ï¼š' + (e.message||''), 'error'); })
+        .then(function () { L.showToast('已恢復追蹤：' + rx.patient.name); load(); })
+        .catch(function (e) { L.showToast('恢復失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     } else if (action === 'exclude') {
       var excEntry = _pendingMap[_actionChart] || _contactedMap[_actionChart] ||
         (function () { var h = _holdMap[_actionChart]; return h && h.patient ? h : null; })();
       if (!excEntry) return;
-      _excludeEntry = excEntry.patient ? excEntry : { patient: excEntry.patient, category: 'æ…¢ç°½', due_date: excEntry.due_date, days_overdue: excEntry.days_overdue };
-      document.getElementById('modal-exclude-sub').textContent = excEntry.patient.name + ' â€” æŽ’é™¤å¾Œä¸å†å‡ºç¾æ–¼è¿½è¹¤æ¸…å–®';
+      _excludeEntry = excEntry.patient ? excEntry : { patient: excEntry.patient, category: '慢簽', due_date: excEntry.due_date, days_overdue: excEntry.days_overdue };
+      document.getElementById('modal-exclude-sub').textContent = excEntry.patient.name + ' — 排除後不再出現於追蹤清單';
       document.getElementById('modal-exclude-note').value = '';
       document.getElementById('exclude-error').classList.remove('show');
       document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
@@ -324,36 +324,36 @@
     errEl.classList.remove('show');
     confirmBtn.disabled = true;
     L.apiAction('POST', url, { entry: entry, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-contact'); L.showToast('è¯çµ¡è¨˜éŒ„å·²å„²å­˜'); load(); })
-      .catch(function (e) { errEl.textContent = e.message || 'æ“ä½œå¤±æ•—ï¼Œè«‹å†è©¦ä¸€æ¬¡'; errEl.classList.add('show'); })
+      .then(function () { L.hideModal('modal-contact'); L.showToast('聯絡記錄已儲存'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
 
   document.getElementById('btn-hold-confirm').addEventListener('click', function () {
     var entry = _pendingMap[_actionChart]; if (!entry) return;
-    var note = document.getElementById('modal-hold-note').value.trim() || 'æš«ç·©';
+    var note = document.getElementById('modal-hold-note').value.trim() || '暫緩';
     var confirmBtn = this;
     var errEl = document.getElementById('hold-error');
     errEl.classList.remove('show');
     confirmBtn.disabled = true;
     L.apiAction('POST', '/api/on-hold', { entry: entry, note: note, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-hold'); L.showToast('å·²è¨­å®šæš«ç·©'); load(); })
-      .catch(function (e) { errEl.textContent = e.message || 'æ“ä½œå¤±æ•—ï¼Œè«‹å†è©¦ä¸€æ¬¡'; errEl.classList.add('show'); })
+      .then(function () { L.hideModal('modal-hold'); L.showToast('已設定暫緩'); load(); })
+      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
 
   document.getElementById('btn-exclude-confirm').addEventListener('click', function () {
     var selected = document.querySelector('#exclude-chips .reason-chip.selected');
     var errEl = document.getElementById('exclude-error');
-    if (!selected) { errEl.textContent = 'è«‹é¸æ“‡æŽ’é™¤åŽŸå› '; errEl.classList.add('show'); return; }
+    if (!selected) { errEl.textContent = '請選擇排除原因'; errEl.classList.add('show'); return; }
     var reason = selected.dataset.reason;
     var note = document.getElementById('modal-exclude-note').value.trim();
     var confirmBtn = this;
     errEl.classList.remove('show');
     confirmBtn.disabled = true;
     L.apiAction('POST', '/api/excluded', { entry: _excludeEntry, reason: reason, note: note, nurse: L.getNurse() })
-      .then(function () { L.hideModal('modal-exclude'); L.showToast('å·²æŽ’é™¤ï¼š' + _excludeEntry.patient.name); load(); })
-      .catch(function (e) { errEl.textContent = e.message || 'æ“ä½œå¤±æ•—ï¼Œè«‹å†è©¦ä¸€æ¬¡'; errEl.classList.add('show'); })
+      .then(function () { L.hideModal('modal-exclude'); L.showToast('已排除：' + _excludeEntry.patient.name); load(); })
+      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
 

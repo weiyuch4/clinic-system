@@ -1,16 +1,16 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>è¨˜äº‹ â€” è¨ºæ‰€è¿½è¹¤ç³»çµ±</title>
+<title>記事 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=46">
 <style>
-/* â”€â”€ Two-panel workspace â”€â”€ */
+/* ── Two-panel workspace ── */
 .notes-workspace{display:flex;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;height:calc(100vh - 190px);min-height:480px;max-height:760px}
 
-/* â”€â”€ Left sidebar â”€â”€ */
+/* ── Left sidebar ── */
 .notes-sidebar{width:240px;flex-shrink:0;border-right:1px solid var(--border);display:flex;flex-direction:column;background:var(--card);overflow:hidden}
 
 .notes-search-wrap{padding:14px 12px 10px;flex-shrink:0}
@@ -32,7 +32,7 @@
 /* Note list scroll area */
 .notes-list{flex:1;overflow-y:auto;padding:6px 0}
 
-/* â”€â”€ Note cards in sidebar â”€â”€ */
+/* ── Note cards in sidebar ── */
 .note-item{display:flex;align-items:center;border-left:4px solid #FCD34D;margin:2px 8px;border-radius:6px;cursor:pointer;padding:8px 8px 8px 10px;gap:8px;transition:background .1s}
 .note-item[data-color="yellow"]{border-left-color:#FCD34D;background:rgba(252,211,77,.07)}
 .note-item[data-color="blue"]  {border-left-color:#60A5FA;background:rgba(96,165,250,.08)}
@@ -55,7 +55,7 @@
 .note-del{background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;border-radius:4px;display:flex;align-items:center;transition:color .12s,background .12s;flex-shrink:0}
 .note-del:hover{color:#dc2626;background:rgba(220,38,38,.08)}
 
-/* â”€â”€ Empty / idle states â”€â”€ */
+/* ── Empty / idle states ── */
 .notes-empty{text-align:center;color:var(--muted);font-size:13px;padding:36px 16px}
 .notes-empty p{font-weight:500;color:var(--sub);margin-bottom:4px}
 .notes-empty small{font-size:12px}
@@ -65,7 +65,7 @@
 .notes-idle p{font-size:13.5px;font-weight:500;color:var(--sub);margin:0}
 .notes-idle small{font-size:12px}
 
-/* â”€â”€ Right editor panel â”€â”€ */
+/* ── Right editor panel ── */
 .notes-editor{flex:1;display:flex;flex-direction:column;padding:20px 24px;gap:14px;background:var(--card);min-width:0}
 
 .notes-editor-hd{display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
@@ -79,7 +79,7 @@
 .notes-editor-footer{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .notes-color-label{font-size:13px;color:var(--sub);font-weight:500;white-space:nowrap}
 
-/* â”€â”€ Circular color pickers with checkmark â”€â”€ */
+/* ── Circular color pickers with checkmark ── */
 .color-pick{display:flex;gap:8px;align-items:center}
 .cp-sw{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:transform .12s,border-color .12s,box-shadow .12s;flex-shrink:0;position:relative;display:inline-flex;align-items:center;justify-content:center}
 .cp-sw:hover{transform:scale(1.1)}
@@ -90,16 +90,16 @@
 .cp-sw[data-c="green"] {background:#4ADE80}
 .cp-sw[data-c="pink"]  {background:#F472B6}
 
-/* â”€â”€ Read-only note view â”€â”€ */
+/* ── Read-only note view ── */
 .notes-view-body{flex:1;padding:4px 2px;font-size:14px;line-height:1.7;color:var(--text);overflow-y:auto;white-space:pre-wrap;word-break:break-word;min-height:200px}
 
-/* â”€â”€ Undo toast â”€â”€ */
+/* ── Undo toast ── */
 .undo-toast{position:fixed;bottom:24px;right:24px;background:#1F2937;color:#fff;padding:11px 14px 11px 18px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.28);display:flex;align-items:center;gap:12px;z-index:9999;transform:translateY(10px);opacity:0;transition:transform .22s,opacity .22s;pointer-events:none}
 .undo-toast.show{transform:translateY(0);opacity:1;pointer-events:auto}
 .undo-btn{background:#fff;color:#111827;border:none;border-radius:6px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
 .undo-btn:hover{background:#f3f4f6}
 
-/* â”€â”€ Dark mode â”€â”€ */
+/* ── Dark mode ── */
 @media(prefers-color-scheme:dark){
   :root:not([data-theme=light]) .note-item[data-color="yellow"]{background:rgba(252,211,77,.10)}
   :root:not([data-theme=light]) .note-item[data-color="blue"]  {background:rgba(96,165,250,.12)}
@@ -131,21 +131,21 @@
 :root[data-theme=dark] .cp-sw.active{border-color:rgba(255,255,255,.5)}
 :root[data-theme=dark] .cp-sw.active::after{border-color:rgba(255,255,255,.7)}
 
-/* â”€â”€ Back button (mobile-only, hidden on desktop) â”€â”€ */
+/* ── Back button (mobile-only, hidden on desktop) ── */
 .notes-back-btn{display:none;align-items:center;gap:5px;background:transparent;border:none;cursor:pointer;color:var(--sub);font-size:14px;font-weight:600;padding:4px 8px 4px 0;font-family:inherit;flex-shrink:0;transition:color .1s}
 .notes-back-btn:hover{color:var(--text)}
 .notes-back-btn svg{flex-shrink:0}
 
-/* â”€â”€ Mobile: show only one panel at a time â”€â”€ */
+/* ── Mobile: show only one panel at a time ── */
 @media(max-width:767px){
-  /* Workspace loses fixed height â€” .ct handles page scroll */
+  /* Workspace loses fixed height — .ct handles page scroll */
   .notes-workspace{flex-direction:column;height:auto;min-height:unset;max-height:unset}
 
   /* List panel: full width, natural height, page scrolls */
   .notes-sidebar{width:100%;border-right:none;border-bottom:none;max-height:unset;height:auto;overflow:visible}
   .notes-list{flex:none;overflow-y:visible}
 
-  /* Editor panel: fixed full-screen overlay (above nav, below topbar) â€” hidden by default */
+  /* Editor panel: fixed full-screen overlay (above nav, below topbar) — hidden by default */
   .notes-editor{
     display:none;
     position:fixed;
@@ -189,7 +189,7 @@
       </div>
 
       <div class="ph">
-        <div><h1>è¨˜äº‹</h1><p>å‰å°å…±ç”¨è¨˜äº‹æ¿ï¼Œå³æ™‚åŒæ­¥</p></div>
+        <div><h1>記事</h1><p>前台共用記事板，即時同步</p></div>
       </div>
 
       <div class="notes-workspace">
@@ -197,19 +197,19 @@
         <!-- Left panel: search + note list -->
         <div class="notes-sidebar">
           <div class="notes-search-wrap">
-            <input type="text" class="notes-search" id="notes-search" placeholder="æœå°‹è¨˜äº‹â€¦" autocomplete="off">
+            <input type="text" class="notes-search" id="notes-search" placeholder="搜尋記事…" autocomplete="off">
           </div>
           <div class="notes-sidebar-hd">
             <div class="notes-sidebar-hd-left">
-              <span>æ‰€æœ‰è¨˜äº‹</span>
+              <span>所有記事</span>
               <span class="notes-hd-count" id="notes-count"></span>
             </div>
             <span class="notes-live">
-              <span class="live-dot"></span>å³æ™‚åŒæ­¥
+              <span class="live-dot"></span>即時同步
             </span>
           </div>
           <div class="notes-list" id="notes-list">
-            <div class="notes-empty" id="notes-loading">è¼‰å…¥ä¸­â€¦</div>
+            <div class="notes-empty" id="notes-loading">載入中…</div>
           </div>
         </div>
 
@@ -218,14 +218,14 @@
           <div class="notes-editor-hd">
             <button class="notes-back-btn" id="btn-back" type="button">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-              è¿”å›ž
+              返回
             </button>
-            <span class="notes-editor-title" id="editor-title">è¨˜äº‹</span>
+            <span class="notes-editor-title" id="editor-title">記事</span>
             <div class="editor-hd-btns">
-              <button class="act-btn" id="btn-cancel" hidden>å–æ¶ˆ</button>
-              <button class="act-btn act-primary" id="btn-edit" hidden>ç·¨è¼¯</button>
-              <button class="act-btn act-primary" id="btn-save" hidden>å„²å­˜</button>
-              <button class="act-btn act-primary" id="btn-new">æ–°å¢ž</button>
+              <button class="act-btn" id="btn-cancel" hidden>取消</button>
+              <button class="act-btn act-primary" id="btn-edit" hidden>編輯</button>
+              <button class="act-btn act-primary" id="btn-save" hidden>儲存</button>
+              <button class="act-btn act-primary" id="btn-new">新增</button>
             </div>
           </div>
 
@@ -239,19 +239,19 @@
               <line x1="8" y1="9" x2="16" y2="9"/>
               <line x1="8" y1="13" x2="14" y2="13"/>
             </svg>
-            <p>é»žé¸å·¦å´è¨˜äº‹ä¾†æŸ¥çœ‹</p>
-            <small>æˆ–æŒ‰ã€Œæ–°å¢žã€å»ºç«‹æ–°çš„è¨˜äº‹</small>
+            <p>點選左側記事來查看</p>
+            <small>或按「新增」建立新的記事</small>
           </div>
 
           <!-- Read-only view (shown when a card is selected but not in edit mode) -->
           <div class="notes-view-body" id="notes-view" hidden></div>
 
           <!-- Compose / edit textarea (shown in new or edit mode) -->
-          <textarea class="notes-editor-ta" id="compose-ta" placeholder="åœ¨æ­¤è¼¸å…¥è¨˜äº‹å…§å®¹ï¼ŒCtrl+Enter é€å‡ºâ€¦" hidden></textarea>
+          <textarea class="notes-editor-ta" id="compose-ta" placeholder="在此輸入記事內容，Ctrl+Enter 送出…" hidden></textarea>
 
           <!-- Footer: color picker only (hidden when idle) -->
           <div class="notes-editor-footer" id="editor-footer" hidden>
-            <span class="notes-color-label">é¸æ“‡é¡è‰²</span>
+            <span class="notes-color-label">選擇顏色</span>
             <div class="color-pick" id="color-pick">
               <span class="cp-sw active" data-c="yellow"></span>
               <span class="cp-sw" data-c="blue"></span>
@@ -263,8 +263,8 @@
 
       </div>
 
-      <!-- FAB: mobile-only æ–°å¢ž button, hidden when editor is open -->
-      <button class="notes-fab" id="btn-mob-add" type="button" title="æ–°å¢žè¨˜äº‹">
+      <!-- FAB: mobile-only 新增 button, hidden when editor is open -->
+      <button class="notes-fab" id="btn-mob-add" type="button" title="新增記事">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
       </button>
 
@@ -286,7 +286,7 @@
 
   var ACCENT = { yellow: '#FCD34D', blue: '#60A5FA', green: '#4ADE80', pink: '#F472B6' };
 
-  // â”€â”€ Mobile panel switching â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Mobile panel switching ──────────────────────────────────────────────────
   function _isMob() { return window.innerWidth < 768; }
   function _showEditorPanel() {
     if (!_isMob()) return;
@@ -299,7 +299,7 @@
     if (ws) ws.classList.remove('notes-show-editor');
   }
 
-  // â”€â”€ UI state helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── UI state helpers ────────────────────────────────────────────────────────
 
   function setColor(c) {
     _color = c;
@@ -319,7 +319,7 @@
   function showIdle() {
     _mode = 'idle';
     _selectedId = null;
-    document.getElementById('editor-title').textContent = 'è¨˜äº‹';
+    document.getElementById('editor-title').textContent = '記事';
     _setHeaderBtns('idle');
     document.getElementById('notes-idle').style.display = '';
     document.getElementById('notes-view').hidden = true;
@@ -332,7 +332,7 @@
   function showView(note) {
     _mode = 'view';
     _selectedId = note.id;
-    document.getElementById('editor-title').textContent = 'è¨˜äº‹';
+    document.getElementById('editor-title').textContent = '記事';
     _setHeaderBtns('view');
     document.getElementById('notes-idle').style.display = 'none';
     document.getElementById('notes-view').hidden = false;
@@ -346,7 +346,7 @@
   function showNew() {
     _mode = 'new';
     _selectedId = null;
-    document.getElementById('editor-title').textContent = 'æ–°å¢ž';
+    document.getElementById('editor-title').textContent = '新增';
     _setHeaderBtns('new');
     document.getElementById('notes-idle').style.display = 'none';
     document.getElementById('notes-view').hidden = true;
@@ -362,7 +362,7 @@
   function showEdit(note) {
     _mode = 'edit';
     _selectedId = note.id;
-    document.getElementById('editor-title').textContent = 'ç·¨è¼¯';
+    document.getElementById('editor-title').textContent = '編輯';
     _setHeaderBtns('edit');
     document.getElementById('notes-idle').style.display = 'none';
     document.getElementById('notes-view').hidden = true;
@@ -382,12 +382,12 @@
     });
   }
 
-  // â”€â”€ Initial state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Initial state ──────────────────────────────────────────────────────────
 
   setColor('yellow');
   showIdle();
 
-  // â”€â”€ Color picker â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Color picker ──────────────────────────────────────────────────────────
 
   document.getElementById('color-pick').addEventListener('click', function (e) {
     var sw = e.target.closest('.cp-sw');
@@ -395,13 +395,13 @@
     setColor(sw.dataset.c);
   });
 
-  // â”€â”€ Keyboard shortcut â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Keyboard shortcut ─────────────────────────────────────────────────────
 
   document.getElementById('compose-ta').addEventListener('keydown', function (e) {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); submit(); }
   });
 
-  // â”€â”€ Button handlers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Button handlers ───────────────────────────────────────────────────────
 
   document.getElementById('btn-back').addEventListener('click', showIdle);
   document.getElementById('btn-new').addEventListener('click', showNew);
@@ -420,7 +420,7 @@
   });
   document.getElementById('btn-save').addEventListener('click', submit);
 
-  // â”€â”€ Unified submit: POST (new) or PATCH (edit) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Unified submit: POST (new) or PATCH (edit) ───────────────────────────
 
   function submit() {
     var ta = document.getElementById('compose-ta');
@@ -447,7 +447,7 @@
         .catch(function (e) {
           _notes = _notes.filter(function (n) { return n.id !== optimistic.id; });
           render(_notes);
-          L.showToast('æ–°å¢žå¤±æ•—ï¼š' + (e.message || ''), 'error');
+          L.showToast('新增失敗：' + (e.message || ''), 'error');
         })
         .finally(function () { btn.disabled = false; });
     } else if (_mode === 'edit' && _selectedId) {
@@ -457,16 +457,16 @@
           _notes = _notes.map(function (n) { return n.id === updated.id ? updated : n; });
           render(_notes);
           showView(updated);
-          L.showToast('å·²å„²å­˜', 'success');
+          L.showToast('已儲存', 'success');
         })
         .catch(function (e) {
-          L.showToast('å„²å­˜å¤±æ•—ï¼š' + (e.message || ''), 'error');
+          L.showToast('儲存失敗：' + (e.message || ''), 'error');
         })
         .finally(function () { btn.disabled = false; });
     }
   }
 
-  // â”€â”€ List click: card select OR delete â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── List click: card select OR delete ────────────────────────────────────
 
   document.getElementById('notes-list').addEventListener('click', function (e) {
     // Delete button
@@ -485,7 +485,7 @@
       render(_notes);
       var toast = document.createElement('div');
       toast.className = 'undo-toast';
-      toast.innerHTML = 'å·²ç§»é™¤è¨˜äº‹ <button class="undo-btn">å¾©åŽŸ</button>';
+      toast.innerHTML = '已移除記事 <button class="undo-btn">復原</button>';
       document.body.appendChild(toast);
       setTimeout(function () { toast.classList.add('show'); }, 10);
       var timerId = setTimeout(function () { _commitDelete(id); }, 5000);
@@ -494,7 +494,7 @@
       return;
     }
 
-    // Card click â†’ load into editor
+    // Card click → load into editor
     var card = e.target.closest('.note-item');
     if (!card) return;
     var noteId = card.dataset.id ? Number(card.dataset.id) : null;
@@ -507,20 +507,20 @@
     showView(found);
   });
 
-  // â”€â”€ Search filter â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Search filter ─────────────────────────────────────────────────────────
 
   document.getElementById('notes-search').addEventListener('input', function (e) {
     _searchQuery = e.target.value.trim().toLowerCase();
     render(_notes);
   });
 
-  // â”€â”€ Delete helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Delete helpers ────────────────────────────────────────────────────────
 
   function _commitDelete(id) {
     var entry = _pendingDeletes[id]; if (!entry) return;
     _dismissToast(entry.toastEl); delete _pendingDeletes[id];
     L.apiAction('DELETE', '/api/notes/' + id).catch(function (e) {
-      L.showToast('åˆªé™¤å¤±æ•—ï¼š' + (e.message || ''), 'error');
+      L.showToast('刪除失敗：' + (e.message || ''), 'error');
       _notes.splice(0, 0, entry.note); render(_notes);
     });
   }
@@ -537,7 +537,7 @@
     setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 280);
   }
 
-  // â”€â”€ Render note list â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Render note list ──────────────────────────────────────────────────────
 
   function render(notes) {
     var list = document.getElementById('notes-list');
@@ -556,15 +556,15 @@
 
     if (!filtered.length) {
       list.innerHTML = !notes.length
-        ? '<div class="notes-empty"><p>ç›®å‰æ²’æœ‰è¨˜äº‹</p><small>æŒ‰ã€Œæ–°å¢žã€å³å¯æ–°å¢ž</small></div>'
-        : '<div class="notes-empty"><p>ç„¡ç¬¦åˆçš„è¨˜äº‹</p></div>';
+        ? '<div class="notes-empty"><p>目前沒有記事</p><small>按「新增」即可新增</small></div>'
+        : '<div class="notes-empty"><p>無符合的記事</p></div>';
       return;
     }
 
     list.innerHTML = filtered.map(function (n) {
       var color = n.color || 'yellow';
       var isTemp = !!n._tmp;
-      var firstLine = ((n.content || '').split('\n')[0] || '').trim() || 'ï¼ˆç„¡å…§å®¹ï¼‰';
+      var firstLine = ((n.content || '').split('\n')[0] || '').trim() || '（無內容）';
       var timeLabel = '';
       if (n.created_at) {
         var m = n.created_at.match(/(\d{1,2}:\d{2})/);
@@ -572,7 +572,7 @@
       }
       var isSelected = !isTemp && _mode === 'edit' && n.id === _selectedId;
       var delBtn = !isTemp
-        ? '<button class="note-del" data-id="' + L.escHtml(String(n.id)) + '" title="åˆªé™¤">' +
+        ? '<button class="note-del" data-id="' + L.escHtml(String(n.id)) + '" title="刪除">' +
             '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
           '</button>'
         : '';
@@ -586,7 +586,7 @@
     }).join('');
   }
 
-  // â”€â”€ Load & poll â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Load & poll ───────────────────────────────────────────────────────────
 
   function load() {
     L.apiFetch('/api/notes')
@@ -604,7 +604,7 @@
               // Only sync if textarea hasn't been modified
               var ta = document.getElementById('compose-ta');
               if (ta.value === (_notes[i].content || '')) {
-                // already in sync â€” do nothing
+                // already in sync — do nothing
               }
               break;
             }
@@ -612,7 +612,7 @@
         }
       })
       .catch(function (e) {
-        document.getElementById('error-msg').textContent = 'è¨˜äº‹è¼‰å…¥å¤±æ•— â€” ' + (e.message || e);
+        document.getElementById('error-msg').textContent = '記事載入失敗 — ' + (e.message || e);
         document.getElementById('error-bar').style.display = 'flex';
       });
   }
