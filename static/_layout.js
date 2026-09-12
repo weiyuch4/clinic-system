@@ -509,7 +509,7 @@
           // "我的" shows nurse avatar and opens the nurse selector dropdown
           var avChar = _nurse ? _nurse.slice(-1) : '?';
           var avInner = '<span class="mn-ic"><div class="av" id="mob-nurse-av">' + avChar + '</div></span><span>' + item.label + '</span>';
-          return '<button type="button" class="' + cls + '" onclick="Layout.openNurseSelector()">' + avInner + '</button>';
+          return '<button type="button" class="' + cls + '" onclick="event.stopPropagation();Layout.openNurseSelector()">' + avInner + '</button>';
         }
         return '<a href="' + item.href + '" class="' + cls + '">' + inner + '</a>';
       }).join('') +
