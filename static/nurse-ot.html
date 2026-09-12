@@ -590,17 +590,25 @@
   }
 
   function loadLogs() {
-    _nurseFilter = L.getNurse() || _nurseName;
+    _nurseFilter = L.getNurse();
     updateMonthDisplay();
     var stateEl = document.getElementById('log-state');
     document.getElementById('log-table').style.display = 'none';
     document.getElementById('print-btn').style.display = 'none';
+
+    if (!_nurseFilter) {
+      stateEl.className = '';
+      stateEl.textContent = '請先點右上角選擇護理師身份';
+      stateEl.style.display = '';
+      return;
+    }
+
     stateEl.className = 'ot-loading';
     stateEl.textContent = '載入中…';
     stateEl.style.display = '';
 
     L.apiFetch('/api/nurse/ot-logs?month=' + encodeURIComponent(monthStr(_currentYear, _currentMon)) +
-               (_nurseFilter ? '&nurse=' + encodeURIComponent(_nurseFilter) : ''))
+               '&nurse=' + encodeURIComponent(_nurseFilter))
       .then(function(logs) { renderRows(logs); })
       .catch(function() {
         stateEl.className = 'ot-err-msg';
@@ -617,6 +625,7 @@
 
   window.addEntry = function() {
     document.getElementById('add-err').style.display = 'none';
+    if (!_nurseFilter) { showErr('請先選擇護理師身份'); return; }
     var dateVal = _dpYear ? (_dpYear+'-'+pad2(_dpMon)+'-'+pad2(_dpDay)) : '';
     var st = _tp['tp-start'], et = _tp['tp-end'];
     if (!dateVal)   { showErr('請選擇日期'); return; }
@@ -658,7 +667,7 @@
       return s+Math.max(0,calcMins(sp[0],sp[1],ep[0],ep[1]));
     }, 0);
     document.getElementById('print-meta').textContent =
-      (_nurseFilter || _nurseName) + '　' + label + '　共 ' + _logs.length + ' 筆，合計 ' + fmtHours(totalMins);
+      (_nurseFilter || '') + '　' + label + '　共 ' + _logs.length + ' 筆，合計 ' + fmtHours(totalMins);
     window.print();
   };
 
@@ -674,7 +683,7 @@
     L.apiFetch('/api/me')
       .then(function(me) {
         _nurseName   = me.display_name || '';
-        _nurseFilter = L.getNurse() || _nurseName;
+        _nurseFilter = L.getNurse();
         document.getElementById('page-sub').textContent =
           _nurseFilter ? _nurseFilter + ' 的加班紀錄' : '自行記錄加班時間，供薪資計算參考';
         loadLogs();
