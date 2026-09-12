@@ -558,7 +558,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .note-footer{font-size:13px}
 
   /* ── bottom nav item height ───────────────────────── */
-  .mn-item{padding:6px 4px 8px}
+  .mn-item{padding:10px 4px 8px}
 
   /* ── toast/undo — lift above bottom nav ───────────── */
   .toast,.undo-toast{bottom:calc(68px + env(safe-area-inset-bottom,0px) + 10px)}
