@@ -133,6 +133,11 @@
     _pending   = r.chronic_prescriptions || [];
     _contacted = (r.contacted || []).filter(function (e) { return e.category === '慢簽'; })
                   .concat((r.called || []).filter(function (e) { return e.category === '慢簽'; }));
+    _contacted.sort(function (a, b) {
+      var ka = (a.contacted_at || '') + ' ' + (a.contacted_time || '');
+      var kb = (b.contacted_at || '') + ' ' + (b.contacted_time || '');
+      return kb < ka ? -1 : kb > ka ? 1 : 0;
+    });
     _hold      = (r.on_hold || []).filter(function (e) { return e.category === '慢簽'; });
     _pendingMap = {}; _pending.forEach(function (e) { _pendingMap[e.patient.chart_number] = e; });
     _contactedMap = {}; _contacted.forEach(function (e) { _contactedMap[e.patient.chart_number] = e; });
