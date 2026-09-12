@@ -474,14 +474,13 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .mn-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:8px 4px 7px;color:var(--muted);text-decoration:none;border:none;background:transparent;cursor:pointer;font-family:inherit;transition:color .12s}
 .mn-item svg{width:24px;height:24px;flex-shrink:0}
 .mn-item.on{color:#2563eb}
-/* ── mobile nav icon pill ────────────────────────────── */
-.mn-ic{display:flex;align-items:center;justify-content:center;width:48px;height:28px;border-radius:14px;transition:background .15s;flex-shrink:0}
-.mn-item.on .mn-ic{background:rgba(37,99,235,.12)}
+/* ── mobile nav dot indicator ────────────────────────── */
+.mn-ic{display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.mn-item::after{content:'';display:block;width:4px;height:4px;border-radius:50%;background:transparent;margin-top:5px;transition:background .15s;flex-shrink:0}
+.mn-item.on::after{background:currentColor}
 :root[data-theme=dark] .mn-item.on{color:#60a5fa}
-:root[data-theme=dark] .mn-item.on .mn-ic{background:rgba(96,165,250,.18)}
 @media(prefers-color-scheme:dark){
   :root:not([data-theme=light]) .mn-item.on{color:#60a5fa}
-  :root:not([data-theme=light]) .mn-item.on .mn-ic{background:rgba(96,165,250,.18)}
 }
 
 @media(max-width:767px){
