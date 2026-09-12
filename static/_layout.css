@@ -499,12 +499,15 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .tb-title{display:block;max-width:calc(100% - 140px)}
   .ib{width:44px;height:44px}
   #btn-refresh{display:none!important}
-  .nurse-wrap{display:none!important}
+  /* Collapse nurse-wrap to 0×0 instead of display:none so the fixed-position
+     nurse-dd child can still render (display:none hides fixed children too) */
+  .nurse-wrap{position:fixed!important;width:0!important;height:0!important;overflow:visible!important;pointer-events:none!important}
+  .nurse-btn{display:none!important}
   .nurse-lbl{display:none!important}
   .nurse-chev{display:none!important}
   /* Nurse dropdown: fixed position above bottom nav when opened from mobile nav */
-  .nurse-dd{position:fixed!important;bottom:calc(72px + env(safe-area-inset-bottom,0px) + 8px)!important;right:12px!important;top:auto!important;transform-origin:bottom right!important;transform:scale(.96)!important;min-width:220px}
-  .nurse-dd.open{transform:scale(1)!important}
+  .nurse-dd{position:fixed!important;bottom:calc(72px + env(safe-area-inset-bottom,0px) + 8px)!important;right:12px!important;top:auto!important;transform-origin:bottom right!important;transform:scale(.96)!important;min-width:220px;pointer-events:none!important}
+  .nurse-dd.open{transform:scale(1)!important;pointer-events:auto!important}
 
   /* ── page header — hidden on mobile (topbar shows the title) */
   .ph{display:none!important}

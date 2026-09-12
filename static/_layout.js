@@ -281,7 +281,9 @@
       dd.classList.contains('open') ? closeDd() : openDd();
     });
     document.addEventListener('click', function (e) {
-      if (wrap && !wrap.contains(e.target)) closeDd();
+      var inWrap = wrap && wrap.contains(e.target);
+      var inDd   = dd   && dd.contains(e.target);
+      if (!inWrap && !inDd) closeDd();
     });
     document.addEventListener('keydown', function (e) {
       if (e.key === 'Escape') closeDd();
