@@ -149,9 +149,9 @@
   .notes-sidebar{width:100%;border-right:none;border-bottom:none;max-height:unset;height:auto;overflow:visible}
   .notes-list{flex:none;overflow-y:visible}
 
-  /* Editor panel: fixed full-screen overlay (above nav, below topbar) — hidden by default */
+  /* Editor panel: fixed full-screen overlay — slides in from the right */
   .notes-editor{
-    display:none;
+    display:flex;
     position:fixed;
     top:54px;
     left:0;
@@ -162,10 +162,18 @@
     padding:16px;
     overflow-y:auto;
     border-top:1px solid var(--border);
+    transform:translateX(100%);
+    transition:transform .32s cubic-bezier(.32,.72,0,1);
+    visibility:hidden;
+    pointer-events:none;
   }
 
-  /* When workspace has .notes-show-editor: reveal editor, cover list */
-  .notes-workspace.notes-show-editor .notes-editor{display:flex}
+  /* When workspace has .notes-show-editor: slide editor in */
+  .notes-workspace.notes-show-editor .notes-editor{
+    transform:translateX(0);
+    visibility:visible;
+    pointer-events:auto;
+  }
   .notes-workspace.notes-show-editor .notes-sidebar{visibility:hidden;pointer-events:none}
   .notes-workspace.notes-show-editor ~ .notes-fab{display:none}
 
