@@ -202,12 +202,25 @@
       if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || ('HTTP ' + r.status)); });
       return r.status === 204 ? null : r.json().catch(function() { return null; });
     }
+    function _parseAndClear(r) {
+      if (r.ok) _clearReportCache();
+      return _parseResp(r);
+    }
     return _doReq().then(function(r) {
       if (r.status === 401) {
-        return _refreshToken().then(_doReq).then(_parseResp);
+        return _refreshToken().then(_doReq).then(_parseAndClear);
       }
-      return _parseResp(r);
+      return _parseAndClear(r);
     });
+  }
+
+  function _clearReportCache() {
+    try {
+      var prefix = 'clinic_rpt_';
+      Object.keys(sessionStorage).forEach(function(k) {
+        if (k.indexOf(prefix) === 0) sessionStorage.removeItem(k);
+      });
+    } catch(e) {}
   }
 
   // ── Nurse selector ───────────────────────────────────
