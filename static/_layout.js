@@ -40,7 +40,7 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
-    { version: 1, date: '2026-09-14', items: [
+    { version: 0, date: '2026-09-14', items: [
       '加班紀錄改為每位護理師各自獨立，不互相顯示',
       '手機底部導覽列改為純圖示，更簡潔',
       '記事頁新增/返回加入滑動動畫',
