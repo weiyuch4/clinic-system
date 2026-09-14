@@ -47,7 +47,9 @@
       '修正手機版頁面無法卷動的問題',
     ]},
   ];
-  var _CL_SEEN_KEY = 'clinic_changelog_seen';
+  function _clKey(name) {
+    return 'clinic_cl_' + (name || '_guest');
+  }
 
   // ── Nav structure ────────────────────────────────────
   var MAIN_NAV = [
@@ -421,6 +423,7 @@
     _updateNurseLbl(name);
     _renderNurseShift();
     _updateChangePinBtn();
+    if (name) _checkChangelogForNurse(name);
     if (_onNurseChange) _onNurseChange(name);
   }
 
@@ -1067,15 +1070,21 @@
   }
 
   function _dismissChangelog() {
-    try { localStorage.setItem(_CL_SEEN_KEY, String(CHANGELOG[0].version)); } catch(e) {}
+    try { localStorage.setItem(_clKey(_nurse), String(CHANGELOG[0].version)); } catch(e) {}
     hideModal('changelog-modal');
   }
 
   function _initChangelog() {
     var latest = CHANGELOG[0];
-    var seen = parseInt(localStorage.getItem(_CL_SEEN_KEY) || '0', 10);
+    var seen = parseInt(localStorage.getItem(_clKey(_nurse)) || '0', 10);
     if (seen >= latest.version) return;
     setTimeout(_showChangelogModal, 700);
+  }
+
+  function _checkChangelogForNurse(name) {
+    var latest = CHANGELOG[0];
+    var seen = parseInt(localStorage.getItem(_clKey(name)) || '0', 10);
+    if (seen < latest.version) _showChangelogModal();
   }
 
   // ── PIN modal (injected into body) ───────────────────
