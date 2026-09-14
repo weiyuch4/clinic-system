@@ -36,6 +36,19 @@
     me:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
   };
 
+  // ── Changelog ────────────────────────────────────────
+  // Add a new entry at the TOP when deploying. Bump `version` by 1.
+  // Nurses see the modal once per version (stored in localStorage).
+  var CHANGELOG = [
+    { version: 1, date: '2026-09-14', items: [
+      '加班紀錄改為每位護理師各自獨立，不互相顯示',
+      '手機底部導覽列改為純圖示，更簡潔',
+      '記事頁新增/返回加入滑動動畫',
+      '修正手機版頁面無法卷動的問題',
+    ]},
+  ];
+  var _CL_SEEN_KEY = 'clinic_changelog_seen';
+
   // ── Nav structure ────────────────────────────────────
   var MAIN_NAV = [
     { id: 'dashboard', label: '今日總覽',  href: '/dashboard',       badge: false },
@@ -1026,6 +1039,45 @@
   var _PIN_INPUT_STYLE = 'border:1.5px solid var(--border);border-radius:var(--r);padding:9px 12px;font-size:22px;letter-spacing:8px;text-align:center;width:100%;background:var(--bg);color:var(--text);box-sizing:border-box;outline:none';
   var _PIN_LBL_STYLE  = 'font-size:12px;font-weight:600;color:var(--sub);margin-bottom:3px';
 
+  // ── Changelog modal ──────────────────────────────────
+  function _injectChangelogModal() {
+    if (document.getElementById('changelog-modal')) return;
+    var latest = CHANGELOG[0];
+    var star = '<svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#2563EB" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+    var itemsHtml = latest.items.map(function (item) {
+      return '<li>' + escHtml(item) + '</li>';
+    }).join('');
+    var d = document.createElement('div');
+    d.innerHTML =
+      '<div class="modal-overlay cl-overlay" id="changelog-modal">' +
+        '<div class="modal-box cl-box">' +
+          '<div class="cl-star">' + star + '</div>' +
+          '<div class="modal-title" style="text-align:center">功能更新</div>' +
+          '<div class="cl-date">' + escHtml(latest.date) + '</div>' +
+          '<ul class="cl-list">' + itemsHtml + '</ul>' +
+          '<button class="act-btn act-primary cl-ok" onclick="Layout._dismissChangelog()">了解</button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(d.firstChild);
+  }
+
+  function _showChangelogModal() {
+    _injectChangelogModal();
+    showModal('changelog-modal');
+  }
+
+  function _dismissChangelog() {
+    try { localStorage.setItem(_CL_SEEN_KEY, String(CHANGELOG[0].version)); } catch(e) {}
+    hideModal('changelog-modal');
+  }
+
+  function _initChangelog() {
+    var latest = CHANGELOG[0];
+    var seen = parseInt(localStorage.getItem(_CL_SEEN_KEY) || '0', 10);
+    if (seen >= latest.version) return;
+    setTimeout(_showChangelogModal, 700);
+  }
+
   // ── PIN modal (injected into body) ───────────────────
   function _injectPinModal() {
     if (document.getElementById('pin-modal')) return;
@@ -1127,6 +1179,7 @@
     }
 
     _initPWA();
+    _initChangelog();
 
     if (_isMobile) {
       _renderMobileNav();
@@ -1286,6 +1339,7 @@
     openLabModal:      _openLabModal,
     closeLabModal:     _closeLabModal,
     _labTab:           _labTab,
+    _dismissChangelog:     _dismissChangelog,
     _closePinModal:        _closePinModal,
     _submitPin:            _submitPin,
     _closeChangePinModal:  _closeChangePinModal,
