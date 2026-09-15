@@ -31,6 +31,11 @@
 .sg-empty{color:var(--border);font-size:11px}
 .unpub-banner{background:var(--bg);border:1.5px dashed var(--border);border-radius:var(--r);padding:30px;text-align:center;color:var(--muted);font-size:13px}
 .sg-cell.last-row{border-bottom:none}
+.excl-row{display:flex;align-items:center;gap:5px;margin-bottom:10px;flex-wrap:wrap}
+.excl-lbl{font-size:12px;color:var(--sub);flex-shrink:0;margin-right:2px}
+.excl-day{width:28px;height:28px;border-radius:7px;border:1.5px solid var(--border);background:transparent;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;transition:background .12s,color .12s,border-color .12s}
+.excl-day:hover{border-color:var(--sub)}
+.excl-day.off{color:var(--muted);text-decoration:line-through;border-style:dashed}
 .sg-mine{background:rgba(75,170,255,.08)}
 .sg-entry{display:flex;flex-direction:column;gap:1px;padding:2px 0}
 .sg-entry+.sg-entry{border-top:1px solid var(--border);margin-top:5px;padding-top:5px}
@@ -95,6 +100,17 @@
         </button>
       </div>
 
+      <div class="excl-row">
+        <span class="excl-lbl">列印排除：</span>
+        <button class="excl-day" data-dow="0">日</button>
+        <button class="excl-day" data-dow="1">一</button>
+        <button class="excl-day" data-dow="2">二</button>
+        <button class="excl-day" data-dow="3">三</button>
+        <button class="excl-day" data-dow="4">四</button>
+        <button class="excl-day" data-dow="5">五</button>
+        <button class="excl-day" data-dow="6">六</button>
+      </div>
+
       <div class="week-nav">
         <button class="wn-btn" id="btn-prev" title="上週">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
@@ -133,6 +149,22 @@
   ];
   var _showAll = false;
   var _lastIdx = null;  // cached schedule index for re-render without refetch
+
+  // ── Day-of-week exclusion for monthly print ──────────
+  var _exclDows = [];
+  try { _exclDows = JSON.parse(localStorage.getItem('print_excl_dows') || '[]'); } catch (e) {}
+  document.querySelectorAll('.excl-day').forEach(function (btn) {
+    var dow = parseInt(btn.dataset.dow, 10);
+    if (_exclDows.indexOf(dow) !== -1) btn.classList.add('off');
+    btn.addEventListener('click', function () {
+      btn.classList.toggle('off');
+      _exclDows = [];
+      document.querySelectorAll('.excl-day.off').forEach(function (b) {
+        _exclDows.push(parseInt(b.dataset.dow, 10));
+      });
+      try { localStorage.setItem('print_excl_dows', JSON.stringify(_exclDows)); } catch (e) {}
+    });
+  });
 
   function setView(all) {
     _showAll = all;
@@ -335,10 +367,13 @@
         return parseInt(m[1], 10) + ':' + m[2];
       }
 
-      // Build column headers: one per day
+      // Build column headers: one per day (skip excluded days of week)
       var dayHdrs = '';
+      var printDays = []; // track which day numbers to include
       for (var d = 1; d <= daysInMonth; d++) {
         var dow = new Date(year + '-' + pad(month) + '-' + pad(d) + 'T00:00:00').getDay();
+        if (_exclDows.indexOf(dow) !== -1) continue;
+        printDays.push(d);
         var we  = dow === 0 || dow === 6;
         dayHdrs += '<th class="dh' + (we ? ' we' : '') + '">' +
           d + '<br><span class="dow">' + DOW_ZH[dow] + '</span></th>';
@@ -348,7 +383,7 @@
       var rows = '';
       nurses.forEach(function (nurse) {
         var cells = '';
-        for (var d = 1; d <= daysInMonth; d++) {
+        printDays.forEach(function (d) {
           var dateStr = year + '-' + pad(month) + '-' + pad(d);
           var dow = new Date(dateStr + 'T00:00:00').getDay();
           var we  = dow === 0 || dow === 6;
@@ -362,7 +397,7 @@
             }).join('<br>');
             cells += '<td class="sc' + (we ? ' we' : '') + '">' + content + '</td>';
           }
-        }
+        });
         rows += '<tr><td class="nc">' + nurse + '</td>' + cells + '</tr>';
       });
 
