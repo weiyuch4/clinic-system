@@ -28,9 +28,6 @@
           <h1>處方追蹤</h1>
           <p id="page-date">所有處方 — 即將到期與需關懷</p>
         </div>
-        <button class="icon-btn" id="btn-refresh" title="重新整理">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.96"/></svg>
-        </button>
       </div>
 
       <div class="filter-bar" id="filter-bar">
@@ -177,9 +174,6 @@
     _query = this.value.trim().toLowerCase();
     _render();
   });
-
-  // ── Refresh ──────────────────────────────────────────
-  document.getElementById('btn-refresh').addEventListener('click', function () { _load(); });
 
   // ── Load ─────────────────────────────────────────────
   function _load() {
