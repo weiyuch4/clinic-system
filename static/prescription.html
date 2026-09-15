@@ -255,7 +255,7 @@
     var shown   = lists[_tab].length;
     var total   = _all.filter(function (e) { return _categorise(e) === _tab; }).length;
     document.getElementById('result-count').textContent =
-      _query ? '符合 ' + shown + ' / ' + total + ' 筆' : '';
+      _query ? '符合 ' + shown + ' / ' + total + ' 筆' : '共 ' + total + ' 筆';
 
     var listEl = document.getElementById('list-' + _tab);
     if (lists[_tab].length === 0) {
