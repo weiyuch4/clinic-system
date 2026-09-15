@@ -128,7 +128,7 @@
   var DOW = ['一','二','三','四','五','六','日'];
   var SLOTS = [
     { key: '早診', label: '早診' },
-    { key: '午診', label: '下午診' },
+    { key: '午診', label: '午診' },
     { key: '晚診', label: '晚診' },
   ];
   var _showAll = false;
@@ -302,13 +302,11 @@
 
   // ── Print month ─────────────────────────────────────
   document.getElementById('btn-print-month').addEventListener('click', function () {
-    // Determine the month from the Thursday of the current week (ISO convention)
     var thursday = L.addDays(_mondayStr, 3);
     var year     = parseInt(thursday.slice(0, 4), 10);
     var month    = parseInt(thursday.slice(5, 7), 10);
-    var monthStr = thursday.slice(0, 7); // "YYYY-MM"
+    var monthStr = thursday.slice(0, 7);
 
-    // Single endpoint: admin sees draft shifts, nurses see published only
     L.apiFetch('/api/schedule/month?month=' + monthStr).then(function (data) {
       var nurses = data.nurses || [];
       var idx = {};
@@ -327,62 +325,67 @@
 
       var daysInMonth = new Date(year, month, 0).getDate();
       var DOW_ZH = ['日', '一', '二', '三', '四', '五', '六'];
-      var SLOT_SHORT = { '早診': '早', '午診': '午', '晚診': '晚' };
 
       function pad(n) { return String(n).padStart(2, '0'); }
-
-      var rows = '';
-      for (var d = 1; d <= daysInMonth; d++) {
-        var dateStr = year + '-' + pad(month) + '-' + pad(d);
-        // Use T00:00:00 so the date is parsed as local time, not UTC midnight
-        var dow     = new Date(dateStr + 'T00:00:00').getDay();
-        var weekend = dow === 0 || dow === 6;
-
-        var cells = nurses.map(function (nurse) {
-          var shifts = (idx[dateStr] && idx[dateStr][nurse]) || [];
-          if (!shifts.length) return '<td class="ec">—</td>';
-          return '<td>' + shifts.map(function (s) {
-            var label = SLOT_SHORT[s.slot] || s.slot;
-            var time  = (s.start_time || '') + (s.end_time ? '–' + s.end_time : '');
-            var clean = (s.clean_start && s.clean_end) ? s.clean_start + '–' + s.clean_end : '';
-            return '<div class="nr">' +
-              '<span class="sl">' + label + '</span>' +
-              '<span class="nt">' + (time || '') + '</span>' +
-              (clean ? '<span class="cl">清 ' + clean + '</span>' : '') +
-            '</div>';
-          }).join('') + '</td>';
-        }).join('');
-
-        rows += '<tr' + (weekend ? ' class="we"' : '') + '>' +
-          '<td class="dc">' + month + '/' + pad(d) + '</td>' +
-          '<td class="wc">週' + DOW_ZH[dow] + '</td>' +
-          cells + '</tr>';
+      // Abbreviate time: "08:00" → "8", "08:30" → "8:30"
+      function fmtT(t) {
+        if (!t) return '';
+        var m = t.match(/^(\d+):(\d+)$/);
+        if (!m) return t;
+        var h = parseInt(m[1], 10).toString();
+        return m[2] === '00' ? h : h + ':' + m[2];
       }
 
-      var nurseHdrs = nurses.map(function (n) { return '<th>' + n + '</th>'; }).join('');
+      // Build column headers: one per day
+      var dayHdrs = '';
+      for (var d = 1; d <= daysInMonth; d++) {
+        var dow = new Date(year + '-' + pad(month) + '-' + pad(d) + 'T00:00:00').getDay();
+        var we  = dow === 0 || dow === 6;
+        dayHdrs += '<th class="dh' + (we ? ' we' : '') + '">' +
+          d + '<br><span class="dow">' + DOW_ZH[dow] + '</span></th>';
+      }
+
+      // Build one row per nurse
+      var rows = '';
+      nurses.forEach(function (nurse) {
+        var cells = '';
+        for (var d = 1; d <= daysInMonth; d++) {
+          var dateStr = year + '-' + pad(month) + '-' + pad(d);
+          var dow = new Date(dateStr + 'T00:00:00').getDay();
+          var we  = dow === 0 || dow === 6;
+          var shifts = (idx[dateStr] && idx[dateStr][nurse]) || [];
+          if (!shifts.length) {
+            cells += '<td class="ec' + (we ? ' we' : '') + '"></td>';
+          } else {
+            var content = shifts.map(function (s) {
+              var t = fmtT(s.start_time) + '–' + fmtT(s.end_time);
+              return t + (s.clean_start && s.clean_end ? '★' : '');
+            }).join('<br>');
+            cells += '<td class="sc' + (we ? ' we' : '') + '">' + content + '</td>';
+          }
+        }
+        rows += '<tr><td class="nc">' + nurse + '</td>' + cells + '</tr>';
+      });
+
       var title = year + ' 年 ' + month + ' 月排班表 — 魏宏杰診所';
       var html = '<!DOCTYPE html><html lang="zh-TW"><head>' +
         '<meta charset="UTF-8"><title>' + title + '</title><style>' +
-        '@page{size:A4 landscape;margin:12mm 10mm}' +
-        'body{font-family:system-ui,-apple-system,sans-serif;font-size:9pt;color:#111;margin:0}' +
-        'h1{font-size:13pt;margin:0 0 8px;text-align:center;font-weight:700}' +
+        '@page{size:A4 landscape;margin:8mm 6mm}' +
+        'body{font-family:system-ui,-apple-system,sans-serif;font-size:6.5pt;color:#111;margin:0}' +
+        'h1{font-size:11pt;margin:0 0 5px;text-align:center;font-weight:700}' +
         'table{width:100%;border-collapse:collapse;table-layout:fixed}' +
-        'th,td{border:1px solid #d1d5db;vertical-align:top;padding:3px 6px;word-break:break-word}' +
-        'th{background:#f3f4f6;font-size:9pt;font-weight:700;text-align:center}' +
-        '.dc{width:42px;text-align:center;font-variant-numeric:tabular-nums;font-weight:600;white-space:nowrap}' +
-        '.wc{width:24px;text-align:center;color:#6b7280}' +
-        '.ec{color:#d1d5db;text-align:center;font-size:8pt}' +
-        '.nr{display:flex;flex-wrap:wrap;align-items:baseline;gap:3px;line-height:1.5}' +
-        '.sl{font-weight:700;font-size:8pt;color:#1d4ed8;min-width:18px}' +
-        '.nt{color:#374151;font-size:8pt;font-variant-numeric:tabular-nums;white-space:nowrap}' +
-        '.cl{color:#9ca3af;font-size:7pt;white-space:nowrap}' +
-        '.we{background:#f9fafb}.we .dc,.we .wc{color:#9ca3af}' +
+        'th,td{border:1px solid #c9cdd4;vertical-align:middle;padding:1px 2px;text-align:center;line-height:1.35}' +
+        '.nc{text-align:left;font-weight:700;font-size:7pt;width:16mm;padding-left:3px;white-space:nowrap}' +
+        '.dh{font-weight:700;font-size:6.5pt;line-height:1.2;background:#f3f4f6}' +
+        '.dow{font-size:5.5pt;color:#6b7280}' +
+        '.sc{font-variant-numeric:tabular-nums;font-size:6pt;line-height:1.4}' +
+        '.ec{background:#fafafa}' +
+        '.we{background:#eef2ff}' +
+        '.we.dh .dow{color:#818cf8}' +
         '</style></head><body>' +
         '<h1>' + title + '</h1>' +
-        '<table><thead><tr>' +
-        '<th class="dc">日期</th><th class="wc">週</th>' +
-        nurseHdrs +
-        '</tr></thead><tbody>' + rows + '</tbody></table>' +
+        '<table><thead><tr><th class="nc">護理師</th>' + dayHdrs + '</tr></thead>' +
+        '<tbody>' + rows + '</tbody></table>' +
         '</body></html>';
 
       var win = window.open('', '_blank', 'width=960,height=720');

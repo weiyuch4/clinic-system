@@ -958,7 +958,7 @@
   }
 
   // ── Nurse shift sidebar ───────────────────────────────
-  var _SLOT_LABEL = { morning: '早診', afternoon: '下午診', evening: '晚診' };
+  var _SLOT_LABEL = { morning: '早診', afternoon: '午診', evening: '晚診' };
 
   function _renderNurseShift() {
     var el = document.getElementById('sb-shift-info');
