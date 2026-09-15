@@ -266,7 +266,7 @@ function render() {
 
 function field(label, display, copyVal, copyable) {
   var cpBtn = copyable && copyVal
-    ? '<button class="cp" onclick="copy(' + JSON.stringify(copyVal) + ',this)">複製</button>'
+    ? '<button class="cp" data-v="' + String(copyVal).replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '" onclick="copy(this.dataset.v,this)">複製</button>'
     : '';
   var cls = copyable ? 'fv' : 'fv-sub';
   return '<div class="field"><span class="fl">' + label + '</span><span class="' + cls + '">' + display + '</span>' + cpBtn + '</div>';
