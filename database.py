@@ -554,6 +554,132 @@ def _icd_to_name(icd: str) -> str | None:
     return None
 
 
+# ── General prescription (處方追蹤) query ────────────────────────────────────
+
+PRESCRIPTION_LOOKBACK_DAYS = 60  # how far back to scan IC files
+PRESCRIPTION_GRACE_DAYS    = 7   # days after due before row drops off the list
+
+
+def _query_all_prescriptions(as_of: date) -> list[dict]:
+    """Return upcoming/recently-expired prescriptions for all patients.
+
+    Tracking unit: one row per IC entry (CODE_F).
+    PS = max days-of-supply across all drugs in that entry's P-file records.
+    Return detection: if a newer IC entry for the same patient shares the same
+    H_TYPE and max_ps, the original prescription is considered fulfilled.
+
+    Notification window:
+      PS > 3  — show from (due_date - 2) until (due_date + GRACE_DAYS)
+      PS ≤ 3  — 關懷 type: show from due_date until (due_date + GRACE_DAYS)
+    """
+    since = as_of - timedelta(days=PRESCRIPTION_LOOKBACK_DAYS)
+
+    # First pass: collect all IC entries with P-file max PS in the window.
+    all_entries: list[dict] = []
+
+    for ic_path in _ic_files_since(since):
+        try:
+            records = _parse_dbf_cached(ic_path)
+        except Exception:
+            continue
+
+        p_path = ic_path[:-4] + 'P.DBF'
+
+        # Build {code_f: max_ps} from P file (one pass)
+        cf_max_ps: dict[str, int] = {}
+        if os.path.exists(p_path):
+            try:
+                for pr in _parse_dbf_cached(p_path):
+                    cf     = pr.get('CODE_F', '').strip()
+                    ps_str = pr.get('PS', '').strip()
+                    if not cf or not ps_str.isdigit():
+                        continue
+                    ps_val = int(ps_str)
+                    if ps_val > 0 and ps_val > cf_max_ps.get(cf, 0):
+                        cf_max_ps[cf] = ps_val
+            except Exception:
+                pass
+
+        for r in records:
+            h_type = r.get('H_TYPE', '').strip()
+            if h_type not in ('01西醫', 'AE連續'):
+                continue
+            v_date = _roc_to_date(r.get('DATE', ''))
+            if not v_date or v_date < since or v_date > as_of:
+                continue
+            nat_id = r.get('ID',     '').strip()
+            cf     = r.get('CODE_F', '').strip()
+            if not nat_id or not cf:
+                continue
+            max_ps = cf_max_ps.get(cf, 0)
+            if max_ps == 0:
+                continue  # procedure-only visit — no prescription
+            name  = r.get('NAME',  '').strip()
+            birth = _roc_to_date(r.get('BIRTH', ''))
+            if not name or not birth:
+                continue
+            icd = next(
+                (r.get(f, '') for f in ('ICD', 'ICD1', 'ICD2', 'ICD3', 'ICD4', 'ICD5')
+                 if _icd_to_name(r.get(f, ''))),
+                '',
+            )
+            all_entries.append({
+                'nat_id':     nat_id,
+                'visit_date': v_date,
+                'name':       name,
+                'birth':      birth,
+                'h_type':     h_type,
+                'icd':        icd,
+                'max_ps':     max_ps,
+            })
+
+    # Group by patient for return detection
+    by_patient: dict[str, list[dict]] = {}
+    for e in all_entries:
+        by_patient.setdefault(e['nat_id'], []).append(e)
+
+    results: list[dict] = []
+    for nat_id, entries in by_patient.items():
+        for entry in entries:
+            ps         = entry['max_ps']
+            visit_date = entry['visit_date']
+            due_date   = visit_date + timedelta(days=ps)
+            is_care    = ps <= 3
+            notify_date = due_date if is_care else due_date - timedelta(days=2)
+
+            if as_of < notify_date:
+                continue
+            if as_of > due_date + timedelta(days=PRESCRIPTION_GRACE_DAYS):
+                continue
+
+            # Return detection: newer entry with same H_TYPE + same PS
+            returned = any(
+                other['visit_date'] > visit_date
+                and other['h_type'] == entry['h_type']
+                and other['max_ps'] == ps
+                for other in entries
+                if other is not entry
+            )
+            if returned:
+                continue
+
+            results.append({
+                'nat_id':       nat_id,
+                'name':         entry['name'],
+                'birth_date':   entry['birth'].isoformat(),
+                'visit_date':   visit_date.isoformat(),
+                'h_type':       entry['h_type'],
+                'ps':           ps,
+                'due_date':     due_date.isoformat(),
+                'is_care':      is_care,
+                'days_until_due': (due_date - as_of).days,
+                'icd_name':     _icd_to_name(entry['icd']) or '',
+            })
+
+    # Sort: most overdue first (most negative days_until_due), then by due date ascending
+    return sorted(results, key=lambda e: e['days_until_due'])
+
+
 # ── Chronic prescription (慢簽) query ─────────────────────────────────────────
 
 def _p_file_has_long1(p_path: str, cf: str) -> bool:

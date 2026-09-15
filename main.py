@@ -904,6 +904,18 @@ def sync_status(request: Request) -> dict:
     return {"synced_at": synced_at, "count": len(rows)}
 
 
+@app.get("/api/report/prescriptions")
+def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    as_of = report_date or date.today()
+    try:
+        if CLOUD_MODE:
+            return []
+        return database._query_all_prescriptions(as_of)
+    except Exception as exc:
+        logger.exception("get_prescriptions failed: %s", exc)
+        raise HTTPException(status_code=500, detail="資料載入失敗，請稍後再試")
+
+
 @app.get("/api/report")
 def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends(auth.get_current_user)) -> DailyReport:
     cid = user.clinic_id

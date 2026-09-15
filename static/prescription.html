@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/favicon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="診所追蹤">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>處方追蹤 — 診所追蹤系統</title>
+<link rel="stylesheet" href="/static/_layout.css?v=54">
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar"></aside>
+  <div class="main">
+    <div id="topbar"></div>
+    <div class="ct">
+
+      <div class="err-bar" id="error-bar" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="error-msg"></span>
+      </div>
+
+      <div class="ph">
+        <div>
+          <h1>處方追蹤</h1>
+          <p id="page-date">所有處方 — 即將到期與需關懷</p>
+        </div>
+        <button class="icon-btn" id="btn-refresh" title="重新整理">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.96"/></svg>
+        </button>
+      </div>
+
+      <div class="filter-bar" id="filter-bar">
+        <button class="filter-tab on" data-tab="urgent">緊急 <span class="tc-count" id="cnt-urgent">…</span></button>
+        <button class="filter-tab" data-tab="week">本週到期 <span class="tc-count" id="cnt-week">…</span></button>
+        <button class="filter-tab" data-tab="later">後續 <span class="tc-count" id="cnt-later">…</span></button>
+        <button class="filter-tab" data-tab="care">關懷 <span class="tc-count" id="cnt-care">…</span></button>
+      </div>
+
+      <div class="search-row">
+        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
+        <span class="sr-count" id="result-count"></span>
+      </div>
+
+      <div class="list-area" id="list-scroll">
+        <div id="list-urgent"><div class="sec-empty">載入中…</div></div>
+        <div id="list-week"   style="display:none"></div>
+        <div id="list-later"  style="display:none"></div>
+        <div id="list-care"   style="display:none"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<style>
+/* ── Prescription-specific styles ──────────────────── */
+.rx-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  transition: background .12s;
+}
+.rx-card:hover { background: var(--hover, rgba(0,0,0,.03)); }
+
+.rx-status {
+  flex-shrink: 0;
+  width: 44px;
+  text-align: center;
+}
+.rx-days {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+}
+.rx-days.overdue  { color: var(--red, #e53e3e); }
+.rx-days.today    { color: var(--orange, #dd6b20); }
+.rx-days.soon     { color: var(--yellow, #d69e2e); }
+.rx-days.ok       { color: var(--green, #38a169); }
+.rx-days-label {
+  font-size: 10px;
+  color: var(--sub);
+  margin-top: 2px;
+}
+
+.rx-body { flex: 1; min-width: 0; }
+.rx-name {
+  font-weight: 600;
+  font-size: 15px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.rx-meta {
+  font-size: 12px;
+  color: var(--sub);
+  margin-top: 3px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.rx-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--bg2, #f3f4f6);
+  color: var(--sub);
+}
+.rx-tag.ae  { background: #eff6ff; color: #2563eb; }
+.rx-tag.nishi { background: #f0fdf4; color: #15803d; }
+.rx-tag.care { background: #fef3c7; color: #92400e; }
+.rx-tag.icd  { background: var(--bg2, #f3f4f6); color: var(--sub); }
+
+.rx-due {
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 12px;
+  color: var(--sub);
+}
+.rx-due-date { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
+
+.care-banner {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #78350f;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+</style>
+
+<script src="/static/_layout.js?v=49"></script>
+<script>
+(function () {
+  'use strict';
+
+  var _token  = localStorage.getItem('clinic_token') || '';
+  var _all    = [];
+  var _tab    = 'urgent';
+  var _query  = '';
+
+  // ── Layout init ─────────────────────────────────────
+  Layout.init({ pageId: 'prescription' });
+
+  // ── Tab switching ────────────────────────────────────
+  document.querySelectorAll('.filter-tab').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      document.querySelectorAll('.filter-tab').forEach(function (b) { b.classList.remove('on'); });
+      btn.classList.add('on');
+      _tab = btn.dataset.tab;
+      document.getElementById('list-urgent').style.display = _tab === 'urgent' ? '' : 'none';
+      document.getElementById('list-week').style.display   = _tab === 'week'   ? '' : 'none';
+      document.getElementById('list-later').style.display  = _tab === 'later'  ? '' : 'none';
+      document.getElementById('list-care').style.display   = _tab === 'care'   ? '' : 'none';
+      _render();
+    });
+  });
+
+  // ── Search ───────────────────────────────────────────
+  document.getElementById('search-input').addEventListener('input', function () {
+    _query = this.value.trim().toLowerCase();
+    _render();
+  });
+
+  // ── Refresh ──────────────────────────────────────────
+  document.getElementById('btn-refresh').addEventListener('click', function () { _load(); });
+
+  // ── Load ─────────────────────────────────────────────
+  function _load() {
+    document.getElementById('list-urgent').innerHTML = '<div class="sec-empty">載入中…</div>';
+    ['week','later','care'].forEach(function (t) {
+      document.getElementById('list-' + t).innerHTML = '';
+    });
+    fetch('/api/report/prescriptions', {
+      headers: { Authorization: 'Bearer ' + _token }
+    })
+    .then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(function (data) {
+      _all = data;
+      _updatePageDate();
+      _renderAll();
+    })
+    .catch(function (err) {
+      var bar = document.getElementById('error-bar');
+      document.getElementById('error-msg').textContent = '資料載入失敗：' + err.message;
+      bar.style.display = 'flex';
+    });
+  }
+
+  function _updatePageDate() {
+    var d = new Date();
+    var wday = ['日','一','二','三','四','五','六'][d.getDay()];
+    document.getElementById('page-date').textContent =
+      d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' +
+      String(d.getDate()).padStart(2,'0') + '（' + wday + '）— 共 ' + _all.length + ' 筆';
+  }
+
+  // ── Categorise entries into tabs ─────────────────────
+  // urgent: overdue OR due today OR due tomorrow (days_until_due <= 1), not care
+  // week:   due in 2–6 days, not care
+  // later:  due in 7+ days (shown only if in notify window), not care
+  // care:   PS <= 3
+  function _categorise(entry) {
+    if (entry.is_care) return 'care';
+    var d = entry.days_until_due;
+    if (d <= 1)  return 'urgent';
+    if (d <= 6)  return 'week';
+    return 'later';
+  }
+
+  function _renderAll() {
+    var urgent = [], week = [], later = [], care = [];
+    _all.forEach(function (e) {
+      var cat = _categorise(e);
+      if (cat === 'urgent') urgent.push(e);
+      else if (cat === 'week') week.push(e);
+      else if (cat === 'later') later.push(e);
+      else care.push(e);
+    });
+    document.getElementById('cnt-urgent').textContent = urgent.length || '';
+    document.getElementById('cnt-week').textContent   = week.length   || '';
+    document.getElementById('cnt-later').textContent  = later.length  || '';
+    document.getElementById('cnt-care').textContent   = care.length   || '';
+    _render();
+  }
+
+  function _render() {
+    var lists = { urgent: [], week: [], later: [], care: [] };
+    _all.forEach(function (e) {
+      var cat = _categorise(e);
+      if (!_query ||
+          e.name.toLowerCase().includes(_query) ||
+          e.nat_id.toLowerCase().includes(_query)) {
+        lists[cat].push(e);
+      }
+    });
+
+    var shown   = lists[_tab].length;
+    var total   = _all.filter(function (e) { return _categorise(e) === _tab; }).length;
+    document.getElementById('result-count').textContent =
+      _query ? '符合 ' + shown + ' / ' + total + ' 筆' : '';
+
+    var listEl = document.getElementById('list-' + _tab);
+    if (lists[_tab].length === 0) {
+      listEl.innerHTML = '<div class="sec-empty">無資料</div>';
+      return;
+    }
+
+    var html = '';
+    if (_tab === 'care') {
+      html += '<div class="care-banner">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
+        '短期處方（3天以內）到期，可主動聯繫確認症狀是否改善' +
+        '</div>';
+    }
+
+    lists[_tab].forEach(function (e) {
+      var d   = e.days_until_due;
+      var dCls = d < 0 ? 'overdue' : (d === 0 ? 'today' : (d <= 2 ? 'soon' : 'ok'));
+      var dTxt = d < 0 ? (Math.abs(d) + '天過期') : (d === 0 ? '今日' : (d === 1 ? '明天' : d + '天'));
+      var dLbl = d < 0 ? '' : (d === 0 ? '到期' : '後到期');
+
+      var birth = new Date(e.birth_date);
+      var age   = new Date().getFullYear() - birth.getFullYear();
+      var birthFmt = birth.getFullYear() + '/' +
+        String(birth.getMonth()+1).padStart(2,'0') + '/' +
+        String(birth.getDate()).padStart(2,'0');
+
+      var htypeTag = e.h_type === 'AE連續'
+        ? '<span class="rx-tag ae">連續處方</span>'
+        : '<span class="rx-tag nishi">一般處方</span>';
+
+      var careTag = e.is_care ? '<span class="rx-tag care">關懷</span>' : '';
+      var icdTag  = e.icd_name ? '<span class="rx-tag icd">' + e.icd_name + '</span>' : '';
+
+      var due = new Date(e.due_date);
+      var dueFmt = (due.getMonth()+1) + '/' + due.getDate();
+
+      html += '<div class="rx-card">' +
+        '<div class="rx-status">' +
+          '<div class="rx-days ' + dCls + '">' + dTxt + '</div>' +
+          '<div class="rx-days-label">' + dLbl + '</div>' +
+        '</div>' +
+        '<div class="rx-body">' +
+          '<div class="rx-name">' + _esc(e.name) + '</div>' +
+          '<div class="rx-meta">' +
+            '<span>' + birthFmt + '（' + age + '歲）</span>' +
+            htypeTag + careTag + icdTag +
+          '</div>' +
+        '</div>' +
+        '<div class="rx-due">' +
+          '<div class="rx-due-date">' + dueFmt + ' 到期</div>' +
+          '<div>開藥 ' + e.ps + ' 天</div>' +
+        '</div>' +
+      '</div>';
+    });
+    listEl.innerHTML = html;
+  }
+
+  function _esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  _load();
+})();
+</script>
+</body>
+</html>
