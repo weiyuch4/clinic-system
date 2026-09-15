@@ -319,6 +319,9 @@
   }
 
   // ── Workflow popup ───────────────────────────────────
+  var _wfPopup = null;
+  var _RX_TAB_LABELS = { urgent: '緊急', week: '本週到期', later: '後續', care: '關懷' };
+
   function _openWorkflow() {
     var lists = { urgent: [], week: [], later: [], care: [] };
     _all.forEach(function (e) {
@@ -329,15 +332,30 @@
         lists[cat].push(e);
       }
     });
-    var raw = lists[_tab];
-    if (!raw.length) { alert('目前沒有資料'); return; }
-    var items = raw.map(function (e) {
-      return Object.assign({}, e, { _entry: e, _mode: 'prescription', _tab: _tab });
+    var allTabs = {};
+    ['urgent', 'week', 'later', 'care'].forEach(function (tab) {
+      if (lists[tab].length) {
+        allTabs[tab] = {
+          label: _RX_TAB_LABELS[tab],
+          items: lists[tab].map(function (e) {
+            return Object.assign({}, e, { _entry: e, _mode: 'prescription', _tab: tab });
+          }),
+        };
+      }
     });
-    try { localStorage.setItem('rx_workflow_items', JSON.stringify(items)); } catch (ex) {}
-    var popup = window.open('/workflow-popup', 'rx_workflow',
-      'width=420,height=480,resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no,location=no');
-    if (popup) popup.focus();
+    if (!Object.keys(allTabs).length) { alert('目前沒有資料'); return; }
+    try {
+      localStorage.setItem('rx_workflow_tabs', JSON.stringify(allTabs));
+      localStorage.setItem('rx_workflow_curtab', _tab);
+    } catch (ex) {}
+    if (_wfPopup && !_wfPopup.closed) {
+      _wfPopup.postMessage('workflow_reload', '*');
+      _wfPopup.focus();
+    } else {
+      _wfPopup = window.open('/workflow-popup', 'rx_workflow',
+        'width=420,height=520,resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no,location=no');
+      if (_wfPopup) _wfPopup.focus();
+    }
   }
 
   document.getElementById('btn-workflow').addEventListener('click', _openWorkflow);

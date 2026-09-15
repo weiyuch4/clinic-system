@@ -670,32 +670,46 @@
   });
 
   // ── Workflow popup ───────────────────────────────────
+  var _wfPopup = null;
+  var _MSPT_TAB_DEFS = [
+    { key: 'return',   label: '需回診',    list: function () { return _return; } },
+    { key: 'phone',    label: '可電話完成', list: function () { return _phone; } },
+    { key: 'inactive', label: '未複診',    list: function () { return _inactive; } },
+  ];
+
   function _openWorkflow() {
-    var lists = {
-      'return': _return, 'phone': _phone, 'submittable': _submittable,
-      'inactive': _inactive, 'contacted': _contacted, 'hold': _hold, 'excluded': _excluded,
-    };
-    var raw = (lists[_tab] || []).filter(match);
-    if (!raw.length) { alert('目前沒有資料'); return; }
-    var items = raw.map(function (e) {
-      var p = e.patient || { name: e.manual_name || '?', chart_number: '', birth_date: '', nat_id: '' };
-      return {
-        name:             p.name || '',
-        chart_number:     p.chart_number || '',
-        birth_date:       p.birth_date || '',
-        nat_id:           p.nat_id || '',
-        mspt_stage:       e.mspt_stage || '',
-        needs_blood_test: !!e.needs_blood_test,
-        call_required:    !!e.call_required,
-        _entry: e,
-        _mode:  'mspt',
-        _tab:   _tab,
-      };
+    var allTabs = {};
+    _MSPT_TAB_DEFS.forEach(function (def) {
+      var items = def.list().filter(match).map(function (e) {
+        var p = e.patient || { name: e.manual_name || '?', chart_number: '', birth_date: '', nat_id: '' };
+        return {
+          name:             p.name || '',
+          chart_number:     p.chart_number || '',
+          birth_date:       p.birth_date || '',
+          nat_id:           p.nat_id || '',
+          mspt_stage:       e.mspt_stage || '',
+          needs_blood_test: !!e.needs_blood_test,
+          call_required:    !!e.call_required,
+          _entry: e,
+          _mode:  'mspt',
+          _tab:   def.key,
+        };
+      });
+      if (items.length) allTabs[def.key] = { label: def.label, items: items };
     });
-    try { localStorage.setItem('rx_workflow_items', JSON.stringify(items)); } catch (ex) {}
-    var popup = window.open('/workflow-popup', 'rx_workflow',
-      'width=420,height=480,resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no,location=no');
-    if (popup) popup.focus();
+    if (!Object.keys(allTabs).length) { alert('目前沒有資料'); return; }
+    try {
+      localStorage.setItem('rx_workflow_tabs', JSON.stringify(allTabs));
+      localStorage.setItem('rx_workflow_curtab', _tab);
+    } catch (ex) {}
+    if (_wfPopup && !_wfPopup.closed) {
+      _wfPopup.postMessage('workflow_reload', '*');
+      _wfPopup.focus();
+    } else {
+      _wfPopup = window.open('/workflow-popup', 'rx_workflow',
+        'width=420,height=520,resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no,location=no');
+      if (_wfPopup) _wfPopup.focus();
+    }
   }
 
   document.getElementById('btn-workflow').addEventListener('click', _openWorkflow);

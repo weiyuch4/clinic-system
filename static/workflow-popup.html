@@ -10,6 +10,11 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#11
 .top{background:var(--accent);color:#fff;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
 .top-title{font-size:13px;font-weight:700}
 .top-prog{font-size:12px;opacity:.8}
+.tab-bar{display:flex;gap:4px;padding:7px 10px;background:#fff;border-bottom:1px solid #e5e7eb;flex-shrink:0;overflow-x:auto}
+.tab-bar:empty,.tab-bar.single{display:none}
+.tab-btn{font-size:11px;font-weight:600;padding:3px 10px;border-radius:100px;border:1.5px solid #d1d5db;background:transparent;color:#6b7280;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .12s}
+.tab-btn.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+.tab-cnt{font-size:10px;margin-left:2px;opacity:.75}
 .card{flex:1;padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
 .pat-name{font-size:22px;font-weight:800;line-height:1.2}
 .tags{display:flex;gap:5px;flex-wrap:wrap}
@@ -56,33 +61,76 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#11
   <span id="top-title" class="top-title">逐一追蹤</span>
   <span id="top-prog" class="top-prog"></span>
 </div>
+<div id="tab-bar" class="tab-bar"></div>
 <div id="card" class="card"></div>
 <div id="form-area" class="form-area" style="display:none"></div>
 <div id="actions" class="actions"></div>
 
 <script>
-var ITEMS = [], TOKEN = '', NURSE = '';
-try {
-  ITEMS = JSON.parse(localStorage.getItem('rx_workflow_items') || '[]');
-  TOKEN = localStorage.getItem('clinic_token') || '';
-  NURSE = localStorage.getItem('nurse') || '';
-} catch(e) {}
+var ALL_TABS = {}, TAB_KEYS = [];
+var tabIdx = 0, idx = 0;
+var TOKEN = '', NURSE = '', MODE = 'prescription';
 
-var idx = 0;
-var MODE = ITEMS.length ? (ITEMS[0]._mode || 'prescription') : 'prescription';
+function init() {
+  try {
+    ALL_TABS = JSON.parse(localStorage.getItem('rx_workflow_tabs') || '{}');
+    TOKEN = localStorage.getItem('clinic_token') || '';
+    NURSE = localStorage.getItem('nurse') || '';
+  } catch(e) {}
 
-if (MODE === 'mspt') {
-  document.documentElement.style.setProperty('--accent', '#4c1d95');
-  document.documentElement.style.setProperty('--accent-h', '#6d28d9');
+  TAB_KEYS = Object.keys(ALL_TABS);
+
+  if (!TAB_KEYS.length) {
+    document.getElementById('card').innerHTML = '<div class="done"><div class="done-icon">📭</div><div class="done-txt">沒有資料</div></div>';
+    return;
+  }
+
+  var firstItem = ALL_TABS[TAB_KEYS[0]].items[0] || {};
+  MODE = firstItem._mode || 'prescription';
+
+  if (MODE === 'mspt') {
+    document.documentElement.style.setProperty('--accent', '#4c1d95');
+    document.documentElement.style.setProperty('--accent-h', '#6d28d9');
+  }
+
+  var curtab = localStorage.getItem('rx_workflow_curtab') || TAB_KEYS[0];
+  var ci = TAB_KEYS.indexOf(curtab);
+  tabIdx = ci >= 0 ? ci : 0;
+  idx = 0;
+
+  renderTabBar();
+  render();
+}
+
+function renderTabBar() {
+  var bar = document.getElementById('tab-bar');
+  if (TAB_KEYS.length <= 1) { bar.className = 'tab-bar single'; return; }
+  bar.className = 'tab-bar';
+  bar.innerHTML = TAB_KEYS.map(function(k, i) {
+    var t = ALL_TABS[k];
+    return '<button class="tab-btn' + (i === tabIdx ? ' on' : '') + '" onclick="switchTab(' + i + ')">' +
+      t.label + '<span class="tab-cnt">(' + t.items.length + ')</span></button>';
+  }).join('');
+}
+
+function switchTab(i) {
+  tabIdx = i; idx = 0;
+  cancelForm();
+}
+
+function currentItems() {
+  return (ALL_TABS[TAB_KEYS[tabIdx]] || { items: [] }).items;
 }
 
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
 function fmtDate(d) {
   if (!d) return '—';
   var p = String(d).slice(0, 10).split('-');
   if (p.length !== 3) return d;
   return (parseInt(p[0]) - 1911) + '/' + p[1] + '/' + p[2];
 }
+
 function copy(text, btn) {
   function done() { btn.textContent = '✓ 已複製'; btn.classList.add('ok'); setTimeout(function(){ btn.textContent = '複製'; btn.classList.remove('ok'); }, 1500); }
   if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done).catch(function(){ fb(text); done(); }); } else { fb(text); done(); }
@@ -100,19 +148,26 @@ function apiCall(method, url, body, onOk, onErr) {
     .then(onOk).catch(onErr);
 }
 
-function advance() {
+function notifyParent() {
   if (window.opener) try { window.opener.postMessage('workflow_refresh', '*'); } catch(e) {}
-  idx = Math.min(ITEMS.length, idx + 1);
+}
+
+function advance() {
+  notifyParent();
+  var items = currentItems();
+  idx = Math.min(items.length, idx + 1);
   cancelForm();
 }
 
 function go(dir) {
-  idx = Math.max(0, Math.min(ITEMS.length, idx + dir));
+  var items = currentItems();
+  idx = Math.max(0, Math.min(items.length, idx + dir));
   cancelForm();
 }
 
 function cancelForm() {
   document.getElementById('form-area').style.display = 'none';
+  renderTabBar();
   render();
 }
 
@@ -150,7 +205,8 @@ function showHoldForm() {
 }
 
 function doContact() {
-  var item = ITEMS[idx];
+  var items = currentItems();
+  var item = items[idx];
   var type = document.getElementById('contact-type').value;
   var errEl = document.getElementById('form-error');
   var btn = document.getElementById('confirm-btn');
@@ -163,7 +219,8 @@ function doContact() {
 }
 
 function doHold() {
-  var item = ITEMS[idx];
+  var items = currentItems();
+  var item = items[idx];
   var note = document.getElementById('hold-note').value.trim() || '暫緩';
   var errEl = document.getElementById('form-error');
   var btn = document.getElementById('confirm-btn');
@@ -175,7 +232,8 @@ function doHold() {
 }
 
 function doPhoneComplete() {
-  var item = ITEMS[idx];
+  var items = currentItems();
+  var item = items[idx];
   var actEl = document.getElementById('actions');
   actEl.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
   var errEl = document.createElement('div');
@@ -191,12 +249,21 @@ function doPhoneComplete() {
   );
 }
 
+function field(label, display, copyVal, copyable) {
+  var cpBtn = copyable && copyVal
+    ? '<button class="cp" data-v="' + String(copyVal).replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '" onclick="copy(this.dataset.v,this)">複製</button>'
+    : '';
+  var cls = copyable ? 'fv' : 'fv-sub';
+  return '<div class="field"><span class="fl">' + label + '</span><span class="' + cls + '">' + display + '</span>' + cpBtn + '</div>';
+}
+
 function render() {
   var prog = document.getElementById('top-prog');
   var card = document.getElementById('card');
   var act  = document.getElementById('actions');
+  var items = currentItems();
 
-  if (idx >= ITEMS.length) {
+  if (idx >= items.length) {
     prog.textContent = '完成';
     card.innerHTML = '<div class="done"><div class="done-icon">✅</div><div class="done-txt">本批已全部完成</div></div>';
     act.innerHTML = '<button class="btn btn-sec" onclick="go(-1)">← 上一筆</button>' +
@@ -204,10 +271,9 @@ function render() {
     return;
   }
 
-  var item = ITEMS[idx];
-  prog.textContent = (idx + 1) + ' / ' + ITEMS.length;
+  var item = items[idx];
+  prog.textContent = (idx + 1) + ' / ' + items.length;
 
-  // Tags
   var tags = '';
   if (MODE === 'mspt') {
     if (item.mspt_stage)       tags += '<span class="tag tag-stage">' + esc(item.mspt_stage) + '</span>';
@@ -223,7 +289,6 @@ function render() {
     }
   }
 
-  // Fields
   var fields = '';
   fields += field('姓名', esc(item.name), item.name, true);
   if (MODE === 'mspt') {
@@ -232,7 +297,8 @@ function render() {
   } else {
     if (item.nat_id) fields += field('身分證', esc(item.nat_id), item.nat_id, true);
   }
-  fields += field('生日', fmtDate(item.birth_date), fmtDate(item.birth_date), true);
+  var bd = fmtDate(item.birth_date);
+  fields += field('生日', bd, bd, true);
   if (MODE === 'prescription') {
     if (item.due_date) {
       var due = new Date(item.due_date + 'T00:00:00');
@@ -246,7 +312,6 @@ function render() {
     (tags ? '<div class="tags">' + tags + '</div>' : '') +
     '<div class="fields">' + fields + '</div>';
 
-  // Action buttons
   var prev = '<button class="btn btn-sec" onclick="go(-1)"' + (idx===0?' disabled':'') + '>← 上一筆</button>';
   var skip = '<button class="btn btn-sec" onclick="go(1)">跳過 →</button>';
   var tab = item._tab || '';
@@ -264,15 +329,11 @@ function render() {
   }
 }
 
-function field(label, display, copyVal, copyable) {
-  var cpBtn = copyable && copyVal
-    ? '<button class="cp" data-v="' + String(copyVal).replace(/&/g,'&amp;').replace(/"/g,'&quot;') + '" onclick="copy(this.dataset.v,this)">複製</button>'
-    : '';
-  var cls = copyable ? 'fv' : 'fv-sub';
-  return '<div class="field"><span class="fl">' + label + '</span><span class="' + cls + '">' + display + '</span>' + cpBtn + '</div>';
-}
+window.addEventListener('message', function(ev) {
+  if (ev.data === 'workflow_reload') init();
+});
 
-render();
+init();
 </script>
 </body>
 </html>
