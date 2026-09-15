@@ -815,14 +815,13 @@ def get_public_schedule(week_start: date, user: auth.CurrentUser = Depends(auth.
 
 @app.get("/api/schedule/month")
 def get_month_schedule(month: str, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
-    """Return shifts for an entire calendar month (YYYY-MM).
-    Admin users see all draft + published shifts; nurses see only published weeks."""
+    """Return all shifts for an entire calendar month (YYYY-MM) for print purposes.
+    All authenticated users see all entered shifts regardless of publish status."""
     import re
     if not re.match(r"^\d{4}-\d{2}$", month):
         raise HTTPException(status_code=422, detail="month 格式應為 YYYY-MM")
-    is_admin = user.role == "admin"
     try:
-        return contacts.get_month_schedule(month, user.clinic_id, admin_view=is_admin)
+        return contacts.get_month_schedule(month, user.clinic_id)
     except Exception as exc:
         logger.exception("get_month_schedule failed: %s", exc)
         raise HTTPException(status_code=500, detail="查詢失敗")
