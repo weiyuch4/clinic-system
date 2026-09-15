@@ -335,7 +335,7 @@
       return Object.assign({}, e, { _entry: e, _mode: 'prescription', _tab: _tab });
     });
     try { localStorage.setItem('rx_workflow_items', JSON.stringify(items)); } catch (ex) {}
-    var popup = window.open('workflow-popup.html', 'rx_workflow',
+    var popup = window.open('/workflow-popup', 'rx_workflow',
       'width=420,height=480,resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no,location=no');
     if (popup) popup.focus();
   }
