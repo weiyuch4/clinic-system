@@ -125,7 +125,7 @@ if not contacts.get_nurses():  # first run on this DB — seed from the hardcode
 # still comes from request body fields (Option B shared-session model).
 @app.middleware("http")
 async def require_auth_for_api(request: Request, call_next):
-    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/status"}
+    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/push-prescriptions", "/api/sync/status"}
     if request.url.path.startswith("/api/") and request.url.path not in _sync_exempt:
         token = request.headers.get("Authorization", "")
         if token.startswith("Bearer "):
@@ -985,6 +985,18 @@ async def sync_push(request: Request) -> dict:
     return {"ok": True, "count": len(candidates)}
 
 
+@app.post("/api/sync/push-prescriptions")
+async def sync_push_prescriptions(request: Request) -> dict:
+    token = request.headers.get("X-Sync-Token", "")
+    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    body = await request.json()
+    clinic_id = int(body.get("clinic_id", 1))
+    rows = body.get("prescriptions", [])
+    contacts.upsert_synced_prescriptions(rows, clinic_id)
+    return {"ok": True, "count": len(rows)}
+
+
 @app.post("/api/sync/push-lab")
 async def sync_push_lab(request: Request) -> dict:
     token = request.headers.get("X-Sync-Token", "")
@@ -1011,10 +1023,22 @@ def sync_status(request: Request) -> dict:
 
 @app.get("/api/report/prescriptions")
 def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    from database import PRESCRIPTION_GRACE_DAYS
     as_of = report_date or date.today()
     try:
         if CLOUD_MODE:
-            return []
+            rows = contacts.get_synced_prescriptions(user.clinic_id)
+            results = []
+            for r in rows:
+                due = date.fromisoformat(r['due_date'])
+                days_until_due = (due - as_of).days
+                if days_until_due < -PRESCRIPTION_GRACE_DAYS:
+                    continue  # past grace period
+                results.append({
+                    **r,
+                    'days_until_due': days_until_due,
+                })
+            return sorted(results, key=lambda e: e['days_until_due'])
         return database._query_all_prescriptions(as_of)
     except Exception as exc:
         logger.exception("get_prescriptions failed: %s", exc)

@@ -420,6 +420,22 @@ _CREATE_ANNOUNCEMENT_READS = """
     )
 """
 
+_CREATE_SYNCED_PRESCRIPTIONS = """
+    CREATE TABLE IF NOT EXISTS synced_prescriptions (
+        id         SERIAL PRIMARY KEY,
+        clinic_id  INTEGER NOT NULL DEFAULT 1,
+        nat_id     TEXT    NOT NULL,
+        name       TEXT    NOT NULL,
+        birth_date TEXT    NOT NULL,
+        visit_date TEXT    NOT NULL,
+        h_type     TEXT    NOT NULL DEFAULT '',
+        ps         INTEGER NOT NULL DEFAULT 0,
+        due_date   TEXT    NOT NULL,
+        is_care    BOOLEAN NOT NULL DEFAULT FALSE,
+        icd_name   TEXT    NOT NULL DEFAULT ''
+    )
+"""
+
 
 def get_blood_dismissed(clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
@@ -664,6 +680,7 @@ def init() -> None:
             cur.execute(_CREATE_STICKY_NOTES)
             cur.execute(_CREATE_ANNOUNCEMENTS)
             cur.execute(_CREATE_ANNOUNCEMENT_READS)
+            cur.execute(_CREATE_SYNCED_PRESCRIPTIONS)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
@@ -2618,5 +2635,39 @@ def upsert_synced_candidates(candidates: list[dict], clinic_id: int = 1) -> None
                             c["synced_at"],
                         )
                         for c in candidates
+                    ],
+                )
+
+
+def get_synced_prescriptions(clinic_id: int = 1) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT nat_id, name, birth_date, visit_date, h_type, ps, due_date, is_care, icd_name
+                   FROM synced_prescriptions WHERE clinic_id = %s""",
+                (clinic_id,),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def upsert_synced_prescriptions(rows: list[dict], clinic_id: int = 1) -> None:
+    from psycopg2.extras import execute_values
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM synced_prescriptions WHERE clinic_id = %s", (clinic_id,))
+            if rows:
+                execute_values(
+                    cur,
+                    """INSERT INTO synced_prescriptions
+                           (clinic_id, nat_id, name, birth_date, visit_date, h_type, ps, due_date, is_care, icd_name)
+                       VALUES %s""",
+                    [
+                        (
+                            clinic_id,
+                            r['nat_id'], r['name'], r['birth_date'], r['visit_date'],
+                            r.get('h_type', ''), int(r.get('ps', 0)), r['due_date'],
+                            bool(r.get('is_care', False)), r.get('icd_name', ''),
+                        )
+                        for r in rows
                     ],
                 )

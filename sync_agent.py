@@ -145,6 +145,21 @@ def do_sync() -> None:
     except Exception as exc:
         log.error("Failed to push to cloud: %s", exc)
 
+    # General prescription tracking (處方追蹤)
+    try:
+        from database import _query_all_prescriptions
+        prescriptions = _query_all_prescriptions(date.today())
+        resp = requests.post(
+            f"{CLOUD_URL}/api/sync/push-prescriptions",
+            json={"clinic_id": 1, "prescriptions": prescriptions},
+            headers={"X-Sync-Token": SYNC_TOKEN},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        log.info("Synced %d prescriptions to cloud", len(prescriptions))
+    except Exception as exc:
+        log.error("Prescription sync failed: %s", exc)
+
     # Blood pending sync (reads IC + BIO files, writes result JSONB to Supabase)
     try:
         if _ensure_db_pool():
