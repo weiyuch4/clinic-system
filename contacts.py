@@ -1914,7 +1914,8 @@ def get_month_schedule(month: str, clinic_id: int = 1) -> dict:
                 """SELECT nurse, shift_date, slot, start_time, end_time, clean_start, clean_end
                    FROM shifts
                    WHERE clinic_id=%s AND shift_date BETWEEN %s AND %s
-                   ORDER BY shift_date, nurse, slot""",
+                   ORDER BY shift_date, nurse,
+                     CASE slot WHEN '早診' THEN 1 WHEN '午診' THEN 2 WHEN '晚診' THEN 3 ELSE 4 END""",
                 (clinic_id, from_date, to_date),
             )
             all_shifts = [dict(r) for r in cur.fetchall()]

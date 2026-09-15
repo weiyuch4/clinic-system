@@ -334,7 +334,8 @@
       var rows = '';
       for (var d = 1; d <= daysInMonth; d++) {
         var dateStr = year + '-' + pad(month) + '-' + pad(d);
-        var dow     = new Date(dateStr).getDay();
+        // Use T00:00:00 so the date is parsed as local time, not UTC midnight
+        var dow     = new Date(dateStr + 'T00:00:00').getDay();
         var weekend = dow === 0 || dow === 6;
 
         var cells = nurses.map(function (nurse) {
