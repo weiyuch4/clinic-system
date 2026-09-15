@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>逐一追蹤</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--accent:#1e3a5f;--accent-h:#1e40af;--warn:#92400e;--warn-bg:#fef3c7;--warn-bgh:#fde68a}
+body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#111827;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.top{background:var(--accent);color:#fff;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.top-title{font-size:13px;font-weight:700}
+.top-prog{font-size:12px;opacity:.8}
+.card{flex:1;padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}
+.pat-name{font-size:22px;font-weight:800;line-height:1.2}
+.tags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px}
+.tag-ae{background:#dbeafe;color:#1d4ed8}
+.tag-nishi{background:#d1fae5;color:#065f46}
+.tag-urgent{background:#fee2e2;color:#991b1b}
+.tag-soon{background:#fef3c7;color:#92400e}
+.tag-ok{background:#f0fdf4;color:#166534}
+.tag-stage{background:#ede9fe;color:#6d28d9}
+.tag-blood{background:#fee2e2;color:#991b1b}
+.tag-call2{background:#fef3c7;color:#92400e}
+.fields{display:flex;flex-direction:column;gap:6px}
+.field{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:9px}
+.fl{font-size:11px;color:#9ca3af;width:38px;flex-shrink:0}
+.fv{font-size:14px;font-weight:600;flex:1;font-variant-numeric:tabular-nums}
+.fv-sub{font-size:13px;color:#374151;flex:1;font-variant-numeric:tabular-nums}
+.cp{font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #d1d5db;background:transparent;color:#6b7280;cursor:pointer;font-family:inherit;flex-shrink:0;transition:all .1s}
+.cp:hover{background:#f3f4f6;color:#111;border-color:#9ca3af}
+.cp.ok{background:#d1fae5;color:#065f46;border-color:#6ee7b7}
+.form-area{padding:12px 16px;border-top:1px solid #e5e7eb;background:#fff;display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.form-row{display:flex;flex-direction:column;gap:3px}
+.form-label{font-size:11px;color:#6b7280;font-weight:600}
+.form-select,.form-input{width:100%;padding:7px 10px;border-radius:8px;border:1.5px solid #d1d5db;font-size:13px;font-family:inherit;background:#f9fafb;color:#111827;outline:none}
+.form-select:focus,.form-input:focus{border-color:var(--accent)}
+.form-error{font-size:12px;color:#dc2626;min-height:15px}
+.form-btns{display:flex;gap:7px}
+.actions{padding:10px 12px;display:flex;gap:7px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0}
+.btn{flex:1;padding:9px 6px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .1s}
+.btn:disabled{opacity:.35;cursor:default}
+.btn-sec{background:#f3f4f6;color:#374151}
+.btn-sec:not(:disabled):hover{background:#e5e7eb}
+.btn-warn{background:var(--warn-bg);color:var(--warn)}
+.btn-warn:not(:disabled):hover{background:var(--warn-bgh)}
+.btn-pri{background:var(--accent);color:#fff}
+.btn-pri:not(:disabled):hover{background:var(--accent-h)}
+.done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#6b7280}
+.done-icon{font-size:44px}
+.done-txt{font-size:14px;font-weight:600}
+</style>
+</head>
+<body>
+<div id="top" class="top">
+  <span id="top-title" class="top-title">逐一追蹤</span>
+  <span id="top-prog" class="top-prog"></span>
+</div>
+<div id="card" class="card"></div>
+<div id="form-area" class="form-area" style="display:none"></div>
+<div id="actions" class="actions"></div>
+
+<script>
+var ITEMS = [], TOKEN = '', NURSE = '';
+try {
+  ITEMS = JSON.parse(localStorage.getItem('rx_workflow_items') || '[]');
+  TOKEN = localStorage.getItem('clinic_token') || '';
+  NURSE = localStorage.getItem('nurse') || '';
+} catch(e) {}
+
+var idx = 0;
+var MODE = ITEMS.length ? (ITEMS[0]._mode || 'prescription') : 'prescription';
+
+if (MODE === 'mspt') {
+  document.documentElement.style.setProperty('--accent', '#4c1d95');
+  document.documentElement.style.setProperty('--accent-h', '#6d28d9');
+}
+
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function fmtDate(d) {
+  if (!d) return '—';
+  var dt = new Date(d + 'T00:00:00');
+  return dt.getFullYear() + '/' + String(dt.getMonth()+1).padStart(2,'0') + '/' + String(dt.getDate()).padStart(2,'0');
+}
+function copy(text, btn) {
+  function done() { btn.textContent = '✓ 已複製'; btn.classList.add('ok'); setTimeout(function(){ btn.textContent = '複製'; btn.classList.remove('ok'); }, 1500); }
+  if (navigator.clipboard) { navigator.clipboard.writeText(text).then(done).catch(function(){ fb(text); done(); }); } else { fb(text); done(); }
+}
+function fb(t) { var a = document.createElement('textarea'); a.value = t; a.style.position='fixed'; a.style.opacity='0'; document.body.appendChild(a); a.select(); document.execCommand('copy'); document.body.removeChild(a); }
+
+function apiCall(method, url, body, onOk, onErr) {
+  var h = { 'Content-Type': 'application/json' };
+  if (TOKEN) h['Authorization'] = 'Bearer ' + TOKEN;
+  fetch(url, { method: method, headers: h, body: JSON.stringify(body) })
+    .then(function(r) {
+      if (!r.ok) return r.json().then(function(e){ throw new Error(e.detail || 'HTTP ' + r.status); });
+      return r.status === 204 ? null : r.json().catch(function(){ return null; });
+    })
+    .then(onOk).catch(onErr);
+}
+
+function advance() {
+  if (window.opener) try { window.opener.postMessage('workflow_refresh', '*'); } catch(e) {}
+  idx = Math.min(ITEMS.length, idx + 1);
+  cancelForm();
+}
+
+function go(dir) {
+  idx = Math.max(0, Math.min(ITEMS.length, idx + dir));
+  cancelForm();
+}
+
+function cancelForm() {
+  document.getElementById('form-area').style.display = 'none';
+  render();
+}
+
+function showContactForm() {
+  var fa = document.getElementById('form-area');
+  fa.style.display = 'flex';
+  fa.innerHTML =
+    '<div class="form-row"><div class="form-label">聯絡方式</div>' +
+      '<select class="form-select" id="contact-type">' +
+        '<option value="contacted">已聯繫（直接通知）</option>' +
+        '<option value="called">已二次確認（電話通話）</option>' +
+      '</select></div>' +
+    '<div class="form-row"><div class="form-label">備註（選填）</div>' +
+      '<input class="form-input" id="contact-note" placeholder="例：預約回診日期"></div>' +
+    '<div class="form-error" id="form-error"></div>' +
+    '<div class="form-btns">' +
+      '<button class="btn btn-sec" onclick="cancelForm()">取消</button>' +
+      '<button class="btn btn-pri" id="confirm-btn" onclick="doContact()">✓ 確認儲存</button>' +
+    '</div>';
+  document.getElementById('actions').innerHTML = '';
+}
+
+function showHoldForm() {
+  var fa = document.getElementById('form-area');
+  fa.style.display = 'flex';
+  fa.innerHTML =
+    '<div class="form-row"><div class="form-label">暫緩原因（選填）</div>' +
+      '<input class="form-input" id="hold-note" placeholder="例：病患外出，下週再聯繫"></div>' +
+    '<div class="form-error" id="form-error"></div>' +
+    '<div class="form-btns">' +
+      '<button class="btn btn-sec" onclick="cancelForm()">取消</button>' +
+      '<button class="btn btn-warn" id="confirm-btn" onclick="doHold()">確認暫緩</button>' +
+    '</div>';
+  document.getElementById('actions').innerHTML = '';
+}
+
+function doContact() {
+  var item = ITEMS[idx];
+  var type = document.getElementById('contact-type').value;
+  var errEl = document.getElementById('form-error');
+  var btn = document.getElementById('confirm-btn');
+  errEl.textContent = ''; btn.disabled = true;
+  var url = type === 'called' ? '/api/called' : '/api/contacted';
+  apiCall('POST', url, { entry: item._entry, nurse: NURSE },
+    function() { advance(); },
+    function(e) { errEl.textContent = e.message || '操作失敗，請再試一次'; btn.disabled = false; }
+  );
+}
+
+function doHold() {
+  var item = ITEMS[idx];
+  var note = document.getElementById('hold-note').value.trim() || '暫緩';
+  var errEl = document.getElementById('form-error');
+  var btn = document.getElementById('confirm-btn');
+  errEl.textContent = ''; btn.disabled = true;
+  apiCall('POST', '/api/on-hold', { entry: item._entry, note: note, nurse: NURSE },
+    function() { advance(); },
+    function(e) { errEl.textContent = e.message || '操作失敗'; btn.disabled = false; }
+  );
+}
+
+function doPhoneComplete() {
+  var item = ITEMS[idx];
+  var actEl = document.getElementById('actions');
+  actEl.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+  var errEl = document.createElement('div');
+  errEl.style.cssText = 'color:#dc2626;font-size:12px;padding:4px 12px';
+  apiCall('POST', '/api/mspt-phone-complete', { entry: item._entry, nurse: NURSE },
+    function() { advance(); },
+    function(e) {
+      actEl.querySelectorAll('button').forEach(function(b){ b.disabled = false; });
+      errEl.textContent = e.message || '操作失敗';
+      actEl.parentNode.insertBefore(errEl, actEl);
+      setTimeout(function(){ errEl.remove(); }, 3000);
+    }
+  );
+}
+
+function render() {
+  var prog = document.getElementById('top-prog');
+  var card = document.getElementById('card');
+  var act  = document.getElementById('actions');
+
+  if (idx >= ITEMS.length) {
+    prog.textContent = '完成';
+    card.innerHTML = '<div class="done"><div class="done-icon">✅</div><div class="done-txt">本批已全部完成</div></div>';
+    act.innerHTML = '<button class="btn btn-sec" onclick="go(-1)">← 上一筆</button>' +
+                    '<button class="btn btn-pri" onclick="window.close()">關閉</button>';
+    return;
+  }
+
+  var item = ITEMS[idx];
+  prog.textContent = (idx + 1) + ' / ' + ITEMS.length;
+
+  // Tags
+  var tags = '';
+  if (MODE === 'mspt') {
+    if (item.mspt_stage)       tags += '<span class="tag tag-stage">' + esc(item.mspt_stage) + '</span>';
+    if (item.needs_blood_test) tags += '<span class="tag tag-blood">需抽血</span>';
+    if (item.call_required)    tags += '<span class="tag tag-call2">第2次聯繫</span>';
+  } else {
+    if (item.h_type === 'AE連續') tags += '<span class="tag tag-ae">連續處方</span>';
+    else if (item.h_type)         tags += '<span class="tag tag-nishi">一般處方</span>';
+    if (item.days_until_due !== undefined) {
+      var d = item.days_until_due;
+      var dTxt = d < 0 ? (Math.abs(d)+'天過期') : (d===0 ? '今日到期' : (d===1 ? '明天到期' : d+'天後到期'));
+      tags += '<span class="tag ' + (d<=0?'tag-urgent':d<=2?'tag-soon':'tag-ok') + '">' + dTxt + '</span>';
+    }
+  }
+
+  // Fields
+  var fields = '';
+  fields += field('姓名', esc(item.name), item.name, true);
+  if (MODE === 'mspt') {
+    if (item.chart_number) fields += field('病歷號', esc(item.chart_number), item.chart_number, true);
+    if (item.nat_id)       fields += field('身分證', esc(item.nat_id), item.nat_id, true);
+  } else {
+    if (item.nat_id) fields += field('身分證', esc(item.nat_id), item.nat_id, true);
+  }
+  fields += field('生日', fmtDate(item.birth_date), fmtDate(item.birth_date), true);
+  if (MODE === 'prescription') {
+    if (item.due_date) {
+      var due = new Date(item.due_date + 'T00:00:00');
+      fields += field('到期', (due.getMonth()+1)+'/'+due.getDate()+'（開藥 '+item.ps+' 天）', null, false);
+    }
+    if (item.icd_name) fields += field('診斷', esc(item.icd_name), null, false);
+  }
+
+  card.innerHTML =
+    '<div class="pat-name">' + esc(item.name) + '</div>' +
+    (tags ? '<div class="tags">' + tags + '</div>' : '') +
+    '<div class="fields">' + fields + '</div>';
+
+  // Action buttons
+  var prev = '<button class="btn btn-sec" onclick="go(-1)"' + (idx===0?' disabled':'') + '>← 上一筆</button>';
+  var skip = '<button class="btn btn-sec" onclick="go(1)">跳過 →</button>';
+  var tab = item._tab || '';
+
+  if (MODE === 'mspt' && (tab === 'return' || tab === 'inactive')) {
+    act.innerHTML = prev + skip +
+      '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
+      '<button class="btn btn-pri" onclick="showContactForm()">已聯繫</button>';
+  } else if (MODE === 'mspt' && tab === 'phone') {
+    act.innerHTML = prev + skip +
+      '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
+      '<button class="btn btn-pri" onclick="doPhoneComplete()">完成</button>';
+  } else {
+    act.innerHTML = prev + skip;
+  }
+}
+
+function field(label, display, copyVal, copyable) {
+  var cpBtn = copyable && copyVal
+    ? '<button class="cp" onclick="copy(' + JSON.stringify(copyVal) + ',this)">複製</button>'
+    : '';
+  var cls = copyable ? 'fv' : 'fv-sub';
+  return '<div class="field"><span class="fl">' + label + '</span><span class="' + cls + '">' + display + '</span>' + cpBtn + '</div>';
+}
+
+render();
+</script>
+</body>
+</html>
