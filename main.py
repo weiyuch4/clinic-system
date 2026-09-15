@@ -316,6 +316,97 @@ def admin_reactivate_user(user_id: int,
     return {"ok": True}
 
 
+# ── Announcements ────────────────────────────────────────────────────────────
+
+@app.get("/api/announcements")
+def list_announcements(user: auth.CurrentUser = Depends(auth.get_current_user)):
+    from db import _conn as _db
+    nurse = user.display_name
+    with _db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT a.id, a.title, a.body, a.created_by, a.created_at,
+                          EXISTS(
+                              SELECT 1 FROM announcement_reads r
+                              WHERE r.announcement_id = a.id
+                                AND r.clinic_id = a.clinic_id
+                                AND r.nurse_name = %s
+                          ) AS is_read
+                   FROM announcements a
+                   WHERE a.clinic_id = %s AND a.is_active = TRUE
+                   ORDER BY a.created_at DESC""",
+                (nurse, user.clinic_id),
+            )
+            return cur.fetchall()
+
+
+@app.post("/api/announcements", status_code=201)
+def create_announcement(body: dict,
+                        admin: auth.CurrentUser = Depends(auth.require_admin)):
+    title = (body.get("title") or "").strip()
+    text  = (body.get("body")  or "").strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="標題不能為空")
+    from db import _conn as _db
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
+    with _db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO announcements (clinic_id, title, body, created_by, created_at)
+                   VALUES (%s, %s, %s, %s, %s) RETURNING id""",
+                (admin.clinic_id, title, text, admin.display_name, now),
+            )
+            row = cur.fetchone()
+    return {"id": row["id"], "ok": True}
+
+
+@app.post("/api/announcements/{ann_id}/read")
+def mark_announcement_read(ann_id: int,
+                           user: auth.CurrentUser = Depends(auth.get_current_user)):
+    from db import _conn as _db
+    from datetime import datetime, timezone, timedelta
+    now = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
+    nurse = user.display_name
+    with _db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO announcement_reads (announcement_id, clinic_id, nurse_name, read_at)
+                   VALUES (%s, %s, %s, %s)
+                   ON CONFLICT (announcement_id, clinic_id, nurse_name) DO NOTHING""",
+                (ann_id, user.clinic_id, nurse, now),
+            )
+    return {"ok": True}
+
+
+@app.delete("/api/admin/announcements/{ann_id}", status_code=204)
+def close_announcement(ann_id: int,
+                       admin: auth.CurrentUser = Depends(auth.require_admin)):
+    from db import _conn as _db
+    with _db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE announcements SET is_active = FALSE WHERE id = %s AND clinic_id = %s",
+                (ann_id, admin.clinic_id),
+            )
+    return Response(status_code=204)
+
+
+@app.get("/api/admin/announcements/{ann_id}/reads")
+def get_announcement_reads(ann_id: int,
+                           admin: auth.CurrentUser = Depends(auth.require_admin)):
+    from db import _conn as _db
+    with _db() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT nurse_name, read_at FROM announcement_reads
+                   WHERE announcement_id = %s AND clinic_id = %s
+                   ORDER BY read_at""",
+                (ann_id, admin.clinic_id),
+            )
+            return cur.fetchall()
+
+
 @app.get("/login")
 def login_page() -> Response:
     try:

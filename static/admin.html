@@ -1284,6 +1284,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       <button class="tab"        data-section="schedule">排班表</button>
       <button class="tab"        data-section="salary">薪資計算</button>
       <button class="tab"        data-section="labcodes">代碼設定</button>
+      <button class="tab"        data-section="announcements">公告管理</button>
       <button class="btn-sm" style="margin-left:auto;align-self:center;margin-right:8px" onclick="exitAdminMode()">退出</button>
     </div>
     <div class="ct" id="admin-ct" style="padding:0">
@@ -1754,6 +1755,48 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           <span style="font-size:12px;color:var(--text-3)">章別以外手動加入的代碼</span>
         </div>
         <div id="lc-custom-chips" style="padding:14px 18px;display:flex;flex-wrap:wrap;gap:8px"></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ── Announcements ── -->
+  <section id="announcements" class="section">
+    <div style="max-width:640px">
+
+      <!-- Create form -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><span class="card-title">發布新公告</span></div>
+        <div style="padding:0 20px 16px;display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-3);margin-bottom:5px">標題</div>
+            <input id="ann-title" type="text" placeholder="公告標題（必填）" maxlength="80"
+              style="width:100%;border:1.5px solid var(--border-mid);border-radius:8px;padding:8px 12px;background:var(--surface);color:var(--text-1);font-size:13px;font-family:var(--font);outline:none"
+              onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border-mid)'">
+          </div>
+          <div>
+            <div style="font-size:12px;font-weight:600;color:var(--text-3);margin-bottom:5px">內容（選填）</div>
+            <textarea id="ann-body" rows="3" placeholder="詳細說明…"
+              style="width:100%;border:1.5px solid var(--border-mid);border-radius:8px;padding:8px 12px;background:var(--surface);color:var(--text-1);font-size:13px;font-family:var(--font);outline:none;resize:vertical"
+              onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border-mid)'"></textarea>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <button class="btn-sm primary" onclick="annCreate()">發布公告</button>
+            <span id="ann-create-msg" style="font-size:12px;color:var(--emerald)"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Active announcements list -->
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">目前公告</span>
+          <span class="card-spacer"></span>
+          <button class="btn-sm" onclick="annLoad()">重新整理</button>
+        </div>
+        <div id="ann-list" style="padding:0 20px 16px">
+          <div style="font-size:13px;color:var(--text-3);padding:12px 0">載入中…</div>
+        </div>
       </div>
 
     </div>
@@ -4420,6 +4463,89 @@ async function saveLabCodes() {
 // Always initialize the schedule week label synchronously so it never shows "—"
 $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
 refresh();
+
+// ── Announcements (admin) ────────────────────────────────────────────────────
+async function annLoad() {
+  const el = document.getElementById('ann-list');
+  if (!el) return;
+  el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:12px 0">載入中…</div>';
+  try {
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('clinic_token') || '';
+    const r = await fetch('/api/announcements', { headers: { Authorization: 'Bearer ' + token } });
+    const data = await r.json();
+    if (!data.length) { el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:12px 0">目前沒有公告</div>'; return; }
+    el.innerHTML = data.map(a => `
+      <div style="border-top:1px solid var(--border-mid);padding:12px 0;display:flex;flex-direction:column;gap:6px" data-ann-id="${a.id}">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:13px;font-weight:700;color:var(--text-1);flex:1">${escH(a.title)}</span>
+          <button class="btn-sm" style="background:var(--red,#dc2626);color:#fff;border-color:var(--red,#dc2626)" onclick="annClose(${a.id})">關閉公告</button>
+        </div>
+        ${a.body ? `<div style="font-size:12.5px;color:var(--text-2);white-space:pre-wrap">${escH(a.body)}</div>` : ''}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          <span style="font-size:11px;color:var(--text-3)">由 ${escH(a.created_by)} 發布・${(a.created_at||'').slice(0,10)}</span>
+          <button class="btn-sm" style="font-size:11px" onclick="annShowReads(${a.id},this)">查看已讀名單</button>
+        </div>
+        <div class="ann-reads-list" id="ann-reads-${a.id}" style="display:none"></div>
+      </div>
+    `).join('');
+  } catch(e) { el.innerHTML = '<div style="font-size:13px;color:var(--red,#dc2626);padding:12px 0">載入失敗</div>'; }
+}
+
+async function annCreate() {
+  const title = document.getElementById('ann-title').value.trim();
+  const body  = document.getElementById('ann-body').value.trim();
+  const msg   = document.getElementById('ann-create-msg');
+  if (!title) { alert('請輸入公告標題'); return; }
+  const token = localStorage.getItem('admin_token') || localStorage.getItem('clinic_token') || '';
+  try {
+    const r = await fetch('/api/announcements', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({ title, body }),
+    });
+    if (!r.ok) throw new Error((await r.json()).detail || '');
+    document.getElementById('ann-title').value = '';
+    document.getElementById('ann-body').value  = '';
+    msg.textContent = '✓ 公告已發布';
+    setTimeout(() => { msg.textContent = ''; }, 3000);
+    annLoad();
+  } catch(e) { alert('發布失敗：' + (e.message || '')); }
+}
+
+async function annClose(id) {
+  if (!confirm('確定要關閉這則公告？關閉後護理師將看不到此公告。')) return;
+  const token = localStorage.getItem('admin_token') || localStorage.getItem('clinic_token') || '';
+  await fetch('/api/admin/announcements/' + id, {
+    method: 'DELETE',
+    headers: { Authorization: 'Bearer ' + token },
+  });
+  annLoad();
+}
+
+async function annShowReads(id, btn) {
+  const listEl = document.getElementById('ann-reads-' + id);
+  if (!listEl) return;
+  if (listEl.style.display !== 'none') { listEl.style.display = 'none'; btn.textContent = '查看已讀名單'; return; }
+  btn.textContent = '隱藏';
+  listEl.style.display = 'block';
+  listEl.innerHTML = '<span style="font-size:11px;color:var(--text-3)">載入中…</span>';
+  const token = localStorage.getItem('admin_token') || localStorage.getItem('clinic_token') || '';
+  try {
+    const r = await fetch('/api/admin/announcements/' + id + '/reads', { headers: { Authorization: 'Bearer ' + token } });
+    const rows = await r.json();
+    if (!rows.length) { listEl.innerHTML = '<span style="font-size:11px;color:var(--text-3)">尚無人已讀</span>'; return; }
+    listEl.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">' +
+      rows.map(x => `<span style="font-size:11px;background:var(--blue-bg);color:var(--blue);border-radius:6px;padding:2px 8px;font-weight:600">${escH(x.nurse_name)}</span>`).join('') +
+      '</div>';
+  } catch(e) { listEl.innerHTML = '<span style="font-size:11px;color:var(--red,#dc2626)">載入失敗</span>'; }
+}
+
+function escH(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// Load announcements when the tab is opened
+document.querySelectorAll('.tab[data-section="announcements"]').forEach(t => {
+  t.addEventListener('click', annLoad);
+});
 </script>
 <!-- salary picker dropdowns -->
 <div id="sal-dp-drop" class="sal-pk-drop" style="display:none"><div class="sal-cal-in" id="sal-cal-in"></div></div>

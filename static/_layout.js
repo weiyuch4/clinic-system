@@ -590,6 +590,87 @@
     'change-password': '我的設定', login: '登入',
   };
 
+  // ── Announcement bell ────────────────────────────────
+  var _annData = [];
+
+  function _initAnnouncements() {
+    var bellBtn = document.getElementById('ann-bell');
+    var dd      = document.getElementById('ann-dd');
+    if (!bellBtn || !dd) return;
+
+    bellBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      var open = !dd.hidden;
+      dd.hidden = open;
+      if (!open) _renderAnnDD();
+    });
+
+    document.addEventListener('click', function (e) {
+      var wrap = document.getElementById('ann-wrap');
+      if (wrap && !wrap.contains(e.target)) {
+        var d = document.getElementById('ann-dd');
+        if (d) d.hidden = true;
+      }
+    });
+
+    _fetchAnnouncements();
+  }
+
+  function _fetchAnnouncements() {
+    apiFetch('/api/announcements')
+      .then(function (data) {
+        _annData = data || [];
+        _updateAnnBadge();
+      })
+      .catch(function () {});
+  }
+
+  function _updateAnnBadge() {
+    var badge = document.getElementById('ann-badge');
+    if (!badge) return;
+    var unread = _annData.filter(function (a) { return !a.is_read; }).length;
+    badge.textContent = unread > 9 ? '9+' : String(unread);
+    badge.hidden = unread === 0;
+  }
+
+  function _renderAnnDD() {
+    var dd = document.getElementById('ann-dd');
+    if (!dd) return;
+    if (!_annData.length) {
+      dd.innerHTML = '<div class="ann-empty">目前沒有公告</div>';
+      return;
+    }
+    dd.innerHTML = _annData.map(function (a) {
+      var readCls = a.is_read ? ' ann-item-read' : '';
+      var btn = a.is_read
+        ? '<span class="ann-read-tag">已讀</span>'
+        : '<button class="ann-read-btn" data-id="' + a.id + '">已讀</button>';
+      return '<div class="ann-item' + readCls + '" data-id="' + a.id + '">' +
+        '<div class="ann-item-top">' +
+          '<span class="ann-item-title">' + escHtml(a.title) + '</span>' +
+          btn +
+        '</div>' +
+        (a.body ? '<div class="ann-item-body">' + escHtml(a.body) + '</div>' : '') +
+        '<div class="ann-item-meta">由 ' + escHtml(a.created_by) + ' 發布・' + (a.created_at || '').slice(0, 10) + '</div>' +
+      '</div>';
+    }).join('');
+
+    dd.querySelectorAll('.ann-read-btn').forEach(function (b) {
+      b.addEventListener('click', function (e) {
+        e.stopPropagation();
+        var id = parseInt(b.dataset.id, 10);
+        apiAction('POST', '/api/announcements/' + id + '/read', null)
+          .then(function () {
+            var a = _annData.find(function (x) { return x.id === id; });
+            if (a) a.is_read = true;
+            _updateAnnBadge();
+            _renderAnnDD();
+          })
+          .catch(function () {});
+      });
+    });
+  }
+
   function _renderTopbar() {
     var el = document.getElementById('topbar');
     if (!el) return;
@@ -599,6 +680,13 @@
       '<span class="tb-title" id="tb-title">' + (_MOB_TITLES[_activePage] || '') + '</span>' +
       '<div class="tbr">' +
         '<span class="lu" id="last-updated"></span>' +
+        '<div class="ann-wrap" id="ann-wrap">' +
+          '<button class="ib ann-bell" id="ann-bell" title="公告">' +
+            '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>' +
+            '<span class="ann-badge" id="ann-badge" hidden>0</span>' +
+          '</button>' +
+          '<div class="ann-dd" id="ann-dd" hidden></div>' +
+        '</div>' +
         '<button class="ib" id="btn-theme" title="切換深色模式">' + ICONS.moon + '</button>' +
         '<button class="ib" id="btn-refresh" title="重新整理">' + ICONS.refresh + '</button>' +
         '<div class="nurse-wrap" id="nurse-wrap">' +
@@ -622,6 +710,10 @@
     var themeBtn = document.getElementById('btn-theme');
     if (themeBtn) themeBtn.addEventListener('click', function () { _applyTheme(_isDark() ? 'light' : 'dark'); });
     _updateThemeBtn();
+
+    // ── Announcements bell ───────────────────────────────
+    _initAnnouncements();
+
     var srchInput = el.querySelector('.srch-input');
     if (srchInput) {
       // Inject dropdown container inside .srch

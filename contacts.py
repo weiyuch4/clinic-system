@@ -398,6 +398,28 @@ _CREATE_NURSE_OT_LOGS = """
     )
 """
 
+_CREATE_ANNOUNCEMENTS = """
+    CREATE TABLE IF NOT EXISTS announcements (
+        id         SERIAL PRIMARY KEY,
+        clinic_id  INTEGER NOT NULL DEFAULT 1,
+        title      TEXT    NOT NULL,
+        body       TEXT    NOT NULL DEFAULT '',
+        created_by TEXT    NOT NULL,
+        created_at TEXT    NOT NULL,
+        is_active  BOOLEAN NOT NULL DEFAULT TRUE
+    )
+"""
+
+_CREATE_ANNOUNCEMENT_READS = """
+    CREATE TABLE IF NOT EXISTS announcement_reads (
+        announcement_id INTEGER NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
+        nurse_name      TEXT    NOT NULL,
+        read_at         TEXT    NOT NULL,
+        PRIMARY KEY (announcement_id, clinic_id, nurse_name)
+    )
+"""
+
 
 def get_blood_dismissed(clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
@@ -640,6 +662,8 @@ def init() -> None:
             cur.execute(_CREATE_BLOOD_PHYSICAL)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_codes TEXT NOT NULL DEFAULT '[]'")
             cur.execute(_CREATE_STICKY_NOTES)
+            cur.execute(_CREATE_ANNOUNCEMENTS)
+            cur.execute(_CREATE_ANNOUNCEMENT_READS)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):

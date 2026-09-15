@@ -82,6 +82,21 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .lm svg{width:16px;height:16px;flex-shrink:0}
 .tbr{margin-left:auto;display:flex;align-items:center;gap:10px}
 .lu{font-size:11.5px;color:var(--muted)}
+.ann-wrap{position:relative;display:flex;align-items:center}
+.ann-bell{position:relative}
+.ann-badge{position:absolute;top:2px;right:2px;min-width:16px;height:16px;border-radius:8px;background:#ef4444;color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 3px;pointer-events:none;line-height:1}
+.ann-dd{position:absolute;top:calc(100% + 8px);right:0;width:300px;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.12);z-index:200;overflow:hidden;display:flex;flex-direction:column;max-height:420px;overflow-y:auto}
+.ann-empty{padding:18px 16px;font-size:13px;color:var(--muted);text-align:center}
+.ann-item{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:5px}
+.ann-item:last-child{border-bottom:none}
+.ann-item-read{opacity:.6}
+.ann-item-top{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.ann-item-title{font-size:13px;font-weight:700;color:var(--text);flex:1;line-height:1.35}
+.ann-item-body{font-size:12.5px;color:var(--sub);line-height:1.5;white-space:pre-wrap}
+.ann-item-meta{font-size:11px;color:var(--muted)}
+.ann-read-btn{flex-shrink:0;font-size:11px;font-weight:600;padding:3px 10px;border-radius:6px;border:1.5px solid var(--accent,#2563eb);color:var(--accent,#2563eb);background:transparent;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .1s}
+.ann-read-btn:hover{background:var(--accent,#2563eb);color:#fff}
+.ann-read-tag{flex-shrink:0;font-size:11px;color:var(--muted)}
 .ib{width:32px;height:32px;background:var(--bg);border-radius:8px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer;color:var(--sub);flex-shrink:0}
 .ib:hover{color:var(--text)}
 .av{width:32px;height:32px;border-radius:50%;background:var(--sub);color:white;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
