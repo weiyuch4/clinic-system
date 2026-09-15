@@ -67,7 +67,11 @@
         <button class="filter-tab" data-tab="inactive">未複診 <span class="tc-count" id="cnt-inactive">…</span></button>
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
-              <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
+        <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
+        <button class="act-btn" id="btn-workflow" style="margin-left:auto;gap:5px;flex-shrink:0;padding:6px 12px;font-size:13px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          逐一追蹤
+        </button>
       </div>
 
       <div class="search-row">
@@ -664,6 +668,115 @@
       .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
+
+  // ── Workflow popup ───────────────────────────────────
+  function _openWorkflow() {
+    var lists = {
+      'return': _return, 'phone': _phone, 'submittable': _submittable,
+      'inactive': _inactive, 'contacted': _contacted, 'hold': _hold, 'excluded': _excluded,
+    };
+    var items = (lists[_tab] || []).filter(match).map(function (e) {
+      var p = e.patient || { name: e.manual_name || '?', chart_number: '', birth_date: '' };
+      return {
+        name:            p.name || '',
+        chart_number:    p.chart_number || '',
+        birth_date:      p.birth_date || '',
+        nat_id:          p.nat_id || '',
+        mspt_stage:      e.mspt_stage || '',
+        needs_blood_test: !!e.needs_blood_test,
+        call_required:   !!e.call_required,
+      };
+    });
+    if (!items.length) { alert('目前沒有資料'); return; }
+    try { localStorage.setItem('rx_workflow_items', JSON.stringify(items)); } catch (ex) {}
+
+    var popup = window.open('', 'rx_workflow',
+      'width=400,height=390,resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no,location=no');
+
+    popup.document.write('<!DOCTYPE html><html lang="zh-TW"><head>' +
+      '<meta charset="UTF-8"><title>逐一追蹤</title><style>' +
+      '*{box-sizing:border-box;margin:0;padding:0}' +
+      'body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#111827;height:100vh;display:flex;flex-direction:column;overflow:hidden}' +
+      '.top{background:#4c1d95;color:#fff;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}' +
+      '.top-title{font-size:13px;font-weight:700;letter-spacing:.02em}' +
+      '.top-prog{font-size:12px;opacity:.8}' +
+      '.card{flex:1;padding:14px 16px;overflow-y:auto;display:flex;flex-direction:column;gap:10px}' +
+      '.pat-name{font-size:22px;font-weight:800;line-height:1.2}' +
+      '.tags{display:flex;gap:5px;flex-wrap:wrap}' +
+      '.tag{font-size:11px;font-weight:600;padding:2px 9px;border-radius:100px}' +
+      '.tag-stage{background:#ede9fe;color:#6d28d9}' +
+      '.tag-blood{background:#fee2e2;color:#991b1b}' +
+      '.tag-call{background:#fef3c7;color:#92400e}' +
+      '.tag-ok{background:#d1fae5;color:#065f46}' +
+      '.fields{display:flex;flex-direction:column;gap:6px}' +
+      '.field{display:flex;align-items:center;gap:8px;padding:7px 10px;background:#fff;border:1px solid #e5e7eb;border-radius:9px}' +
+      '.fl{font-size:11px;color:#9ca3af;width:38px;flex-shrink:0}' +
+      '.fv{font-size:14px;font-weight:600;flex:1;font-variant-numeric:tabular-nums}' +
+      '.fv-sub{font-size:13px;color:#374151;flex:1;font-variant-numeric:tabular-nums}' +
+      '.cp{font-size:11px;padding:3px 9px;border-radius:6px;border:1px solid #d1d5db;background:transparent;color:#6b7280;cursor:pointer;font-family:inherit;flex-shrink:0;transition:all .1s}' +
+      '.cp:hover{background:#f3f4f6;color:#111;border-color:#9ca3af}' +
+      '.cp.ok{background:#d1fae5;color:#065f46;border-color:#6ee7b7}' +
+      '.done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#6b7280}' +
+      '.done-icon{font-size:44px}.done-txt{font-size:14px;font-weight:600}' +
+      '.actions{padding:10px 12px;display:flex;gap:7px;border-top:1px solid #e5e7eb;background:#fff;flex-shrink:0}' +
+      '.btn{flex:1;padding:9px 6px;border-radius:9px;border:none;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .1s}' +
+      '.btn:disabled{opacity:.35;cursor:default}' +
+      '.btn-sec{background:#f3f4f6;color:#374151}' +
+      '.btn-sec:not(:disabled):hover{background:#e5e7eb}' +
+      '.btn-pri{background:#4c1d95;color:#fff}' +
+      '.btn-pri:hover{background:#6d28d9}' +
+      '</style></head><body>' +
+      '<div id="top" class="top"></div>' +
+      '<div id="card" class="card"></div>' +
+      '<div id="actions" class="actions"></div>' +
+      '<script>' +
+      'var ITEMS=JSON.parse(localStorage.getItem("rx_workflow_items")||"[]");' +
+      'var idx=0;' +
+      'function fmtDate(d){if(!d)return"—";var dt=new Date(d+"T00:00:00");return dt.getFullYear()+"/"+(dt.getMonth()+1).toString().padStart(2,"0")+"/"+dt.getDate().toString().padStart(2,"0");}' +
+      'function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}' +
+      'function copy(text,btn){' +
+        'function done(){btn.textContent="✓ 已複製";btn.classList.add("ok");setTimeout(function(){btn.textContent="複製";btn.classList.remove("ok");},1500);}' +
+        'if(navigator.clipboard){navigator.clipboard.writeText(text).then(done).catch(function(){fb(text);done();});}else{fb(text);done();}' +
+      '}' +
+      'function fb(t){var a=document.createElement("textarea");a.value=t;a.style.position="fixed";a.style.opacity="0";document.body.appendChild(a);a.select();document.execCommand("copy");document.body.removeChild(a);}' +
+      'function render(){' +
+        'var top=document.getElementById("top"),card=document.getElementById("card"),act=document.getElementById("actions");' +
+        'if(idx>=ITEMS.length){' +
+          'top.innerHTML="<span class=\\"top-title\\">逐一追蹤</span><span class=\\"top-prog\\">完成</span>";' +
+          'card.innerHTML="<div class=\\"done\\"><div class=\\"done-icon\\">✅</div><div class=\\"done-txt\\">本批已全部完成</div></div>";' +
+          'act.innerHTML="<button class=\\"btn btn-sec\\" onclick=\\"go(-1)\\">← 上一筆</button><button class=\\"btn btn-pri\\" onclick=\\"window.close()\\">關閉</button>";' +
+          'return;' +
+        '}' +
+        'var e=ITEMS[idx];' +
+        'var stageTags="";' +
+        'if(e.mspt_stage)stageTags+="<span class=\\"tag tag-stage\\">"+esc(e.mspt_stage)+"</span>";' +
+        'if(e.needs_blood_test)stageTags+="<span class=\\"tag tag-blood\\">需抽血</span>";' +
+        'if(e.call_required)stageTags+="<span class=\\"tag tag-call\\">第2次聯繫</span>";' +
+        'var idRow=e.nat_id?"<div class=\\"field\\"><span class=\\"fl\\">身分證</span><span class=\\"fv\\">"+esc(e.nat_id)+"</span><button class=\\"cp\\" onclick=\\"copy("+JSON.stringify(e.nat_id)+",this)\\">複製</button></div>":"";' +
+        'top.innerHTML="<span class=\\"top-title\\">逐一追蹤</span><span class=\\"top-prog\\">"+(idx+1)+" / "+ITEMS.length+"</span>";' +
+        'card.innerHTML=' +
+          '"<div class=\\"pat-name\\">"+esc(e.name)+"</div>"' +
+          '+"<div class=\\"tags\\">"+stageTags+"</div>"' +
+          '+"<div class=\\"fields\\">"' +
+            '+"<div class=\\"field\\"><span class=\\"fl\\">姓名</span><span class=\\"fv\\">"+esc(e.name)+"</span><button class=\\"cp\\" onclick=\\"copy("+JSON.stringify(e.name)+",this)\\">複製</button></div>"' +
+            '+"<div class=\\"field\\"><span class=\\"fl\\">病歷號</span><span class=\\"fv\\">"+esc(e.chart_number)+"</span><button class=\\"cp\\" onclick=\\"copy("+JSON.stringify(e.chart_number)+",this)\\">複製</button></div>"' +
+            '+idRow' +
+            '+"<div class=\\"field\\"><span class=\\"fl\\">生日</span><span class=\\"fv\\">"+fmtDate(e.birth_date)+"</span><button class=\\"cp\\" onclick=\\"copy("+JSON.stringify(fmtDate(e.birth_date))+",this)\\">複製</button></div>"' +
+          '+"</div>";' +
+        'act.innerHTML=' +
+          '"<button class=\\"btn btn-sec\\" onclick=\\"go(-1)\\"'+('"+(idx===0?" disabled":"")+">← 上一筆</button>"') +
+          '+"<button class=\\"btn btn-sec\\" onclick=\\"go(1)\\">跳過 →</button>"' +
+          '+"<button class=\\"btn btn-pri\\" onclick=\\"go(1)\\">完成 →</button>";' +
+      '}' +
+      'function go(dir){idx=Math.max(0,Math.min(ITEMS.length,idx+dir));render();}' +
+      'render();' +
+      '<\/script>' +
+      '</body></html>');
+    popup.document.close();
+    popup.focus();
+  }
+
+  document.getElementById('btn-workflow').addEventListener('click', _openWorkflow);
 
   Layout.init({ activePage: 'mspt', onRefresh: load });
   load();
