@@ -325,25 +325,32 @@
       cur = L.addDays(cur, 7);
     }
 
-    // Fetch all weeks in parallel
-    Promise.all(mondays.map(function (mon) {
-      return L.apiFetch('/api/schedule?week_start=' + mon)
-        .catch(function () { return { published: false, nurses: [], shifts: [] }; });
-    })).then(function (results) {
-      // Collect nurse list (from first published week) and build
-      // {date: {nurse: [shift]}} index
-      var nurses = [];
-      var idx = {};
-      results.forEach(function (data) {
-        if (!data.published) return;
-        if (!nurses.length && data.nurses && data.nurses.length) nurses = data.nurses;
-        (data.shifts || []).forEach(function (s) {
-          if (!idx[s.shift_date]) idx[s.shift_date] = {};
-          if (!idx[s.shift_date][s.nurse]) idx[s.shift_date][s.nurse] = [];
-          idx[s.shift_date][s.nurse].push(s);
+    // Fetch nurses + all weeks in parallel.
+    // Admin endpoint returns draft shifts too; fall back to published endpoint for nurses.
+    var nurseReq = L.apiFetch('/api/nurses').catch(function () { return []; });
+    var shiftReqs = mondays.map(function (mon) {
+      return L.apiFetch('/api/admin/shifts?week_start=' + mon)
+        .catch(function () {
+          // Not admin — fall back to the published-schedule endpoint
+          return L.apiFetch('/api/schedule?week_start=' + mon)
+            .then(function (d) { return d.shifts || []; })
+            .catch(function () { return []; });
         });
-      });
-      // Fallback: derive nurse list from shift data if API didn't provide it
+    });
+
+    Promise.all([nurseReq].concat(shiftReqs)).then(function (allResults) {
+      var nurses = allResults[0];
+      var idx = {};
+      for (var i = 1; i < allResults.length; i++) {
+        var weekShifts = Array.isArray(allResults[i]) ? allResults[i] : [];
+        weekShifts.forEach(function (s) {
+          var d = typeof s.shift_date === 'string' ? s.shift_date : s.shift_date;
+          if (!idx[d]) idx[d] = {};
+          if (!idx[d][s.nurse]) idx[d][s.nurse] = [];
+          idx[d][s.nurse].push(s);
+        });
+      }
+      // Fallback: derive nurse list from shift data when /api/nurses failed
       if (!nurses.length) {
         var seen = {};
         Object.keys(idx).forEach(function (date) {
