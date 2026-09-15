@@ -327,13 +327,12 @@
       var DOW_ZH = ['日', '一', '二', '三', '四', '五', '六'];
 
       function pad(n) { return String(n).padStart(2, '0'); }
-      // Abbreviate time: "08:00" → "8", "08:30" → "8:30"
+      // Abbreviate time: strip leading zero from hour only — "08:00" → "8:00", "21:30" → "21:30"
       function fmtT(t) {
         if (!t) return '';
         var m = t.match(/^(\d+):(\d+)$/);
         if (!m) return t;
-        var h = parseInt(m[1], 10).toString();
-        return m[2] === '00' ? h : h + ':' + m[2];
+        return parseInt(m[1], 10) + ':' + m[2];
       }
 
       // Build column headers: one per day
