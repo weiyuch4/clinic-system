@@ -813,6 +813,21 @@ def get_public_schedule(week_start: date, user: auth.CurrentUser = Depends(auth.
         raise HTTPException(status_code=500, detail="查詢失敗")
 
 
+@app.get("/api/schedule/month")
+def get_month_schedule(month: str, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    """Return shifts for an entire calendar month (YYYY-MM).
+    Admin users see all draft + published shifts; nurses see only published weeks."""
+    import re
+    if not re.match(r"^\d{4}-\d{2}$", month):
+        raise HTTPException(status_code=422, detail="month 格式應為 YYYY-MM")
+    is_admin = user.role == "admin"
+    try:
+        return contacts.get_month_schedule(month, user.clinic_id, admin_view=is_admin)
+    except Exception as exc:
+        logger.exception("get_month_schedule failed: %s", exc)
+        raise HTTPException(status_code=500, detail="查詢失敗")
+
+
 def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
     from models import Patient
     chronic, mspt, mspt_inactive, hep, hep_inactive, ckd, ckd_inactive = [], [], [], [], [], [], []

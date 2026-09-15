@@ -1898,6 +1898,43 @@ def get_shifts_for_week(week_start: str, clinic_id: int = 1) -> list[dict]:
             return [dict(r) for r in cur.fetchall()]
 
 
+def get_month_schedule(month: str, clinic_id: int = 1, admin_view: bool = False) -> dict:
+    """Return all shifts for a calendar month plus the ordered nurse list.
+    admin_view=True: includes unpublished (draft) shifts.
+    admin_view=False: only shifts whose week is in published_weeks."""
+    import calendar as _cal
+    year_m = date.fromisoformat(month + '-01')
+    last_day = _cal.monthrange(year_m.year, year_m.month)[1]
+    from_date = month + '-01'
+    to_date   = f'{month}-{last_day:02d}'
+
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT nurse, shift_date, slot, start_time, end_time, clean_start, clean_end
+                   FROM shifts
+                   WHERE clinic_id=%s AND shift_date BETWEEN %s AND %s
+                   ORDER BY shift_date, nurse, slot""",
+                (clinic_id, from_date, to_date),
+            )
+            all_shifts = [dict(r) for r in cur.fetchall()]
+
+            if not admin_view and all_shifts:
+                cur.execute(
+                    "SELECT week_start FROM published_weeks WHERE clinic_id=%s", (clinic_id,)
+                )
+                published = {r['week_start'] for r in cur.fetchall()}
+
+                def _week_start_of(d_str: str) -> str:
+                    d = date.fromisoformat(d_str)
+                    return (d - timedelta(days=d.weekday())).isoformat()
+
+                all_shifts = [s for s in all_shifts if _week_start_of(s['shift_date']) in published]
+
+    nurses = get_nurses(clinic_id)
+    return {'nurses': nurses, 'shifts': all_shifts}
+
+
 def set_shift(
     nurse: str, shift_date: str, slot: str, start_time: str | None, end_time: str | None,
     clean_start: str | None = None, clean_end: str | None = None, clinic_id: int = 1,

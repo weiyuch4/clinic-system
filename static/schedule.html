@@ -304,57 +304,23 @@
   document.getElementById('btn-print-month').addEventListener('click', function () {
     // Determine the month from the Thursday of the current week (ISO convention)
     var thursday = L.addDays(_mondayStr, 3);
-    var year  = parseInt(thursday.slice(0, 4), 10);
-    var month = parseInt(thursday.slice(5, 7), 10);
+    var year     = parseInt(thursday.slice(0, 4), 10);
+    var month    = parseInt(thursday.slice(5, 7), 10);
     var monthStr = thursday.slice(0, 7); // "YYYY-MM"
 
-    // First Monday on or before the 1st of the month
-    var firstDay = year + '-' + String(month).padStart(2, '0') + '-01';
-    var firstDow = new Date(firstDay).getDay(); // 0=Sun … 6=Sat
-    var daysBack = firstDow === 0 ? 6 : firstDow - 1;
-    var firstMonday = L.addDays(firstDay, -daysBack);
-
-    // Collect all Mondays that have at least one day in the target month
-    var mondays = [];
-    var cur = firstMonday;
-    for (var safety = 0; safety < 7; safety++) {
-      var sunday = L.addDays(cur, 6);
-      // Stop once the whole week is past the month
-      if (cur.slice(0, 7) > monthStr && sunday.slice(0, 7) > monthStr) break;
-      mondays.push(cur);
-      cur = L.addDays(cur, 7);
-    }
-
-    // Fetch nurses + all weeks in parallel.
-    // Admin endpoint returns draft shifts too; fall back to published endpoint for nurses.
-    var nurseReq = L.apiFetch('/api/nurses').catch(function () { return []; });
-    var shiftReqs = mondays.map(function (mon) {
-      return L.apiFetch('/api/admin/shifts?week_start=' + mon)
-        .catch(function () {
-          // Not admin — fall back to the published-schedule endpoint
-          return L.apiFetch('/api/schedule?week_start=' + mon)
-            .then(function (d) { return d.shifts || []; })
-            .catch(function () { return []; });
-        });
-    });
-
-    Promise.all([nurseReq].concat(shiftReqs)).then(function (allResults) {
-      var nurses = allResults[0];
+    // Single endpoint: admin sees draft shifts, nurses see published only
+    L.apiFetch('/api/schedule/month?month=' + monthStr).then(function (data) {
+      var nurses = data.nurses || [];
       var idx = {};
-      for (var i = 1; i < allResults.length; i++) {
-        var weekShifts = Array.isArray(allResults[i]) ? allResults[i] : [];
-        weekShifts.forEach(function (s) {
-          var d = typeof s.shift_date === 'string' ? s.shift_date : s.shift_date;
-          if (!idx[d]) idx[d] = {};
-          if (!idx[d][s.nurse]) idx[d][s.nurse] = [];
-          idx[d][s.nurse].push(s);
-        });
-      }
-      // Fallback: derive nurse list from shift data when /api/nurses failed
+      (data.shifts || []).forEach(function (s) {
+        if (!idx[s.shift_date]) idx[s.shift_date] = {};
+        if (!idx[s.shift_date][s.nurse]) idx[s.shift_date][s.nurse] = [];
+        idx[s.shift_date][s.nurse].push(s);
+      });
       if (!nurses.length) {
         var seen = {};
-        Object.keys(idx).forEach(function (date) {
-          Object.keys(idx[date]).forEach(function (n) { seen[n] = 1; });
+        Object.keys(idx).forEach(function (d) {
+          Object.keys(idx[d]).forEach(function (n) { seen[n] = 1; });
         });
         nurses = Object.keys(seen);
       }
