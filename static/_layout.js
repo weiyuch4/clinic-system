@@ -593,6 +593,16 @@
   // ── Announcement bell ────────────────────────────────
   var _annData = [];
 
+  function _closeAnnModal() {
+    var dd = document.getElementById('ann-dd');
+    if (!dd || dd.hidden) return;
+    dd.classList.add('ann-closing');
+    setTimeout(function () {
+      dd.classList.remove('ann-closing');
+      dd.hidden = true;
+    }, 140);
+  }
+
   function _initAnnouncements() {
     var bellBtn = document.getElementById('ann-bell');
     var dd      = document.getElementById('ann-dd');
@@ -600,22 +610,19 @@
 
     bellBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      if (!dd.hidden) { dd.hidden = true; return; }
+      if (!dd.hidden) { _closeAnnModal(); return; }
       _renderAnnDD();
       dd.hidden = false;
     });
 
     // close when clicking the backdrop (not the modal box itself)
     dd.addEventListener('click', function (e) {
-      if (e.target === dd) dd.hidden = true;
+      if (e.target === dd) _closeAnnModal();
     });
 
     // close on Escape
     document.addEventListener('keydown', function (e) {
-      if (e.key === 'Escape') {
-        var d = document.getElementById('ann-dd');
-        if (d && !d.hidden) d.hidden = true;
-      }
+      if (e.key === 'Escape') _closeAnnModal();
     });
 
     _fetchAnnouncements();
@@ -676,7 +683,7 @@
       '</div>';
 
     var closeBtn = document.getElementById('ann-modal-close');
-    if (closeBtn) closeBtn.addEventListener('click', function () { dd.hidden = true; });
+    if (closeBtn) closeBtn.addEventListener('click', _closeAnnModal);
 
     dd.querySelectorAll('.ann-read-btn').forEach(function (b) {
       b.addEventListener('click', function (e) {
