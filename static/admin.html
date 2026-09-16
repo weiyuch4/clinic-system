@@ -2519,12 +2519,13 @@ function renderPharmacists(pharmacists) {
     $('pharmacists-body').innerHTML = emptyState('💊', '尚無藥師', '');
     return;
   }
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
   const rows = pharmacists.map(name => `<tr>
-    <td class="l">${name}</td>
-    <td>
-      <button class="btn-xs" onclick="renamePharmacistPrompt('${name.replace(/'/g,"\\'")}')">改名</button>
-      <button class="btn-xs btn-danger" onclick="removePharmacistPrompt('${name.replace(/'/g,"\\'")}')">移除</button>
-    </td>
+    <td class="l"><strong>${esc(name)}</strong></td>
+    <td><div style="display:flex;gap:6px">
+      <button class="btn-sm" onclick="renamePharmacistPrompt('${esc(name)}')">改名</button>
+      <button class="btn-sm" style="border-color:var(--red);color:var(--red)" onclick="removePharmacistPrompt('${esc(name)}')">移除</button>
+    </div></td>
   </tr>`).join('');
   $('pharmacists-body').innerHTML =
     '<table><thead><tr><th class="l">藥師姓名</th><th style="min-width:120px">操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
