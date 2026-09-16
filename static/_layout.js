@@ -55,7 +55,7 @@
   // ── Nav structure ────────────────────────────────────
   var MAIN_NAV = [
     { id: 'dashboard', label: '今日總覽',  href: '/dashboard',       badge: false },
-    { id: 'prescription', label: '處方追蹤', href: '/prescription', badge: false },
+    { id: 'prescription', label: '處方追蹤', href: '/prescription', badge: true  },
     { id: 'chronic',   label: '慢簽追蹤',  href: '/chronic',     badge: true  },
     { id: 'mspt',      label: '代謝症候群', href: '/mspt',        badge: true  },
     { id: 'hepatitis', label: 'B/C型肝炎', href: '/hepatitis',   badge: true  },
@@ -1456,6 +1456,13 @@
     init:              init,
     openNurseSelector: function () { if (_openNurseDD) _openNurseDD(); },
     updateBadges:      updateBadges,
+    setNavBadge: function(id, n) {
+      var el = document.getElementById('badge-' + id);
+      if (!el) return;
+      el.textContent = n;
+      el.classList.toggle('zero', n === 0);
+      try { localStorage.setItem('badge_' + id, n); } catch(e) {}
+    },
     updateShiftInfo:   updateShiftInfo,
     updateLastUpdated: updateLastUpdated,
     showError:         showError,

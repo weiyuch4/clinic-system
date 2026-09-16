@@ -239,6 +239,7 @@
     document.getElementById('cnt-contacted').textContent = _contacted.length;
     document.getElementById('cnt-hold').textContent      = _hold.length;
     document.getElementById('cnt-excluded').textContent  = _autoExcluded.length || '';
+    L.setNavBadge('prescription', _pending.length);
 
     _updatePageDate();
     renderAll();
