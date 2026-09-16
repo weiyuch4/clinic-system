@@ -1889,22 +1889,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       <div class="card-head">
         <span class="card-title">使用者管理</span>
         <span class="card-spacer"></span>
-        <button class="btn-sm" onclick="toggleAddUserForm()">+ 新增使用者</button>
-      </div>
-      <div id="usr-add-form" style="display:none;padding:16px 24px;border-bottom:1px solid var(--border)">
-        <div style="display:grid;grid-template-columns:1fr 1fr 120px 1fr auto;gap:8px;align-items:end">
-          <div><label class="usr-lbl">顯示名稱</label><input id="usr-new-name" class="usr-inp" type="text" placeholder="護理師甲"></div>
-          <div><label class="usr-lbl">帳號</label><input id="usr-new-uname" class="usr-inp" type="text" placeholder="nurse1" autocomplete="off"></div>
-          <div><label class="usr-lbl">身份</label>
-            <select id="usr-new-role" class="usr-inp">
-              <option value="nurse">護理師</option>
-              <option value="admin">管理員</option>
-            </select>
-          </div>
-          <div><label class="usr-lbl">初始密碼</label><input id="usr-new-pass" class="usr-inp" type="password" placeholder="至少 6 位"></div>
-          <button class="btn-sm" onclick="submitAddUser()" style="margin-bottom:1px">確認新增</button>
-        </div>
-        <div id="usr-add-err" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>
+        <button class="btn-sm" onclick="openAddUserModal()">+ 新增使用者</button>
       </div>
       <div class="tbl-wrap" id="users-body"></div>
     </div>
@@ -1918,6 +1903,16 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       <div class="tbl-wrap" id="profiles-body"></div>
       <div class="foot-note">此名單決定護理師選單與統計頁的顯示項目。移除後過去的記錄不受影響。</div>
     </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-head">
+        <span class="card-title">藥師名單</span>
+        <span class="card-spacer"></span>
+        <button class="btn-sm" onclick="addPharmacistPrompt()">+ 新增藥師</button>
+      </div>
+      <div class="tbl-wrap" id="pharmacists-body"></div>
+      <div class="foot-note">藥師名單僅用於排班，不會影響護理師統計或其他功能。</div>
+    </div>
   </section>
 
 </main>
@@ -1925,6 +1920,20 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
     </div><!-- /.body-row -->
   </div><!-- /.main -->
 </div><!-- /.app -->
+
+<!-- ── Usersmgmt modal ── -->
+<div id="usr-modal-overlay" onclick="if(event.target===this)closeUsrModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border-mid);border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,.18);width:460px;max-width:94vw;padding:28px 28px 20px">
+    <div id="usr-modal-title" style="font-size:15px;font-weight:600;color:var(--text-1);margin-bottom:4px"></div>
+    <div id="usr-modal-desc" style="font-size:13px;color:var(--text-3);margin-bottom:0"></div>
+    <div id="usr-modal-fields"></div>
+    <div id="usr-modal-err" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
+      <button class="btn-sm" onclick="closeUsrModal()">取消</button>
+      <button class="btn-sm" id="usr-modal-confirm">確認</button>
+    </div>
+  </div>
+</div>
 
 <div class="sched-time-popover" id="sched-time-popover"></div>
 
@@ -2258,56 +2267,154 @@ function renderUsers(users) {
   $('users-body').innerHTML = `<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
 }
 
-function toggleAddUserForm() {
-  const f = $('usr-add-form');
-  f.style.display = f.style.display === 'none' ? '' : 'none';
+// ── Shared usersmgmt modal ────────────────────────────────────────────────────
+function _usrModalOpen({ title, desc, fields = [], confirmLabel = '確認', danger = false, confirmText, onConfirm }) {
+  $('usr-modal-title').textContent = title;
+  const descEl = $('usr-modal-desc');
+  descEl.textContent = desc || '';
+  descEl.style.marginBottom = desc ? '16px' : '0';
+
+  $('usr-modal-fields').innerHTML = fields.map(f => {
+    let ctrl;
+    if (f.type === 'select') {
+      ctrl = `<select id="${f.id}" class="usr-inp">${(f.options||[]).map(o=>`<option value="${o.v}">${o.l}</option>`).join('')}</select>`;
+    } else {
+      ctrl = `<input id="${f.id}" class="usr-inp" type="${f.type||'text'}" placeholder="${f.placeholder||''}" autocomplete="off">`;
+    }
+    return `<div style="margin-bottom:12px"><label class="usr-lbl">${f.label}</label>${ctrl}</div>`;
+  }).join('');
+  fields.forEach(f => { if (f.value !== undefined) { const el = document.getElementById(f.id); if (el) el.value = f.value; } });
+
+  if (confirmText) {
+    const w = document.createElement('div');
+    w.style.marginTop = fields.length ? '4px' : '0';
+    w.innerHTML = `<label class="usr-lbl" style="color:var(--red)">請輸入「${confirmText}」以確認</label><input id="um-confirm-text" class="usr-inp" placeholder="${confirmText}" autocomplete="off">`;
+    $('usr-modal-fields').appendChild(w);
+  }
+
+  $('usr-modal-err').style.display = 'none';
+  $('usr-modal-err').textContent = '';
+
+  const btn = $('usr-modal-confirm');
+  btn.textContent = confirmLabel;
+  btn.disabled = !!confirmText;
+  btn.style.cssText = danger
+    ? 'background:var(--red);color:#fff;border-color:var(--red)'
+    : 'background:var(--blue);color:#fff;border-color:var(--blue)';
+  btn.onclick = onConfirm;
+
+  const overlay = $('usr-modal-overlay');
+  overlay.style.display = 'flex';
+  overlay.onkeydown = e => { if (e.key === 'Enter' && !btn.disabled && document.activeElement?.tagName !== 'BUTTON') onConfirm(); };
+
+  if (confirmText) {
+    const inp = document.getElementById('um-confirm-text');
+    if (inp) {
+      inp.addEventListener('input', () => { btn.disabled = inp.value !== confirmText; });
+      setTimeout(() => inp.focus(), 40);
+    }
+  } else if (fields.length) {
+    setTimeout(() => { const el = document.getElementById(fields[0].id); if (el) el.focus(); }, 40);
+  }
 }
 
-async function submitAddUser() {
-  const name  = $('usr-new-name').value.trim();
-  const uname = $('usr-new-uname').value.trim();
-  const role  = $('usr-new-role').value;
-  const pass  = $('usr-new-pass').value;
-  const errEl = $('usr-add-err');
-  errEl.style.display = 'none';
-  if (!name || !uname || !pass) { errEl.textContent = '請填寫所有欄位'; errEl.style.display = ''; return; }
-  if (pass.length < 6) { errEl.textContent = '密碼至少需要 6 個字元'; errEl.style.display = ''; return; }
-  try {
-    await api('/api/admin/users', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ display_name: name, username: uname, role, initial_password: pass }) });
-    $('usr-new-name').value = $('usr-new-uname').value = $('usr-new-pass').value = '';
-    $('usr-add-form').style.display = 'none';
-    Layout.showToast('已新增使用者 ' + name);
-    loadUsers();
-  } catch(e) { errEl.textContent = e.message || '新增失敗'; errEl.style.display = ''; }
+function closeUsrModal() {
+  const overlay = $('usr-modal-overlay');
+  overlay.style.display = 'none';
+  overlay.onkeydown = null;
+}
+
+function _usrModalErr(msg) {
+  const e = $('usr-modal-err');
+  e.textContent = msg;
+  e.style.display = msg ? '' : 'none';
+}
+
+async function _usrModalRun(fn) {
+  const btn = $('usr-modal-confirm');
+  const label = btn.textContent;
+  btn.disabled = true; btn.textContent = '處理中…';
+  try { await fn(); closeUsrModal(); }
+  catch(e) { _usrModalErr(e.message || '操作失敗'); }
+  finally { btn.disabled = false; btn.textContent = label; }
+}
+
+// ── Users ─────────────────────────────────────────────────────────────────────
+function openAddUserModal() {
+  _usrModalOpen({
+    title: '新增使用者',
+    fields: [
+      { id:'um-disp',  label:'顯示名稱', placeholder:'護理師甲' },
+      { id:'um-uname', label:'帳號',     placeholder:'nurse1' },
+      { id:'um-role',  label:'身份', type:'select', options:[{v:'nurse',l:'護理師'},{v:'admin',l:'管理員'}] },
+      { id:'um-pass',  label:'初始密碼', type:'password', placeholder:'至少 6 位' },
+    ],
+    confirmLabel: '新增',
+    onConfirm: async () => {
+      const name  = document.getElementById('um-disp')?.value.trim();
+      const uname = document.getElementById('um-uname')?.value.trim();
+      const role  = document.getElementById('um-role')?.value;
+      const pass  = document.getElementById('um-pass')?.value || '';
+      if (!name || !uname) return _usrModalErr('顯示名稱和帳號不可空白');
+      if (pass.length < 6) return _usrModalErr('密碼至少需要 6 個字元');
+      await _usrModalRun(async () => {
+        await api('/api/admin/users', { method:'POST', headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ display_name:name, username:uname, role, initial_password:pass }) });
+        Layout.showToast('已新增使用者 ' + name);
+        loadUsers();
+      });
+    },
+  });
 }
 
 async function promptResetPw(userId, name) {
-  const pw = prompt('重設「' + name + '」的密碼（至少 6 位）：');
-  if (!pw) return;
-  if (pw.length < 6) { alert('密碼至少需要 6 個字元'); return; }
-  try {
-    await api('/api/admin/users/' + userId + '/password', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_password: pw }) });
-    Layout.showToast('密碼已重設');
-  } catch(e) { alert('重設失敗：' + (e.message || '')); }
+  _usrModalOpen({
+    title: '重設密碼',
+    desc: '為「' + name + '」設定新密碼',
+    fields: [{ id:'um-pw', label:'新密碼', type:'password', placeholder:'至少 6 位' }],
+    confirmLabel: '確認重設',
+    onConfirm: async () => {
+      const pw = document.getElementById('um-pw')?.value || '';
+      if (pw.length < 6) return _usrModalErr('密碼至少需要 6 個字元');
+      await _usrModalRun(async () => {
+        await api('/api/admin/users/' + userId + '/password', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ new_password: pw }) });
+        Layout.showToast('密碼已重設');
+      });
+    },
+  });
 }
 
 async function promptRename(userId, current) {
-  const val = prompt('更改帳號（目前：' + current + '）：', current);
-  if (!val || val === current) return;
-  try {
-    await api('/api/admin/users/' + userId + '/username', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ new_username: val }) });
-    Layout.showToast('帳號已更新');
-    loadUsers();
-  } catch(e) { alert('更改失敗：' + (e.message || '')); }
+  _usrModalOpen({
+    title: '更改帳號',
+    fields: [{ id:'um-uname2', label:'新帳號', value: current }],
+    confirmLabel: '確認更改',
+    onConfirm: async () => {
+      const val = document.getElementById('um-uname2')?.value.trim();
+      if (!val) return _usrModalErr('帳號不可空白');
+      if (val === current) return closeUsrModal();
+      await _usrModalRun(async () => {
+        await api('/api/admin/users/' + userId + '/username', { method:'PATCH', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ new_username: val }) });
+        Layout.showToast('帳號已更新');
+        loadUsers();
+      });
+    },
+  });
 }
 
 async function deactivateUser(userId, name) {
-  if (!confirm('確定要停用「' + name + '」的帳號嗎？')) return;
-  try {
-    await api('/api/admin/users/' + userId, { method: 'DELETE' });
-    Layout.showToast('已停用 ' + name);
-    loadUsers();
-  } catch(e) { alert('停用失敗：' + (e.message || '')); }
+  _usrModalOpen({
+    title: '停用帳號',
+    desc: '停用後該使用者將無法登入。',
+    confirmLabel: '停用',
+    danger: true,
+    confirmText: name,
+    onConfirm: () => _usrModalRun(async () => {
+      await api('/api/admin/users/' + userId, { method:'DELETE' });
+      Layout.showToast('已停用 ' + name);
+      loadUsers();
+    }),
+  });
 }
 
 async function reactivateUser(userId, name) {
@@ -2315,7 +2422,7 @@ async function reactivateUser(userId, name) {
     await api('/api/admin/users/' + userId + '/reactivate', { method: 'POST' });
     Layout.showToast('已啟用 ' + name);
     loadUsers();
-  } catch(e) { alert('啟用失敗：' + (e.message || '')); }
+  } catch(e) { Layout.showToast('啟用失敗：' + (e.message || '')); }
 }
 
 // ── Nurse profiles (護理師名單) ────────────────────────────────────────────────
@@ -2347,32 +2454,130 @@ function renderProfiles(nurses) {
 }
 
 async function addProfilePrompt() {
-  const name = prompt('輸入護理師姓名：');
-  if (!name || !name.trim()) return;
-  try {
-    await api('/api/admin/nurses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() }) });
-    Layout.showToast('已新增 ' + name.trim());
-    loadProfiles();
-  } catch(e) { alert('新增失敗：' + (e.message || '')); }
+  _usrModalOpen({
+    title: '新增護理師',
+    fields: [{ id:'um-nname', label:'姓名', placeholder:'護理師甲' }],
+    confirmLabel: '新增',
+    onConfirm: async () => {
+      const name = document.getElementById('um-nname')?.value.trim();
+      if (!name) return _usrModalErr('姓名不可空白');
+      await _usrModalRun(async () => {
+        await api('/api/admin/nurses', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+        Layout.showToast('已新增 ' + name);
+        loadProfiles();
+      });
+    },
+  });
 }
 
 async function renameProfilePrompt(oldName) {
-  const name = prompt('修改姓名：', oldName);
-  if (!name || !name.trim() || name.trim() === oldName) return;
-  try {
-    await api('/api/admin/nurses/' + encodeURIComponent(oldName), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() }) });
-    Layout.showToast('已更新');
-    loadProfiles();
-  } catch(e) { alert('更新失敗：' + (e.message || '')); }
+  _usrModalOpen({
+    title: '修改護理師姓名',
+    fields: [{ id:'um-nname2', label:'新姓名', value: oldName }],
+    confirmLabel: '確認',
+    onConfirm: async () => {
+      const name = document.getElementById('um-nname2')?.value.trim();
+      if (!name) return _usrModalErr('姓名不可空白');
+      if (name === oldName) return closeUsrModal();
+      await _usrModalRun(async () => {
+        await api('/api/admin/nurses/' + encodeURIComponent(oldName), { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+        Layout.showToast('已更新');
+        loadProfiles();
+      });
+    },
+  });
 }
 
 async function removeProfilePrompt(name) {
-  if (!confirm('確定要移除「' + name + '」嗎？\n護理師選單中將不再顯示此名稱，過去的統計記錄不受影響。')) return;
+  _usrModalOpen({
+    title: '移除護理師',
+    desc: '護理師選單中將不再顯示此名稱，過去的統計記錄不受影響。',
+    confirmLabel: '移除',
+    danger: true,
+    confirmText: name,
+    onConfirm: () => _usrModalRun(async () => {
+      await api('/api/admin/nurses/' + encodeURIComponent(name), { method:'DELETE' });
+      Layout.showToast('已移除 ' + name);
+      loadProfiles();
+    }),
+  });
+}
+
+// ── Pharmacists (藥師名單) ─────────────────────────────────────────────────────
+async function loadPharmacists() {
+  $('pharmacists-body').innerHTML = shimTable(2, 5);
   try {
-    await api('/api/admin/nurses/' + encodeURIComponent(name), { method: 'DELETE' });
-    Layout.showToast('已移除 ' + name);
-    loadProfiles();
-  } catch(e) { alert('移除失敗：' + (e.message || '')); }
+    const pharmacists = await api('/api/pharmacists');
+    renderPharmacists(pharmacists);
+  } catch(e) {
+    $('pharmacists-body').innerHTML = errState(e.message);
+  }
+}
+
+function renderPharmacists(pharmacists) {
+  if (!pharmacists.length) {
+    $('pharmacists-body').innerHTML = emptyState('💊', '尚無藥師', '');
+    return;
+  }
+  const rows = pharmacists.map(name => `<tr>
+    <td class="l">${name}</td>
+    <td>
+      <button class="btn-xs" onclick="renamePharmacistPrompt('${name.replace(/'/g,"\\'")}')">改名</button>
+      <button class="btn-xs btn-danger" onclick="removePharmacistPrompt('${name.replace(/'/g,"\\'")}')">移除</button>
+    </td>
+  </tr>`).join('');
+  $('pharmacists-body').innerHTML =
+    '<table><thead><tr><th class="l">藥師姓名</th><th style="min-width:120px">操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+async function addPharmacistPrompt() {
+  _usrModalOpen({
+    title: '新增藥師',
+    fields: [{ id:'um-phname', label:'姓名', placeholder:'藥師甲' }],
+    confirmLabel: '新增',
+    onConfirm: async () => {
+      const name = document.getElementById('um-phname')?.value.trim();
+      if (!name) return _usrModalErr('姓名不可空白');
+      await _usrModalRun(async () => {
+        await api('/api/admin/pharmacists', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+        Layout.showToast('已新增 ' + name);
+        loadPharmacists();
+      });
+    },
+  });
+}
+
+async function renamePharmacistPrompt(oldName) {
+  _usrModalOpen({
+    title: '修改藥師姓名',
+    fields: [{ id:'um-phname2', label:'新姓名', value: oldName }],
+    confirmLabel: '確認',
+    onConfirm: async () => {
+      const name = document.getElementById('um-phname2')?.value.trim();
+      if (!name) return _usrModalErr('姓名不可空白');
+      if (name === oldName) return closeUsrModal();
+      await _usrModalRun(async () => {
+        await api('/api/admin/pharmacists/' + encodeURIComponent(oldName), { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name }) });
+        Layout.showToast('已更新');
+        loadPharmacists();
+      });
+    },
+  });
+}
+
+async function removePharmacistPrompt(name) {
+  _usrModalOpen({
+    title: '移除藥師',
+    desc: '移除後藥師名單中將不再顯示此名稱。',
+    confirmLabel: '移除',
+    danger: true,
+    confirmText: name,
+    onConfirm: () => _usrModalRun(async () => {
+      await api('/api/admin/pharmacists/' + encodeURIComponent(name), { method:'DELETE' });
+      Layout.showToast('已移除 ' + name);
+      loadPharmacists();
+    }),
+  });
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
@@ -4591,7 +4796,7 @@ function load(section) {
   else if (section === 'schedule')   loadSchedule();
   else if (section === 'salary')     initSalaryTab();
   else if (section === 'labcodes')   loadLabCodes();
-  else if (section === 'usersmgmt')  { loadUsers(); loadProfiles(); }
+  else if (section === 'usersmgmt')  { loadUsers(); loadProfiles(); loadPharmacists(); }
 }
 
 function refresh() {

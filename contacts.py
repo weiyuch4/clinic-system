@@ -263,6 +263,15 @@ _CREATE_NURSES = """
     )
 """
 
+_CREATE_PHARMACISTS = """
+    CREATE TABLE IF NOT EXISTS pharmacists (
+        id         SERIAL PRIMARY KEY,
+        name       TEXT NOT NULL UNIQUE,
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        clinic_id  INTEGER NOT NULL DEFAULT 1
+    )
+"""
+
 _CREATE_PUBLISHED_WEEKS = """
     CREATE TABLE IF NOT EXISTS published_weeks (
         week_start TEXT NOT NULL PRIMARY KEY,
@@ -680,6 +689,7 @@ def init() -> None:
             cur.execute(_CREATE_ALLEYPIN_NOT_FOUND)
             cur.execute(_CREATE_SHIFTS)
             cur.execute(_CREATE_NURSES)
+            cur.execute(_CREATE_PHARMACISTS)
             cur.execute(_CREATE_PUBLISHED_WEEKS)
             cur.execute(_CREATE_BULLETIN_NOTES)
             cur.execute(_CREATE_SALARY_RECORDS)
@@ -2165,6 +2175,59 @@ def rename_nurse(old_name: str, new_name: str, clinic_id: int = 1) -> bool:
             )
             cur.execute(
                 "UPDATE shifts SET nurse = %s WHERE nurse = %s AND clinic_id = %s",
+                (new_name, old_name, clinic_id),
+            )
+    return True
+
+
+def get_pharmacists(clinic_id: int = 1) -> list[str]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT name FROM pharmacists WHERE clinic_id = %s ORDER BY sort_order, name",
+                (clinic_id,),
+            )
+            return [r["name"] for r in cur.fetchall()]
+
+
+def add_pharmacist(name: str, clinic_id: int = 1) -> bool:
+    """Returns False (no-op) if the name already exists."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM pharmacists WHERE name = %s AND clinic_id = %s",
+                (name, clinic_id),
+            )
+            if cur.fetchone():
+                return False
+            cur.execute(
+                "INSERT INTO pharmacists (name, clinic_id) VALUES (%s, %s)",
+                (name, clinic_id),
+            )
+    return True
+
+
+def remove_pharmacist(name: str, clinic_id: int = 1) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM pharmacists WHERE name = %s AND clinic_id = %s",
+                (name, clinic_id),
+            )
+
+
+def rename_pharmacist(old_name: str, new_name: str, clinic_id: int = 1) -> bool:
+    """Returns False (no-op) if new_name is already used by a different entry."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM pharmacists WHERE name = %s AND name != %s AND clinic_id = %s",
+                (new_name, old_name, clinic_id),
+            )
+            if cur.fetchone():
+                return False
+            cur.execute(
+                "UPDATE pharmacists SET name = %s WHERE name = %s AND clinic_id = %s",
                 (new_name, old_name, clinic_id),
             )
     return True

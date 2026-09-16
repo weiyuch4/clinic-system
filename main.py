@@ -754,6 +754,52 @@ def remove_nurse(name: str, admin: auth.CurrentUser = Depends(auth.require_admin
         raise HTTPException(status_code=500, detail="移除失敗")
 
 
+# ── Pharmacists ───────────────────────────────────────────────────────────────
+
+@app.get("/api/pharmacists")
+def get_pharmacists(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[str]:
+    return contacts.get_pharmacists(user.clinic_id)
+
+
+@app.post("/api/admin/pharmacists", status_code=201)
+def add_pharmacist(req: NurseNameRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+    name = req.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="姓名不可空白")
+    try:
+        if not contacts.add_pharmacist(name, admin.clinic_id):
+            raise HTTPException(status_code=400, detail="此姓名已存在")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("add_pharmacist failed for name=%s", name)
+        raise HTTPException(status_code=500, detail="新增失敗")
+
+
+@app.put("/api/admin/pharmacists/{name}")
+def rename_pharmacist(name: str, req: NurseNameRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+    new_name = req.name.strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="姓名不可空白")
+    try:
+        if not contacts.rename_pharmacist(name, new_name, admin.clinic_id):
+            raise HTTPException(status_code=400, detail="此姓名已存在")
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("rename_pharmacist failed from=%s to=%s", name, new_name)
+        raise HTTPException(status_code=500, detail="更新失敗")
+
+
+@app.delete("/api/admin/pharmacists/{name}")
+def remove_pharmacist(name: str, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+    try:
+        contacts.remove_pharmacist(name, admin.clinic_id)
+    except Exception:
+        logger.exception("remove_pharmacist failed for name=%s", name)
+        raise HTTPException(status_code=500, detail="移除失敗")
+
+
 @app.put("/api/admin/nurses/{name}/pin")
 def set_nurse_pin(name: str, body: dict, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
     pin = str(body.get("pin", "")).strip()
