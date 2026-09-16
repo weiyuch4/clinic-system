@@ -339,12 +339,14 @@
   // Full load: fetches both prescription list and report (page init / manual refresh)
   function _load() {
     L.hideError();
-    if (!_rxData.length) {
-      try {
-        var cached = sessionStorage.getItem(_RX_CACHE_KEY);
-        if (cached) _rxData = JSON.parse(cached);
-      } catch(e) {}
-    }
+    // Render immediately from both sessionStorage caches — no async delay
+    try {
+      var rxRaw  = sessionStorage.getItem(_RX_CACHE_KEY);
+      var rptRaw = sessionStorage.getItem('clinic_rpt_' + L.localDateStr());
+      if (rxRaw)          _rxData = JSON.parse(rxRaw);
+      if (rxRaw && rptRaw) _buildLists(JSON.parse(rptRaw).data);
+    } catch(e) {}
+    // Fetch fresh data in background; onUpdate fires when report becomes stale
     Promise.all([
       L.apiFetch('/api/report/prescriptions'),
       L.getReport(null, function(r){ _buildLists(r); }),
