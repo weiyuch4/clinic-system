@@ -310,6 +310,29 @@
       function(e){ return e.patient ? e.patient.chart_number : ''; });
   }
 
+  // ── Optimistic update helpers ─────────────────────────
+  function _rebuildPending() {
+    _pending = _rxData.filter(function(e){ return !_contactedMap[e.nat_id] && !_holdMap[e.nat_id]; });
+    _pendingMap = {};
+    _pending.forEach(function(e){ _pendingMap[e.nat_id] = e; });
+  }
+
+  function _updateCounts() {
+    document.getElementById('cnt-pending').textContent   = _pending.length;
+    document.getElementById('cnt-contacted').textContent = _contacted.length;
+    document.getElementById('cnt-hold').textContent      = _hold.length;
+    document.getElementById('cnt-excluded').textContent  = _autoExcluded.length || '';
+    L.setNavBadge('prescription', _pending.length);
+    _updatePageDate();
+  }
+
+  // Sync from server without disturbing optimistic state (no-op stale callback)
+  function _backgroundSync() {
+    L.getReport(null, function(){})
+      .then(function(r){ _buildLists(r); })
+      .catch(function(){});
+  }
+
   // ── Load ─────────────────────────────────────────────
   var _RX_CACHE_KEY = 'rx_data_v1';
 
@@ -376,7 +399,22 @@
       var existing = _contactedMap[rx.nat_id];
       var url = (existing && (existing._attempt || 0) >= 1) ? '/api/called' : '/api/contacted';
       L.apiAction('POST', url, { entry: entry, nurse: L.getNurse() })
-        .then(function(){ L.showToast('聯絡記錄已儲存'); _reloadReport(); })
+        .then(function(){
+          L.showToast('聯絡記錄已儲存');
+          var opt = {
+            patient: { chart_number: rx.nat_id, name: rx.name, birth_date: rx.birth_date },
+            category: '處方', due_date: rx.due_date,
+            days_overdue: rx.days_until_due <= 0 ? Math.abs(rx.days_until_due) : 0,
+            h_type: rx.h_type, _attempt: 1,
+            contacted_at: new Date().toISOString().slice(0, 10),
+          };
+          _contacted.push(opt);
+          _contactedMap[rx.nat_id] = opt;
+          delete _pendingMap[rx.nat_id];
+          _pending = _pending.filter(function(e){ return e.nat_id !== rx.nat_id; });
+          _updateCounts(); renderAll();
+          _backgroundSync();
+        })
         .catch(function(e){ L.showToast('儲存失敗：' + (e.message || ''), 'error'); })
         .finally(function(){ btn.disabled = false; });
 
@@ -398,7 +436,12 @@
         h_type: ce2.h_type,
       };
       L.apiAction('POST', '/api/called', { entry: entry2, nurse: L.getNurse() })
-        .then(function(){ L.showToast('已記錄第二次聯繫'); _reloadReport(); })
+        .then(function(){
+          L.showToast('已記錄第二次聯繫');
+          if (ce2) { ce2._attempt = 2; }
+          _updateCounts(); renderAll();
+          _backgroundSync();
+        })
         .catch(function(e){ L.showToast('儲存失敗：' + (e.message||''), 'error'); })
         .finally(function(){ btn.disabled = false; });
 
@@ -409,7 +452,15 @@
         chart_number: ce.patient.chart_number,
         category: ce.category,
         due_date: ce.due_date,
-      }).then(function(){ L.showToast('已撤銷聯絡記錄'); _reloadReport(); })
+      }).then(function(){
+          L.showToast('已撤銷聯絡記錄');
+          var nat = ce.patient.chart_number;
+          _contacted = _contacted.filter(function(e){ return e.patient.chart_number !== nat; });
+          delete _contactedMap[nat];
+          _rebuildPending();
+          _updateCounts(); renderAll();
+          _backgroundSync();
+        })
         .catch(function(e){ L.showToast('撤銷失敗：' + (e.message||''), 'error'); })
         .finally(function(){ btn.disabled = false; });
 
@@ -417,7 +468,15 @@
       var he = _holdMap[_actionNat]; if (!he) return;
       btn.disabled = true;
       L.apiAction('DELETE', '/api/on-hold', { hold_id: he.hold_id })
-        .then(function(){ L.showToast('已解除暫緩'); _reloadReport(); })
+        .then(function(){
+          L.showToast('已解除暫緩');
+          var nat = he.patient && he.patient.chart_number;
+          _hold = _hold.filter(function(e){ return !e.patient || e.patient.chart_number !== nat; });
+          if (nat) delete _holdMap[nat];
+          _rebuildPending();
+          _updateCounts(); renderAll();
+          _backgroundSync();
+        })
         .catch(function(e){ L.showToast('解除失敗：' + (e.message||''), 'error'); })
         .finally(function(){ btn.disabled = false; });
     }
@@ -439,7 +498,21 @@
     errEl.classList.remove('show');
     confirmBtn.disabled = true;
     L.apiAction('POST', '/api/on-hold', { entry: entry, note: note, nurse: L.getNurse() })
-      .then(function(){ L.hideModal('modal-hold'); L.showToast('已設定暫緩'); _reloadReport(); })
+      .then(function(){
+        L.hideModal('modal-hold'); L.showToast('已設定暫緩');
+        var holdOpt = {
+          hold_id: -1, patient: { chart_number: rx.nat_id, name: rx.name, birth_date: rx.birth_date },
+          category: '處方', due_date: rx.due_date,
+          days_overdue: rx.days_until_due <= 0 ? Math.abs(rx.days_until_due) : 0,
+          note: note, held_at: new Date().toISOString().slice(0, 10), nurse: L.getNurse(),
+        };
+        _hold.push(holdOpt);
+        _holdMap[rx.nat_id] = holdOpt;
+        delete _pendingMap[rx.nat_id];
+        _pending = _pending.filter(function(e){ return e.nat_id !== rx.nat_id; });
+        _updateCounts(); renderAll();
+        _backgroundSync();
+      })
       .catch(function(e){ errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function(){ confirmBtn.disabled = false; });
   });
