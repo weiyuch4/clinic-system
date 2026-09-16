@@ -466,7 +466,7 @@
 
       var pending = 0;
       days.forEach(function (d) {
-        (d.patients || []).forEach(function (p) { if (!p.results_back) pending++; });
+        (d.patients || []).forEach(function (p) { if (p.results_back && !p.notified) pending++; });
       });
       L.updateBadges(report, pending);
       renderDays(days);

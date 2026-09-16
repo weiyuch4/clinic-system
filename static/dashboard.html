@@ -484,7 +484,7 @@
     ]).then(function(res){
       var report=res[0], bloodData=res[1], week=res[2], todayHistory=res[3];
       var bloodCount=0;
-      if(Array.isArray(bloodData)) bloodData.forEach(function(day){(day.patients||[]).forEach(function(p){if(!p.results_back)bloodCount++;});});
+      if(Array.isArray(bloodData)) bloodData.forEach(function(day){(day.patients||[]).forEach(function(p){if(p.results_back && !p.notified)bloodCount++;});});
       var s = renderStats(report, bloodCount);
       // update "今日已聯繫" subtitle to show today's actual count from history
       var todayContacted = ((todayHistory.contacted||[]).length + (todayHistory.called||[]).length);
