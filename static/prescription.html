@@ -31,6 +31,7 @@
         <button class="filter-tab on" data-tab="pending">待聯絡 <span class="tc-count" id="cnt-pending">…</span></button>
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
+        <button class="filter-tab" data-tab="excluded">已排除 <span class="tc-count" id="cnt-excluded"></span></button>
         <button class="act-btn" id="btn-workflow" style="margin-left:auto;gap:5px;flex-shrink:0;padding:6px 12px;font-size:13px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
@@ -46,6 +47,7 @@
         <div id="list-pending"><div class="sec-empty">載入中…</div></div>
         <div id="list-contacted" style="display:none"></div>
         <div id="list-hold"      style="display:none"></div>
+        <div id="list-excluded"  style="display:none"></div>
       </div>
 
     </div>
@@ -57,13 +59,6 @@
   <div class="modal-box">
     <div class="modal-title" id="modal-contact-title">聯絡病患</div>
     <div class="modal-sub"   id="modal-contact-sub"></div>
-    <div class="modal-field">
-      <label class="modal-label">聯絡方式</label>
-      <select class="modal-select" id="modal-contact-type">
-        <option value="contacted">已聯繫（直接通知）</option>
-        <option value="called">已二次確認（電話通話）</option>
-      </select>
-    </div>
     <div class="modal-field">
       <label class="modal-label">備註（選填）</label>
       <textarea class="modal-input" id="modal-contact-note" rows="2" placeholder="例：已告知本週回診取藥"></textarea>
@@ -99,7 +94,7 @@
   'use strict';
   var L = Layout;
   var _rxData = [];
-  var _pending = [], _contacted = [], _hold = [];
+  var _pending = [], _contacted = [], _hold = [], _autoExcluded = [];
   var _pendingMap = {}, _contactedMap = {}, _holdMap = {};
   var _tab = 'pending', _query = '';
   var _actionNat = null;
@@ -140,13 +135,11 @@
       ? '<span class="pbadge b-done">連續</span>'
       : '<span class="pbadge">一般</span>';
     var careBadge     = e.is_care ? ' <span class="pbadge b-hold">關懷</span>' : '';
-    var contactedBadge = (e.h_type === 'AE連續' && _contactedMap[e.nat_id])
-      ? ' <span class="pbadge b-done">已聯繫</span>' : '';
     var icdTxt    = e.icd_name ? _esc(e.icd_name) : '';
     return '<tr class="pr" data-nat="' + natId + '">' +
       '<td class="pr-num"><span class="pr-copy" data-copy="' + natId + '" title="點擊複製身份證">' + natId + '</span></td>' +
       '<td class="pr-pt"><div class="pr-name">' + name + '</div><div class="pr-info">' + birth + '</div></td>' +
-      '<td style="white-space:nowrap">' + htypeBadge + careBadge + contactedBadge + '</td>' +
+      '<td style="white-space:nowrap">' + htypeBadge + careBadge + '</td>' +
       '<td class="pr-days ' + dCls + '">' + dTxt + '</td>' +
       '<td class="pr-date">' + due + '</td>' +
       '<td class="pr-date">' + ps + '</td>' +
@@ -173,12 +166,17 @@
     return '<tr class="pr" data-nat="' + natId + '">' +
       '<td class="pr-num"><span class="pr-copy" data-copy="' + natId + '" title="點擊複製身份證">' + natId + '</span></td>' +
       '<td class="pr-pt"><div class="pr-name">' + name + '</div><div class="pr-info">' + birth + '</div></td>' +
-      '<td><span class="pbadge b-done">已聯繫</span></td>' +
+      '<td>' + (e.h_type === 'AE連續'
+        ? '<span class="pbadge b-hold">待回診</span>'
+        : '<span class="pbadge b-done">已聯繫</span>') + '</td>' +
       '<td class="pr-days days-lo" style="font-size:12px">' + when + '</td>' +
       '<td class="pr-date">' + due + '</td>' +
       '<td class="pr-date">—</td>' +
       '<td class="pr-note" style="color:var(--sub);font-size:12px">' + _esc(e.note || '') + '</td>' +
       '<td class="pr-act"><div class="pr-btns">' +
+        (e.h_type === 'AE連續' && (e._attempt || 1) < 2
+          ? '<button class="act-btn act-primary" data-action="recontact" style="font-size:11px">再次聯繫</button> '
+          : '') +
         '<button class="act-btn" data-action="undo-contact">撤銷</button>' +
       '</div></td>' +
       '</tr>';
@@ -206,29 +204,46 @@
   }
 
   // ── Build lists from raw data ─────────────────────────
+  var _AUTO_EXCLUDE_CONTACTS = 2;
+  var _AUTO_EXCLUDE_DAYS     = 14;
+
   function _buildLists(report) {
+    // Annotate attempt from which list the entry came from, then dedupe per patient
     var cKeys = {}, hKeys = {};
-    ((report.contacted || []).concat(report.called || []))
-      .filter(function(e){ return e.category === '處方'; })
-      .forEach(function(e){ cKeys[e.patient.chart_number] = e; });
+    (report.contacted || []).filter(function(e){ return e.category === '處方'; })
+      .forEach(function(e){ e._attempt = 1; cKeys[e.patient.chart_number] = e; });
+    (report.called || []).filter(function(e){ return e.category === '處方'; })
+      .forEach(function(e){ e._attempt = 2; cKeys[e.patient.chart_number] = e; });
     (report.on_hold || [])
       .filter(function(e){ return e.category === '處方'; })
       .forEach(function(e){ if (e.patient) hKeys[e.patient.chart_number] = e; });
 
-    _contacted = Object.values ? Object.values(cKeys) :
+    var allContacted = Object.values ? Object.values(cKeys) :
       Object.keys(cKeys).map(function(k){ return cKeys[k]; });
-    _contacted.sort(function(a, b) {
+    allContacted.sort(function(a, b) {
       var ka = (a.contacted_at || '') + (a.contacted_time || '');
       var kb = (b.contacted_at || '') + (b.contacted_time || '');
       return kb < ka ? -1 : kb > ka ? 1 : 0;
     });
+
+    // Auto-exclude 連續 patients contacted twice (attempt=2) with no return after 14+ days
+    _autoExcluded = [];
+    _contacted = allContacted.filter(function(e) {
+      if (e.h_type !== 'AE連續') return true;
+      if ((e._attempt || 1) < _AUTO_EXCLUDE_CONTACTS) return true;
+      var daysSince = e.contacted_at
+        ? (Date.now() - new Date(e.contacted_at).getTime()) / 86400000
+        : 0;
+      if (daysSince < _AUTO_EXCLUDE_DAYS) return true;
+      _autoExcluded.push(e);
+      return false;
+    });
+
     _hold = Object.values ? Object.values(hKeys) :
       Object.keys(hKeys).map(function(k){ return hKeys[k]; });
 
     _pending = _rxData.filter(function(e){
-      if (hKeys[e.nat_id]) return false;          // on hold → always exclude
-      if (e.h_type === 'AE連續') return true;     // 連續: stay pending even if contacted
-      return !cKeys[e.nat_id];                    // 一般: exclude once contacted
+      return !cKeys[e.nat_id] && !hKeys[e.nat_id];
     });
 
     _pendingMap = {};
@@ -239,6 +254,7 @@
     document.getElementById('cnt-pending').textContent   = _pending.length;
     document.getElementById('cnt-contacted').textContent = _contacted.length;
     document.getElementById('cnt-hold').textContent      = _hold.length;
+    document.getElementById('cnt-excluded').textContent  = _autoExcluded.length || '';
 
     _updatePageDate();
     renderAll();
@@ -252,6 +268,26 @@
     document.getElementById('page-date').textContent =
       d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' +
       String(d.getDate()).padStart(2,'0') + '（' + wday + '）— 共 ' + _pending.length + ' 人待聯絡';
+  }
+
+  // ── Auto-excluded row (連續, contacted ≥2×, no return) ──
+  function excludedRow(e) {
+    var natId = _esc(e.patient.chart_number);
+    var name  = _esc(e.patient.name);
+    var birth = e.patient.birth_date ? _esc(String(e.patient.birth_date).slice(0, 10)) : '';
+    var due   = e.due_date ? String(e.due_date).slice(5).replace('-', '/') : '—';
+    var count = e._attempt || 1;
+    var when  = e.contacted_at ? String(e.contacted_at).slice(0, 10) : '';
+    return '<tr class="pr" data-nat="' + natId + '">' +
+      '<td class="pr-num"><span class="pr-copy" data-copy="' + natId + '" title="點擊複製身份證">' + natId + '</span></td>' +
+      '<td class="pr-pt"><div class="pr-name">' + name + '</div><div class="pr-info">' + birth + '</div></td>' +
+      '<td><span class="pbadge b-hold">連續</span> <span class="pbadge" style="color:var(--danger,#c00)">已聯繫 ' + count + '×</span></td>' +
+      '<td class="pr-days days-lo" style="font-size:12px">' + when + '</td>' +
+      '<td class="pr-date">' + due + '</td>' +
+      '<td class="pr-date">—</td>' +
+      '<td class="pr-note" style="color:var(--sub);font-size:12px">' + _esc(e.note || '') + '</td>' +
+      '<td class="pr-act"></td>' +
+      '</tr>';
   }
 
   // ── Render ────────────────────────────────────────────
@@ -284,6 +320,9 @@
     renderList(_hold, holdRow, 'list-hold',
       function(e){ return e.patient ? e.patient.name : (e.manual_name || ''); },
       function(e){ return e.patient ? e.patient.chart_number : ''; });
+    renderList(_autoExcluded, excludedRow, 'list-excluded',
+      function(e){ return e.patient ? e.patient.name : ''; },
+      function(e){ return e.patient ? e.patient.chart_number : ''; });
   }
 
   // ── Load ─────────────────────────────────────────────
@@ -307,7 +346,7 @@
     _tab = btn.dataset.tab;
     document.querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('on'); });
     btn.classList.add('on');
-    ['pending','contacted','hold'].forEach(function(t){
+    ['pending','contacted','hold','excluded'].forEach(function(t){
       document.getElementById('list-'+t).style.display = t===_tab ? '' : 'none';
     });
     renderAll();
@@ -344,6 +383,21 @@
       document.getElementById('hold-error').classList.remove('show');
       L.showModal('modal-hold');
 
+    } else if (action === 'recontact') {
+      var ce2 = _contactedMap[_actionNat]; if (!ce2) return;
+      btn.disabled = true;
+      var entry2 = {
+        patient: ce2.patient,
+        category: '處方',
+        due_date: ce2.due_date,
+        days_overdue: ce2.days_overdue || 0,
+        h_type: ce2.h_type,
+      };
+      L.apiAction('POST', '/api/called', { entry: entry2, nurse: L.getNurse() })
+        .then(function(){ L.showToast('已記錄第二次聯繫'); _load(); })
+        .catch(function(e){ L.showToast('儲存失敗：' + (e.message||''), 'error'); })
+        .finally(function(){ btn.disabled = false; });
+
     } else if (action === 'undo-contact') {
       var ce = _contactedMap[_actionNat]; if (!ce) return;
       btn.disabled = true;
@@ -373,8 +427,10 @@
       category: '處方',
       due_date: rx.due_date,
       days_overdue: rx.days_until_due <= 0 ? Math.abs(rx.days_until_due) : 0,
+      h_type: rx.h_type,
     };
-    var url = document.getElementById('modal-contact-type').value === 'called' ? '/api/called' : '/api/contacted';
+    var existing = _contactedMap[_actionNat];
+    var url = (existing && (existing._attempt || 0) >= 1) ? '/api/called' : '/api/contacted';
     var confirmBtn = this;
     var errEl = document.getElementById('contact-error');
     errEl.classList.remove('show');

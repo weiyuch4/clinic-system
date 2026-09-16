@@ -341,7 +341,7 @@
     var tags = [];
     if (e.call_required) tags.push('<span class="pbadge b-call">第2次</span>');
     if (e.blood_draw_date) {
-      tags.push('<span class="pbadge b-done" title="可使用 ' + L.escHtml(e.blood_draw_date) + ' 血液報告">血測可用</span>');
+      tags.push('<span class="pbadge b-done" title="' + L.escHtml(e.blood_draw_date) + ' 有血液報告（是否可用請確認）">有血液報告</span>');
     }
     if (isPriorTracked(e.patient.chart_number, e.mspt_stage)) tags.push('<span class="pbadge b-done">已追蹤</span>');
     return L.patientRow({ entry: e, tags: tags, actions: [
@@ -398,7 +398,7 @@
     if (e.call_required) tags.push('<span class="pbadge b-call">第2次</span>');
     tags.push('<span class="pbadge b-hold">未複診</span>');
     if (e.needs_blood_test) tags.push('<span class="pbadge b-prog">需抽血</span>');
-    else if (e.blood_draw_date) tags.push('<span class="pbadge b-done">血測可用</span>');
+    else if (e.blood_draw_date) tags.push('<span class="pbadge b-done">有血液報告</span>');
     return L.patientRow({ entry: e, tags: tags, actions: [
       { label: '已聯繫', cls: 'act-primary', key: 'contact' },
       { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
