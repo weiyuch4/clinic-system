@@ -14,7 +14,7 @@ _env_file = ".env.dev" if os.path.exists(".env.dev") else ".env"
 load_dotenv(_env_file, override=True)
 
 import uvicorn
-from fastapi import Depends, FastAPI, HTTPException, Query, Request, UploadFile, File
+from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -319,9 +319,10 @@ def admin_reactivate_user(user_id: int,
 # ── Announcements ────────────────────────────────────────────────────────────
 
 @app.get("/api/announcements")
-def list_announcements(user: auth.CurrentUser = Depends(auth.get_current_user)):
+def list_announcements(user: auth.CurrentUser = Depends(auth.get_current_user),
+                       nurse: str = ""):
     from db import _conn as _db
-    nurse = user.display_name
+    nurse_name = nurse.strip() or user.display_name
     with _db() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -335,7 +336,7 @@ def list_announcements(user: auth.CurrentUser = Depends(auth.get_current_user)):
                    FROM announcements a
                    WHERE a.clinic_id = %s AND a.is_active = TRUE
                    ORDER BY a.created_at DESC""",
-                (nurse, user.clinic_id),
+                (nurse_name, user.clinic_id),
             )
             return cur.fetchall()
 
@@ -363,11 +364,12 @@ def create_announcement(body: dict,
 
 @app.post("/api/announcements/{ann_id}/read")
 def mark_announcement_read(ann_id: int,
-                           user: auth.CurrentUser = Depends(auth.get_current_user)):
+                           user: auth.CurrentUser = Depends(auth.get_current_user),
+                           body: dict = Body(default={})):
     from db import _conn as _db
     from datetime import datetime, timezone, timedelta
     now = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m-%d %H:%M:%S")
-    nurse = user.display_name
+    nurse = (body.get("nurse") or "").strip() or user.display_name
     with _db() as conn:
         with conn.cursor() as cur:
             cur.execute(

@@ -427,6 +427,7 @@
     _updateChangePinBtn();
     if (name) _checkChangelogForNurse(name);
     if (_onNurseChange) _onNurseChange(name);
+    _fetchAnnouncements();
   }
 
   function _openChangePinModal(name) {
@@ -629,7 +630,8 @@
   }
 
   function _fetchAnnouncements() {
-    apiFetch('/api/announcements')
+    var q = _nurse ? '?nurse=' + encodeURIComponent(_nurse) : '';
+    apiFetch('/api/announcements' + q)
       .then(function (data) {
         _annData = data || [];
         _updateAnnBadge();
@@ -689,7 +691,7 @@
       b.addEventListener('click', function (e) {
         e.stopPropagation();
         var id = parseInt(b.dataset.id, 10);
-        apiAction('POST', '/api/announcements/' + id + '/read', null)
+        apiAction('POST', '/api/announcements/' + id + '/read', { nurse: _nurse || '' })
           .then(function () {
             var a = _annData.find(function (x) { return x.id === id; });
             if (a) a.is_read = true;
