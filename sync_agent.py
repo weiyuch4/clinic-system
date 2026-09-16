@@ -233,7 +233,13 @@ def do_sync() -> None:
                     else:
                         days.append({'date': old_day['date'], 'patients': [p]})
 
-            _contacts.upsert_synced_blood_pending(days)
+            resp = requests.post(
+                f"{CLOUD_URL}/api/sync/push-blood-pending",
+                json={"clinic_id": 1, "days": days},
+                headers={"X-Sync-Token": SYNC_TOKEN},
+                timeout=30,
+            )
+            resp.raise_for_status()
             log.info("Synced blood pending (%d days, including overdue carry-forward)", len(days))
     except Exception as exc:
         log.error("Blood pending sync failed: %s", exc)
