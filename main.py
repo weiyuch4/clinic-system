@@ -51,6 +51,16 @@ NURSE_NAMES: list[str] = ["媛淩", "巧潔", "巧菱", "惠茗"]
 CLOUD_MODE = os.environ.get("CLOUD_MODE", "").lower() in ("1", "true", "yes")
 _SYNC_TOKEN = os.environ.get("SYNC_TOKEN", "")
 
+# Clinic-specific: hide prescriptions due before this date (set when adopting the feature mid-cycle).
+# Leave unset for new clinics to show all prescriptions within PRESCRIPTION_GRACE_DAYS.
+_PRESCRIPTION_START_DATE: date | None = None
+_psd_env = os.environ.get("PRESCRIPTION_START_DATE", "")
+if _psd_env:
+    try:
+        _PRESCRIPTION_START_DATE = date.fromisoformat(_psd_env)
+    except ValueError:
+        pass
+
 # Per-clinic server-side caches. No TTL — invalidated only by writes and at midnight
 # (date mismatch). Write endpoints call the invalidate helpers immediately, so cached
 # data is always consistent with the DB during active use. The only "cold start" is
@@ -1113,6 +1123,8 @@ def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = 
                 days_until_due = (due - as_of).days
                 if days_until_due < -PRESCRIPTION_GRACE_DAYS:
                     continue  # past grace period
+                if _PRESCRIPTION_START_DATE and due < _PRESCRIPTION_START_DATE:
+                    continue  # pre-adoption prescriptions hidden for this clinic
                 results.append({
                     **r,
                     'days_until_due': days_until_due,
