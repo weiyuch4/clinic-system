@@ -225,23 +225,24 @@
   }
 
   // ── stats ──────────────────────────────────────────
-  function renderStats(report, bloodCount) {
+  function renderStats(report, bloodCount, rxPendingCount) {
     var pending = [].concat(
       report.chronic_prescriptions||[], report.mspt_followups||[],
       report.mspt_inactive||[], report.hep_followups||[],
       report.ckd_followups||[], report.ckd_inactive||[]
     );
+    var rxCount = rxPendingCount || 0;
     var contacted = (report.contacted||[]).length + (report.called||[]).length;
-    document.getElementById('stat-pending').textContent   = pending.length;
+    document.getElementById('stat-pending').textContent   = pending.length + rxCount;
     document.getElementById('stat-contacted').textContent = contacted;
     document.getElementById('stat-mspt').textContent      = (report.mspt_submittable||[]).length;
     document.getElementById('stat-hold').textContent      = (report.on_hold||[]).length;
     document.getElementById('stat-pending-sub').textContent =
-      '慢簽 '+(report.chronic_prescriptions||[]).length+' · MSPT '+(report.mspt_followups||[]).length+' · B肝 '+(report.hep_followups||[]).length;
+      '慢簽 '+(report.chronic_prescriptions||[]).length+' · MSPT '+(report.mspt_followups||[]).length+' · B肝 '+(report.hep_followups||[]).length+' · 處方 '+rxCount;
     document.getElementById('stat-contacted-sub').textContent =
       '已通知 '+(report.contacted||[]).length+' · 已二通 '+(report.called||[]).length;
     L.updateBadges(report, bloodCount);
-    return { pending: pending, contacted: contacted };
+    return { pending: pending, contacted: contacted, rxCount: rxCount };
   }
 
   // ── patient table ──────────────────────────────────
@@ -480,19 +481,27 @@
       L.getReport(today),
       L.apiFetch('/api/blood-pending').catch(function(){return [];}),
       fetchWeekHistory(),
-      L.apiFetch('/api/contacts/history?target_date='+today).catch(function(){return {contacted:[],called:[]};})
+      L.apiFetch('/api/contacts/history?target_date='+today).catch(function(){return {contacted:[],called:[]};}),
+      L.apiFetch('/api/report/prescriptions').catch(function(){return [];})
     ]).then(function(res){
-      var report=res[0], bloodData=res[1], week=res[2], todayHistory=res[3];
+      var report=res[0], bloodData=res[1], week=res[2], todayHistory=res[3], rxData=res[4];
       var bloodCount=0;
       if(Array.isArray(bloodData)) bloodData.forEach(function(day){(day.patients||[]).forEach(function(p){if(p.results_back && !p.notified)bloodCount++;});});
-      var s = renderStats(report, bloodCount);
+      // compute prescription pending: rx entries not yet contacted or on hold
+      var rxContactedKeys = {};
+      (report.contacted||[]).forEach(function(e){ if(e.category==='處方') rxContactedKeys[e.patient.chart_number]=true; });
+      (report.called||[]).forEach(function(e){ if(e.category==='處方') rxContactedKeys[e.patient.chart_number]=true; });
+      var rxHoldKeys = {};
+      (report.on_hold||[]).forEach(function(e){ if(e.category==='處方'&&e.patient) rxHoldKeys[e.patient.chart_number]=true; });
+      var rxPendingCount = (rxData||[]).filter(function(e){ return !rxContactedKeys[e.nat_id] && !rxHoldKeys[e.nat_id]; }).length;
+      var s = renderStats(report, bloodCount, rxPendingCount);
       // update "今日已聯繫" subtitle to show today's actual count from history
       var todayContacted = ((todayHistory.contacted||[]).length + (todayHistory.called||[]).length);
       document.getElementById('stat-contacted').textContent = todayContacted;
       document.getElementById('stat-contacted-sub').textContent =
         '已通知 '+(todayHistory.contacted||[]).length+'　已二通 '+(todayHistory.called||[]).length;
       renderTable(s.pending);
-      renderGauge(todayContacted, s.pending.length);
+      renderGauge(todayContacted, s.pending.length + s.rxCount);
       renderUrgent(report, bloodCount);
       renderContactLog(todayHistory);
       renderChart(week);
