@@ -2261,9 +2261,9 @@ function renderUsers(users) {
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const rows = users.map(u => `<tr>
     <td class="l"><strong>${esc(u.display_name)}</strong>${u.must_change_password ? ' <span class="chip" style="font-size:10px;padding:1px 5px;background:var(--amber-bg,#fff8e1);color:var(--amber,#b45309);border-radius:4px">需改密碼</span>' : ''}</td>
-    <td>${esc(u.username)}</td>
-    <td>${u.role === 'admin' ? '管理員' : '護理師'}</td>
-    <td>${u.is_active ? '<span style="color:var(--green)">啟用</span>' : '<span style="color:var(--text-3)">停用</span>'}</td>
+    <td class="l">${esc(u.username)}</td>
+    <td class="l">${u.role === 'admin' ? '管理員' : '護理師'}</td>
+    <td class="l">${u.is_active ? '<span style="color:var(--green)">啟用</span>' : '<span style="color:var(--text-3)">停用</span>'}</td>
     <td><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
       <button class="btn-sm" onclick="promptResetPw(${u.id},'${esc(u.display_name)}')">重設密碼</button>
       <button class="btn-sm" onclick="promptRename(${u.id},'${esc(u.username)}')">更改帳號</button>
@@ -2274,7 +2274,7 @@ function renderUsers(users) {
         : ''}
     </div></td>
   </tr>`).join('');
-  const thead = `<tr><th class="l" style="width:35%">顯示名稱</th><th style="width:22%;text-align:left">帳號</th><th style="width:12%;text-align:left">身份</th><th style="width:10%;text-align:left">狀態</th><th style="min-width:210px;text-align:right">操作</th></tr>`;
+  const thead = `<tr><th class="l" style="width:35%">顯示名稱</th><th class="l" style="width:22%">帳號</th><th class="l" style="width:12%">身份</th><th class="l" style="width:10%">狀態</th><th style="min-width:210px;text-align:right">操作</th></tr>`;
   $('users-body').innerHTML = `<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
 }
 
