@@ -600,16 +600,21 @@
 
     bellBtn.addEventListener('click', function (e) {
       e.stopPropagation();
-      var open = !dd.hidden;
-      dd.hidden = open;
-      if (!open) _renderAnnDD();
+      if (!dd.hidden) { dd.hidden = true; return; }
+      _renderAnnDD();
+      dd.hidden = false;
     });
 
-    document.addEventListener('click', function (e) {
-      var wrap = document.getElementById('ann-wrap');
-      if (wrap && !wrap.contains(e.target)) {
+    // close when clicking the backdrop (not the modal box itself)
+    dd.addEventListener('click', function (e) {
+      if (e.target === dd) dd.hidden = true;
+    });
+
+    // close on Escape
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') {
         var d = document.getElementById('ann-dd');
-        if (d) d.hidden = true;
+        if (d && !d.hidden) d.hidden = true;
       }
     });
 
@@ -636,24 +641,42 @@
   function _renderAnnDD() {
     var dd = document.getElementById('ann-dd');
     if (!dd) return;
-    if (!_annData.length) {
-      dd.innerHTML = '<div class="ann-empty">目前沒有公告</div>';
-      return;
-    }
-    dd.innerHTML = _annData.map(function (a) {
-      var readCls = a.is_read ? ' ann-item-read' : '';
-      var btn = a.is_read
-        ? '<span class="ann-read-tag">已讀</span>'
-        : '<button class="ann-read-btn" data-id="' + a.id + '">已讀</button>';
-      return '<div class="ann-item' + readCls + '" data-id="' + a.id + '">' +
-        '<div class="ann-item-top">' +
-          '<span class="ann-item-title">' + escHtml(a.title) + '</span>' +
-          btn +
+
+    var unread = _annData.filter(function (a) { return !a.is_read; }).length;
+    var subtitle = _annData.length
+      ? (unread ? unread + ' 則未讀' : '全部已讀')
+      : '';
+
+    var listHtml = _annData.length
+      ? _annData.map(function (a) {
+          var readCls = a.is_read ? ' ann-item-read' : '';
+          var btn = a.is_read
+            ? '<span class="ann-read-tag">已讀</span>'
+            : '<button class="ann-read-btn" data-id="' + a.id + '">標記已讀</button>';
+          return '<div class="ann-item' + readCls + '" data-id="' + a.id + '">' +
+            '<div class="ann-item-top">' +
+              '<span class="ann-item-title">' + escHtml(a.title) + '</span>' +
+              btn +
+            '</div>' +
+            (a.body ? '<div class="ann-item-body">' + escHtml(a.body) + '</div>' : '') +
+            '<div class="ann-item-meta">由 ' + escHtml(a.created_by) + ' 發布・' + (a.created_at || '').slice(0, 10) + '</div>' +
+          '</div>';
+        }).join('')
+      : '<div class="ann-empty">目前沒有公告</div>';
+
+    dd.innerHTML =
+      '<div class="ann-modal">' +
+        '<div class="ann-modal-hd">' +
+          '<span class="ann-modal-title">公告' + (subtitle ? '<span style="font-size:11.5px;font-weight:500;color:var(--muted);margin-left:8px">' + escHtml(subtitle) + '</span>' : '') + '</span>' +
+          '<button class="ann-modal-close" id="ann-modal-close" title="關閉">' +
+            '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>' +
+          '</button>' +
         '</div>' +
-        (a.body ? '<div class="ann-item-body">' + escHtml(a.body) + '</div>' : '') +
-        '<div class="ann-item-meta">由 ' + escHtml(a.created_by) + ' 發布・' + (a.created_at || '').slice(0, 10) + '</div>' +
+        '<div class="ann-modal-body">' + listHtml + '</div>' +
       '</div>';
-    }).join('');
+
+    var closeBtn = document.getElementById('ann-modal-close');
+    if (closeBtn) closeBtn.addEventListener('click', function () { dd.hidden = true; });
 
     dd.querySelectorAll('.ann-read-btn').forEach(function (b) {
       b.addEventListener('click', function (e) {
