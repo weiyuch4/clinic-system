@@ -139,12 +139,14 @@
     var htypeBadge = e.h_type === 'AE連續'
       ? '<span class="pbadge b-done">連續</span>'
       : '<span class="pbadge">一般</span>';
-    var careBadge = e.is_care ? ' <span class="pbadge b-hold">關懷</span>' : '';
+    var careBadge     = e.is_care ? ' <span class="pbadge b-hold">關懷</span>' : '';
+    var contactedBadge = (e.h_type === 'AE連續' && _contactedMap[e.nat_id])
+      ? ' <span class="pbadge b-done">已聯繫</span>' : '';
     var icdTxt    = e.icd_name ? _esc(e.icd_name) : '';
     return '<tr class="pr" data-nat="' + natId + '">' +
       '<td class="pr-num"><span class="pr-copy" data-copy="' + natId + '" title="點擊複製身份證">' + natId + '</span></td>' +
       '<td class="pr-pt"><div class="pr-name">' + name + '</div><div class="pr-info">' + birth + '</div></td>' +
-      '<td style="white-space:nowrap">' + htypeBadge + careBadge + '</td>' +
+      '<td style="white-space:nowrap">' + htypeBadge + careBadge + contactedBadge + '</td>' +
       '<td class="pr-days ' + dCls + '">' + dTxt + '</td>' +
       '<td class="pr-date">' + due + '</td>' +
       '<td class="pr-date">' + ps + '</td>' +
@@ -224,7 +226,9 @@
       Object.keys(hKeys).map(function(k){ return hKeys[k]; });
 
     _pending = _rxData.filter(function(e){
-      return !cKeys[e.nat_id] && !hKeys[e.nat_id];
+      if (hKeys[e.nat_id]) return false;          // on hold → always exclude
+      if (e.h_type === 'AE連續') return true;     // 連續: stay pending even if contacted
+      return !cKeys[e.nat_id];                    // 一般: exclude once contacted
     });
 
     _pendingMap = {};
