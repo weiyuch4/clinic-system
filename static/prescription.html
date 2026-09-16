@@ -311,16 +311,23 @@
   }
 
   // ── Load ─────────────────────────────────────────────
+  var _RX_CACHE_KEY = 'rx_data_v1';
+
   function _load() {
     L.hideError();
+    // Pre-populate _rxData from cache so getReport's stale callback can render immediately
     if (!_rxData.length) {
-      document.getElementById('list-pending').innerHTML = '<div class="sec-empty">載入中…</div>';
+      try {
+        var cached = sessionStorage.getItem(_RX_CACHE_KEY);
+        if (cached) _rxData = JSON.parse(cached);
+      } catch(e) {}
     }
     Promise.all([
       L.apiFetch('/api/report/prescriptions'),
       L.getReport(null, function(r){ _buildLists(r); }),
     ]).then(function(results) {
       _rxData = results[0];
+      try { sessionStorage.setItem(_RX_CACHE_KEY, JSON.stringify(_rxData)); } catch(e) {}
       _buildLists(results[1]);
     }).catch(function(e){ L.showError('資料載入失敗 — ' + (e.message || '')); });
   }
