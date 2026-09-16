@@ -1416,13 +1416,13 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
     <div class="card">
       <div class="card-head">
         <span class="card-title">醫師回診率</span>
-        <span class="card-badge">90天・同一醫師</span>
+        <span class="card-badge">90天・回診診所</span>
         <span class="card-spacer"></span>
         <span class="card-meta" id="doctor-meta"></span>
       </div>
       <div class="tbl-wrap" id="doctors-body"></div>
       <div class="foot-note">
-        統計方式：計算該月每位患者最後一次就診日，90天內回診同一醫師即計入。
+        統計方式：計算該月每位患者最後一次就診日，90天內回診本診所（不限同一醫師）即計入。
         近期月份因後續IC檔案尚未到齊，回診率可能偏低屬正常現象。
       </div>
     </div>
@@ -2087,8 +2087,11 @@ async function loadDoctors() {
   $('doctor-meta').textContent = '';
 
   try {
-    const { doctors } = await api(`/api/admin/doctors?month=${month}`);
-    renderDoctors(doctors);
+    const res = await api(`/api/admin/doctors?month=${month}`);
+    if (res.month && res.month !== month) {
+      $('doctor-meta').textContent = res.month;
+    }
+    renderDoctors(res.doctors);
   } catch(e) {
     $('doctor-kpis').innerHTML = '';
     $('doctors-body').innerHTML = errState(e.message);
@@ -2099,8 +2102,8 @@ function renderDoctors(doctors) {
   if (!doctors.length) {
     $('doctor-kpis').innerHTML = '';
     $('doctors-body').innerHTML = emptyState(
-      '📊', '本月暫無資料',
-      'IC檔案可能尚未生成，或該月份無診次'
+      '📊', '尚無資料',
+      '請確認 sync_agent 已在診所電腦執行，資料同步後即會顯示'
     );
     return;
   }
