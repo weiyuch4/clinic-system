@@ -77,7 +77,7 @@ class ManualPickupEntry(BaseModel):
 class OnHoldEntry(BaseModel):
     hold_id: int
     patient: Patient | None = None             # None for manual entries
-    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"] | None = None
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病", "處方"] | None = None
     due_date: date | None = None
     days_overdue: int | None = None
     mspt_stage: MsptStage | None = None
@@ -153,7 +153,7 @@ class LineUnlinkedRequest(BaseModel):
 
 class ContactRequest(BaseModel):
     chart_number: str
-    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病", "處方"]
     due_date: date
 
 
