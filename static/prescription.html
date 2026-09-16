@@ -285,7 +285,9 @@
   // ── Load ─────────────────────────────────────────────
   function _load() {
     L.hideError();
-    document.getElementById('list-pending').innerHTML = '<div class="sec-empty">載入中…</div>';
+    if (!_rxData.length) {
+      document.getElementById('list-pending').innerHTML = '<div class="sec-empty">載入中…</div>';
+    }
     Promise.all([
       L.apiFetch('/api/report/prescriptions'),
       L.getReport(null, function(r){ _buildLists(r); }),
