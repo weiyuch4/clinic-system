@@ -370,15 +370,14 @@
     var chart = L.escHtml(e.patient.chart_number);
     var name  = L.escHtml(e.patient.name);
     var stage = L.escHtml(e.mspt_stage || '');
-    var bloodDate = e.blood_report_date ? String(e.blood_report_date).slice(0, 10) : '—';
+    var bloodDate = e.blood_report_date ? String(e.blood_report_date).slice(5).replace('-','/') : '—';
     var submittedAt = e.submitted_at ? String(e.submitted_at).slice(5, 10).replace('-', '/') : '—';
-    return '<tr class="pr" data-chart="' + chart + '" data-stage="' + stage + '">' +
+    return '<tr class="pr" data-chart="' + chart + '">' +
       '<td style="color:var(--sub);font-size:12px">' + chart + '</td>' +
       '<td style="font-weight:600">' + name + '</td>' +
       '<td><span class="pbadge b-sub">' + stage + '</span></td>' +
-      '<td style="font-size:12px;color:var(--sub)">' + String(bloodDate).slice(5).replace('-','/') + '</td>' +
+      '<td style="font-size:12px;color:var(--sub)">' + bloodDate + '</td>' +
       '<td style="font-size:12px;color:var(--sub)">' + submittedAt + '</td>' +
-      '<td style="text-align:right"><button class="act-btn act-primary" data-action="ready-next">準備下期</button></td>' +
       '</tr>';
   }
   function renderSubmitted() {
@@ -388,8 +387,8 @@
       el.innerHTML = '<div class="sec-empty">' + (_submitted.length ? '沒有符合搜尋條件的病患' : '尚無申報記錄') + '</div>';
     } else {
       el.innerHTML = '<div class="ptbl-wrap"><table class="p-table" style="table-layout:fixed">' +
-        '<colgroup><col style="width:115px"><col><col style="width:90px"><col style="width:70px"><col style="width:70px"><col style="width:120px"></colgroup>' +
-        '<thead><tr><th>身份證</th><th>姓名</th><th>階段</th><th>抽血日</th><th>申報日</th><th></th></tr></thead>' +
+        '<colgroup><col style="width:115px"><col><col style="width:90px"><col style="width:70px"><col style="width:70px"></colgroup>' +
+        '<thead><tr><th>身份證</th><th>姓名</th><th>階段</th><th>抽血日</th><th>申報日</th></tr></thead>' +
         '<tbody>' + filtered.map(submittedRow).join('') + '</tbody></table></div>';
     }
     if (_tab === 'submitted')
@@ -614,23 +613,6 @@
           _refreshBg();
         })
         .catch(function (e) { L.showToast('恢復失敗：' + (e.message||''), 'error'); })
-        .finally(function () { btn.disabled = false; });
-    } else if (action === 'ready-next') {
-      var srow = btn.closest('.pr'); if (!srow) return;
-      var sStage = srow.dataset.stage;
-      var sx = _submitted.find(function(e) { return e.patient.chart_number === chart && e.mspt_stage === sStage; });
-      if (!sx) return;
-      btn.disabled = true;
-      L.apiAction('DELETE', '/api/submitted', { chart_number: sx.patient.chart_number, mspt_stage: sx.mspt_stage })
-        .then(function () {
-          L.showToast(sx.patient.name + ' 已設定準備下期');
-          _submitted = _submitted.filter(function(e) {
-            return e.patient.chart_number !== sx.patient.chart_number || e.mspt_stage !== sx.mspt_stage;
-          });
-          document.getElementById('cnt-submitted').textContent = _submitted.length || '';
-          renderSubmitted();
-        })
-        .catch(function (e) { L.showToast('操作失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     }
   });
