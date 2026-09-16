@@ -63,6 +63,7 @@
         <button class="filter-tab on" data-tab="return">需回診 <span class="tc-count" id="cnt-return">…</span></button>
         <button class="filter-tab" data-tab="phone">可電話完成 <span class="tc-count" id="cnt-phone">…</span></button>
         <button class="filter-tab" data-tab="submittable">待登VPN <span class="tc-count" id="cnt-submittable">…</span></button>
+        <button class="filter-tab" data-tab="submitted">已申報 <span class="tc-count" id="cnt-submitted">…</span></button>
         <span class="filter-sep"></span>
         <button class="filter-tab" data-tab="inactive">未複診 <span class="tc-count" id="cnt-inactive">…</span></button>
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
@@ -95,11 +96,11 @@
           <div id="list-phone-rows"><div class="sec-empty">載入中…</div></div>
         </div>
         <div id="list-submittable" style="display:none"></div>
+        <div id="list-submitted" style="display:none"></div>
         <div id="list-inactive" style="display:none"></div>
         <div id="list-contacted" style="display:none"></div>
-        <div id="list-hold" style="display:none">        <div id="list-excluded" style="display:none"></div>
-      </div>
-              <div id="list-excluded" style="display:none"></div>
+        <div id="list-hold" style="display:none"></div>
+        <div id="list-excluded" style="display:none"></div>
       </div>
 
     </div>
@@ -226,7 +227,7 @@
   'use strict';
   var L = Layout;
   var _tab = 'return', _query = '';
-  var _return = [], _phone = [], _submittable = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
+  var _return = [], _phone = [], _submittable = [], _submitted = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
   var _activeMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   // entry stashed for modal confirm
   var _modalEntry = null, _excludeEntry = null, _submitEntry = null;
@@ -252,7 +253,7 @@
     return false;
   }
 
-  var ALL_TABS = ['return','phone','submittable','inactive','contacted','hold','excluded'];
+  var ALL_TABS = ['return','phone','submittable','submitted','inactive','contacted','hold','excluded'];
 
   function applyReport(r) {
     _completedSet = _buildCompletedSet(r.mspt_completed);
@@ -260,6 +261,7 @@
     _return = allFollowups.filter(function (e) { return e.needs_blood_test; });
     _phone  = allFollowups.filter(function (e) { return !e.needs_blood_test; });
     _submittable = r.mspt_submittable || [];
+    _submitted   = r.submitted        || [];
     _inactive    = r.mspt_inactive    || [];
     _contacted   = (r.contacted || []).filter(function (e) { return e.category === '代謝症候群'; })
                     .concat((r.called || []).filter(function (e) { return e.category === '代謝症候群'; }));
@@ -276,6 +278,7 @@
     document.getElementById('cnt-return').textContent      = _return.length;
     document.getElementById('cnt-phone').textContent       = _phone.length;
     document.getElementById('cnt-submittable').textContent = _submittable.length;
+    document.getElementById('cnt-submitted').textContent   = _submitted.length || '';
     document.getElementById('cnt-inactive').textContent    = _inactive.length;
     document.getElementById('cnt-contacted').textContent   = _contacted.length;
     _excluded = (r.excluded || []).filter(function (e) { return e.category === '代謝症候群'; });
@@ -361,6 +364,36 @@
         { label: '撤銷',    cls: '',           key: 'undo-phone' },
       ],
     });
+  }
+
+  function submittedRow(e) {
+    var chart = L.escHtml(e.patient.chart_number);
+    var name  = L.escHtml(e.patient.name);
+    var stage = L.escHtml(e.mspt_stage || '');
+    var bloodDate = e.blood_report_date ? String(e.blood_report_date).slice(0, 10) : '—';
+    var submittedAt = e.submitted_at ? String(e.submitted_at).slice(5, 10).replace('-', '/') : '—';
+    return '<tr class="pr" data-chart="' + chart + '" data-stage="' + stage + '">' +
+      '<td style="color:var(--sub);font-size:12px">' + chart + '</td>' +
+      '<td style="font-weight:600">' + name + '</td>' +
+      '<td><span class="pbadge b-sub">' + stage + '</span></td>' +
+      '<td style="font-size:12px;color:var(--sub)">' + String(bloodDate).slice(5).replace('-','/') + '</td>' +
+      '<td style="font-size:12px;color:var(--sub)">' + submittedAt + '</td>' +
+      '<td style="text-align:right"><button class="act-btn act-primary" data-action="ready-next">準備下期</button></td>' +
+      '</tr>';
+  }
+  function renderSubmitted() {
+    var filtered = _submitted.filter(match);
+    var el = document.getElementById('list-submitted');
+    if (!filtered.length) {
+      el.innerHTML = '<div class="sec-empty">' + (_submitted.length ? '沒有符合搜尋條件的病患' : '尚無申報記錄') + '</div>';
+    } else {
+      el.innerHTML = '<div class="ptbl-wrap"><table class="p-table" style="table-layout:fixed">' +
+        '<colgroup><col style="width:115px"><col><col style="width:90px"><col style="width:70px"><col style="width:70px"><col style="width:120px"></colgroup>' +
+        '<thead><tr><th>身份證</th><th>姓名</th><th>階段</th><th>抽血日</th><th>申報日</th><th></th></tr></thead>' +
+        '<tbody>' + filtered.map(submittedRow).join('') + '</tbody></table></div>';
+    }
+    if (_tab === 'submitted')
+      document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
 
   function inactiveRow(e) {
@@ -456,6 +489,7 @@
     renderHintTab(_return, returnRow, 'list-return-rows', '目前沒有需要回診抽血的病患');
     renderHintTab(_phone,  phoneRow,  'list-phone-rows',  '目前沒有可電話完成的病患');
     renderList(_submittable, submittableRow, 'list-submittable', ['>到期日 <span', '>完成日期 <span']);
+    renderSubmitted();
     renderList(_inactive,    inactiveRow,    'list-inactive');
     renderList(_contacted,   contactedRow,   'list-contacted');
     renderList(_hold,        holdRow,        'list-hold');
@@ -471,7 +505,7 @@
       document.getElementById('list-' + t).style.display = t === _tab ? '' : 'none';
     });
     var counts = {
-      return: _return, phone: _phone, submittable: _submittable,
+      return: _return, phone: _phone, submittable: _submittable, submitted: _submitted,
       inactive: _inactive, contacted: _contacted, hold: _hold, excluded: _excluded,
     };
     document.getElementById('result-count').textContent = '共 ' + (counts[_tab] || []).filter(match).length + ' 筆';
@@ -581,6 +615,23 @@
         })
         .catch(function (e) { L.showToast('恢復失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
+    } else if (action === 'ready-next') {
+      var srow = btn.closest('.pr'); if (!srow) return;
+      var sStage = srow.dataset.stage;
+      var sx = _submitted.find(function(e) { return e.patient.chart_number === chart && e.mspt_stage === sStage; });
+      if (!sx) return;
+      btn.disabled = true;
+      L.apiAction('DELETE', '/api/submitted', { chart_number: sx.patient.chart_number, mspt_stage: sx.mspt_stage })
+        .then(function () {
+          L.showToast(sx.patient.name + ' 已設定準備下期');
+          _submitted = _submitted.filter(function(e) {
+            return e.patient.chart_number !== sx.patient.chart_number || e.mspt_stage !== sx.mspt_stage;
+          });
+          document.getElementById('cnt-submitted').textContent = _submitted.length || '';
+          renderSubmitted();
+        })
+        .catch(function (e) { L.showToast('操作失敗：' + (e.message||''), 'error'); })
+        .finally(function () { btn.disabled = false; });
     }
   });
 
@@ -632,6 +683,9 @@
       .then(function () {
         L.hideModal('modal-vpn'); L.showToast('待登VPN記錄已儲存');
         _submittable = _submittable.filter(function(e) { return e.patient.chart_number !== entry.patient.chart_number; });
+        var archived = Object.assign({}, entry, { submitted_at: new Date().toISOString().slice(0, 10) });
+        _submitted.push(archived);
+        document.getElementById('cnt-submitted').textContent = _submitted.length || '';
         _submitEntry = null;
         _refreshBg();
       })

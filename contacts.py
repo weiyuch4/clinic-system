@@ -1925,7 +1925,8 @@ def get_submitted_entries(clinic_id: int = 1) -> list[MsptSubmittableEntry]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT chart_number, name, birth_date, mspt_stage, blood_report_date, days_since_last_stage
+                """SELECT chart_number, name, birth_date, mspt_stage, blood_report_date,
+                          days_since_last_stage, submitted_at
                    FROM submitted WHERE clinic_id = %s""",
                 (clinic_id,),
             )
@@ -1936,6 +1937,7 @@ def get_submitted_entries(clinic_id: int = 1) -> list[MsptSubmittableEntry]:
             mspt_stage=r["mspt_stage"],
             blood_report_date=date.fromisoformat(r["blood_report_date"]),
             days_since_last_stage=r["days_since_last_stage"],
+            submitted_at=date.fromisoformat(r["submitted_at"]) if r.get("submitted_at") else None,
         )
         for r in rows
     ]
