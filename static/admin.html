@@ -1908,6 +1908,16 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       </div>
       <div class="tbl-wrap" id="users-body"></div>
     </div>
+
+    <div class="card" style="margin-top:16px">
+      <div class="card-head">
+        <span class="card-title">護理師名單</span>
+        <span class="card-spacer"></span>
+        <button class="btn-sm" onclick="addProfilePrompt()">+ 新增護理師</button>
+      </div>
+      <div class="tbl-wrap" id="profiles-body"></div>
+      <div class="foot-note">此名單決定護理師選單與統計頁的顯示項目。移除後過去的記錄不受影響。</div>
+    </div>
   </section>
 
 </main>
@@ -2235,12 +2245,13 @@ function renderUsers(users) {
     <td>${u.role === 'admin' ? '管理員' : '護理師'}</td>
     <td>${u.is_active ? '<span style="color:var(--green)">啟用</span>' : '<span style="color:var(--text-3)">停用</span>'}</td>
     <td><div style="display:flex;gap:6px;flex-wrap:wrap">
-      ${u.is_active
-        ? `<button class="btn-sm" onclick="promptResetPw(${u.id},'${esc(u.display_name)}')">重設密碼</button>
-           <button class="btn-sm" onclick="promptRename(${u.id},'${esc(u.username)}')">更改帳號</button>
-           <button class="btn-sm" style="border-color:var(--red);color:var(--red)" onclick="deactivateUser(${u.id},'${esc(u.display_name)}')">停用</button>`
-        : `<button class="btn-sm" onclick="reactivateUser(${u.id},'${esc(u.display_name)}')">啟用</button>`
-      }
+      <button class="btn-sm" onclick="promptResetPw(${u.id},'${esc(u.display_name)}')">重設密碼</button>
+      <button class="btn-sm" onclick="promptRename(${u.id},'${esc(u.username)}')">更改帳號</button>
+      ${u.role !== 'admin'
+        ? (u.is_active
+            ? `<button class="btn-sm" style="border-color:var(--red);color:var(--red)" onclick="deactivateUser(${u.id},'${esc(u.display_name)}')">停用</button>`
+            : `<button class="btn-sm" onclick="reactivateUser(${u.id},'${esc(u.display_name)}')">啟用</button>`)
+        : ''}
     </div></td>
   </tr>`).join('');
   const thead = `<tr><th class="l">顯示名稱</th><th>帳號</th><th>身份</th><th>狀態</th><th style="min-width:210px">操作</th></tr>`;
@@ -2305,6 +2316,63 @@ async function reactivateUser(userId, name) {
     Layout.showToast('已啟用 ' + name);
     loadUsers();
   } catch(e) { alert('啟用失敗：' + (e.message || '')); }
+}
+
+// ── Nurse profiles (護理師名單) ────────────────────────────────────────────────
+async function loadProfiles() {
+  $('profiles-body').innerHTML = shimTable(2, 5);
+  try {
+    const nurses = await api('/api/nurses');
+    renderProfiles(nurses);
+  } catch(e) {
+    $('profiles-body').innerHTML = errState(e.message);
+  }
+}
+
+function renderProfiles(nurses) {
+  if (!nurses.length) {
+    $('profiles-body').innerHTML = emptyState('👥', '尚無護理師', '');
+    return;
+  }
+  const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
+  const rows = nurses.map(name => `<tr>
+    <td class="l"><strong>${esc(name)}</strong></td>
+    <td><div style="display:flex;gap:6px">
+      <button class="btn-sm" onclick="renameProfilePrompt('${esc(name)}')">改名</button>
+      <button class="btn-sm" style="border-color:var(--red);color:var(--red)" onclick="removeProfilePrompt('${esc(name)}')">移除</button>
+    </div></td>
+  </tr>`).join('');
+  $('profiles-body').innerHTML =
+    '<table><thead><tr><th class="l">護理師姓名</th><th style="min-width:120px">操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
+}
+
+async function addProfilePrompt() {
+  const name = prompt('輸入護理師姓名：');
+  if (!name || !name.trim()) return;
+  try {
+    await api('/api/admin/nurses', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() }) });
+    Layout.showToast('已新增 ' + name.trim());
+    loadProfiles();
+  } catch(e) { alert('新增失敗：' + (e.message || '')); }
+}
+
+async function renameProfilePrompt(oldName) {
+  const name = prompt('修改姓名：', oldName);
+  if (!name || !name.trim() || name.trim() === oldName) return;
+  try {
+    await api('/api/admin/nurses/' + encodeURIComponent(oldName), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: name.trim() }) });
+    Layout.showToast('已更新');
+    loadProfiles();
+  } catch(e) { alert('更新失敗：' + (e.message || '')); }
+}
+
+async function removeProfilePrompt(name) {
+  if (!confirm('確定要移除「' + name + '」嗎？\n護理師選單中將不再顯示此名稱，過去的統計記錄不受影響。')) return;
+  try {
+    await api('/api/admin/nurses/' + encodeURIComponent(name), { method: 'DELETE' });
+    Layout.showToast('已移除 ' + name);
+    loadProfiles();
+  } catch(e) { alert('移除失敗：' + (e.message || '')); }
 }
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
@@ -4523,7 +4591,7 @@ function load(section) {
   else if (section === 'schedule')   loadSchedule();
   else if (section === 'salary')     initSalaryTab();
   else if (section === 'labcodes')   loadLabCodes();
-  else if (section === 'usersmgmt')  loadUsers();
+  else if (section === 'usersmgmt')  { loadUsers(); loadProfiles(); }
 }
 
 function refresh() {
