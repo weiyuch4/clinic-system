@@ -24,10 +24,7 @@
       </div>
 
       <div class="ph">
-        <div>
-          <h1>處方追蹤</h1>
-          <p id="page-date">所有處方 — 即將到期與需關懷</p>
-        </div>
+        <div><h1>處方追蹤</h1><p id="page-date">所有處方 — 即將到期與需關懷</p></div>
       </div>
 
       <div class="filter-bar" id="filter-bar">
@@ -57,151 +54,69 @@
   </div>
 </div>
 
-<style>
-/* ── Prescription-specific styles ──────────────────── */
-.rx-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 14px 16px;
-  margin-bottom: 10px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  transition: background .12s;
-}
-.rx-card:hover { background: var(--hover, rgba(0,0,0,.03)); }
-
-.rx-status {
-  flex-shrink: 0;
-  width: 44px;
-  text-align: center;
-}
-.rx-days {
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1;
-}
-.rx-days.overdue  { color: var(--red, #e53e3e); }
-.rx-days.today    { color: var(--orange, #dd6b20); }
-.rx-days.soon     { color: var(--yellow, #d69e2e); }
-.rx-days.ok       { color: var(--green, #38a169); }
-.rx-days-label {
-  font-size: 10px;
-  color: var(--sub);
-  margin-top: 2px;
-}
-
-.rx-body { flex: 1; min-width: 0; }
-.rx-name {
-  font-weight: 600;
-  font-size: 15px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.rx-meta {
-  font-size: 12px;
-  color: var(--sub);
-  margin-top: 3px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  align-items: center;
-}
-.rx-tag {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 7px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 500;
-  background: var(--bg2, #f3f4f6);
-  color: var(--sub);
-}
-.rx-tag.ae  { background: #eff6ff; color: #2563eb; }
-.rx-tag.nishi { background: #f0fdf4; color: #15803d; }
-.rx-tag.care { background: #fef3c7; color: #92400e; }
-.rx-tag.icd  { background: var(--bg2, #f3f4f6); color: var(--sub); }
-
-.rx-due {
-  flex-shrink: 0;
-  text-align: right;
-  font-size: 12px;
-  color: var(--sub);
-}
-.rx-due-date { font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 2px; }
-
-.care-banner {
-  background: #fef3c7;
-  border: 1px solid #fde68a;
-  border-radius: 8px;
-  padding: 10px 14px;
-  margin-bottom: 10px;
-  font-size: 13px;
-  color: #78350f;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-</style>
-
 <script src="/static/_layout.js?v=53"></script>
 <script>
 (function () {
   'use strict';
+  var L = Layout;
+  var _all = [], _tab = 'urgent', _query = '';
 
-  var _token  = localStorage.getItem('clinic_token') || '';
-  var _all    = [];
-  var _tab    = 'urgent';
-  var _query  = '';
+  function _esc(s) { return L.escHtml(String(s || '')); }
 
-  // ── Layout init ─────────────────────────────────────
-  Layout.init({ activePage: 'prescription' });
+  function _categorise(e) {
+    if (e.is_care) return 'care';
+    var d = e.days_until_due;
+    if (d <= 1) return 'urgent';
+    if (d <= 6) return 'week';
+    return 'later';
+  }
 
-  // ── Tab switching ────────────────────────────────────
-  document.querySelectorAll('.filter-tab').forEach(function (btn) {
-    btn.addEventListener('click', function () {
-      document.querySelectorAll('.filter-tab').forEach(function (b) { b.classList.remove('on'); });
-      btn.classList.add('on');
-      _tab = btn.dataset.tab;
-      document.getElementById('list-urgent').style.display = _tab === 'urgent' ? '' : 'none';
-      document.getElementById('list-week').style.display   = _tab === 'week'   ? '' : 'none';
-      document.getElementById('list-later').style.display  = _tab === 'later'  ? '' : 'none';
-      document.getElementById('list-care').style.display   = _tab === 'care'   ? '' : 'none';
-      _render();
-    });
-  });
+  function rxRow(e) {
+    var d    = e.days_until_due;
+    var dCls = d < 0 ? 'days-hi' : d <= 2 ? 'days-md' : 'days-lo';
+    var dTxt = d < 0 ? (Math.abs(d) + '天逾期') : (d === 0 ? '今日到期' : d === 1 ? '明天到期' : d + '天後');
 
-  // ── Search ───────────────────────────────────────────
-  document.getElementById('search-input').addEventListener('input', function () {
-    _query = this.value.trim().toLowerCase();
-    _render();
-  });
+    var natId = _esc(e.nat_id);
+    var name  = _esc(e.name);
+    var birth = e.birth_date ? _esc(String(e.birth_date).slice(0, 10)) : '';
+    var due   = e.due_date ? String(e.due_date).slice(5).replace('-', '/') : '—';
+    var ps    = e.ps ? e.ps + '天' : '—';
 
-  // ── Load ─────────────────────────────────────────────
-  function _load() {
-    document.getElementById('list-urgent').innerHTML = '<div class="sec-empty">載入中…</div>';
-    ['week','later','care'].forEach(function (t) {
-      document.getElementById('list-' + t).innerHTML = '';
-    });
-    fetch('/api/report/prescriptions', {
-      headers: { Authorization: 'Bearer ' + _token }
-    })
-    .then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(function (data) {
-      _all = data;
-      _updatePageDate();
-      _renderAll();
-    })
-    .catch(function (err) {
-      var bar = document.getElementById('error-bar');
-      document.getElementById('error-msg').textContent = '資料載入失敗：' + err.message;
-      bar.style.display = 'flex';
-    });
+    var htypeBadge = e.h_type === 'AE連續'
+      ? '<span class="pbadge b-done">連續</span>'
+      : '<span class="pbadge">一般</span>';
+    var careBadge = e.is_care ? ' <span class="pbadge b-hold">關懷</span>' : '';
+    var icdTxt    = e.icd_name ? _esc(e.icd_name) : '';
+
+    return '<tr class="pr">' +
+      '<td class="pr-num"><span class="pr-copy" data-copy="' + natId + '" title="點擊複製身份證">' + natId + '</span></td>' +
+      '<td class="pr-pt">' +
+        '<div class="pr-name">' + name + '</div>' +
+        '<div class="pr-info">' + birth + '</div>' +
+      '</td>' +
+      '<td style="white-space:nowrap">' + htypeBadge + careBadge + '</td>' +
+      '<td class="pr-days ' + dCls + '">' + dTxt + '</td>' +
+      '<td class="pr-date">' + due + '</td>' +
+      '<td class="pr-date">' + ps + '</td>' +
+      '<td class="pr-note" style="color:var(--sub);font-size:12px">' + icdTxt + '</td>' +
+      '</tr>';
+  }
+
+  function rxTable(rowsHtml) {
+    return '<div class="ptbl-wrap"><table class="p-table">' +
+      '<colgroup>' +
+        '<col style="width:115px">' +
+        '<col>' +
+        '<col style="width:100px">' +
+        '<col style="width:90px">' +
+        '<col style="width:70px">' +
+        '<col style="width:60px">' +
+        '<col style="width:130px">' +
+      '</colgroup>' +
+      '<thead><tr>' +
+        '<th>身份證</th><th>病患</th><th>處方類型</th><th>到期</th><th>到期日</th><th>開藥天</th><th>疾病</th>' +
+      '</tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody></table></div>';
   }
 
   function _updatePageDate() {
@@ -212,132 +127,81 @@
       String(d.getDate()).padStart(2,'0') + '（' + wday + '）— 共 ' + _all.length + ' 筆';
   }
 
-  // ── Categorise entries into tabs ─────────────────────
-  // urgent: overdue OR due today OR due tomorrow (days_until_due <= 1), not care
-  // week:   due in 2–6 days, not care
-  // later:  due in 7+ days (shown only if in notify window), not care
-  // care:   PS <= 3
-  function _categorise(entry) {
-    if (entry.is_care) return 'care';
-    var d = entry.days_until_due;
-    if (d <= 1)  return 'urgent';
-    if (d <= 6)  return 'week';
-    return 'later';
-  }
-
   function _renderAll() {
-    var urgent = [], week = [], later = [], care = [];
-    _all.forEach(function (e) {
-      var cat = _categorise(e);
-      if (cat === 'urgent') urgent.push(e);
-      else if (cat === 'week') week.push(e);
-      else if (cat === 'later') later.push(e);
-      else care.push(e);
-    });
-    document.getElementById('cnt-urgent').textContent = urgent.length || '';
-    document.getElementById('cnt-week').textContent   = week.length   || '';
-    document.getElementById('cnt-later').textContent  = later.length  || '';
-    document.getElementById('cnt-care').textContent   = care.length   || '';
+    var lists = { urgent:[], week:[], later:[], care:[] };
+    _all.forEach(function(e) { lists[_categorise(e)].push(e); });
+    document.getElementById('cnt-urgent').textContent = lists.urgent.length || '';
+    document.getElementById('cnt-week').textContent   = lists.week.length   || '';
+    document.getElementById('cnt-later').textContent  = lists.later.length  || '';
+    document.getElementById('cnt-care').textContent   = lists.care.length   || '';
     _render();
   }
 
   function _render() {
-    var lists = { urgent: [], week: [], later: [], care: [] };
-    _all.forEach(function (e) {
-      var cat = _categorise(e);
-      if (!_query ||
-          e.name.toLowerCase().includes(_query) ||
-          e.nat_id.toLowerCase().includes(_query)) {
-        lists[cat].push(e);
-      }
+    var lists = { urgent:[], week:[], later:[], care:[] };
+    _all.forEach(function(e) {
+      if (!_query || e.name.toLowerCase().includes(_query) || e.nat_id.toLowerCase().includes(_query))
+        lists[_categorise(e)].push(e);
     });
 
-    var shown   = lists[_tab].length;
-    var total   = _all.filter(function (e) { return _categorise(e) === _tab; }).length;
+    var total = _all.filter(function(e){ return _categorise(e) === _tab; }).length;
     document.getElementById('result-count').textContent =
-      _query ? '符合 ' + shown + ' / ' + total + ' 筆' : '共 ' + total + ' 筆';
+      _query ? '符合 ' + lists[_tab].length + ' / ' + total + ' 筆' : '共 ' + total + ' 筆';
 
-    var listEl = document.getElementById('list-' + _tab);
-    if (lists[_tab].length === 0) {
-      listEl.innerHTML = '<div class="sec-empty">無資料</div>';
+    var el = document.getElementById('list-' + _tab);
+    if (!lists[_tab].length) {
+      el.innerHTML = '<div class="sec-empty">' + (total ? '沒有符合搜尋條件的病患' : '無資料') + '</div>';
       return;
     }
+    el.innerHTML = rxTable(lists[_tab].map(rxRow).join(''));
+  }
 
-    var html = '';
-    if (_tab === 'care') {
-      html += '<div class="care-banner">' +
-        '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>' +
-        '短期處方（3天以內）到期，可主動聯繫確認症狀是否改善' +
-        '</div>';
-    }
+  function _load() {
+    L.hideError();
+    document.getElementById('list-urgent').innerHTML = '<div class="sec-empty">載入中…</div>';
+    ['week','later','care'].forEach(function(t){ document.getElementById('list-'+t).innerHTML=''; });
+    L.apiFetch('/api/report/prescriptions')
+      .then(function(data) {
+        _all = data;
+        _updatePageDate();
+        _renderAll();
+        L.updateLastUpdated();
+      })
+      .catch(function(e){ L.showError('資料載入失敗 — ' + (e.message || '')); });
+  }
 
-    lists[_tab].forEach(function (e) {
-      var d   = e.days_until_due;
-      var dCls = d < 0 ? 'overdue' : (d === 0 ? 'today' : (d <= 2 ? 'soon' : 'ok'));
-      var dTxt = d < 0 ? (Math.abs(d) + '天過期') : (d === 0 ? '今日' : (d === 1 ? '明天' : d + '天'));
-      var dLbl = d < 0 ? '' : (d === 0 ? '到期' : '後到期');
-
-      var birth = new Date(e.birth_date);
-      var age   = new Date().getFullYear() - birth.getFullYear();
-      var birthFmt = birth.getFullYear() + '/' +
-        String(birth.getMonth()+1).padStart(2,'0') + '/' +
-        String(birth.getDate()).padStart(2,'0');
-
-      var htypeTag = e.h_type === 'AE連續'
-        ? '<span class="rx-tag ae">連續處方</span>'
-        : '<span class="rx-tag nishi">一般處方</span>';
-
-      var careTag = e.is_care ? '<span class="rx-tag care">關懷</span>' : '';
-      var icdTag  = e.icd_name ? '<span class="rx-tag icd">' + e.icd_name + '</span>' : '';
-
-      var due = new Date(e.due_date);
-      var dueFmt = (due.getMonth()+1) + '/' + due.getDate();
-
-      html += '<div class="rx-card">' +
-        '<div class="rx-status">' +
-          '<div class="rx-days ' + dCls + '">' + dTxt + '</div>' +
-          '<div class="rx-days-label">' + dLbl + '</div>' +
-        '</div>' +
-        '<div class="rx-body">' +
-          '<div class="rx-name">' + _esc(e.name) + '</div>' +
-          '<div class="rx-meta">' +
-            '<span>' + birthFmt + '（' + age + '歲）</span>' +
-            htypeTag + careTag + icdTag +
-          '</div>' +
-        '</div>' +
-        '<div class="rx-due">' +
-          '<div class="rx-due-date">' + dueFmt + ' 到期</div>' +
-          '<div>開藥 ' + e.ps + ' 天</div>' +
-        '</div>' +
-      '</div>';
+  document.getElementById('filter-bar').addEventListener('click', function(ev) {
+    var btn = ev.target.closest('.filter-tab'); if (!btn) return;
+    _tab = btn.dataset.tab;
+    document.querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('on'); });
+    btn.classList.add('on');
+    ['urgent','week','later','care'].forEach(function(t){
+      document.getElementById('list-'+t).style.display = t===_tab ? '' : 'none';
     });
-    listEl.innerHTML = html;
-  }
+    _render();
+  });
 
-  function _esc(s) {
-    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  }
+  document.getElementById('search-input').addEventListener('input', function(){
+    _query = this.value.trim().toLowerCase();
+    _render();
+  });
 
   // ── Workflow popup ───────────────────────────────────
   var _wfPopup = null;
-  var _RX_TAB_LABELS = { urgent: '緊急', week: '本週到期', later: '後續', care: '關懷' };
+  var _RX_TAB_LABELS = { urgent:'緊急', week:'本週到期', later:'後續', care:'關懷' };
 
   function _openWorkflow() {
-    var lists = { urgent: [], week: [], later: [], care: [] };
-    _all.forEach(function (e) {
-      var cat = _categorise(e);
-      if (!_query ||
-          e.name.toLowerCase().includes(_query) ||
-          e.nat_id.toLowerCase().includes(_query)) {
-        lists[cat].push(e);
-      }
+    var lists = { urgent:[], week:[], later:[], care:[] };
+    _all.forEach(function(e) {
+      if (!_query || e.name.toLowerCase().includes(_query) || e.nat_id.toLowerCase().includes(_query))
+        lists[_categorise(e)].push(e);
     });
     var allTabs = {};
-    ['urgent', 'week', 'later', 'care'].forEach(function (tab) {
+    ['urgent','week','later','care'].forEach(function(tab) {
       if (lists[tab].length) {
         allTabs[tab] = {
           label: _RX_TAB_LABELS[tab],
-          items: lists[tab].map(function (e) {
+          items: lists[tab].map(function(e) {
             return Object.assign({}, e, { _entry: e, _mode: 'prescription', _tab: tab });
           }),
         };
@@ -347,7 +211,7 @@
     try {
       localStorage.setItem('rx_workflow_tabs', JSON.stringify(allTabs));
       localStorage.setItem('rx_workflow_curtab', _tab);
-    } catch (ex) {}
+    } catch(ex){}
     if (_wfPopup && !_wfPopup.closed) {
       _wfPopup.postMessage('workflow_reload', '*');
       _wfPopup.focus();
@@ -359,11 +223,9 @@
   }
 
   document.getElementById('btn-workflow').addEventListener('click', _openWorkflow);
+  window.addEventListener('message', function(ev){ if(ev.data==='workflow_refresh') _load(); });
 
-  window.addEventListener('message', function (ev) {
-    if (ev.data === 'workflow_refresh') _load();
-  });
-
+  Layout.init({ activePage: 'prescription', onRefresh: _load });
   _load();
 })();
 </script>
