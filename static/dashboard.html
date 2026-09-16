@@ -230,18 +230,19 @@
       report.mspt_followups||[], report.mspt_inactive||[],
       report.hep_followups||[], report.ckd_followups||[], report.ckd_inactive||[]
     );
-    var rxCount = rxPendingCount || 0;
+    var rxCount  = rxPendingCount || 0;
+    var labCount = bloodCount || 0;
     var contacted = (report.contacted||[]).length + (report.called||[]).length;
-    document.getElementById('stat-pending').textContent   = pending.length + rxCount;
+    document.getElementById('stat-pending').textContent   = pending.length + rxCount + labCount;
     document.getElementById('stat-contacted').textContent = contacted;
     document.getElementById('stat-mspt').textContent      = (report.mspt_submittable||[]).length;
     document.getElementById('stat-hold').textContent      = (report.on_hold||[]).length;
     document.getElementById('stat-pending-sub').textContent =
-      'MSPT '+(report.mspt_followups||[]).length+' · B肝 '+(report.hep_followups||[]).length+' · 處方 '+rxCount;
+      '處方 '+rxCount+' · MSPT '+(report.mspt_followups||[]).length+' · B肝 '+(report.hep_followups||[]).length+' · 腎臟 '+(report.ckd_followups||[]).length+' · 檢驗 '+labCount;
     document.getElementById('stat-contacted-sub').textContent =
       '已通知 '+(report.contacted||[]).length+' · 已二通 '+(report.called||[]).length;
     L.updateBadges(report, bloodCount);
-    return { pending: pending, contacted: contacted, rxCount: rxCount };
+    return { pending: pending, contacted: contacted, rxCount: rxCount, labCount: labCount };
   }
 
   // ── patient table ──────────────────────────────────
@@ -500,7 +501,7 @@
       document.getElementById('stat-contacted-sub').textContent =
         '已通知 '+(todayHistory.contacted||[]).length+'　已二通 '+(todayHistory.called||[]).length;
       renderTable(s.pending);
-      renderGauge(todayContacted, s.pending.length + s.rxCount);
+      renderGauge(todayContacted, s.pending.length + s.rxCount + s.labCount);
       renderUrgent(report, bloodCount);
       renderContactLog(todayHistory);
       renderChart(week);
