@@ -557,7 +557,7 @@ def _icd_to_name(icd: str) -> str | None:
 # ── General prescription (處方追蹤) query ────────────────────────────────────
 
 PRESCRIPTION_LOOKBACK_DAYS = 60  # how far back to scan IC files
-PRESCRIPTION_GRACE_DAYS    = 7   # days after due before row drops off the list
+PRESCRIPTION_GRACE_DAYS    = 60  # days after due before row drops off the list
 
 
 def _query_all_prescriptions(as_of: date) -> list[dict]:
