@@ -24,7 +24,11 @@
       </div>
 
       <div class="ph">
-        <div><h1>處方追蹤</h1><p id="page-date">所有處方 — 即將到期與需關懷</p></div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <h1>處方追蹤</h1>
+          <button onclick="Layout.showModal('modal-help')" title="說明" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;padding:0;margin-bottom:1px">?</button>
+        </div>
+        <p id="page-date">所有處方 — 即將到期與需關懷</p>
       </div>
 
       <div class="filter-bar" id="filter-bar">
@@ -68,6 +72,63 @@
     <div class="modal-footer">
       <button class="act-btn" onclick="Layout.hideModal('modal-hold')">取消</button>
       <button class="act-btn act-warn" id="btn-hold-confirm">設定暫緩</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help modal -->
+<div class="modal-overlay" id="modal-help">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-title">處方追蹤 說明</div>
+    <div style="font-size:13.5px;line-height:1.75;color:var(--text);overflow-y:auto;max-height:65vh;padding-right:4px">
+
+      <p style="margin:0 0 12px;color:var(--muted);font-size:12.5px">處方追蹤會自動列出逾期或即將到期的處方病患，協助護理師安排聯繫。</p>
+
+      <div style="font-weight:600;margin:0 0 6px">📋 處方類型</div>
+      <div style="display:grid;gap:6px;margin-bottom:14px">
+        <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
+          <span style="font-weight:600">一般處方</span><br>
+          <span style="color:var(--muted);font-size:12.5px">聯繫一次即可。點「已聯繫」後移至已聯繫頁籤，不需再追蹤。</span>
+        </div>
+        <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
+          <span style="font-weight:600">連續處方 <span style="font-size:11px;background:var(--warn-bg,#fff3cd);color:#7a5c00;border-radius:3px;padding:1px 5px;vertical-align:middle">AE連續</span></span><br>
+          <span style="color:var(--muted);font-size:12.5px">需確認病患有回診補領。聯繫後顯示「待回診」，可再次聯繫追蹤第二次。</span>
+        </div>
+      </div>
+
+      <div style="font-weight:600;margin:0 0 8px">📂 頁籤說明</div>
+      <div style="display:grid;gap:5px;margin-bottom:14px">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:56px;font-weight:600;color:var(--primary,#4aa7f7)">待聯絡</span>
+          <span style="color:var(--muted);font-size:12.5px">尚未聯繫的病患清單，每日自動更新。</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:56px;font-weight:600;color:var(--success,#2e9e5b)">已聯繫</span>
+          <span style="color:var(--muted);font-size:12.5px">已記錄聯繫的病患。連續處方顯示「待回診」，可按「再次聯繫」記錄第二次。</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:56px;font-weight:600;color:var(--muted)">暫緩中</span>
+          <span style="color:var(--muted);font-size:12.5px">暫時不需追蹤（如出國、住院）。可隨時解除暫緩重新追蹤。</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:56px;font-weight:600;color:var(--muted)">已排除</span>
+          <span style="color:var(--muted);font-size:12.5px">連續處方已聯繫兩次，且超過 14 天仍未回診，系統自動移至此處。</span>
+        </div>
+      </div>
+
+      <div style="font-weight:600;margin:0 0 8px">🔄 連續處方流程</div>
+      <div style="display:flex;align-items:center;gap:6px;font-size:12.5px;flex-wrap:wrap;margin-bottom:4px">
+        <span style="background:var(--hover);border-radius:4px;padding:3px 8px">待聯絡</span>
+        <span style="color:var(--muted)">→ 已聯繫</span>
+        <span style="background:var(--hover);border-radius:4px;padding:3px 8px">待回診</span>
+        <span style="color:var(--muted)">→ 再次聯繫</span>
+        <span style="color:var(--muted)">→ 14 天無回診</span>
+        <span style="color:var(--muted)">→</span>
+        <span style="background:var(--hover);border-radius:4px;padding:3px 8px">已排除</span>
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:14px">
+      <button class="act-btn act-primary" onclick="Layout.hideModal('modal-help')">了解了</button>
     </div>
   </div>
 </div>
