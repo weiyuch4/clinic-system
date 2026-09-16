@@ -76,28 +76,60 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* ── Tab bar ─────────────────────────────────────────────────────────────── */
-.tabbar {
-  flex-shrink: 0;
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  padding: 0 32px;
-  display: flex;
+/* ── Sidebar layout ──────────────────────────────────────────────────────── */
+.body-row { display: flex; flex: 1; min-height: 0; }
+
+.admsb {
+  width: 192px; flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 14px 10px 16px;
+  overflow-y: auto;
 }
-.tab {
-  padding: 15px 2px;
-  margin-right: 28px;
-  border: none;
-  background: none;
-  font: 600 13px/1 var(--font);
+.admsb-label {
+  font-size: 10px; font-weight: 700;
+  letter-spacing: .09em; text-transform: uppercase;
   color: var(--text-3);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  transition: color .15s, border-color .15s;
+  padding: 0 8px; margin: 14px 0 4px;
+}
+.admsb-label:first-child { margin-top: 0; }
+.admsb-divider { height: 1px; background: var(--border); margin: 8px 2px; }
+.admsb-bot {
+  margin-top: auto; padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+
+/* tab items inside sidebar */
+:root { --sb-active-bg: rgba(0,0,0,.06); }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) { --sb-active-bg: rgba(255,255,255,.08); }
+}
+:root[data-theme=dark] { --sb-active-bg: rgba(255,255,255,.08); }
+
+.tab {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 9px; border-radius: 9px;
+  border: none; background: transparent; width: 100%;
+  text-align: left; cursor: pointer;
+  font: 600 13px/1.4 var(--font);
+  color: var(--text-2);
+  transition: background .12s, color .12s;
   white-space: nowrap;
 }
-.tab:hover { color: var(--text-2); }
-.tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+.tab:hover { background: var(--bg); color: var(--text-1); }
+.tab.active { color: var(--text-1); background: var(--sb-active-bg); }
+
+.back-btn {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 9px; border-radius: 9px;
+  color: var(--text-3); font-size: 12.5px;
+  cursor: pointer; border: none; background: transparent;
+  width: 100%; text-align: left;
+  transition: background .12s, color .12s;
+  font-family: var(--font);
+}
+.back-btn:hover { background: var(--bg); color: var(--text-2); }
 
 /* ── Layout ──────────────────────────────────────────────────────────────── */
 main {
@@ -1180,7 +1212,8 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
      every colored badge/bar in the schedule views would print plain white */
   * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
 
-  .app > .main > #topbar, .tabbar, #back-to-top, .bonus-toolbar:not(.sched-toolbar) { display: none !important; }
+  .app > .main > #topbar, .admsb, #back-to-top, .bonus-toolbar:not(.sched-toolbar) { display: none !important; }
+  .body-row { display: block; }
   main { padding: 0; max-width: none; }
   .section { display: none !important; }
   .section.active { display: block !important; }
@@ -1276,17 +1309,57 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 <div class="app">
   <div class="main" style="display:flex;flex-direction:column">
     <div id="topbar"></div>
-    <div class="tabbar">
-      <button class="tab active" data-section="nurses">護理師統計</button>
-      <button class="tab"        data-section="doctors">醫師回診率</button>
-      <button class="tab"        data-section="labreport">代檢對帳單</button>
-      <button class="tab"        data-section="linenotify">LINE 通知</button>
-      <button class="tab"        data-section="schedule">排班表</button>
-      <button class="tab"        data-section="salary">薪資計算</button>
-      <button class="tab"        data-section="labcodes">代碼設定</button>
-      <button class="tab"        data-section="announcements">公告管理</button>
-      <button class="btn-sm" style="margin-left:auto;align-self:center;margin-right:8px" onclick="exitAdminMode()">退出</button>
-    </div>
+    <div class="body-row">
+    <nav class="admsb">
+      <div class="admsb-label">統計</div>
+      <button class="tab active" data-section="nurses">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        護理師統計
+      </button>
+      <button class="tab" data-section="doctors">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        醫師回診率
+      </button>
+
+      <div class="admsb-divider"></div>
+      <div class="admsb-label">操作</div>
+
+      <button class="tab" data-section="linenotify">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        LINE 通知
+      </button>
+      <button class="tab" data-section="labreport">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+        代檢對帳單
+      </button>
+      <button class="tab" data-section="schedule">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg>
+        排班表
+      </button>
+      <button class="tab" data-section="salary">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        薪資計算
+      </button>
+
+      <div class="admsb-divider"></div>
+      <div class="admsb-label">設定</div>
+
+      <button class="tab" data-section="labcodes">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14"/></svg>
+        代碼設定
+      </button>
+      <button class="tab" data-section="announcements">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        公告管理
+      </button>
+
+      <div class="admsb-bot">
+        <button class="back-btn" onclick="exitAdminMode()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg>
+          退出後台
+        </button>
+      </div>
+    </nav>
     <div class="ct" id="admin-ct" style="padding:0">
 <main>
 
@@ -1804,6 +1877,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
 </main>
     </div><!-- /.ct -->
+    </div><!-- /.body-row -->
   </div><!-- /.main -->
 </div><!-- /.app -->
 
