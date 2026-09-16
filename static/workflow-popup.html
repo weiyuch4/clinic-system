@@ -174,12 +174,14 @@ function cancelForm() {
 function showContactForm() {
   var fa = document.getElementById('form-area');
   fa.style.display = 'flex';
-  fa.innerHTML =
-    '<div class="form-row"><div class="form-label">聯絡方式</div>' +
-      '<select class="form-select" id="contact-type">' +
-        '<option value="contacted">已聯繫（直接通知）</option>' +
-        '<option value="called">已二次確認（電話通話）</option>' +
-      '</select></div>' +
+  var typeRow = MODE === 'mspt'
+    ? '<div class="form-row"><div class="form-label">聯絡方式</div>' +
+        '<select class="form-select" id="contact-type">' +
+          '<option value="contacted">已聯繫（直接通知）</option>' +
+          '<option value="called">已二次確認（電話通話）</option>' +
+        '</select></div>'
+    : '';
+  fa.innerHTML = typeRow +
     '<div class="form-row"><div class="form-label">備註（選填）</div>' +
       '<input class="form-input" id="contact-note" placeholder="例：預約回診日期"></div>' +
     '<div class="form-error" id="form-error"></div>' +
@@ -207,11 +209,11 @@ function showHoldForm() {
 function doContact() {
   var items = currentItems();
   var item = items[idx];
-  var type = document.getElementById('contact-type').value;
   var errEl = document.getElementById('form-error');
   var btn = document.getElementById('confirm-btn');
   errEl.textContent = ''; btn.disabled = true;
-  var url = type === 'called' ? '/api/called' : '/api/contacted';
+  var typeEl = document.getElementById('contact-type');
+  var url = (typeEl && typeEl.value === 'called') ? '/api/called' : '/api/contacted';
   apiCall('POST', url, { entry: item._entry, nurse: NURSE },
     function() { advance(); },
     function(e) { errEl.textContent = e.message || '操作失敗，請再試一次'; btn.disabled = false; }
@@ -316,7 +318,11 @@ function render() {
   var skip = '<button class="btn btn-sec" onclick="go(1)">跳過 →</button>';
   var tab = item._tab || '';
 
-  if (MODE === 'mspt' && (tab === 'return' || tab === 'inactive')) {
+  if (MODE === 'prescription') {
+    act.innerHTML = prev + skip +
+      '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
+      '<button class="btn btn-pri" onclick="showContactForm()">已聯繫</button>';
+  } else if (MODE === 'mspt' && (tab === 'return' || tab === 'inactive')) {
     act.innerHTML = prev + skip +
       '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
       '<button class="btn btn-pri" onclick="showContactForm()">已聯繫</button>';
