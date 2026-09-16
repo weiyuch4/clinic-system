@@ -227,9 +227,8 @@
   // ── stats ──────────────────────────────────────────
   function renderStats(report, bloodCount, rxPendingCount) {
     var pending = [].concat(
-      report.chronic_prescriptions||[], report.mspt_followups||[],
-      report.mspt_inactive||[], report.hep_followups||[],
-      report.ckd_followups||[], report.ckd_inactive||[]
+      report.mspt_followups||[], report.mspt_inactive||[],
+      report.hep_followups||[], report.ckd_followups||[], report.ckd_inactive||[]
     );
     var rxCount = rxPendingCount || 0;
     var contacted = (report.contacted||[]).length + (report.called||[]).length;
@@ -238,7 +237,7 @@
     document.getElementById('stat-mspt').textContent      = (report.mspt_submittable||[]).length;
     document.getElementById('stat-hold').textContent      = (report.on_hold||[]).length;
     document.getElementById('stat-pending-sub').textContent =
-      '慢簽 '+(report.chronic_prescriptions||[]).length+' · MSPT '+(report.mspt_followups||[]).length+' · B肝 '+(report.hep_followups||[]).length+' · 處方 '+rxCount;
+      'MSPT '+(report.mspt_followups||[]).length+' · B肝 '+(report.hep_followups||[]).length+' · 處方 '+rxCount;
     document.getElementById('stat-contacted-sub').textContent =
       '已通知 '+(report.contacted||[]).length+' · 已二通 '+(report.called||[]).length;
     L.updateBadges(report, bloodCount);
