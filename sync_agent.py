@@ -160,6 +160,32 @@ def do_sync() -> None:
     except Exception as exc:
         log.error("Prescription sync failed: %s", exc)
 
+    # Doctor return-rate sync (醫師回診率)
+    try:
+        from database import get_doctor_return_rates
+        today = date.today()
+        for i in range(12):
+            # Iterate last 12 months, most recent first
+            m = today.month - i
+            y = today.year
+            while m <= 0:
+                m += 12
+                y -= 1
+            month_str = f"{y}-{m:02d}"
+            rates = get_doctor_return_rates(month_str)
+            if not rates:
+                continue
+            resp = requests.post(
+                f"{CLOUD_URL}/api/sync/push-doctor-rates",
+                json={"clinic_id": 1, "month": month_str, "rates": rates},
+                headers={"X-Sync-Token": SYNC_TOKEN},
+                timeout=30,
+            )
+            resp.raise_for_status()
+        log.info("Synced doctor return rates for last 12 months")
+    except Exception as exc:
+        log.error("Doctor rates sync failed: %s", exc)
+
     # Blood pending sync (reads IC + BIO files, writes result JSONB to Supabase)
     try:
         if _ensure_db_pool():

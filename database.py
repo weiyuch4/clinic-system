@@ -8,7 +8,7 @@ from pathlib import Path
 
 import lab_results
 import nhi_blood_codes as _nhi
-from config import IC_DATA_PATH, METABOLIC_FOLLOWUP_DAYS, PATDB_PATH, QUEUE_PATH, USE_MOCK_DATA
+from config import IC_DATA_PATH, METABOLIC_FOLLOWUP_DAYS, PATDB_PATH, QUEUE_PATH, TITLE_DBF_PATH, USE_MOCK_DATA
 from models import (
     DailyReport,
     FollowupEntry,
@@ -1434,15 +1434,38 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
 
 # ── Doctor return-rate analytics ──────────────────────────────────────────────
 
+def get_doctor_name_map() -> dict[str, str]:
+    """Return {nhi_provider_id: chinese_name} from TITLE.DBF.
+
+    TITLE.DBF stores up to two active doctors (DR_NAME/DR_ID and DR_NAME1/DR_ID1).
+    The IC DOCTOR field holds the NHI provider ID; this map resolves it to a display name.
+    Falls back to an empty dict if the file is missing or unreadable.
+    """
+    if not os.path.isfile(TITLE_DBF_PATH):
+        return {}
+    try:
+        result: dict[str, str] = {}
+        for row in _parse_dbf(TITLE_DBF_PATH):
+            for id_key, name_key in (('DR_ID', 'DR_NAME'), ('DR_ID1', 'DR_NAME1')):
+                nhi_id = row.get(id_key, '').strip()
+                name   = row.get(name_key, '').strip()
+                if nhi_id and name:
+                    result[nhi_id] = name
+        return result
+    except Exception:
+        return {}
+
+
 def get_doctor_return_rates(month: str) -> list[dict]:
-    """Compute per-doctor 90-day same-doctor return rates for a Gregorian YYYY-MM month.
+    """Compute per-doctor 90-day clinic-level return rates for a Gregorian YYYY-MM month.
 
-    Only 01西醫 visits count — AE連續 (IC02/IC03 prescription pickups) are excluded
-    from both the denominator and the return check, since the patient isn't there
-    for a consultation with the doctor.
+    Only 01西醫 visits count — AE連續 (IC02/IC03 prescription pickups) are excluded.
 
-    For each unique (patient, doctor) pair with a 01西醫 visit in the month,
-    checks whether the patient returned to the same doctor (01西醫 only) within 90 days.
+    Headline logic: a patient who returns to *any* doctor at this clinic within 90 days
+    counts as returned (clinic-level retention). The per-doctor rows show how many unique
+    patients each doctor saw and how many of those patients returned to the clinic.
+
+    The IC DOCTOR field stores the NHI provider ID; names are resolved via TITLE.DBF.
     """
     year, m = int(month[:4]), int(month[5:])
     roc_month = f"{year - 1911:03d}{m:02d}"
@@ -1450,7 +1473,9 @@ def get_doctor_return_rates(month: str) -> list[dict]:
     if not os.path.isfile(ic_file):
         return []
 
-    # (nat_id, doctor) → last 01西醫 consultation date this month
+    name_map = get_doctor_name_map()
+
+    # (nat_id, doctor_nhi_id) → last 01西醫 consultation date this month
     target: dict[tuple[str, str], date] = {}
     try:
         for row in _parse_dbf(ic_file):
@@ -1470,8 +1495,8 @@ def get_doctor_return_rates(month: str) -> list[dict]:
     if not target:
         return []
 
-    # Check next 3 months for a 01西醫 return visit to the same doctor within 90 days
-    returned: set[tuple[str, str]] = set()
+    # nat_id → earliest return date at this clinic (any doctor), within 90 days
+    clinic_returned: dict[str, date] = {}
     for lookahead in range(1, 4):
         next_m = (m - 1 + lookahead) % 12 + 1
         next_y = year + (m - 1 + lookahead) // 12
@@ -1479,40 +1504,47 @@ def get_doctor_return_rates(month: str) -> list[dict]:
         next_file = os.path.join(IC_DATA_PATH, f"IC{roc_next}.DBF")
         if not os.path.isfile(next_file):
             continue
+        # Latest visit date in the target month per patient (across any doctor)
+        patient_latest: dict[str, date] = {}
+        for (nat_id, _doc), vis in target.items():
+            if nat_id not in patient_latest or vis > patient_latest[nat_id]:
+                patient_latest[nat_id] = vis
         try:
             for row in _parse_dbf(next_file):
                 if row.get('H_TYPE', '').strip() != '01西醫':
                     continue
                 nat_id = row.get('ID', '').strip()
-                doctor = row.get('DOCTOR', '').strip()
-                key = (nat_id, doctor)
-                if key not in target or key in returned:
+                if not nat_id or nat_id not in patient_latest:
                     continue
                 ret = _roc_to_date(row.get('DATE', ''))
                 if ret is None:
                     continue
-                if 0 < (ret - target[key]).days <= 90:
-                    returned.add(key)
+                days = (ret - patient_latest[nat_id]).days
+                if 0 < days <= 90:
+                    if nat_id not in clinic_returned or ret < clinic_returned[nat_id]:
+                        clinic_returned[nat_id] = ret
         except Exception:
             continue
 
     # Aggregate by doctor
     doctor_stats: dict[str, dict[str, int]] = {}
     for (nat_id, doctor) in target:
-        s = doctor_stats.setdefault(doctor, {'total': 0, 'returned': 0})
+        display = name_map.get(doctor, doctor)  # fall back to NHI ID if name unknown
+        s = doctor_stats.setdefault(display, {'total': 0, 'returned': 0, 'nhi_id': doctor})
         s['total'] += 1
-        if (nat_id, doctor) in returned:
+        if nat_id in clinic_returned:
             s['returned'] += 1
 
     return sorted(
         [
             {
-                'doctor': doctor,
+                'doctor': display,
+                'nhi_id': s['nhi_id'],
                 'total': s['total'],
                 'returned': s['returned'],
                 'rate': round(s['returned'] / s['total'] * 100, 1),
             }
-            for doctor, s in doctor_stats.items()
+            for display, s in doctor_stats.items()
         ],
         key=lambda x: -x['rate'],
     )

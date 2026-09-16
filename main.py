@@ -125,7 +125,7 @@ if not contacts.get_nurses():  # first run on this DB — seed from the hardcode
 # still comes from request body fields (Option B shared-session model).
 @app.middleware("http")
 async def require_auth_for_api(request: Request, call_next):
-    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/push-prescriptions", "/api/sync/status"}
+    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/push-prescriptions", "/api/sync/push-doctor-rates", "/api/sync/status"}
     if request.url.path.startswith("/api/") and request.url.path not in _sync_exempt:
         token = request.headers.get("Authorization", "")
         if token.startswith("Bearer "):
@@ -829,11 +829,15 @@ def admin_stats_json(month: str | None = None, admin: auth.CurrentUser = Depends
 
 
 @app.get("/api/admin/doctors")
-def admin_doctors_json(month: str | None = None, _: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+def admin_doctors_json(month: str | None = None, user: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     if not month:
         month = date.today().strftime("%Y-%m")
     try:
-        return {"month": month, "doctors": database.get_doctor_return_rates(month)}
+        if CLOUD_MODE:
+            doctors = contacts.get_synced_doctor_rates(month, user.clinic_id)
+        else:
+            doctors = database.get_doctor_return_rates(month)
+        return {"month": month, "doctors": doctors}
     except Exception:
         logger.exception("admin_doctors failed for month=%s", month)
         raise HTTPException(status_code=500, detail="查詢失敗")
@@ -997,6 +1001,20 @@ async def sync_push_prescriptions(request: Request) -> dict:
     rows = body.get("prescriptions", [])
     contacts.upsert_synced_prescriptions(rows, clinic_id)
     return {"ok": True, "count": len(rows)}
+
+
+@app.post("/api/sync/push-doctor-rates")
+async def sync_push_doctor_rates(request: Request) -> dict:
+    token = request.headers.get("X-Sync-Token", "")
+    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    body = await request.json()
+    clinic_id = int(body.get("clinic_id", 1))
+    month = body.get("month", "")
+    rows = body.get("rates", [])
+    if month:
+        contacts.upsert_synced_doctor_rates(month, rows, clinic_id)
+    return {"ok": True, "month": month, "count": len(rows)}
 
 
 @app.post("/api/sync/push-lab")

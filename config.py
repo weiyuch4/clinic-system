@@ -4,6 +4,10 @@ IC_DATA_PATH: str = "mock/Data/IC"
 # Path to PATDB.DBF (patient master — name, national ID, allergy WARN field).
 PATDB_PATH: str = "mock/Data/S/PATDB.DBF"
 
+# Path to TITLE.DBF (clinic/doctor registry — maps NHI provider IDs to Chinese names).
+# Same directory as PATDB_PATH; override in config_local.py if needed.
+TITLE_DBF_PATH: str = "mock/Data/S/TITLE.DBF"
+
 # Path to QLOOK1.DBF (live waiting-room queue written by the HIS).
 QUEUE_PATH: str = "mock/Data/S/QLOOK1.DBF"
 

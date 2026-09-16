@@ -436,6 +436,20 @@ _CREATE_SYNCED_PRESCRIPTIONS = """
     )
 """
 
+_CREATE_SYNCED_DOCTOR_RATES = """
+    CREATE TABLE IF NOT EXISTS synced_doctor_rates (
+        id        SERIAL PRIMARY KEY,
+        clinic_id INTEGER NOT NULL DEFAULT 1,
+        month     TEXT    NOT NULL,
+        doctor    TEXT    NOT NULL,
+        nhi_id    TEXT    NOT NULL DEFAULT '',
+        total     INTEGER NOT NULL DEFAULT 0,
+        returned  INTEGER NOT NULL DEFAULT 0,
+        rate      REAL    NOT NULL DEFAULT 0,
+        UNIQUE (clinic_id, month, doctor)
+    )
+"""
+
 
 def get_blood_dismissed(clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
@@ -681,6 +695,7 @@ def init() -> None:
             cur.execute(_CREATE_ANNOUNCEMENTS)
             cur.execute(_CREATE_ANNOUNCEMENT_READS)
             cur.execute(_CREATE_SYNCED_PRESCRIPTIONS)
+            cur.execute(_CREATE_SYNCED_DOCTOR_RATES)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):
@@ -2683,6 +2698,44 @@ def upsert_synced_prescriptions(rows: list[dict], clinic_id: int = 1) -> None:
                             r['nat_id'], r['name'], r['birth_date'], r['visit_date'],
                             r.get('h_type', ''), int(r.get('ps', 0)), r['due_date'],
                             bool(r.get('is_care', False)), r.get('icd_name', ''),
+                        )
+                        for r in rows
+                    ],
+                )
+
+
+def get_synced_doctor_rates(month: str, clinic_id: int = 1) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT doctor, nhi_id, total, returned, rate
+                   FROM synced_doctor_rates
+                   WHERE clinic_id = %s AND month = %s
+                   ORDER BY rate DESC""",
+                (clinic_id, month),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def upsert_synced_doctor_rates(month: str, rows: list[dict], clinic_id: int = 1) -> None:
+    from psycopg2.extras import execute_values
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM synced_doctor_rates WHERE clinic_id = %s AND month = %s",
+                (clinic_id, month),
+            )
+            if rows:
+                execute_values(
+                    cur,
+                    """INSERT INTO synced_doctor_rates
+                           (clinic_id, month, doctor, nhi_id, total, returned, rate)
+                       VALUES %s""",
+                    [
+                        (
+                            clinic_id, month,
+                            r['doctor'], r.get('nhi_id', ''),
+                            int(r['total']), int(r['returned']), float(r['rate']),
                         )
                         for r in rows
                     ],
