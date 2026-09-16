@@ -1288,6 +1288,17 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .usr-inp { width:100%; padding:7px 10px; border:1px solid var(--border-mid); border-radius:var(--radius-s); background:var(--surface); color:var(--text-1); font-size:13px; font-family:var(--font) }
 .usr-inp:focus { outline:none; border-color:var(--blue) }
 .tb-brand { font-size:14px; font-weight:500; display:flex; align-items:center; gap:0 }
+
+/* ── Shared modal overlay ──────────────────────────────────────────────────── */
+@keyframes modal-bd-in  { from{opacity:0} to{opacity:1} }
+@keyframes modal-bd-out { from{opacity:1} to{opacity:0} }
+@keyframes modal-in  { from{opacity:0;transform:scale(.96) translateY(8px)} to{opacity:1;transform:none} }
+@keyframes modal-out { from{opacity:1;transform:none} to{opacity:0;transform:scale(.97) translateY(6px)} }
+.modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:9999; align-items:center; justify-content:center; }
+.modal-overlay.show { display:flex; animation:modal-bd-in .18s ease-out both; }
+.modal-overlay.show > * { animation:modal-in .22s cubic-bezier(.16,1,.3,1) both; }
+.modal-overlay.closing { display:flex; animation:modal-bd-out .14s ease-in forwards; pointer-events:none; }
+.modal-overlay.closing > * { animation:modal-out .14s ease-in forwards; }
 </style>
 <script src="/static/_layout.js?v=53"></script>
 <script src="/static/admin-auth.js?v=1"></script>
@@ -1887,7 +1898,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   <section id="usersmgmt" class="section">
     <div class="card">
       <div class="card-head">
-        <span class="card-title">使用者管理</span>
+        <span class="card-title">帳號列表</span>
         <span class="card-spacer"></span>
         <button class="btn-sm" onclick="openAddUserModal()">+ 新增使用者</button>
       </div>
@@ -1922,7 +1933,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 </div><!-- /.app -->
 
 <!-- ── Usersmgmt modal ── -->
-<div id="usr-modal-overlay" onclick="if(event.target===this)closeUsrModal()" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9999;align-items:center;justify-content:center">
+<div id="usr-modal-overlay" class="modal-overlay" onclick="if(event.target===this)closeUsrModal()">
   <div style="background:var(--surface);border:1px solid var(--border-mid);border-radius:var(--radius);box-shadow:0 8px 32px rgba(0,0,0,.18);width:460px;max-width:94vw;padding:28px 28px 20px">
     <div id="usr-modal-title" style="font-size:15px;font-weight:600;color:var(--text-1);margin-bottom:4px"></div>
     <div id="usr-modal-desc" style="font-size:13px;color:var(--text-3);margin-bottom:0"></div>
@@ -1937,7 +1948,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
 <div class="sched-time-popover" id="sched-time-popover"></div>
 
-<div class="sched-staff-overlay" id="sched-staff-overlay" onclick="if (event.target === this) closeStaffModal()">
+<div class="sched-staff-overlay modal-overlay" id="sched-staff-overlay" onclick="if (event.target === this) closeStaffModal()">
   <div class="sched-staff-modal">
     <h3>排班人員管理</h3>
     <p class="sched-staff-sub">新增、重新命名或移除排班表上的人員（包含兼職人員）</p>
@@ -2263,7 +2274,7 @@ function renderUsers(users) {
         : ''}
     </div></td>
   </tr>`).join('');
-  const thead = `<tr><th class="l" style="width:100%">顯示名稱</th><th>帳號</th><th>身份</th><th>狀態</th><th style="min-width:210px;text-align:right">操作</th></tr>`;
+  const thead = `<tr><th class="l" style="width:35%">顯示名稱</th><th style="width:22%;text-align:left">帳號</th><th style="width:12%;text-align:left">身份</th><th style="width:10%;text-align:left">狀態</th><th style="min-width:210px;text-align:right">操作</th></tr>`;
   $('users-body').innerHTML = `<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
 }
 
@@ -2304,7 +2315,8 @@ function _usrModalOpen({ title, desc, fields = [], confirmLabel = '確認', dang
   btn.onclick = onConfirm;
 
   const overlay = $('usr-modal-overlay');
-  overlay.style.display = 'flex';
+  overlay.classList.remove('closing');
+  overlay.classList.add('show');
   overlay.onkeydown = e => { if (e.key === 'Enter' && !btn.disabled && document.activeElement?.tagName !== 'BUTTON') onConfirm(); };
 
   if (confirmText) {
@@ -2320,8 +2332,9 @@ function _usrModalOpen({ title, desc, fields = [], confirmLabel = '確認', dang
 
 function closeUsrModal() {
   const overlay = $('usr-modal-overlay');
-  overlay.style.display = 'none';
   overlay.onkeydown = null;
+  overlay.classList.add('closing');
+  setTimeout(() => overlay.classList.remove('show', 'closing'), 150);
 }
 
 function _usrModalErr(msg) {
@@ -3490,11 +3503,15 @@ $('sched-grid').addEventListener('click', (e) => {
 
 function openStaffModal() {
   renderStaffList();
-  $('sched-staff-overlay').classList.add('show');
+  const o = $('sched-staff-overlay');
+  o.classList.remove('closing');
+  o.classList.add('show');
 }
 
 function closeStaffModal() {
-  $('sched-staff-overlay').classList.remove('show');
+  const o = $('sched-staff-overlay');
+  o.classList.add('closing');
+  setTimeout(() => o.classList.remove('show', 'closing'), 150);
 }
 
 function renderStaffList() {
