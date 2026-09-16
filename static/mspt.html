@@ -261,7 +261,7 @@
     _return = allFollowups.filter(function (e) { return e.needs_blood_test; });
     _phone  = allFollowups.filter(function (e) { return !e.needs_blood_test; });
     _submittable = r.mspt_submittable || [];
-    _submitted   = r.submitted        || [];
+    _submitted   = (r.submitted || []).slice().sort(function(a,b){ return String(b.submitted_at||'').localeCompare(String(a.submitted_at||'')); });
     _inactive    = r.mspt_inactive    || [];
     _contacted   = (r.contacted || []).filter(function (e) { return e.category === '代謝症候群'; })
                     .concat((r.called || []).filter(function (e) { return e.category === '代謝症候群'; }));
@@ -664,7 +664,7 @@
         L.hideModal('modal-vpn'); L.showToast('待登VPN記錄已儲存');
         _submittable = _submittable.filter(function(e) { return e.patient.chart_number !== entry.patient.chart_number; });
         var archived = Object.assign({}, entry, { submitted_at: new Date().toISOString().slice(0, 10) });
-        _submitted.push(archived);
+        _submitted.unshift(archived);
         document.getElementById('cnt-submitted').textContent = _submitted.length || '';
         _submitEntry = null;
         _refreshBg();
