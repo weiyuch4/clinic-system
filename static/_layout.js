@@ -1000,6 +1000,7 @@
       '<td class="pr-date">' + (e.due_date        ? escHtml(sd(e.due_date))        : '—') + '</td>' +
       '<td class="pr-date">' + (e.last_visit_date ? escHtml(sd(e.last_visit_date)) : '—') + '</td>' +
       '<td class="pr-note"' + (tagsText ? ' title="' + escHtml(tagsText) + '"' : '') + '>' + (tags ? '<div class="pr-tags">' + tags + '</div>' : '') + '</td>' +
+      (opts.extraCols || []).join('') +
       '<td class="pr-act"><div class="pr-btns">' + actions + moreHtml + '</div></td>' +
     '</tr>';
   }

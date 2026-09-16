@@ -157,7 +157,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=49"></script>
+<script src="/static/_layout.js?v=50"></script>
 <script>
 (function () {
   'use strict';
@@ -207,11 +207,28 @@
            (p.chart_number && String(p.chart_number).toLowerCase().includes(q));
   }
 
+  function nextPhaseDate(last_visit_date) {
+    if (!last_visit_date) return null;
+    var d = new Date(String(last_visit_date).slice(0, 10) + 'T00:00:00');
+    d.setDate(d.getDate() + 161);
+    return d;
+  }
+
   function pendingRow(e) {
+    var npd = nextPhaseDate(e.last_visit_date);
+    var today = new Date(); today.setHours(0,0,0,0);
+    var npdStr, npdCls;
+    if (npd) {
+      npdStr = (npd.getMonth() + 1) + '/' + npd.getDate();
+      npdCls = npd <= today ? 'days-hi' : '';
+    } else {
+      npdStr = '—'; npdCls = '';
+    }
     return L.patientRow({ entry: e, actions: [
       { label: '已聯繫', cls: 'act-primary', key: 'contact' },
       { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
-    ], more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }]});
+    ], more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
+    extraCols: ['<td class="pr-date ' + npdCls + '">' + npdStr + '</td>']});
   }
   function returnedRow(e) {
     return L.patientRow({ entry: e,
@@ -238,13 +255,13 @@
     });
   }
 
-  function renderList(entries, renderFn, id) {
+  function renderList(entries, renderFn, id, extraHeaders) {
     var filtered = entries.filter(match);
     var el = document.getElementById(id);
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件的病患' : '目前沒有記錄') + '</div>';
     } else {
-      el.innerHTML = L.patientTable(filtered.map(renderFn).join(''));
+      el.innerHTML = L.patientTable(filtered.map(renderFn).join(''), extraHeaders);
     }
     if (_tab === id.replace('list-', ''))
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
@@ -280,7 +297,7 @@
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
   function renderAll() {
-    renderList(_pending,   pendingRow,   'list-pending');
+    renderList(_pending,   pendingRow,   'list-pending',   ['可進下期']);
     renderList(_returned,  returnedRow,  'list-returned');
     renderList(_contacted, contactedRow, 'list-contacted');
     renderList(_hold,      holdRow,      'list-hold');
