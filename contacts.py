@@ -1788,7 +1788,7 @@ def get_mspt_manual_entries(clinic_id: int = 1) -> list[MsptManualEntry]:
 
 
 def get_activity_stats(month: str, clinic_id: int = 1) -> dict[str, dict[str, int]]:
-    """month: 'YYYY-MM'. Returns {nurse: {contacted, called, mspt, excluded, pickup}}."""
+    """month: 'YYYY-MM'. Returns {nurse: {contacted, called, mspt, excluded, pickup, held}}."""
     prefix = month + "-%"
     with _conn() as conn:
         with conn.cursor() as cur:
@@ -1801,6 +1801,14 @@ def get_activity_stats(month: str, clinic_id: int = 1) -> dict[str, dict[str, in
                 (clinic_id, prefix))
             m_rows = cur.fetchall()
             cur.execute(
+                "SELECT nurse, COUNT(*) AS cnt FROM mspt_phone_completed WHERE clinic_id=%s AND completed_at LIKE %s GROUP BY nurse",
+                (clinic_id, prefix))
+            mp_rows = cur.fetchall()
+            cur.execute(
+                "SELECT nurse, COUNT(*) AS cnt FROM mspt_manual WHERE clinic_id=%s AND marked_at LIKE %s GROUP BY nurse",
+                (clinic_id, prefix))
+            mm_rows = cur.fetchall()
+            cur.execute(
                 "SELECT nurse, COUNT(*) AS cnt FROM excluded WHERE clinic_id=%s AND excluded_at LIKE %s GROUP BY nurse",
                 (clinic_id, prefix))
             ex_rows = cur.fetchall()
@@ -1808,13 +1816,17 @@ def get_activity_stats(month: str, clinic_id: int = 1) -> dict[str, dict[str, in
                 "SELECT nurse, COUNT(*) AS cnt FROM manual_pickups WHERE clinic_id=%s AND recorded_at LIKE %s GROUP BY nurse",
                 (clinic_id, prefix))
             pk_rows = cur.fetchall()
+            cur.execute(
+                "SELECT nurse, COUNT(*) AS cnt FROM on_hold WHERE clinic_id=%s AND held_at LIKE %s GROUP BY nurse",
+                (clinic_id, prefix))
+            h_rows = cur.fetchall()
 
     stats: dict[str, dict[str, int]] = {}
 
     def _row(nurse: str) -> dict[str, int]:
         key = nurse or "（未選擇）"
         if key not in stats:
-            stats[key] = {"contacted": 0, "called": 0, "mspt": 0, "excluded": 0, "pickup": 0}
+            stats[key] = {"contacted": 0, "called": 0, "mspt": 0, "excluded": 0, "pickup": 0, "held": 0}
         return stats[key]
 
     for r in c_rows:
@@ -1825,10 +1837,16 @@ def get_activity_stats(month: str, clinic_id: int = 1) -> dict[str, dict[str, in
             row["called"] += r["cnt"]
     for r in m_rows:
         _row(r["nurse"])["mspt"] += r["cnt"]
+    for r in mp_rows:
+        _row(r["nurse"])["mspt"] += r["cnt"]
+    for r in mm_rows:
+        _row(r["nurse"])["mspt"] += r["cnt"]
     for r in ex_rows:
         _row(r["nurse"])["excluded"] += r["cnt"]
     for r in pk_rows:
         _row(r["nurse"])["pickup"] += r["cnt"]
+    for r in h_rows:
+        _row(r["nurse"])["held"] += r["cnt"]
 
     return stats
 

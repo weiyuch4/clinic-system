@@ -1996,12 +1996,13 @@ const COLS = [
   ['mspt',      '完成MSPT'],
   ['excluded',  '排除'],
   ['pickup',    '手動取藥'],
+  ['held',      '暫緩'],
 ];
 
 // ── Nurses ────────────────────────────────────────────────────────────────────
 async function loadNurses() {
-  $('nurse-kpis').innerHTML = shimKPI(4);
-  $('nurses-body').innerHTML = shimTable(5, 7);
+  $('nurse-kpis').innerHTML = shimKPI(5);
+  $('nurses-body').innerHTML = shimTable(6, 7);
   $('nurse-meta').textContent = '';
 
   try {
@@ -2025,6 +2026,7 @@ function renderNurses(stats) {
     { label: '再次通知', value: tot.called,    cls: ''      },
     { label: '完成MSPT', value: tot.mspt,      cls: 'green' },
     { label: '手動取藥', value: tot.pickup,    cls: ''      },
+    { label: '暫緩',     value: tot.held,      cls: ''      },
   ];
   $('nurse-kpis').innerHTML = kpiDefs.map(k =>
     `<div class="kpi-card">
