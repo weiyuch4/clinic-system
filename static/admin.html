@@ -2253,7 +2253,7 @@ function renderUsers(users) {
     <td>${esc(u.username)}</td>
     <td>${u.role === 'admin' ? '管理員' : '護理師'}</td>
     <td>${u.is_active ? '<span style="color:var(--green)">啟用</span>' : '<span style="color:var(--text-3)">停用</span>'}</td>
-    <td><div style="display:flex;gap:6px;flex-wrap:wrap">
+    <td><div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end">
       <button class="btn-sm" onclick="promptResetPw(${u.id},'${esc(u.display_name)}')">重設密碼</button>
       <button class="btn-sm" onclick="promptRename(${u.id},'${esc(u.username)}')">更改帳號</button>
       ${u.role !== 'admin'
@@ -2263,7 +2263,7 @@ function renderUsers(users) {
         : ''}
     </div></td>
   </tr>`).join('');
-  const thead = `<tr><th class="l">顯示名稱</th><th>帳號</th><th>身份</th><th>狀態</th><th class="l" style="min-width:210px">操作</th></tr>`;
+  const thead = `<tr><th class="l" style="width:100%">顯示名稱</th><th>帳號</th><th>身份</th><th>狀態</th><th style="min-width:210px;text-align:right">操作</th></tr>`;
   $('users-body').innerHTML = `<table><thead>${thead}</thead><tbody>${rows}</tbody></table>`;
 }
 
@@ -2444,13 +2444,13 @@ function renderProfiles(nurses) {
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
   const rows = nurses.map(name => `<tr>
     <td class="l"><strong>${esc(name)}</strong></td>
-    <td><div style="display:flex;gap:6px">
+    <td><div style="display:flex;gap:6px;justify-content:flex-end">
       <button class="btn-sm" onclick="renameProfilePrompt('${esc(name)}')">改名</button>
       <button class="btn-sm" style="border-color:var(--red);color:var(--red)" onclick="removeProfilePrompt('${esc(name)}')">移除</button>
     </div></td>
   </tr>`).join('');
   $('profiles-body').innerHTML =
-    '<table><thead><tr><th class="l">護理師姓名</th><th class="l" style="min-width:120px">操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    '<table><thead><tr><th class="l" style="width:100%">護理師姓名</th><th style="min-width:120px;text-align:right">操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
 }
 
 async function addProfilePrompt() {
@@ -2522,13 +2522,13 @@ function renderPharmacists(pharmacists) {
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
   const rows = pharmacists.map(name => `<tr>
     <td class="l"><strong>${esc(name)}</strong></td>
-    <td><div style="display:flex;gap:6px">
+    <td><div style="display:flex;gap:6px;justify-content:flex-end">
       <button class="btn-sm" onclick="renamePharmacistPrompt('${esc(name)}')">改名</button>
       <button class="btn-sm" style="border-color:var(--red);color:var(--red)" onclick="removePharmacistPrompt('${esc(name)}')">移除</button>
     </div></td>
   </tr>`).join('');
   $('pharmacists-body').innerHTML =
-    '<table><thead><tr><th class="l">藥師姓名</th><th class="l" style="min-width:120px">操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
+    '<table><thead><tr><th class="l" style="width:100%">藥師姓名</th><th style="min-width:120px;text-align:right">操作</th></tr></thead><tbody>' + rows + '</tbody></table>';
 }
 
 async function addPharmacistPrompt() {
