@@ -215,7 +215,11 @@
       });
     }
     function _parseResp(r) {
-      if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || ('HTTP ' + r.status)); });
+      if (!r.ok) return r.json().then(function(e) {
+        var d = e.detail;
+        if (Array.isArray(d)) d = d.map(function(x){ return x.msg || JSON.stringify(x); }).join('; ');
+        throw new Error(d || ('HTTP ' + r.status));
+      });
       return r.status === 204 ? null : r.json().catch(function() { return null; });
     }
     function _parseAndClear(r) {

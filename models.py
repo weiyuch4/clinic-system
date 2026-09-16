@@ -13,10 +13,10 @@ class Patient(BaseModel):
 
 class FollowupEntry(BaseModel):
     patient: Patient
-    disease_name: str
+    disease_name: str = ""
     due_date: date
     days_overdue: int
-    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病", "處方"]
     mspt_stage: MsptStage | None = None      # MSPT entries only — the NEXT stage due
     needs_blood_test: bool | None = None     # MSPT entries only — True = patient must come back for blood draw
     blood_draw_date: str | None = None      # MSPT entries only — ISO date of usable blood test (to record on NHI submission)
