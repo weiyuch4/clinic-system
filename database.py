@@ -618,7 +618,12 @@ def _query_all_prescriptions(as_of: date) -> list[dict]:
             birth = _roc_to_date(r.get('BIRTH', ''))
             if not name or not birth:
                 continue
-            icd = next(
+            icd_set = frozenset(
+                r.get(f, '').strip()
+                for f in ('ICD', 'ICD1', 'ICD2', 'ICD3', 'ICD4', 'ICD5')
+                if r.get(f, '').strip()
+            )
+            icd_display = next(
                 (r.get(f, '') for f in ('ICD', 'ICD1', 'ICD2', 'ICD3', 'ICD4', 'ICD5')
                  if _icd_to_name(r.get(f, ''))),
                 '',
@@ -629,7 +634,8 @@ def _query_all_prescriptions(as_of: date) -> list[dict]:
                 'name':       name,
                 'birth':      birth,
                 'h_type':     h_type,
-                'icd':        icd,
+                'icd':        icd_display,
+                'icd_set':    icd_set,
                 'max_ps':     max_ps,
             })
 
@@ -652,11 +658,19 @@ def _query_all_prescriptions(as_of: date) -> list[dict]:
             if as_of > due_date + timedelta(days=PRESCRIPTION_GRACE_DAYS):
                 continue
 
-            # Return detection: newer entry with same H_TYPE + same PS
+            # Return detection: newer visit with overlapping diagnosis codes.
+            # ICD overlap is used regardless of H_TYPE so an IC01 return after
+            # an IC03 prescription (or vice versa) is correctly recognised.
+            # Falls back to H_TYPE + PS matching when both visits have no ICD codes.
+            my_icds = entry['icd_set']
             returned = any(
                 other['visit_date'] > visit_date
-                and other['h_type'] == entry['h_type']
-                and other['max_ps'] == ps
+                and (
+                    (my_icds and other['icd_set'] and my_icds & other['icd_set'])
+                    or (not my_icds and not other['icd_set']
+                        and other['h_type'] == entry['h_type']
+                        and other['max_ps'] == ps)
+                )
                 for other in entries
                 if other is not entry
             )
