@@ -66,7 +66,6 @@
     { id: 'notes',     label: '記事',    href: '/notes',       badge: false },
     { id: 'directory', label: '聯絡資訊',  href: '/directory',   badge: false },
     { id: 'schedule',  label: '排班表',    href: '/schedule',    badge: false },
-    { id: 'history',   label: '聯絡記錄',  href: '/history',     badge: false },
     { id: 'nurse-ot',  label: '加班記錄',  href: '/nurse-ot',    badge: false },
   ];
 
