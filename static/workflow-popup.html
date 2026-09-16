@@ -211,12 +211,16 @@ function doContact() {
   var item = items[idx];
   var errEl = document.getElementById('form-error');
   var btn = document.getElementById('confirm-btn');
-  errEl.textContent = ''; btn.disabled = true;
+  if (errEl) errEl.textContent = '';
+  if (btn) btn.disabled = true;
   var typeEl = document.getElementById('contact-type');
   var url = (typeEl && typeEl.value === 'called') ? '/api/called' : '/api/contacted';
   apiCall('POST', url, { entry: item._entry, nurse: NURSE },
     function() { advance(); },
-    function(e) { errEl.textContent = e.message || '操作失敗，請再試一次'; btn.disabled = false; }
+    function(e) {
+      if (errEl) errEl.textContent = e.message || '操作失敗，請再試一次';
+      if (btn) btn.disabled = false;
+    }
   );
 }
 
@@ -321,7 +325,7 @@ function render() {
   if (MODE === 'prescription') {
     act.innerHTML = prev + skip +
       '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
-      '<button class="btn btn-pri" onclick="showContactForm()">已聯繫</button>';
+      '<button class="btn btn-pri" onclick="doContact()">已聯繫</button>';
   } else if (MODE === 'mspt' && (tab === 'return' || tab === 'inactive')) {
     act.innerHTML = prev + skip +
       '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +

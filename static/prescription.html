@@ -54,22 +54,6 @@
   </div>
 </div>
 
-<!-- Contact modal -->
-<div class="modal-overlay" id="modal-contact">
-  <div class="modal-box">
-    <div class="modal-title" id="modal-contact-title">聯絡病患</div>
-    <div class="modal-sub"   id="modal-contact-sub"></div>
-    <div class="modal-field">
-      <label class="modal-label">備註（選填）</label>
-      <textarea class="modal-input" id="modal-contact-note" rows="2" placeholder="例：已告知本週回診取藥"></textarea>
-    </div>
-    <div class="modal-error" id="contact-error"></div>
-    <div class="modal-footer">
-      <button class="act-btn" onclick="Layout.hideModal('modal-contact')">取消</button>
-      <button class="act-btn act-primary" id="btn-contact-confirm">確認送出</button>
-    </div>
-  </div>
-</div>
 
 <!-- Hold modal -->
 <div class="modal-overlay" id="modal-hold">
@@ -366,15 +350,20 @@
 
     if (action === 'contact') {
       var rx = _pendingMap[_actionNat]; if (!rx) return;
-      document.getElementById('modal-contact-title').textContent = '聯絡 ' + rx.name;
-      var dLabel = rx.days_until_due < 0
-        ? '逾期 ' + Math.abs(rx.days_until_due) + ' 天'
-        : (rx.days_until_due === 0 ? '今日到期' : rx.days_until_due + ' 天後到期');
-      document.getElementById('modal-contact-sub').textContent =
-        '身份證 ' + rx.nat_id + ' · ' + dLabel;
-      document.getElementById('modal-contact-note').value = '';
-      document.getElementById('contact-error').classList.remove('show');
-      L.showModal('modal-contact');
+      btn.disabled = true;
+      var entry = {
+        patient: { chart_number: rx.nat_id, name: rx.name, birth_date: rx.birth_date },
+        category: '處方',
+        due_date: rx.due_date,
+        days_overdue: rx.days_until_due <= 0 ? Math.abs(rx.days_until_due) : 0,
+        h_type: rx.h_type,
+      };
+      var existing = _contactedMap[rx.nat_id];
+      var url = (existing && (existing._attempt || 0) >= 1) ? '/api/called' : '/api/contacted';
+      L.apiAction('POST', url, { entry: entry, nurse: L.getNurse() })
+        .then(function(){ L.showToast('聯絡記錄已儲存'); _load(); })
+        .catch(function(e){ L.showToast('儲存失敗：' + (e.message || ''), 'error'); })
+        .finally(function(){ btn.disabled = false; });
 
     } else if (action === 'hold') {
       var rx2 = _pendingMap[_actionNat]; if (!rx2) return;
@@ -420,26 +409,6 @@
   });
 
   // ── Modal confirms ────────────────────────────────────
-  document.getElementById('btn-contact-confirm').addEventListener('click', function() {
-    var rx = _pendingMap[_actionNat]; if (!rx) return;
-    var entry = {
-      patient: { chart_number: rx.nat_id, name: rx.name, birth_date: rx.birth_date },
-      category: '處方',
-      due_date: rx.due_date,
-      days_overdue: rx.days_until_due <= 0 ? Math.abs(rx.days_until_due) : 0,
-      h_type: rx.h_type,
-    };
-    var existing = _contactedMap[_actionNat];
-    var url = (existing && (existing._attempt || 0) >= 1) ? '/api/called' : '/api/contacted';
-    var confirmBtn = this;
-    var errEl = document.getElementById('contact-error');
-    errEl.classList.remove('show');
-    confirmBtn.disabled = true;
-    L.apiAction('POST', url, { entry: entry, nurse: L.getNurse() })
-      .then(function(){ L.hideModal('modal-contact'); L.showToast('聯絡記錄已儲存'); _load(); })
-      .catch(function(e){ errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
-      .finally(function(){ confirmBtn.disabled = false; });
-  });
 
   document.getElementById('btn-hold-confirm').addEventListener('click', function() {
     var rx = _pendingMap[_actionNat]; if (!rx) return;
