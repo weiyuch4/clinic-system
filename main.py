@@ -1454,6 +1454,16 @@ def unmark_excluded(req: UnexcludeRequest, user: auth.CurrentUser = Depends(auth
         raise HTTPException(status_code=500, detail="撤銷排除失敗，請稍後再試")
 
 
+@app.delete("/api/auto-excluded")
+def undo_auto_excluded(req: UnexcludeRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    try:
+        contacts.undo_auto_excluded(req.chart_number, req.category, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
+    except Exception:
+        logger.exception("undo_auto_excluded failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
+
+
 @app.post("/api/mspt-completed")
 def mark_mspt_completed(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:

@@ -571,7 +571,8 @@
 
       var rx = _excludedMap[chart]; if (!rx) return;
       btn.disabled = true;
-      L.apiAction('DELETE', '/api/excluded', { chart_number: rx.patient.chart_number, category: rx.category })
+      var restoreUrl = rx.auto ? '/api/auto-excluded' : '/api/excluded';
+      L.apiAction('DELETE', restoreUrl, { chart_number: rx.patient.chart_number, category: rx.category })
         .then(function () {
           L.showToast('已恢復追蹤：' + rx.patient.name);
           _excluded = _excluded.filter(function(e) { return e.patient.chart_number !== chart; });

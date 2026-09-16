@@ -1113,6 +1113,20 @@ def unmark_excluded(chart_number: str, category: str, clinic_id: int = 1) -> Non
             )
 
 
+def undo_auto_excluded(chart_number: str, category: str, clinic_id: int = 1) -> None:
+    """Remove the contacts record that causes this patient to appear as auto-excluded.
+
+    Auto-exclusion is derived from contacts rows with attempt=2 older than
+    AUTO_EXCLUDE_DAYS. Deleting that row re-enrolls the patient into active tracking.
+    """
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM contacts WHERE chart_number=%s AND category=%s AND clinic_id=%s",
+                (chart_number, category, clinic_id),
+            )
+
+
 def get_excluded_keys(clinic_id: int = 1) -> set[tuple[str, str]]:
     with _conn() as conn:
         with conn.cursor() as cur:
