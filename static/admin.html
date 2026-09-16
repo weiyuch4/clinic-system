@@ -777,6 +777,8 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 }
 .sched-nurse-card .card-head { padding: 13px 18px; }
 .sched-total-badge { font-size: 13.5px; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; }
+.sched-section-lbl { grid-column: 1 / -1; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); padding: 16px 2px 6px; border-bottom: 1px solid var(--border); margin-bottom: -4px; }
+.cov-section-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); padding: 8px 2px 4px; border-bottom: 1px solid var(--border-faint, var(--border)); margin: 4px 0; }
 
 /* staff management modal */
 .sched-staff-overlay {
@@ -3255,6 +3257,7 @@ async function undoLineLog(id, btn) {
 
 // ── Schedule ──────────────────────────────────────────────────────────────────
 let nursesCache = [];
+let pharmacistsCache = [];
 let shiftsCache = [];
 const SLOTS = ['早診', '午診', '晚診'];
 
@@ -3299,8 +3302,8 @@ document.querySelectorAll('#sched-view-toggle .seg-btn').forEach(btn => {
     btn.classList.add('active');
     scheduleView = btn.dataset.view;
     $('sched-legend').style.display = scheduleView === 'edit' ? 'flex' : 'none';
-    if (scheduleView === 'edit') renderGrid(nursesCache);
-    else renderCoverage(nursesCache);
+    if (scheduleView === 'edit') renderGrid(nursesCache, pharmacistsCache);
+    else renderCoverage(nursesCache, pharmacistsCache);
   };
 });
 
@@ -3314,17 +3317,19 @@ async function loadSchedule() {
   $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
   $('sched-grid').innerHTML = shimTable(4, 8);
   try {
-    const [nurses, shifts, pub] = await Promise.all([
+    const [nurses, pharmacists, shifts, pub] = await Promise.all([
       api('/api/nurses'),
+      api('/api/pharmacists'),
       api(`/api/admin/shifts?week_start=${weekStart}`),
       api(`/api/admin/shifts/publish-status?week_start=${weekStart}`),
     ]);
     nursesCache = nurses;
+    pharmacistsCache = pharmacists;
     shiftsCache = shifts;
     weekPublished = pub.published;
     renderPublishBtn();
-    if (scheduleView === 'edit') renderGrid(nurses);
-    else renderCoverage(nurses);
+    if (scheduleView === 'edit') renderGrid(nurses, pharmacists);
+    else renderCoverage(nurses, pharmacists);
   } catch (e) {
     $('sched-grid').innerHTML = errState(e.message);
   }
@@ -3359,9 +3364,9 @@ async function togglePublish() {
   }
 }
 
-function renderGrid(nurses) {
-  if (!nurses.length) {
-    $('sched-grid').innerHTML = emptyState('🗓️', '尚無護理師名單', '');
+function renderGrid(nurses, pharmacists = []) {
+  if (!nurses.length && !pharmacists.length) {
+    $('sched-grid').innerHTML = emptyState('🗓️', '尚無排班人員名單', '');
     return;
   }
 
@@ -3373,7 +3378,7 @@ function renderGrid(nurses) {
     `<th class="sched-day-head"><span class="dow">${DOW_LABELS[i]}</span><span class="dnum">${fmtMD(d)}</span></th>`
   ).join('');
 
-  const cards = nurses.map(nurse => {
+  function makeCard(nurse) {
     const rows = SLOTS.map(slot => {
       const cells = days.map(d => {
         const entry = cellMap[`${nurse}|${d}|${slot}`] || {};
@@ -3402,12 +3407,22 @@ function renderGrid(nurses) {
         <tbody>${rows}</tbody>
       </table>
     </div>`;
-  }).join('');
+  }
 
-  $('sched-grid').innerHTML = `<div class="sched-cards">${cards}</div>`;
+  const hasBoth = nurses.length > 0 && pharmacists.length > 0;
+  let html = '';
+  if (hasBoth) html += `<div class="sched-section-lbl">護理師</div>`;
+  html += nurses.map(makeCard).join('');
+  if (pharmacists.length > 0) {
+    if (hasBoth) html += `<div class="sched-section-lbl">藥師</div>`;
+    html += pharmacists.map(makeCard).join('');
+  }
+
+  $('sched-grid').innerHTML = `<div class="sched-cards">${html}</div>`;
 }
 
 const NURSE_COLORS = ['#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777', '#0891B2'];
+const PHARMACIST_COLORS = ['#EA580C', '#0D9488', '#C026D3', '#CA8A04', '#B45309', '#0E7490'];
 const COV_WINDOW = ['08:00', '21:30'];  // covers the earliest 早診 start to the latest 晚診 end
 
 function toMinutes(t) {
@@ -3415,14 +3430,17 @@ function toMinutes(t) {
   return h * 60 + m;
 }
 
-function nurseColor(nurse) {
-  const idx = nursesCache.indexOf(nurse);
-  return NURSE_COLORS[idx % NURSE_COLORS.length];
+function nurseColor(name) {
+  const ni = nursesCache.indexOf(name);
+  if (ni >= 0) return NURSE_COLORS[ni % NURSE_COLORS.length];
+  const pi = pharmacistsCache.indexOf(name);
+  if (pi >= 0) return PHARMACIST_COLORS[pi % PHARMACIST_COLORS.length];
+  return NURSE_COLORS[0];
 }
 
-function renderCoverage(nurses) {
-  if (!nurses.length) {
-    $('sched-grid').innerHTML = emptyState('🗓️', '尚無護理師名單', '');
+function renderCoverage(nurses, pharmacists = []) {
+  if (!nurses.length && !pharmacists.length) {
+    $('sched-grid').innerHTML = emptyState('🗓️', '尚無排班人員名單', '');
     return;
   }
 
@@ -3437,18 +3455,28 @@ function renderCoverage(nurses) {
     `<span class="cov-hour-mark" style="left:${((h * 60 - winStart) / winSpan) * 100}%">${h}</span>`
   ).join('');
 
+  const hasBoth = nurses.length > 0 && pharmacists.length > 0;
+
+  function makeRow(name, dayEntries) {
+    const bars = dayEntries.filter(s => s.nurse === name).map(s => {
+      const left = ((toMinutes(s.start_time) - winStart) / winSpan) * 100;
+      const width = ((toMinutes(s.end_time) - toMinutes(s.start_time)) / winSpan) * 100;
+      return `<div class="cov-bar" style="left:${left}%;width:${width}%;background:${nurseColor(name)}"
+        title="${name} ${s.slot} ${s.start_time}–${s.end_time}">${s.start_time}–${s.end_time}</div>`;
+    }).join('');
+    return `<div class="cov-row"><div class="cov-row-label">${name}</div><div class="cov-row-track">${bars}</div></div>`;
+  }
+
   const dayGroups = days.map((d, i) => {
     const dayEntries = shiftsCache.filter(s => s.shift_date === d && s.start_time && s.end_time);
 
-    const nurseRows = nurses.map(nurse => {
-      const bars = dayEntries.filter(s => s.nurse === nurse).map(s => {
-        const left = ((toMinutes(s.start_time) - winStart) / winSpan) * 100;
-        const width = ((toMinutes(s.end_time) - toMinutes(s.start_time)) / winSpan) * 100;
-        return `<div class="cov-bar" style="left:${left}%;width:${width}%;background:${nurseColor(nurse)}"
-          title="${nurse} ${s.slot} ${s.start_time}–${s.end_time}">${s.start_time}–${s.end_time}</div>`;
-      }).join('');
-      return `<div class="cov-row"><div class="cov-row-label">${nurse}</div><div class="cov-row-track">${bars}</div></div>`;
-    }).join('');
+    let rows = '';
+    if (hasBoth) rows += `<div class="cov-section-lbl">護理師</div>`;
+    rows += nurses.map(n => makeRow(n, dayEntries)).join('');
+    if (pharmacists.length > 0) {
+      if (hasBoth) rows += `<div class="cov-section-lbl">藥師</div>`;
+      rows += pharmacists.map(n => makeRow(n, dayEntries)).join('');
+    }
 
     // sweep-line headcount: +1 at each start, -1 at each end, stepping between change points
     const events = [];
@@ -3477,7 +3505,7 @@ function renderCoverage(nurses) {
 
     return `<div class="cov-day-group">
       <div class="cov-day-label">${DOW_LABELS[i]} ${fmtMD(d)}</div>
-      ${nurseRows}
+      ${rows}
       <div class="cov-row"><div class="cov-row-label">人數</div><div class="cov-row-track cov-head-track">${headcountHtml}</div></div>
     </div>`;
   }).join('');
