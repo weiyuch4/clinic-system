@@ -94,6 +94,10 @@
 
       <div class="ph">
         <div><h1>排班表</h1><p id="page-date">本週護理師班表</p></div>
+        <div class="view-toggle" id="group-toggle">
+          <button id="btn-group-nurse" class="on" onclick="setGroup('nurses')">護理師</button>
+          <button id="btn-group-pharm" onclick="setGroup('pharmacist')">藥師</button>
+        </div>
         <button class="act-btn" id="btn-print-month" style="gap:6px;flex-shrink:0">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
           列印月班表
@@ -148,6 +152,8 @@
     { key: '晚診', label: '晚診' },
   ];
   var _showAll = false;
+  var _group = 'nurses';      // 'nurses' | 'pharmacist'
+  var _pharmacists = [];      // populated on load
   var _lastIdx = null;  // cached schedule index for re-render without refetch
 
   // ── Day-of-week exclusion for monthly print ──────────
@@ -173,6 +179,17 @@
     if (_lastIdx) renderGrid(_lastIdx);
   }
   window.setView = setView;
+
+  function setGroup(g) {
+    _group = g;
+    document.getElementById('btn-group-nurse').className = g === 'nurses' ? 'on' : '';
+    document.getElementById('btn-group-pharm').className = g === 'pharmacist' ? 'on' : '';
+    document.getElementById('page-date').textContent = g === 'pharmacist' ? '本週藥師班表' : '本週護理師班表';
+    // force "全體" when viewing pharmacists (pharmacists don't have user accounts)
+    if (g === 'pharmacist' && !_showAll) setView(true);
+    if (_lastIdx) renderGrid(_lastIdx);
+  }
+  window.setGroup = setGroup;
 
   function weekDates(mon) {
     var dates = [];
@@ -220,7 +237,11 @@
 
       var allDayEmpty = true;
       var slotsHtml = SLOTS.map(function(slot) {
-        var allEntries = (idx[d] && idx[d][slot.key]) || [];
+        var allEntries = ((idx[d] && idx[d][slot.key]) || []).filter(function(e) {
+          return _group === 'pharmacist'
+            ? _pharmacists.indexOf(e.nurse) !== -1
+            : _pharmacists.indexOf(e.nurse) === -1;
+        });
         var entries = _showAll ? allEntries
           : (myNurse ? allEntries.filter(function(e){ return e.nurse === myNurse; }) : allEntries);
         if (entries.length) allDayEmpty = false;
@@ -277,7 +298,11 @@
       var cells = '<div class="sg-cell sg-lbl' + (isLast ? ' last-row' : '') + '">' + L.escHtml(slot.label) + '</div>';
       dates.forEach(function (d) {
         var isToday = d === TODAY;
-        var allEntries = (idx[d] && idx[d][slot.key]) || [];
+        var allEntries = ((idx[d] && idx[d][slot.key]) || []).filter(function(e) {
+          return _group === 'pharmacist'
+            ? _pharmacists.indexOf(e.nurse) !== -1
+            : _pharmacists.indexOf(e.nurse) === -1;
+        });
         var isMineDay = myNurse && allEntries.some(function(e){return e.nurse===myNurse;});
         var entries = _showAll ? allEntries : (myNurse ? allEntries.filter(function(e){return e.nurse===myNurse;}) : allEntries);
         var highlight = !_showAll && isMineDay ? ' sg-mine' : '';
@@ -297,7 +322,15 @@
     L.hideError();
     _lastIdx = null;
     setWeekLabel(_mondayStr);
-    L.apiFetch('/api/schedule?week_start=' + _mondayStr).then(function (data) {
+    Promise.all([
+      L.apiFetch('/api/schedule?week_start=' + _mondayStr),
+      L.apiFetch('/api/pharmacists').catch(function() { return []; }),
+    ]).then(function (res) {
+      var data = res[0];
+      _pharmacists = res[1] || [];
+      // hide group toggle if no pharmacists
+      document.getElementById('group-toggle').style.display = _pharmacists.length ? '' : 'none';
+      if (!_pharmacists.length && _group === 'pharmacist') setGroup('nurses');
       L.updateLastUpdated();
       var area = document.getElementById('sched-area');
       if (!data.published) {
@@ -340,9 +373,13 @@
     var monthStr = thursday.slice(0, 7);
 
     L.apiFetch('/api/schedule/month?month=' + monthStr).then(function (data) {
-      var nurses = data.nurses || [];
+      var isPharmGroup = _group === 'pharmacist';
+      var nurses = isPharmGroup ? _pharmacists : (data.nurses || []);
       var idx = {};
       (data.shifts || []).forEach(function (s) {
+        // filter shifts to only the current group
+        var inPharm = _pharmacists.indexOf(s.nurse) !== -1;
+        if (isPharmGroup !== inPharm) return;
         if (!idx[s.shift_date]) idx[s.shift_date] = {};
         if (!idx[s.shift_date][s.nurse]) idx[s.shift_date][s.nurse] = [];
         idx[s.shift_date][s.nurse].push(s);
@@ -405,7 +442,8 @@
         rows += '<tr><td class="nc">' + nurse + '</td>' + cells + '</tr>';
       });
 
-      var title = year + ' 年 ' + month + ' 月排班表 — 魏宏杰診所';
+      var groupLabel = isPharmGroup ? '藥師' : '護理師';
+      var title = year + ' 年 ' + month + ' 月' + groupLabel + '排班表 — 魏宏杰診所';
       var html = '<!DOCTYPE html><html lang="zh-TW"><head>' +
         '<meta charset="UTF-8"><title>' + title + '</title><style>' +
         '@page{size:A4 landscape;margin:8mm 6mm}' +
@@ -427,7 +465,7 @@
         '.we.dh .dow{color:#818cf8}' +
         '</style></head><body>' +
         '<h1>' + title + '</h1>' +
-        '<table><thead><tr><th class="nc">護理師</th>' + dayHdrs + '</tr></thead>' +
+        '<table><thead><tr><th class="nc">' + groupLabel + '</th>' + dayHdrs + '</tr></thead>' +
         '<tbody>' + rows + '</tbody></table>' +
         '</body></html>';
 

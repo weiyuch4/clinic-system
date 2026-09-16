@@ -3336,14 +3336,14 @@ async function loadSchedule() {
 function renderPublishBtn() {
   const btn = $('sched-publish-btn');
   btn.classList.toggle('published', weekPublished);
-  btn.textContent = weekPublished ? '✓ 已發布給護理師' : '發布給護理師';
+  btn.textContent = weekPublished ? '✓ 已發布' : '發布排班表';
 }
 
 async function togglePublish() {
   const willPublish = !weekPublished;
   const msg = willPublish
-    ? '發布後，護理師將可以在主控台看到本週排班表，確定？'
-    : '取消發布後，護理師將無法在主控台看到本週排班表，確定？';
+    ? '發布後，排班人員將可以在主控台看到本週排班表，確定？'
+    : '取消發布後，排班人員將無法在主控台看到本週排班表，確定？';
   if (!confirm(msg)) return;
   try {
     const res = await fetch(`/api/admin/shifts/${willPublish ? 'publish' : 'unpublish'}`, {
