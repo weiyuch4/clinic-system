@@ -11,52 +11,62 @@
 <title>聯繫記錄 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=57">
 <style>
-.hnav{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0}
-.hnav-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:16px;flex-shrink:0;transition:background .12s}
-.hnav-btn:hover{background:var(--hover)}
-.hnav-date{font-size:15px;font-weight:600;color:var(--text);flex:1;text-align:center}
-.hnav-today{padding:5px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--sub);transition:background .12s;flex-shrink:0}
+/* date navigation */
+.hnav{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0}
+.hnav-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;transition:background .12s}
+.hnav-btn:hover:not(:disabled){background:var(--hover)}
+.hnav-btn:disabled{opacity:.35;cursor:default}
+.hnav-date{font-size:15px;font-weight:600;color:var(--text);flex:1;text-align:center;font-variant-numeric:tabular-nums}
+.hnav-today{padding:6px 13px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--sub);transition:all .12s;flex-shrink:0}
 .hnav-today:hover{background:var(--hover)}
 .hnav-today.active{border-color:#6D28D9;color:#6D28D9;background:#EDE9FE}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .hnav-today.active{background:#1A0B35;border-color:#6D28D9;color:#C4B5FD}}
 :root[data-theme="dark"] .hnav-today.active{background:#1A0B35;border-color:#6D28D9;color:#C4B5FD}
 
-.hstats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;flex-shrink:0}
-.hstat{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid transparent}
+/* summary chips */
+.hstats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;flex-shrink:0}
+.hstat{display:inline-flex;align-items:center;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid transparent;font-variant-numeric:tabular-nums}
 .hstat-total{background:var(--card);border-color:var(--border);color:var(--text)}
-.hstat-contacted{background:#dcfce7;border-color:#86efac;color:#166534}
-.hstat-called{background:#fef3c7;border-color:#fcd34d;color:#78350f}
-.hstat-mspt{background:#ede9fe;border-color:#c4b5fd;color:#4c1d95}
-.hstat-excluded{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
+.hstat-c{background:#dcfce7;border-color:#86efac;color:#166534}
+.hstat-k{background:#fef3c7;border-color:#fcd34d;color:#78350f}
+.hstat-m{background:#ede9fe;border-color:#c4b5fd;color:#4c1d95}
+.hstat-x{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
 @media(prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) .hstat-contacted{background:#052e16;border-color:#166534;color:#86efac}
-  :root:not([data-theme="light"]) .hstat-called{background:#1c1200;border-color:#78350f;color:#fcd34d}
-  :root:not([data-theme="light"]) .hstat-mspt{background:#1a0b35;border-color:#4c1d95;color:#c4b5fd}
-  :root:not([data-theme="light"]) .hstat-excluded{background:#2d0000;border-color:#991b1b;color:#fca5a5}
+  :root:not([data-theme="light"]) .hstat-c{background:#052e16;border-color:#166534;color:#86efac}
+  :root:not([data-theme="light"]) .hstat-k{background:#1c1200;border-color:#78350f;color:#fcd34d}
+  :root:not([data-theme="light"]) .hstat-m{background:#1a0b35;border-color:#4c1d95;color:#c4b5fd}
+  :root:not([data-theme="light"]) .hstat-x{background:#2d0000;border-color:#991b1b;color:#fca5a5}
 }
-:root[data-theme="dark"] .hstat-contacted{background:#052e16;border-color:#166534;color:#86efac}
-:root[data-theme="dark"] .hstat-called{background:#1c1200;border-color:#78350f;color:#fcd34d}
-:root[data-theme="dark"] .hstat-mspt{background:#1a0b35;border-color:#4c1d95;color:#c4b5fd}
-:root[data-theme="dark"] .hstat-excluded{background:#2d0000;border-color:#991b1b;color:#fca5a5}
+:root[data-theme="dark"] .hstat-c{background:#052e16;border-color:#166534;color:#86efac}
+:root[data-theme="dark"] .hstat-k{background:#1c1200;border-color:#78350f;color:#fcd34d}
+:root[data-theme="dark"] .hstat-m{background:#1a0b35;border-color:#4c1d95;color:#c4b5fd}
+:root[data-theme="dark"] .hstat-x{background:#2d0000;border-color:#991b1b;color:#fca5a5}
 
-.htype{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
-.htype-contacted{background:#dcfce7;color:#166534}
-.htype-called{background:#fef3c7;color:#78350f}
-.htype-mspt{background:#ede9fe;color:#4c1d95}
-.htype-excluded{background:#fee2e2;color:#991b1b}
-.htype-pickup{background:#dbeafe;color:#1e40af}
+/* type badge in table */
+.hbadge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:700;white-space:nowrap;letter-spacing:.01em}
+.hb-c{background:#dcfce7;color:#15803d}
+.hb-k{background:#fef9c3;color:#854d0e}
+.hb-m{background:#ede9fe;color:#5b21b6}
+.hb-x{background:#fee2e2;color:#b91c1c}
+.hb-p{background:#dbeafe;color:#1d4ed8}
 @media(prefers-color-scheme:dark){
-  :root:not([data-theme="light"]) .htype-contacted{background:#052e16;color:#86efac}
-  :root:not([data-theme="light"]) .htype-called{background:#1c1200;color:#fcd34d}
-  :root:not([data-theme="light"]) .htype-mspt{background:#1a0b35;color:#c4b5fd}
-  :root:not([data-theme="light"]) .htype-excluded{background:#2d0000;color:#fca5a5}
-  :root:not([data-theme="light"]) .htype-pickup{background:#0d1f3b;color:#93c5fd}
+  :root:not([data-theme="light"]) .hb-c{background:#052e16;color:#86efac}
+  :root:not([data-theme="light"]) .hb-k{background:#1c1200;color:#fcd34d}
+  :root:not([data-theme="light"]) .hb-m{background:#1a0b35;color:#c4b5fd}
+  :root:not([data-theme="light"]) .hb-x{background:#2d0000;color:#fca5a5}
+  :root:not([data-theme="light"]) .hb-p{background:#0d1f3b;color:#93c5fd}
 }
-:root[data-theme="dark"] .htype-contacted{background:#052e16;color:#86efac}
-:root[data-theme="dark"] .htype-called{background:#1c1200;color:#fcd34d}
-:root[data-theme="dark"] .htype-mspt{background:#1a0b35;color:#c4b5fd}
-:root[data-theme="dark"] .htype-excluded{background:#2d0000;color:#fca5a5}
-:root[data-theme="dark"] .htype-pickup{background:#0d1f3b;color:#93c5fd}
+:root[data-theme="dark"] .hb-c{background:#052e16;color:#86efac}
+:root[data-theme="dark"] .hb-k{background:#1c1200;color:#fcd34d}
+:root[data-theme="dark"] .hb-m{background:#1a0b35;color:#c4b5fd}
+:root[data-theme="dark"] .hb-x{background:#2d0000;color:#fca5a5}
+:root[data-theme="dark"] .hb-p{background:#0d1f3b;color:#93c5fd}
+
+/* sortable header */
+.p-table th.sortable{cursor:pointer;user-select:none}
+.p-table th.sortable:hover{color:var(--sub)}
+.sort-arrow{margin-left:4px;opacity:.35;font-size:10px}
+.sort-arrow.on{opacity:1}
 </style>
 </head>
 <body>
@@ -75,19 +85,24 @@
         <div><h1>聯繫記錄</h1><p id="page-subtitle">每日聯繫紀錄查詢</p></div>
       </div>
 
-      <div class="hnav" id="date-nav">
+      <div class="hnav">
         <button class="hnav-btn" id="btn-prev" title="前一天">‹</button>
-        <span class="hnav-date" id="date-display">載入中…</span>
+        <span class="hnav-date" id="date-display">—</span>
         <button class="hnav-btn" id="btn-next" title="後一天">›</button>
         <button class="hnav-today" id="btn-today">今天</button>
       </div>
 
-      <div class="hstats" id="stats-row" style="display:none">
-        <span class="hstat hstat-total" id="stat-total">0 筆</span>
-        <span class="hstat hstat-contacted" id="stat-contacted" style="display:none">已通知 0</span>
-        <span class="hstat hstat-called" id="stat-called" style="display:none">已二通 0</span>
-        <span class="hstat hstat-mspt" id="stat-mspt" style="display:none">MSPT完成 0</span>
-        <span class="hstat hstat-excluded" id="stat-excluded" style="display:none">排除 0</span>
+      <div class="hstats" id="stats-row" hidden>
+        <span class="hstat hstat-total" id="stat-total"></span>
+        <span class="hstat hstat-c" id="stat-c" hidden></span>
+        <span class="hstat hstat-k" id="stat-k" hidden></span>
+        <span class="hstat hstat-m" id="stat-m" hidden></span>
+        <span class="hstat hstat-x" id="stat-x" hidden></span>
+      </div>
+
+      <div class="search-row" id="search-row" style="margin-bottom:12px" hidden>
+        <input class="si" id="search-input" type="text" placeholder="搜尋姓名、身份證、類型、護理師…">
+        <span class="sr-count" id="result-count"></span>
       </div>
 
       <div id="list-wrap"></div>
@@ -105,19 +120,23 @@
   var WEEKDAYS = ['日','一','二','三','四','五','六'];
   var CAT_SHORT = { '慢簽':'慢簽','代謝症候群':'代謝','慢性腎臟病':'腎臟','B肝':'B肝','C肝':'C肝','B/C型肝炎':'B肝','處方':'處方' };
 
-  var _date = (new URLSearchParams(location.search).get('d') || L.localDateStr());
+  var _date  = (new URLSearchParams(location.search).get('d') || L.localDateStr());
+  var _rows  = [];   // normalized flat list, set after each load
+  var _query = '';
+  var _sort  = { col: 'time', dir: 'asc' };
 
+  // ── helpers ──────────────────────────────────────────
   function fmtDate(iso) {
     var d = new Date(iso + 'T00:00:00');
     return iso.replace(/-/g, '/') + '（' + WEEKDAYS[d.getDay()] + '）';
   }
-
   function addDays(iso, n) {
     var d = new Date(iso + 'T00:00:00');
     d.setDate(d.getDate() + n);
     return d.toISOString().slice(0, 10);
   }
 
+  // ── date navigation UI ───────────────────────────────
   function updateNav() {
     var today = L.localDateStr();
     document.getElementById('date-display').textContent = fmtDate(_date);
@@ -128,106 +147,202 @@
     history.replaceState(null, '', '?' + params.toString());
   }
 
-  function typeRow(entry, typeKey, typeLabel, typeClass) {
-    var name = entry.patient ? E(entry.patient.name) : E(entry.name || '—');
-    var chart = entry.patient ? E(entry.patient.chart_number) : E(entry.chart_number || '');
-    var cat = CAT_SHORT[entry.category] || E((entry.category || '').slice(0,2));
-    var nurse = E(entry.nurse || '—');
-    var time = entry.contacted_time ? E(entry.contacted_time) : '—';
-    var extra = '';
-    if (typeKey === 'excluded') extra = E(entry.reason || '') + (entry.note ? ' <span style="color:var(--muted)">— '+E(entry.note)+'</span>' : '');
-    else if (typeKey === 'pickup') {
-      cat = '慢簽';
-      extra = 'PS ' + (entry.ps_days || '') + '天';
-      time = '—';
+  // ── normalize all data into _rows ────────────────────
+  var TYPE_ORDER = { contacted: 0, called: 1, mspt: 2, excluded: 3, pickup: 4 };
+
+  function normalize(data) {
+    var out = [];
+    function add(e, key, label, cls) {
+      var name  = e.patient ? e.patient.name  : (e.name  || '');
+      var chart = e.patient ? e.patient.chart_number : (e.chart_number || '');
+      var cat   = CAT_SHORT[e.category] || (e.category || '').slice(0, 2);
+      var nurse = e.nurse || '';
+      var time  = (key === 'pickup') ? '' : (e.contacted_time || '');
+      var extraHtml = '', extraText = '';
+      if (key === 'excluded') {
+        extraHtml = E(e.reason || '') + (e.note ? ' <span style="color:var(--muted)">— '+E(e.note)+'</span>' : '');
+        extraText = (e.reason || '') + ' ' + (e.note || '');
+      } else if (key === 'pickup') {
+        cat = '慢簽';
+        extraHtml = 'PS ' + (e.ps_days || '') + '天';
+        extraText = 'PS ' + (e.ps_days || '') + '天';
+      } else if (e.mspt_stage) {
+        extraHtml = E(e.mspt_stage);
+        extraText = e.mspt_stage;
+      }
+      out.push({
+        typeKey: key, typeLabel: label, typeCls: cls,
+        typeOrder: TYPE_ORDER[key] || 0,
+        time: time, cat: cat,
+        name: name, chart: chart, nurse: nurse,
+        extraHtml: extraHtml, extraText: extraText,
+        searchText: (name + ' ' + chart + ' ' + cat + ' ' + nurse + ' ' + label + ' ' + extraText).toLowerCase(),
+      });
     }
-    else if (entry.mspt_stage) extra = E(entry.mspt_stage);
-    return '<tr>' +
-      '<td style="font-size:12px;color:var(--sub);white-space:nowrap">' + time + '</td>' +
-      '<td><span class="htype htype-' + typeKey + '">' + typeLabel + '</span></td>' +
-      '<td style="font-size:12px">' + cat + '</td>' +
-      '<td style="font-weight:600">' + name + '<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:4px">' + chart + '</span></td>' +
-      '<td style="font-size:12px;color:var(--sub)">' + nurse + '</td>' +
-      '<td style="font-size:12px;color:var(--sub)">' + extra + '</td>' +
-      '</tr>';
+    (data.contacted     || []).forEach(function(e){ add(e,'contacted','已通知', 'hb-c'); });
+    (data.called        || []).forEach(function(e){ add(e,'called',   '已二通', 'hb-k'); });
+    (data.mspt_completed|| []).forEach(function(e){ add(e,'mspt',    'MSPT完成','hb-m'); });
+    (data.excluded      || []).forEach(function(e){ add(e,'excluded', '排除',   'hb-x'); });
+    (data.manual_pickups|| []).forEach(function(e){ add(e,'pickup',  '取藥記錄','hb-p'); });
+    return out;
   }
 
-  function render(data) {
-    var contacted = data.contacted || [];
-    var called    = data.called    || [];
-    var mspt      = data.mspt_completed || [];
-    var excluded  = data.excluded  || [];
-    var pickups   = data.manual_pickups || [];
+  // ── sort ─────────────────────────────────────────────
+  function sortedRows(arr) {
+    return arr.slice().sort(function(a, b) {
+      var dir = _sort.dir === 'asc' ? 1 : -1;
+      var va, vb;
+      if (_sort.col === 'time') {
+        // blank times go last regardless of direction
+        if (!a.time && !b.time) return 0;
+        if (!a.time) return 1;
+        if (!b.time) return -1;
+        va = a.time; vb = b.time;
+      } else if (_sort.col === 'type') {
+        va = a.typeOrder; vb = b.typeOrder;
+        return dir * (va - vb);
+      } else if (_sort.col === 'cat') {
+        va = a.cat; vb = b.cat;
+      } else if (_sort.col === 'name') {
+        va = a.name; vb = b.name;
+      } else if (_sort.col === 'nurse') {
+        va = a.nurse; vb = b.nurse;
+      } else { return 0; }
+      return dir * String(va).localeCompare(String(vb), 'zh-TW');
+    });
+  }
 
-    var total = contacted.length + called.length + mspt.length + excluded.length + pickups.length;
+  // ── arrow indicator ───────────────────────────────────
+  function arrow(col) {
+    if (_sort.col !== col) return '<span class="sort-arrow">↕</span>';
+    return '<span class="sort-arrow on">' + (_sort.dir === 'asc' ? '↑' : '↓') + '</span>';
+  }
 
-    var statsRow = document.getElementById('stats-row');
-    statsRow.style.display = total ? '' : 'none';
-    document.getElementById('stat-total').textContent = total + ' 筆';
+  // ── render table ─────────────────────────────────────
+  function renderTable() {
+    var q = _query.toLowerCase();
+    var filtered = q ? _rows.filter(function(r){ return r.searchText.indexOf(q) !== -1; }) : _rows;
+    var sorted   = sortedRows(filtered);
 
-    function setStat(id, cls, label, n) {
-      var el = document.getElementById(id);
-      el.style.display = n ? '' : 'none';
-      el.textContent = label + ' ' + n;
-    }
-    setStat('stat-contacted', 'contacted', '已通知', contacted.length);
-    setStat('stat-called',    'called',    '已二通', called.length);
-    setStat('stat-mspt',      'mspt',      'MSPT完成', mspt.length);
-    setStat('stat-excluded',  'excluded',  '排除',  excluded.length);
-
-    var subtitle = fmtDate(_date) + ' — 共 ' + total + ' 筆';
-    document.getElementById('page-subtitle').textContent = subtitle;
+    var countEl = document.getElementById('result-count');
+    if (q) countEl.textContent = '符合 ' + filtered.length + ' / ' + _rows.length + ' 筆';
+    else   countEl.textContent = '共 ' + _rows.length + ' 筆';
 
     var el = document.getElementById('list-wrap');
-    if (!total) {
-      el.innerHTML = '<div class="sec-empty" style="margin-top:16px">本日尚無聯繫記錄</div>';
+    if (!sorted.length) {
+      el.innerHTML = '<div class="sec-empty" style="margin-top:16px">' +
+        (q ? '沒有符合搜尋條件的記錄' : '本日尚無聯繫記錄') + '</div>';
       return;
     }
 
-    var rows = [];
-    contacted.forEach(function(e){ rows.push(typeRow(e, 'contacted', '已通知', '')); });
-    called.forEach(function(e){    rows.push(typeRow(e, 'called',    '已二通', '')); });
-    mspt.forEach(function(e){      rows.push(typeRow(e, 'mspt',      'MSPT完成', '')); });
-    excluded.forEach(function(e){  rows.push(typeRow(e, 'excluded',  '排除', '')); });
-    pickups.forEach(function(e){   rows.push(typeRow(e, 'pickup',    '取藥記錄', '')); });
+    var tbody = sorted.map(function(r) {
+      return '<tr class="pr">' +
+        '<td style="font-size:12px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums">' + E(r.time || '—') + '</td>' +
+        '<td><span class="hbadge ' + r.typeCls + '">' + r.typeLabel + '</span></td>' +
+        '<td style="font-size:12px;color:var(--sub)">' + E(r.cat) + '</td>' +
+        '<td><span class="pr-name">' + E(r.name) + '</span>' +
+             (r.chart ? '<div class="pr-info">' + E(r.chart) + '</div>' : '') + '</td>' +
+        '<td style="font-size:12px;color:var(--sub)">' + E(r.nurse || '—') + '</td>' +
+        '<td style="font-size:12px;color:var(--sub)">' + (r.extraHtml || '—') + '</td>' +
+        '</tr>';
+    }).join('');
 
-    el.innerHTML = '<div class="ptbl-wrap"><table class="p-table" style="table-layout:fixed">' +
-      '<colgroup><col style="width:52px"><col style="width:80px"><col style="width:52px"><col><col style="width:68px"><col style="width:140px"></colgroup>' +
-      '<thead><tr><th>時間</th><th>類型</th><th>分類</th><th>姓名</th><th>護理師</th><th>備註</th></tr></thead>' +
-      '<tbody>' + rows.join('') + '</tbody>' +
+    el.innerHTML =
+      '<div class="ptbl-wrap">' +
+      '<table class="p-table" style="table-layout:fixed">' +
+        '<colgroup>' +
+          '<col style="width:58px">' +
+          '<col style="width:88px">' +
+          '<col style="width:52px">' +
+          '<col>' +
+          '<col style="width:72px">' +
+          '<col style="width:150px">' +
+        '</colgroup>' +
+        '<thead><tr>' +
+          '<th class="sortable" data-sort-col="time">時間'  + arrow('time')  + '</th>' +
+          '<th class="sortable" data-sort-col="type">類型'  + arrow('type')  + '</th>' +
+          '<th class="sortable" data-sort-col="cat">分類'   + arrow('cat')   + '</th>' +
+          '<th class="sortable" data-sort-col="name">姓名'  + arrow('name')  + '</th>' +
+          '<th class="sortable" data-sort-col="nurse">護理師'+ arrow('nurse') + '</th>' +
+          '<th>備註</th>' +
+        '</tr></thead>' +
+        '<tbody>' + tbody + '</tbody>' +
       '</table></div>';
   }
 
+  // ── render stats ─────────────────────────────────────
+  function renderStats(data) {
+    var c = (data.contacted||[]).length, k = (data.called||[]).length,
+        m = (data.mspt_completed||[]).length, x = (data.excluded||[]).length,
+        p = (data.manual_pickups||[]).length;
+    var total = c + k + m + x + p;
+
+    var statsEl = document.getElementById('stats-row');
+    statsEl.hidden = !total;
+    document.getElementById('stat-total').textContent = total + ' 筆記錄';
+
+    function setStat(id, label, n) {
+      var el = document.getElementById(id); el.hidden = !n;
+      el.textContent = label + ' ' + n;
+    }
+    setStat('stat-c', '已通知', c);
+    setStat('stat-k', '已二通', k);
+    setStat('stat-m', 'MSPT完成', m);
+    setStat('stat-x', '排除', x);
+
+    document.getElementById('page-subtitle').textContent =
+      fmtDate(_date) + ' — 共 ' + total + ' 筆';
+
+    document.getElementById('search-row').hidden = !total;
+  }
+
+  // ── load ─────────────────────────────────────────────
   function load() {
     L.hideError();
-    document.getElementById('list-wrap').innerHTML = '<div class="sec-empty" style="margin-top:16px">載入中…</div>';
-    var today = L.localDateStr();
-    var cacheKey = 'hist:' + _date;
+    document.getElementById('list-wrap').innerHTML =
+      '<div class="sec-empty" style="margin-top:16px">載入中…</div>';
+    var today = L.localDateStr(), cacheKey = 'hist:' + _date;
     var cached = null;
     if (_date !== today) {
       try { cached = JSON.parse(sessionStorage.getItem(cacheKey)); } catch(e) {}
-      if (cached) { render(cached); updateNav(); return; }
+    }
+    if (cached) {
+      _rows = normalize(cached); renderStats(cached); renderTable(); updateNav(); return;
     }
     L.apiFetch('/api/contacts/history?target_date=' + _date)
       .then(function(data) {
         if (_date !== today) {
           try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
         }
-        render(data);
-        updateNav();
+        _rows = normalize(data); renderStats(data); renderTable(); updateNav();
       })
       .catch(function(err) { L.showError('載入失敗 — ' + (err.message || '')); });
   }
 
+  // ── sort click (event delegation on persistent container) ──
+  document.getElementById('list-wrap').addEventListener('click', function(ev) {
+    var th = ev.target.closest('th[data-sort-col]'); if (!th) return;
+    var col = th.dataset.sortCol;
+    if (_sort.col === col) _sort.dir = _sort.dir === 'asc' ? 'desc' : 'asc';
+    else { _sort.col = col; _sort.dir = col === 'time' ? 'asc' : 'asc'; }
+    renderTable();
+  });
+
+  // ── search ───────────────────────────────────────────
+  document.getElementById('search-input').addEventListener('input', function() {
+    _query = this.value.trim(); renderTable();
+  });
+
+  // ── date nav buttons ─────────────────────────────────
   document.getElementById('btn-prev').addEventListener('click', function() {
-    _date = addDays(_date, -1); load();
+    _date = addDays(_date, -1); _query = ''; document.getElementById('search-input').value = ''; load();
   });
   document.getElementById('btn-next').addEventListener('click', function() {
     if (_date >= L.localDateStr()) return;
-    _date = addDays(_date, 1); load();
+    _date = addDays(_date, 1); _query = ''; document.getElementById('search-input').value = ''; load();
   });
   document.getElementById('btn-today').addEventListener('click', function() {
-    _date = L.localDateStr(); load();
+    _date = L.localDateStr(); _query = ''; document.getElementById('search-input').value = ''; load();
   });
 
   Layout.init({ activePage: 'history', onRefresh: load });
