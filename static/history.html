@@ -12,7 +12,7 @@
 <link rel="stylesheet" href="/static/_layout.css?v=57">
 <style>
 /* date navigation */
-.hnav{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;flex-shrink:0}
+.hnav{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-shrink:0}
 .hnav-arrow{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;flex-shrink:0;transition:background .12s;padding:0}
 .hnav-arrow:hover:not(:disabled){background:var(--hover)}
 .hnav-arrow:disabled{opacity:.35;cursor:default}
@@ -406,7 +406,7 @@
     L.hideError();
     document.getElementById('list-wrap').innerHTML =
       '<div class="sec-empty" style="margin-top:16px">載入中…</div>';
-    var today = L.localDateStr(), cacheKey = 'hist:' + _date;
+    var today = L.localDateStr(), cacheKey = 'hist:v2:' + _date;
     var cached = null;
     if (_date !== today) {
       try { cached = JSON.parse(sessionStorage.getItem(cacheKey)); } catch(e) {}
