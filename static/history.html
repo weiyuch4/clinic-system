@@ -3,204 +3,236 @@
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/static/favicon.svg">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="診所追蹤">
+<link rel="apple-touch-icon" href="/static/favicon.svg">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<title>聯絡記錄 — 診所追蹤系統</title>
+<title>聯繫記錄 — 診所追蹤系統</title>
 <link rel="stylesheet" href="/static/_layout.css?v=57">
 <style>
-.hs-search-bar{display:flex;gap:8px;align-items:center}
-.hs-search-bar input{flex:1;padding:9px 13px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:inherit;color:var(--text);background:var(--card);outline:none;transition:border-color .15s}
-.hs-search-bar input:focus{border-color:#b5d7f5;box-shadow:0 0 0 3px rgba(181,215,245,.2)}
+.hnav{display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-shrink:0}
+.hnav-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:16px;flex-shrink:0;transition:background .12s}
+.hnav-btn:hover{background:var(--hover)}
+.hnav-date{font-size:15px;font-weight:600;color:var(--text);flex:1;text-align:center}
+.hnav-today{padding:5px 12px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--sub);transition:background .12s;flex-shrink:0}
+.hnav-today:hover{background:var(--hover)}
+.hnav-today.active{border-color:#6D28D9;color:#6D28D9;background:#EDE9FE}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .hnav-today.active{background:#1A0B35;border-color:#6D28D9;color:#C4B5FD}}
+:root[data-theme="dark"] .hnav-today.active{background:#1A0B35;border-color:#6D28D9;color:#C4B5FD}
 
-.hs-prompt{text-align:center;padding:56px 24px;color:var(--muted);font-size:14px}
-.hs-loading{text-align:center;padding:40px;color:var(--muted);font-size:14px}
-.hs-empty{text-align:center;padding:48px;color:var(--muted);font-size:14px}
-.hs-error{text-align:center;padding:40px;color:#991b1b;font-size:14px}
-
-#hs-results{overflow-x:auto}
-
-.hs-group{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:16px;overflow:hidden}
-.hs-group-header{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:baseline;gap:10px}
-.hs-group-name{font-weight:700;font-size:15px;color:var(--text)}
-.hs-group-chart{font-size:12px;color:var(--muted);font-family:monospace}
-
-.hs-event{display:grid;grid-template-columns:90px 1fr auto;gap:12px;padding:10px 16px;border-bottom:1px solid var(--border);align-items:start}
-.hs-event:last-child{border-bottom:none}
-.hs-event-date{font-size:12px;color:var(--muted);white-space:nowrap;padding-top:2px}
-.hs-event-time{font-size:11px;color:var(--muted)}
-.hs-event-body{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
-.hs-event-detail{font-size:13px;color:var(--sub);flex-basis:100%}
-.hs-event-nurse{font-size:12px;color:var(--muted);white-space:nowrap;padding-top:2px}
-
-.hs-chip{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:5px;white-space:nowrap}
-.hs-cat{display:inline-block;font-size:11px;padding:2px 7px;border-radius:5px;white-space:nowrap;background:var(--bg);color:var(--sub);border:1px solid var(--border)}
-
-/* Event type chip colors — light mode */
-.chip-contacted{background:#DBEAFE;color:#1D4ED8}
-.chip-called{background:#FEF3C7;color:#92400E}
-.chip-line{background:#D1FAE5;color:#065F46}
-.chip-hold{background:#FEF9C3;color:#713F12}
-.chip-excluded{background:#FEE2E2;color:#991B1B}
-.chip-mspt_completed{background:#EDE9FE;color:#5B21B6}
-.chip-checkedin{background:#CCFBF1;color:#0F766E}
-.chip-hep_completed{background:#E0E7FF;color:#3730A3}
-
-/* Dark mode overrides — guard mirrors _layout.css convention */
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme=light]) .chip-contacted{background:#1e3a5f;color:#93c5fd}
-  :root:not([data-theme=light]) .chip-called{background:#451a03;color:#fcd34d}
-  :root:not([data-theme=light]) .chip-line{background:#052e16;color:#6ee7b7}
-  :root:not([data-theme=light]) .chip-hold{background:#3b2000;color:#fde68a}
-  :root:not([data-theme=light]) .chip-excluded{background:#450a0a;color:#fca5a5}
-  :root:not([data-theme=light]) .chip-mspt_completed{background:#2e1065;color:#c4b5fd}
-  :root:not([data-theme=light]) .chip-checkedin{background:#042f2e;color:#5eead4}
-  :root:not([data-theme=light]) .chip-hep_completed{background:#1e1b4b;color:#a5b4fc}
-  :root:not([data-theme=light]) .hs-error{color:#fca5a5}
+.hstats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;flex-shrink:0}
+.hstat{display:inline-flex;align-items:center;gap:5px;padding:5px 11px;border-radius:20px;font-size:12px;font-weight:600;border:1.5px solid transparent}
+.hstat-total{background:var(--card);border-color:var(--border);color:var(--text)}
+.hstat-contacted{background:#dcfce7;border-color:#86efac;color:#166534}
+.hstat-called{background:#fef3c7;border-color:#fcd34d;color:#78350f}
+.hstat-mspt{background:#ede9fe;border-color:#c4b5fd;color:#4c1d95}
+.hstat-excluded{background:#fee2e2;border-color:#fca5a5;color:#991b1b}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .hstat-contacted{background:#052e16;border-color:#166534;color:#86efac}
+  :root:not([data-theme="light"]) .hstat-called{background:#1c1200;border-color:#78350f;color:#fcd34d}
+  :root:not([data-theme="light"]) .hstat-mspt{background:#1a0b35;border-color:#4c1d95;color:#c4b5fd}
+  :root:not([data-theme="light"]) .hstat-excluded{background:#2d0000;border-color:#991b1b;color:#fca5a5}
 }
-[data-theme=dark] .chip-contacted{background:#1e3a5f;color:#93c5fd}
-[data-theme=dark] .chip-called{background:#451a03;color:#fcd34d}
-[data-theme=dark] .chip-line{background:#052e16;color:#6ee7b7}
-[data-theme=dark] .chip-hold{background:#3b2000;color:#fde68a}
-[data-theme=dark] .chip-excluded{background:#450a0a;color:#fca5a5}
-[data-theme=dark] .chip-mspt_completed{background:#2e1065;color:#c4b5fd}
-[data-theme=dark] .chip-checkedin{background:#042f2e;color:#5eead4}
-[data-theme=dark] .chip-hep_completed{background:#1e1b4b;color:#a5b4fc}
-[data-theme=dark] .hs-error{color:#fca5a5}
+:root[data-theme="dark"] .hstat-contacted{background:#052e16;border-color:#166534;color:#86efac}
+:root[data-theme="dark"] .hstat-called{background:#1c1200;border-color:#78350f;color:#fcd34d}
+:root[data-theme="dark"] .hstat-mspt{background:#1a0b35;border-color:#4c1d95;color:#c4b5fd}
+:root[data-theme="dark"] .hstat-excluded{background:#2d0000;border-color:#991b1b;color:#fca5a5}
+
+.htype{display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:600;white-space:nowrap}
+.htype-contacted{background:#dcfce7;color:#166534}
+.htype-called{background:#fef3c7;color:#78350f}
+.htype-mspt{background:#ede9fe;color:#4c1d95}
+.htype-excluded{background:#fee2e2;color:#991b1b}
+.htype-pickup{background:#dbeafe;color:#1e40af}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]) .htype-contacted{background:#052e16;color:#86efac}
+  :root:not([data-theme="light"]) .htype-called{background:#1c1200;color:#fcd34d}
+  :root:not([data-theme="light"]) .htype-mspt{background:#1a0b35;color:#c4b5fd}
+  :root:not([data-theme="light"]) .htype-excluded{background:#2d0000;color:#fca5a5}
+  :root:not([data-theme="light"]) .htype-pickup{background:#0d1f3b;color:#93c5fd}
+}
+:root[data-theme="dark"] .htype-contacted{background:#052e16;color:#86efac}
+:root[data-theme="dark"] .htype-called{background:#1c1200;color:#fcd34d}
+:root[data-theme="dark"] .htype-mspt{background:#1a0b35;color:#c4b5fd}
+:root[data-theme="dark"] .htype-excluded{background:#2d0000;color:#fca5a5}
+:root[data-theme="dark"] .htype-pickup{background:#0d1f3b;color:#93c5fd}
 </style>
 </head>
 <body>
-
 <div class="app">
   <aside id="sidebar"></aside>
   <div class="main">
     <div id="topbar"></div>
     <div class="ct">
 
+      <div class="err-bar" id="error-bar" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="error-msg"></span>
+      </div>
+
       <div class="ph">
-        <div><h1>聯絡記錄查詢</h1><p>依身份證或姓名查詢歷史聯絡紀錄</p></div>
+        <div><h1>聯繫記錄</h1><p id="page-subtitle">每日聯繫紀錄查詢</p></div>
       </div>
 
-      <div class="hs-search-bar">
-        <input type="text" id="search-input" placeholder="輸入身份證或姓名…" autocomplete="off">
-        <button class="act-btn act-primary" id="btn-search">查詢</button>
+      <div class="hnav" id="date-nav">
+        <button class="hnav-btn" id="btn-prev" title="前一天">‹</button>
+        <span class="hnav-date" id="date-display">載入中…</span>
+        <button class="hnav-btn" id="btn-next" title="後一天">›</button>
+        <button class="hnav-today" id="btn-today">今天</button>
       </div>
 
-      <div id="hs-results">
-        <div class="hs-prompt">請輸入身份證或姓名開始查詢</div>
+      <div class="hstats" id="stats-row" style="display:none">
+        <span class="hstat hstat-total" id="stat-total">0 筆</span>
+        <span class="hstat hstat-contacted" id="stat-contacted" style="display:none">已通知 0</span>
+        <span class="hstat hstat-called" id="stat-called" style="display:none">已二通 0</span>
+        <span class="hstat hstat-mspt" id="stat-mspt" style="display:none">MSPT完成 0</span>
+        <span class="hstat hstat-excluded" id="stat-excluded" style="display:none">排除 0</span>
       </div>
+
+      <div id="list-wrap"></div>
 
     </div>
   </div>
 </div>
 
 <script src="/static/_layout.js?v=54"></script>
-<script src="/static/auth-client.js"></script>
 <script>
 (function () {
   'use strict';
-  var L = Layout;
+  var L = Layout, E = Layout.escHtml;
 
-  L.init({ activePage: 'history' });
+  var WEEKDAYS = ['日','一','二','三','四','五','六'];
+  var CAT_SHORT = { '慢簽':'慢簽','代謝症候群':'代謝','慢性腎臟病':'腎臟','B肝':'B肝','C肝':'C肝','B/C型肝炎':'B肝','處方':'處方' };
 
-  var searchInput = document.getElementById('search-input');
-  var btnSearch   = document.getElementById('btn-search');
-  var resultsEl   = document.getElementById('hs-results');
-  var debounceTimer;
+  var _date = (new URLSearchParams(location.search).get('d') || L.localDateStr());
 
-  var CHIP_LABELS = {
-    contacted:      '一次通知',
-    called:         '二次通知',
-    line:           'LINE訊息',
-    hold:           '暫緩',
-    excluded:       '排除',
-    mspt_completed: 'MSPT完成',
-    checkedin:      'MSPT回診',
-    hep_completed:  '肝炎回診',
-  };
-
-  function showPrompt() {
-    resultsEl.innerHTML = '<div class="hs-prompt">請輸入身份證或姓名開始查詢</div>';
+  function fmtDate(iso) {
+    var d = new Date(iso + 'T00:00:00');
+    return iso.replace(/-/g, '/') + '（' + WEEKDAYS[d.getDay()] + '）';
   }
 
-  function showLoading() {
-    resultsEl.innerHTML = '<div class="hs-loading">查詢中…</div>';
+  function addDays(iso, n) {
+    var d = new Date(iso + 'T00:00:00');
+    d.setDate(d.getDate() + n);
+    return d.toISOString().slice(0, 10);
   }
 
-  function showError() {
-    resultsEl.innerHTML = '<div class="hs-error">查詢失敗，請稍後再試</div>';
+  function updateNav() {
+    var today = L.localDateStr();
+    document.getElementById('date-display').textContent = fmtDate(_date);
+    document.getElementById('btn-next').disabled = _date >= today;
+    document.getElementById('btn-today').classList.toggle('active', _date === today);
+    var params = new URLSearchParams(location.search);
+    params.set('d', _date);
+    history.replaceState(null, '', '?' + params.toString());
   }
 
-  function renderEvents(events) {
-    if (!events || !events.length) {
-      resultsEl.innerHTML = '<div class="hs-empty">查無相關紀錄</div>';
+  function typeRow(entry, typeKey, typeLabel, typeClass) {
+    var name = entry.patient ? E(entry.patient.name) : E(entry.name || '—');
+    var chart = entry.patient ? E(entry.patient.chart_number) : E(entry.chart_number || '');
+    var cat = CAT_SHORT[entry.category] || E((entry.category || '').slice(0,2));
+    var nurse = E(entry.nurse || '—');
+    var time = entry.contacted_time ? E(entry.contacted_time) : '—';
+    var extra = '';
+    if (typeKey === 'excluded') extra = E(entry.reason || '') + (entry.note ? ' <span style="color:var(--muted)">— '+E(entry.note)+'</span>' : '');
+    else if (typeKey === 'pickup') {
+      cat = '慢簽';
+      extra = 'PS ' + (entry.ps_days || '') + '天';
+      time = '—';
+    }
+    else if (entry.mspt_stage) extra = E(entry.mspt_stage);
+    return '<tr>' +
+      '<td style="font-size:12px;color:var(--sub);white-space:nowrap">' + time + '</td>' +
+      '<td><span class="htype htype-' + typeKey + '">' + typeLabel + '</span></td>' +
+      '<td style="font-size:12px">' + cat + '</td>' +
+      '<td style="font-weight:600">' + name + '<span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:4px">' + chart + '</span></td>' +
+      '<td style="font-size:12px;color:var(--sub)">' + nurse + '</td>' +
+      '<td style="font-size:12px;color:var(--sub)">' + extra + '</td>' +
+      '</tr>';
+  }
+
+  function render(data) {
+    var contacted = data.contacted || [];
+    var called    = data.called    || [];
+    var mspt      = data.mspt_completed || [];
+    var excluded  = data.excluded  || [];
+    var pickups   = data.manual_pickups || [];
+
+    var total = contacted.length + called.length + mspt.length + excluded.length + pickups.length;
+
+    var statsRow = document.getElementById('stats-row');
+    statsRow.style.display = total ? '' : 'none';
+    document.getElementById('stat-total').textContent = total + ' 筆';
+
+    function setStat(id, cls, label, n) {
+      var el = document.getElementById(id);
+      el.style.display = n ? '' : 'none';
+      el.textContent = label + ' ' + n;
+    }
+    setStat('stat-contacted', 'contacted', '已通知', contacted.length);
+    setStat('stat-called',    'called',    '已二通', called.length);
+    setStat('stat-mspt',      'mspt',      'MSPT完成', mspt.length);
+    setStat('stat-excluded',  'excluded',  '排除',  excluded.length);
+
+    var subtitle = fmtDate(_date) + ' — 共 ' + total + ' 筆';
+    document.getElementById('page-subtitle').textContent = subtitle;
+
+    var el = document.getElementById('list-wrap');
+    if (!total) {
+      el.innerHTML = '<div class="sec-empty" style="margin-top:16px">本日尚無聯繫記錄</div>';
       return;
     }
 
-    // Group by chart_number, preserving order of first appearance
-    var order = [];
-    var groups = {};
-    events.forEach(function (ev) {
-      var key = ev.chart_number || ('__' + ev.name);
-      if (!groups[key]) {
-        groups[key] = { name: ev.name, chart_number: ev.chart_number, events: [] };
-        order.push(key);
-      }
-      groups[key].events.push(ev);
-    });
+    var rows = [];
+    contacted.forEach(function(e){ rows.push(typeRow(e, 'contacted', '已通知', '')); });
+    called.forEach(function(e){    rows.push(typeRow(e, 'called',    '已二通', '')); });
+    mspt.forEach(function(e){      rows.push(typeRow(e, 'mspt',      'MSPT完成', '')); });
+    excluded.forEach(function(e){  rows.push(typeRow(e, 'excluded',  '排除', '')); });
+    pickups.forEach(function(e){   rows.push(typeRow(e, 'pickup',    '取藥記錄', '')); });
 
-    var html = order.map(function (key) {
-      var g = groups[key];
-      var rows = g.events.map(function (ev) {
-        var chipCls = 'hs-chip chip-' + L.escHtml(ev.type || '');
-        var chipLabel = L.escHtml(CHIP_LABELS[ev.type] || ev.type);
-        var catHtml = ev.category ? '<span class="hs-cat">' + L.escHtml(ev.category) + '</span>' : '';
-        var detailHtml = ev.detail ? '<span class="hs-event-detail">' + L.escHtml(ev.detail) + '</span>' : '';
-        var timeHtml = ev.time ? '<div class="hs-event-time">' + L.escHtml(ev.time) + '</div>' : '';
-        return '<div class="hs-event">'
-          + '<div class="hs-event-date"><div>' + L.escHtml(ev.date || '') + '</div>' + timeHtml + '</div>'
-          + '<div class="hs-event-body"><span class="' + chipCls + '">' + chipLabel + '</span>' + catHtml + detailHtml + '</div>'
-          + '<div class="hs-event-nurse">' + L.escHtml(ev.nurse) + '</div>'
-          + '</div>';
-      }).join('');
-
-      return '<div class="hs-group">'
-        + '<div class="hs-group-header">'
-        + '<span class="hs-group-name">' + L.escHtml(g.name) + '</span>'
-        + '<span class="hs-group-chart">' + L.escHtml(g.chart_number || '') + '</span>'
-        + '</div>'
-        + rows
-        + '</div>';
-    }).join('');
-
-    resultsEl.innerHTML = html;
+    el.innerHTML = '<div class="ptbl-wrap"><table class="p-table" style="table-layout:fixed">' +
+      '<colgroup><col style="width:52px"><col style="width:80px"><col style="width:52px"><col><col style="width:68px"><col style="width:140px"></colgroup>' +
+      '<thead><tr><th>時間</th><th>類型</th><th>分類</th><th>姓名</th><th>護理師</th><th>備註</th></tr></thead>' +
+      '<tbody>' + rows.join('') + '</tbody>' +
+      '</table></div>';
   }
 
-  function search() {
-    var q = (searchInput.value || '').trim();
-    if (!q) { showPrompt(); return; }
-    showLoading();
-    L.apiFetch('/api/history?q=' + encodeURIComponent(q))
-      .then(function (data) { renderEvents(data.events); })
-      .catch(function () { showError(); });
+  function load() {
+    L.hideError();
+    document.getElementById('list-wrap').innerHTML = '<div class="sec-empty" style="margin-top:16px">載入中…</div>';
+    var today = L.localDateStr();
+    var cacheKey = 'hist:' + _date;
+    var cached = null;
+    if (_date !== today) {
+      try { cached = JSON.parse(sessionStorage.getItem(cacheKey)); } catch(e) {}
+      if (cached) { render(cached); updateNav(); return; }
+    }
+    L.apiFetch('/api/contacts/history?target_date=' + _date)
+      .then(function(data) {
+        if (_date !== today) {
+          try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch(e) {}
+        }
+        render(data);
+        updateNav();
+      })
+      .catch(function(err) { L.showError('載入失敗 — ' + (err.message || '')); });
   }
 
-  searchInput.addEventListener('input', function () {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(search, 400);
+  document.getElementById('btn-prev').addEventListener('click', function() {
+    _date = addDays(_date, -1); load();
   });
-  searchInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') { clearTimeout(debounceTimer); search(); }
+  document.getElementById('btn-next').addEventListener('click', function() {
+    if (_date >= L.localDateStr()) return;
+    _date = addDays(_date, 1); load();
   });
-  btnSearch.addEventListener('click', function () {
-    clearTimeout(debounceTimer); search();
+  document.getElementById('btn-today').addEventListener('click', function() {
+    _date = L.localDateStr(); load();
   });
 
-  // Pre-populate from ?q= when navigated here from topbar search
-  var _urlQ = new URLSearchParams(location.search).get('q');
-  if (_urlQ) { searchInput.value = _urlQ; search(); }
+  Layout.init({ activePage: 'history', onRefresh: load });
+  updateNav();
+  load();
 })();
 </script>
 </body>

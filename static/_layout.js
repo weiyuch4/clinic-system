@@ -63,6 +63,7 @@
     { id: 'lab',       label: '檢驗追蹤',  href: '/lab',         badge: true  },
   ];
   var OTHER_NAV = [
+    { id: 'history',   label: '聯繫記錄',  href: '/history',     badge: false },
     { id: 'notes',     label: '記事',    href: '/notes',       badge: false },
     { id: 'directory', label: '聯絡資訊',  href: '/directory',   badge: false },
     { id: 'schedule',  label: '排班表',    href: '/schedule',    badge: false },
