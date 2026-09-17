@@ -12,12 +12,16 @@
 <link rel="stylesheet" href="/static/_layout.css?v=57">
 <style>
 /* date navigation */
-.hnav{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-shrink:0}
-.hnav-btn{display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:18px;line-height:1;flex-shrink:0;transition:background .12s}
-.hnav-btn:hover:not(:disabled){background:var(--hover)}
-.hnav-btn:disabled{opacity:.35;cursor:default}
-.hnav-date{font-size:15px;font-weight:600;color:var(--text);flex:1;text-align:center;font-variant-numeric:tabular-nums}
-.hnav-today{padding:6px 13px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--sub);transition:all .12s;flex-shrink:0}
+.hnav{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-shrink:0}
+.hnav-arrow{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;flex-shrink:0;transition:background .12s;padding:0}
+.hnav-arrow:hover:not(:disabled){background:var(--hover)}
+.hnav-arrow:disabled{opacity:.35;cursor:default}
+.hnav-datewrap{position:relative;flex:1;min-width:0}
+.hnav-datebtn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:36px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;font-family:inherit;padding:0 12px;transition:background .12s;white-space:nowrap;overflow:hidden}
+.hnav-datebtn:hover{background:var(--hover)}
+.hnav-datebtn svg{flex-shrink:0;opacity:.45}
+.hnav-picker{position:absolute;opacity:0;pointer-events:none;width:0;height:0;top:0;left:0}
+.hnav-today{height:36px;padding:0 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--sub);transition:all .12s;flex-shrink:0;font-family:inherit}
 .hnav-today:hover{background:var(--hover)}
 .hnav-today.active{border-color:#6D28D9;color:#6D28D9;background:#EDE9FE}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .hnav-today.active{background:#1A0B35;border-color:#6D28D9;color:#C4B5FD}}
@@ -86,9 +90,19 @@
       </div>
 
       <div class="hnav">
-        <button class="hnav-btn" id="btn-prev" title="前一天">‹</button>
-        <span class="hnav-date" id="date-display">—</span>
-        <button class="hnav-btn" id="btn-next" title="後一天">›</button>
+        <button class="hnav-arrow" id="btn-prev" title="前一天">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div class="hnav-datewrap">
+          <button class="hnav-datebtn" id="btn-date" title="點擊選擇日期">
+            <span id="date-display">—</span>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          </button>
+          <input type="date" id="date-picker" class="hnav-picker" tabindex="-1">
+        </div>
+        <button class="hnav-arrow" id="btn-next" title="後一天">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
         <button class="hnav-today" id="btn-today">今天</button>
       </div>
 
@@ -130,11 +144,6 @@
     var d = new Date(iso + 'T00:00:00');
     return iso.replace(/-/g, '/') + '（' + WEEKDAYS[d.getDay()] + '）';
   }
-  function addDays(iso, n) {
-    var d = new Date(iso + 'T00:00:00');
-    d.setDate(d.getDate() + n);
-    return d.toISOString().slice(0, 10);
-  }
 
   // ── date navigation UI ───────────────────────────────
   function updateNav() {
@@ -142,6 +151,9 @@
     document.getElementById('date-display').textContent = fmtDate(_date);
     document.getElementById('btn-next').disabled = _date >= today;
     document.getElementById('btn-today').classList.toggle('active', _date === today);
+    var picker = document.getElementById('date-picker');
+    picker.value = _date;
+    picker.max   = today;
     var params = new URLSearchParams(location.search);
     params.set('d', _date);
     history.replaceState(null, '', '?' + params.toString());
@@ -334,15 +346,25 @@
   });
 
   // ── date nav buttons ─────────────────────────────────
+  function clearSearch() { _query = ''; document.getElementById('search-input').value = ''; }
+
   document.getElementById('btn-prev').addEventListener('click', function() {
-    _date = addDays(_date, -1); _query = ''; document.getElementById('search-input').value = ''; load();
+    _date = L.addDays(_date, -1); clearSearch(); load();
   });
   document.getElementById('btn-next').addEventListener('click', function() {
     if (_date >= L.localDateStr()) return;
-    _date = addDays(_date, 1); _query = ''; document.getElementById('search-input').value = ''; load();
+    _date = L.addDays(_date, 1); clearSearch(); load();
   });
   document.getElementById('btn-today').addEventListener('click', function() {
-    _date = L.localDateStr(); _query = ''; document.getElementById('search-input').value = ''; load();
+    _date = L.localDateStr(); clearSearch(); load();
+  });
+  document.getElementById('btn-date').addEventListener('click', function() {
+    var p = document.getElementById('date-picker');
+    try { p.showPicker(); } catch(e) { p.click(); }
+  });
+  document.getElementById('date-picker').addEventListener('change', function() {
+    if (!this.value) return;
+    _date = this.value; clearSearch(); load();
   });
 
   Layout.init({ activePage: 'history', onRefresh: load });
