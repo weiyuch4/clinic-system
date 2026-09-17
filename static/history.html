@@ -12,20 +12,40 @@
 <link rel="stylesheet" href="/static/_layout.css?v=57">
 <style>
 /* date navigation */
-.hnav{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-shrink:0}
+.hnav{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:14px;flex-shrink:0}
 .hnav-arrow{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;flex-shrink:0;transition:background .12s;padding:0}
 .hnav-arrow:hover:not(:disabled){background:var(--hover)}
 .hnav-arrow:disabled{opacity:.35;cursor:default}
-.hnav-datewrap{position:relative;flex:1;min-width:0}
-.hnav-datebtn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:36px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;font-family:inherit;padding:0 12px;transition:background .12s;white-space:nowrap;overflow:hidden}
-.hnav-datebtn:hover{background:var(--hover)}
-.hnav-datebtn svg{flex-shrink:0;opacity:.45}
-.hnav-picker{position:absolute;opacity:0;pointer-events:none;width:0;height:0;top:0;left:0}
+.hnav-datewrap{position:relative;flex-shrink:0}
 .hnav-today{height:36px;padding:0 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--sub);transition:all .12s;flex-shrink:0;font-family:inherit}
 .hnav-today:hover{background:var(--hover)}
 .hnav-today.active{border-color:#6D28D9;color:#6D28D9;background:#EDE9FE}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .hnav-today.active{background:#1A0B35;border-color:#6D28D9;color:#C4B5FD}}
 :root[data-theme="dark"] .hnav-today.active{background:#1A0B35;border-color:#6D28D9;color:#C4B5FD}
+
+/* custom date picker */
+.pick-trigger{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:600 14px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;padding:0 14px;height:36px;cursor:pointer;white-space:nowrap;transition:border-color .12s,box-shadow .12s;user-select:none;font-variant-numeric:tabular-nums}
+.pick-trigger:hover{border-color:var(--sub)}
+.pick-trigger.open{border-color:var(--g5);box-shadow:0 0 0 3px rgba(107,114,128,.12)}
+.pick-trigger svg{width:13px;height:13px;color:var(--muted);flex-shrink:0;opacity:.55}
+.pick-drop{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:600;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.07);overflow:hidden;animation:pick-in .12s ease}
+@keyframes pick-in{from{opacity:0;transform:translateX(-50%) translateY(-4px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .pick-drop{box-shadow:0 8px 28px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.25)}}
+:root[data-theme=dark] .pick-drop{box-shadow:0 8px 28px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.25)}
+.cal-drop{padding:14px;width:248px}
+.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.cal-nav-btn{width:26px;height:26px;border:none;border-radius:6px;background:var(--bg);color:var(--sub);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s}
+.cal-nav-btn:hover{background:var(--g0);color:var(--text)}
+.cal-month-lbl{font-size:13.5px;font-weight:700;color:var(--text)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
+.cal-dow{font-size:10px;font-weight:700;text-align:center;color:var(--muted);padding:0 0 8px;letter-spacing:.04em}
+.cal-day{height:30px;border:none;border-radius:6px;background:transparent;font-size:12.5px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s;font-variant-numeric:tabular-nums}
+.cal-day:hover:not(:disabled){background:var(--g0)}
+.cal-day.cal-today{font-weight:700;color:#2563EB}
+.cal-day.cal-sel{background:#2563EB;color:#fff;font-weight:700}
+.cal-day.cal-sel:hover{background:#1D4ED8}
+.cal-day.cal-other{color:var(--muted)}
+.cal-day:disabled{opacity:.25;cursor:default}
 
 /* summary chips */
 .hstats{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;flex-shrink:0}
@@ -94,11 +114,11 @@
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <div class="hnav-datewrap">
-          <button class="hnav-datebtn" id="btn-date" title="點擊選擇日期">
+          <button type="button" class="pick-trigger" id="dp-trigger" onclick="toggleHPicker()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
             <span id="date-display">—</span>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
           </button>
-          <input type="date" id="date-picker" class="hnav-picker" tabindex="-1">
+          <div class="pick-drop cal-drop" id="dp-drop" style="display:none"></div>
         </div>
         <button class="hnav-arrow" id="btn-next" title="後一天">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
@@ -132,12 +152,15 @@
   var L = Layout, E = Layout.escHtml;
 
   var WEEKDAYS = ['日','一','二','三','四','五','六'];
+  var MON_ZH = ['','1','2','3','4','5','6','7','8','9','10','11','12'];
   var CAT_SHORT = { '慢簽':'慢簽','代謝症候群':'代謝','慢性腎臟病':'腎臟','B肝':'B肝','C肝':'C肝','B/C型肝炎':'B肝','處方':'處方' };
 
   var _date  = (new URLSearchParams(location.search).get('d') || L.localDateStr());
-  var _rows  = [];   // normalized flat list, set after each load
+  var _rows  = [];
   var _query = '';
   var _sort  = { col: 'time', dir: 'asc' };
+
+  function pad2(n) { return String(n).padStart(2, '0'); }
 
   // ── helpers ──────────────────────────────────────────
   function fmtDate(iso) {
@@ -151,13 +174,83 @@
     document.getElementById('date-display').textContent = fmtDate(_date);
     document.getElementById('btn-next').disabled = _date >= today;
     document.getElementById('btn-today').classList.toggle('active', _date === today);
-    var picker = document.getElementById('date-picker');
-    picker.value = _date;
-    picker.max   = today;
     var params = new URLSearchParams(location.search);
     params.set('d', _date);
     history.replaceState(null, '', '?' + params.toString());
   }
+
+  // ── custom calendar picker ───────────────────────────
+  var _dpNavYear = 0, _dpNavMon = 0, _pickerOpen = false;
+
+  function dpRender() {
+    var drop = document.getElementById('dp-drop');
+    var todayStr = L.localDateStr();
+    var tp = todayStr.split('-').map(Number);
+    var sp = _date.split('-').map(Number);
+    var daysInMon = new Date(_dpNavYear, _dpNavMon, 0).getDate();
+    var firstDow  = new Date(_dpNavYear, _dpNavMon-1, 1).getDay();
+    var label = _dpNavYear + ' 年 ' + MON_ZH[_dpNavMon] + ' 月';
+    var cells = '';
+    for (var b = 0; b < firstDow; b++) cells += '<button class="cal-day cal-other" disabled></button>';
+    for (var d = 1; d <= daysInMon; d++) {
+      var cls = 'cal-day';
+      var dayStr = _dpNavYear + '-' + pad2(_dpNavMon) + '-' + pad2(d);
+      var isTod = (_dpNavYear===tp[0] && _dpNavMon===tp[1] && d===tp[2]);
+      var isSel = (_dpNavYear===sp[0] && _dpNavMon===sp[1] && d===sp[2]);
+      var isFut = dayStr > todayStr;
+      if (isSel) cls += ' cal-sel';
+      else if (isTod) cls += ' cal-today';
+      cells += '<button class="'+cls+'"'+(isFut?' disabled':'')+' onclick="dpSelectH('+d+')">'+d+'</button>';
+    }
+    drop.innerHTML =
+      '<div class="cal-head">' +
+        '<button class="cal-nav-btn" onclick="dpNavH(-1)">‹</button>' +
+        '<span class="cal-month-lbl">'+label+'</span>' +
+        '<button class="cal-nav-btn" onclick="dpNavH(1)">›</button>' +
+      '</div>' +
+      '<div class="cal-grid">' +
+        WEEKDAYS.map(function(w){return '<div class="cal-dow">'+w+'</div>';}).join('') +
+        cells +
+      '</div>';
+  }
+
+  window.dpNavH = function(dir) {
+    _dpNavMon += dir;
+    if (_dpNavMon > 12) { _dpNavMon = 1;  _dpNavYear++; }
+    if (_dpNavMon < 1)  { _dpNavMon = 12; _dpNavYear--; }
+    dpRender();
+  };
+
+  window.dpSelectH = function(day) {
+    var newDate = _dpNavYear + '-' + pad2(_dpNavMon) + '-' + pad2(day);
+    if (newDate > L.localDateStr()) return;
+    closePicker();
+    _date = newDate; clearSearch(); load();
+  };
+
+  function closePicker() {
+    if (!_pickerOpen) return;
+    document.getElementById('dp-drop').style.display = 'none';
+    document.getElementById('dp-trigger').classList.remove('open');
+    _pickerOpen = false;
+  }
+
+  window.toggleHPicker = function() {
+    if (_pickerOpen) { closePicker(); return; }
+    var parts = _date.split('-').map(Number);
+    _dpNavYear = parts[0]; _dpNavMon = parts[1];
+    dpRender();
+    document.getElementById('dp-drop').style.display = '';
+    document.getElementById('dp-trigger').classList.add('open');
+    _pickerOpen = true;
+  };
+
+  document.addEventListener('mousedown', function(e) {
+    if (!_pickerOpen) return;
+    var trigger = document.getElementById('dp-trigger');
+    var drop    = document.getElementById('dp-drop');
+    if (!trigger.contains(e.target) && !drop.contains(e.target)) closePicker();
+  }, true);
 
   // ── normalize all data into _rows ────────────────────
   var TYPE_ORDER = { contacted: 0, called: 1, mspt: 2, excluded: 3, pickup: 4 };
@@ -357,14 +450,6 @@
   });
   document.getElementById('btn-today').addEventListener('click', function() {
     _date = L.localDateStr(); clearSearch(); load();
-  });
-  document.getElementById('btn-date').addEventListener('click', function() {
-    var p = document.getElementById('date-picker');
-    try { p.showPicker(); } catch(e) { p.click(); }
-  });
-  document.getElementById('date-picker').addEventListener('change', function() {
-    if (!this.value) return;
-    _date = this.value; clearSearch(); load();
   });
 
   Layout.init({ activePage: 'history', onRefresh: load });
