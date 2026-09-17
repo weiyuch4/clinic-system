@@ -178,6 +178,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .cat-h{background:#EDE9FE;color:#6D28D9}
 .cat-k{background:#FEF3C7;color:#92400E}
 .cat-l{background:#E0F2FE;color:#0369A1}
+.cat-r{background:#FFE4E6;color:#9F1239}
 
 /* â”€â”€ status badges â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .pbadge{font-size:10.5px;font-weight:600;padding:3px 9px;border-radius:100px;white-space:nowrap}
@@ -416,6 +417,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   :root:not([data-theme=light]) .cat-h{background:#1A0B35;color:#C4B5FD}
   :root:not([data-theme=light]) .cat-k{background:#2A1600;color:#FBD38D}
   :root:not([data-theme=light]) .cat-l{background:#062236;color:#7DD3FC}
+  :root:not([data-theme=light]) .cat-r{background:#2D0010;color:#FDA4AF}
   :root:not([data-theme=light]) .act-warn{background:#2A1600;color:#FBD38D;border-color:#78350F}
   :root:not([data-theme=light]) .act-warn:hover{background:#331900;color:#FBD38D;border-color:#78350F}
   :root:not([data-theme=light]) .act-danger{background:#2A0A0F;color:#FCA5A5;border-color:#881337}
@@ -446,6 +448,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 :root[data-theme=dark] .cat-h{background:#1A0B35;color:#C4B5FD}
 :root[data-theme=dark] .cat-k{background:#2A1600;color:#FBD38D}
 :root[data-theme=dark] .cat-l{background:#062236;color:#7DD3FC}
+:root[data-theme=dark] .cat-r{background:#2D0010;color:#FDA4AF}
 :root[data-theme=dark] .act-warn{background:#2A1600;color:#FBD38D;border-color:#78350F}
 :root[data-theme=dark] .act-warn:hover{background:#331900;color:#FBD38D;border-color:#78350F}
 :root[data-theme=dark] .act-danger{background:#2A0A0F;color:#FCA5A5;border-color:#881337}

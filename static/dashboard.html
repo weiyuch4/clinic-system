@@ -135,7 +135,7 @@
           <div class="card">
             <div class="chd" style="margin-bottom:10px">
               <div><div class="cttl">最需聯繫的病患</div><div class="csub">跨科別 · 依逾期天數排序</div></div>
-              <a href="/chronic" class="cab" style="margin-top:2px">查看全部</a>
+              <a href="/chronic" id="view-all-btn" class="cab" style="margin-top:2px">查看全部</a>
             </div>
             <div style="overflow-x:auto">
               <table class="ptable">
@@ -247,10 +247,15 @@
   }
 
   // ── patient table ──────────────────────────────────
-  var CAT_CLS  = {'慢簽':'cat-c','代謝症候群':'cat-m','B肝':'cat-h','C肝':'cat-h','慢性腎臟病':'cat-k'};
-  var CAT_HREF = {'慢簽':'/chronic','代謝症候群':'/mspt','B肝':'/hepatitis','C肝':'/hepatitis','慢性腎臟病':'/ckd'};
+  var CAT_CLS  = {'慢簽':'cat-c','代謝症候群':'cat-m','B肝':'cat-h','C肝':'cat-h','慢性腎臟病':'cat-k','處方':'cat-r','檢驗':'cat-l'};
+  var CAT_HREF = {'慢簽':'/chronic','代謝症候群':'/mspt','B肝':'/hepatitis','C肝':'/hepatitis','慢性腎臟病':'/ckd','處方':'/prescription','檢驗':'/lab'};
   function renderTable(pending) {
-    var top = pending.slice().sort(function(a,b){return b.days_overdue-a.days_overdue;}).slice(0,8);
+    var top = pending.slice().sort(function(a,b){
+      var pa = (a._priority != null) ? a._priority : 2;
+      var pb = (b._priority != null) ? b._priority : 2;
+      if (pa !== pb) return pa - pb;
+      return b.days_overdue - a.days_overdue;
+    }).slice(0,8);
     if (!top.length) {
       document.getElementById('table-body').innerHTML =
         '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">今日無待追蹤病患</td></tr>';
@@ -501,7 +506,29 @@
       document.getElementById('stat-contacted').textContent = todayContacted;
       document.getElementById('stat-contacted-sub').textContent =
         '已通知 '+(todayHistory.contacted||[]).length+'　已二通 '+(todayHistory.called||[]).length;
-      renderTable(s.pending);
+      // normalize 處方 entries (priority 0)
+      var rxPendingEntries = (rxData||[]).filter(function(e){
+        return !rxContactedKeys[e.nat_id] && !rxHoldKeys[e.nat_id];
+      }).map(function(e) {
+        var days = e.due_date ? Math.round((new Date(today+'T00:00:00') - new Date(String(e.due_date).slice(0,10)+'T00:00:00')) / 86400000) : 0;
+        return { patient:{chart_number:e.nat_id, name:e.name}, category:'處方', days_overdue:days, _priority:0 };
+      });
+      // normalize 檢驗 entries (priority 1)
+      var bloodPendingEntries = [];
+      (bloodData||[]).forEach(function(day){
+        (day.patients||[]).forEach(function(p){
+          if (p.results_back && !p.notified) {
+            var days = day.date ? Math.round((new Date(today+'T00:00:00') - new Date(String(day.date).slice(0,10)+'T00:00:00')) / 86400000) : 0;
+            bloodPendingEntries.push({ patient:{chart_number:p.nat_id, name:p.name}, category:'檢驗', days_overdue:days, _priority:1 });
+          }
+        });
+      });
+      var allPending = rxPendingEntries.concat(bloodPendingEntries).concat(s.pending);
+      renderTable(allPending);
+      // update "查看全部" to whichever priority list has patients first
+      var viewAllHref = rxPendingEntries.length ? '/prescription' : (bloodPendingEntries.length ? '/lab' : '/chronic');
+      var viewAllEl = document.getElementById('view-all-btn');
+      if (viewAllEl) viewAllEl.href = viewAllHref;
       renderGauge(todayContacted, s.pending.length + s.rxCount + s.labCount);
       renderUrgent(report, bloodCount);
       renderContactLog(todayHistory);
