@@ -316,6 +316,11 @@ class StickyNoteRequest(BaseModel):
     nurse: str = ""
 
 
+class DoctorNoteRequest(BaseModel):
+    title: str
+    content: str
+
+
 class LoginRequest(BaseModel):
     username: str
     password: str

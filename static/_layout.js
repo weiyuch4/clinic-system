@@ -64,7 +64,7 @@
   ];
   var OTHER_NAV = [
     { id: 'history',   label: '聯繫記錄',  href: '/history',     badge: false },
-    { id: 'notes',     label: '記事',    href: '/notes',       badge: false },
+    { id: 'notes',     label: '備忘錄',    href: '/notes',       badge: false },
     { id: 'directory', label: '聯絡資訊',  href: '/directory',   badge: false },
     { id: 'schedule',  label: '排班表',    href: '/schedule',    badge: false },
     { id: 'nurse-ot',  label: '加班記錄',  href: '/nurse-ot',    badge: false },
@@ -77,7 +77,7 @@
   var MOBILE_NAV = [
     { id: 'schedule',  label: '排班',  href: '/schedule' },
     { id: 'nurse-ot',  label: '加班',  href: '/nurse-ot' },
-    { id: 'notes',     label: '記事',  href: '/notes'    },
+    { id: 'notes',     label: '備忘錄',  href: '/notes'    },
     { id: 'me',        label: '我的',  href: null        },  // opens nurse selector
   ];
 
@@ -591,7 +591,7 @@
 
   // ── Topbar ───────────────────────────────────────────
   var _MOB_TITLES = {
-    schedule: '排班表', 'nurse-ot': '加班紀錄', notes: '記事',
+    schedule: '排班表', 'nurse-ot': '加班紀錄', notes: '備忘錄',
     'change-password': '我的設定', login: '登入',
   };
 

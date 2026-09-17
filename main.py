@@ -30,7 +30,7 @@ import lab_results
 import settings as _settings
 from models import (
     BloodDismissRequest, BloodNotifiedRequest, BloodPhysicalRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
-    StickyNoteRequest,
+    StickyNoteRequest, DoctorNoteRequest,
     CreateUserRequest, DailyReport,
     ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
     ManualOnHoldRequest, ManualPickupRequest,
@@ -629,6 +629,37 @@ def delete_note(note_id: int, user: auth.CurrentUser = Depends(auth.get_current_
     except Exception:
         logger.exception("delete_note failed for id=%s", note_id)
         raise HTTPException(status_code=500, detail="刪除便利貼失敗")
+
+
+@app.get("/api/doctor-notes")
+def get_doctor_notes(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    try:
+        return contacts.get_doctor_notes(user.clinic_id)
+    except Exception:
+        logger.exception("get_doctor_notes failed")
+        raise HTTPException(status_code=500, detail="載入醫師留言失敗")
+
+
+@app.post("/api/doctor-notes")
+def add_doctor_note(req: DoctorNoteRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    title = req.title.strip()
+    content = req.content.strip()
+    if not title or not content:
+        raise HTTPException(status_code=400, detail="標題與內容不可空白")
+    try:
+        return contacts.add_doctor_note(title, content, admin.display_name, admin.clinic_id)
+    except Exception:
+        logger.exception("add_doctor_note failed")
+        raise HTTPException(status_code=500, detail="新增醫師留言失敗")
+
+
+@app.delete("/api/doctor-notes/{note_id}")
+def delete_doctor_note(note_id: int, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+    try:
+        contacts.delete_doctor_note(note_id, admin.clinic_id)
+    except Exception:
+        logger.exception("delete_doctor_note failed for id=%s", note_id)
+        raise HTTPException(status_code=500, detail="刪除醫師留言失敗")
 
 
 @app.get("/api/admin/salary")

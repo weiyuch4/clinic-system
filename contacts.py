@@ -394,6 +394,17 @@ _CREATE_STICKY_NOTES = """
     )
 """
 
+_CREATE_DOCTOR_NOTES = """
+    CREATE TABLE IF NOT EXISTS doctor_notes (
+        id         SERIAL PRIMARY KEY,
+        title      TEXT NOT NULL DEFAULT '',
+        content    TEXT NOT NULL,
+        author     TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        clinic_id  INTEGER NOT NULL DEFAULT 1
+    )
+"""
+
 _CREATE_NURSE_OT_LOGS = """
     CREATE TABLE IF NOT EXISTS nurse_ot_logs (
         id         SERIAL PRIMARY KEY,
@@ -702,6 +713,7 @@ def init() -> None:
             cur.execute(_CREATE_BLOOD_PHYSICAL)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_codes TEXT NOT NULL DEFAULT '[]'")
             cur.execute(_CREATE_STICKY_NOTES)
+            cur.execute(_CREATE_DOCTOR_NOTES)
             cur.execute(_CREATE_ANNOUNCEMENTS)
             cur.execute(_CREATE_ANNOUNCEMENT_READS)
             cur.execute(_CREATE_SYNCED_PRESCRIPTIONS)
@@ -2370,6 +2382,33 @@ def delete_sticky_note(note_id: int, clinic_id: int = 1) -> None:
                 "DELETE FROM sticky_notes WHERE id = %s AND clinic_id = %s",
                 (note_id, clinic_id),
             )
+
+
+# ── Doctor notes ───────────────────────────────────────────────────────────────
+
+def add_doctor_note(title: str, content: str, author: str = '', clinic_id: int = 1) -> dict:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO doctor_notes (title, content, author, clinic_id) VALUES (%s,%s,%s,%s) RETURNING id, title, content, author, created_at",
+                (title, content, author, clinic_id),
+            )
+            row = cur.fetchone()
+            return {'id': row[0], 'title': row[1], 'content': row[2], 'author': row[3], 'created_at': row[4].isoformat() if row[4] else ''}
+
+def get_doctor_notes(clinic_id: int = 1) -> list[dict]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT id, title, content, author, created_at FROM doctor_notes WHERE clinic_id=%s ORDER BY id ASC",
+                (clinic_id,),
+            )
+            return [{'id': r[0], 'title': r[1], 'content': r[2], 'author': r[3], 'created_at': r[4].isoformat() if r[4] else ''} for r in cur.fetchall()]
+
+def delete_doctor_note(note_id: int, clinic_id: int = 1) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM doctor_notes WHERE id=%s AND clinic_id=%s", (note_id, clinic_id))
 
 
 def save_salary_record(
