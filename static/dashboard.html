@@ -308,8 +308,8 @@
       var nurse = e.nurse ? ' · '+E(e.nurse) : '';
       var time = e.contacted_time ? ' '+E(e.contacted_time) : '';
       return '<div class="dk-row">'+
-        '<span class="dk-label">'+E(cat)+nurse+time+'</span>'+
         '<span class="dk-val">'+E(name)+'</span>'+
+        '<span class="dk-label">'+E(cat)+nurse+time+'</span>'+
       '</div>';
     }).join('') +
     (rest>0 ? '<div class="dk-row" style="margin-top:4px"><span class="dk-label" style="opacity:.4">另有 '+rest+' 筆</span></div>' : '');
