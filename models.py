@@ -169,6 +169,16 @@ class UnexcludeRequest(BaseModel):
     category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
 
 
+class UpdateExclusionReasonRequest(BaseModel):
+    chart_number: str
+    category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
+    reason: str
+    note: str = ""
+    nurse: str = ""
+    name: str = ""
+    birth_date: date | None = None
+
+
 class MsptCompleteRequest(BaseModel):
     chart_number: str
     mspt_stage: MsptStage

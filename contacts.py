@@ -1152,6 +1152,28 @@ def undo_auto_excluded(chart_number: str, category: str, clinic_id: int = 1) -> 
             )
 
 
+def update_excluded_reason(
+    chart_number: str, category: str, reason: str, note: str = '',
+    nurse: str = '', name: str = '', birth_date: str = '', clinic_id: int = 1,
+) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE excluded SET reason=%s, note=%s, nurse=%s WHERE chart_number=%s AND category=%s AND clinic_id=%s",
+                (reason, note, nurse, chart_number, category, clinic_id),
+            )
+            if cur.rowcount == 0:
+                # Auto-excluded entry (computed from contacts table) — insert a manual record
+                cur.execute(
+                    """INSERT INTO excluded (chart_number, category, name, birth_date, reason, note, excluded_at, nurse, clinic_id)
+                       VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                       ON CONFLICT (chart_number, category) DO UPDATE SET
+                           reason=EXCLUDED.reason, note=EXCLUDED.note, nurse=EXCLUDED.nurse""",
+                    (chart_number, category, name, birth_date or None, reason, note,
+                     date.today().isoformat(), nurse, clinic_id),
+                )
+
+
 def get_excluded_keys(clinic_id: int = 1) -> set[tuple[str, str]]:
     with _conn() as conn:
         with conn.cursor() as cur:

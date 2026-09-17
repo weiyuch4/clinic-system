@@ -221,6 +221,34 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-edit-reason">
+  <div class="modal-box">
+    <div class="modal-title">編輯排除原因</div>
+    <div class="modal-sub" id="modal-edit-reason-sub"></div>
+    <div class="modal-field">
+      <label class="modal-label">排除原因</label>
+      <div class="reason-chips" id="edit-reason-chips">
+        <button class="reason-chip" data-reason="轉至其他診所">轉至其他診所</button>
+        <button class="reason-chip" data-reason="轉至大醫院追蹤">轉至大醫院追蹤</button>
+        <button class="reason-chip" data-reason="不願繼續用藥">不願繼續用藥</button>
+        <button class="reason-chip" data-reason="病患已過世">病患已過世</button>
+        <button class="reason-chip" data-reason="已自行停藥">已自行停藥</button>
+        <button class="reason-chip" data-reason="長期未回應">長期未回應</button>
+        <button class="reason-chip" data-reason="其他">其他</button>
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">備註（選填）</label>
+      <textarea class="modal-input" id="modal-edit-reason-note" rows="2" placeholder="選填備註"></textarea>
+    </div>
+    <div class="modal-error" id="edit-reason-error"></div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-edit-reason')">取消</button>
+      <button class="act-btn act-primary" id="btn-edit-reason-confirm">儲存</button>
+    </div>
+  </div>
+</div>
+
 <script src="/static/_layout.js?v=54"></script>
 <script>
 (function () {
@@ -230,7 +258,8 @@
   var _return = [], _phone = [], _submittable = [], _submitted = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
   var _activeMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   // entry stashed for modal confirm
-  var _modalEntry = null, _excludeEntry = null, _submitEntry = null;
+  var _modalEntry = null, _excludeEntry = null, _submitEntry = null, _editExclEntry = null;
+  var _exclSort = { col: 'date', dir: 'desc' };
   // charts where all prior MSPT stages were tracked through dashboard
   var _completedSet = {};  // {chart_number: Set of completed stages}
 
@@ -454,29 +483,51 @@
 
 
   function excludedRow(e) {
-    var chart  = L.escHtml(e.patient.chart_number);
-    var name   = L.escHtml(e.patient.name);
-    var reason = L.escHtml(e.reason || '');
-    var note   = e.note ? ' <span style="color:var(--muted)">— ' + L.escHtml(e.note) + '</span>' : '';
+    var chart   = L.escHtml(e.patient.chart_number);
+    var name    = L.escHtml(e.patient.name);
+    var reason  = L.escHtml(e.reason || '');
+    var note    = e.note ? ' <span style="color:var(--muted)">— ' + L.escHtml(e.note) + '</span>' : '';
     var autoTag = e.auto ? '<span class="pbadge b-hold" style="font-size:10px;padding:1px 6px;margin-right:4px">自動</span>' : '';
-    var date   = e.excluded_at ? String(e.excluded_at).slice(0,10) : '';
+    var date    = e.excluded_at ? String(e.excluded_at).slice(0,10) : '';
     return '<tr class="pr" data-chart="' + chart + '">' +
-      '<td style="color:var(--sub);font-size:12px">' + chart + '</td>' +
+      '<td style="color:var(--sub);font-size:12px"><span class="pr-copy" data-copy="' + chart + '" style="cursor:pointer;border-bottom:1px dashed var(--border)">' + chart + '</span></td>' +
       '<td style="font-weight:600">' + autoTag + name + '</td>' +
       '<td style="font-size:12px">' + reason + note + '</td>' +
       '<td style="font-size:12px;color:var(--sub)">' + date + '</td>' +
-      '<td style="text-align:right"><button class="act-btn" data-action="restore">恢復追蹤</button></td>' +
+      '<td style="text-align:right;white-space:nowrap">' +
+        '<button class="act-btn" data-action="edit-reason" style="margin-right:6px">編輯原因</button>' +
+        '<button class="act-btn" data-action="restore">恢復追蹤</button>' +
+      '</td>' +
       '</tr>';
   }
+  function _exclSortArrow(col) {
+    if (_exclSort.col !== col) return '<span style="opacity:.3;margin-left:3px">↕</span>';
+    return '<span style="margin-left:3px">' + (_exclSort.dir === 'asc' ? '↑' : '↓') + '</span>';
+  }
+  function _sortExcluded(arr) {
+    return arr.slice().sort(function(a, b) {
+      var dir = _exclSort.dir === 'asc' ? 1 : -1;
+      if (_exclSort.col === 'name') return dir * a.patient.name.localeCompare(b.patient.name, 'zh-TW');
+      if (_exclSort.col === 'reason') return dir * (a.reason || '').localeCompare(b.reason || '', 'zh-TW');
+      var da = String(a.excluded_at || ''), db = String(b.excluded_at || '');
+      return dir * (da < db ? -1 : da > db ? 1 : 0);
+    });
+  }
   function renderExcluded() {
-    var filtered = _excluded.filter(match);
+    var filtered = _sortExcluded(_excluded.filter(match));
     var el = document.getElementById('list-excluded');
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (_excluded.length ? '沒有符合搜尋條件的病患' : '尚無排除記錄') + '</div>';
     } else {
       el.innerHTML = '<div class="ptbl-wrap"><table class="p-table" style="table-layout:fixed">' +
-        '<colgroup><col style="width:115px"><col><col style="width:160px"><col style="width:90px"><col style="width:110px"></colgroup>' +
-        '<thead><tr><th>身份證</th><th>姓名</th><th>排除原因</th><th>排除日期</th><th></th></tr></thead>' +
+        '<colgroup><col style="width:115px"><col><col style="width:160px"><col style="width:90px"><col style="width:200px"></colgroup>' +
+        '<thead><tr>' +
+          '<th>身份證</th>' +
+          '<th data-sort-col="name" style="cursor:pointer;user-select:none">姓名' + _exclSortArrow('name') + '</th>' +
+          '<th data-sort-col="reason" style="cursor:pointer;user-select:none">排除原因' + _exclSortArrow('reason') + '</th>' +
+          '<th data-sort-col="date" style="cursor:pointer;user-select:none">排除日期' + _exclSortArrow('date') + '</th>' +
+          '<th></th>' +
+        '</tr></thead>' +
         '<tbody>' + filtered.map(excludedRow).join('') + '</tbody></table></div>';
     }
     if (_tab === 'excluded')
@@ -511,6 +562,13 @@
   document.getElementById('search-input').addEventListener('input', function (e) { _query = e.target.value.trim(); renderAll(); });
 
   document.getElementById('list-scroll').addEventListener('click', function (ev) {
+    var th = ev.target.closest('th[data-sort-col]');
+    if (th) {
+      var col = th.dataset.sortCol;
+      if (_exclSort.col === col) _exclSort.dir = _exclSort.dir === 'asc' ? 'desc' : 'asc';
+      else { _exclSort.col = col; _exclSort.dir = col === 'date' ? 'desc' : 'asc'; }
+      renderExcluded(); return;
+    }
     var btn = ev.target.closest('[data-action]'); if (!btn) return;
     var action = btn.dataset.action, row = btn.closest('.pr'); if (!row) return;
     var chart = row.dataset.chart;
@@ -598,6 +656,16 @@
       document.getElementById('exclude-error').classList.remove('show');
       document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
       L.showModal('modal-exclude');
+    } else if (action === 'edit-reason') {
+      var er = _excludedMap[chart]; if (!er) return;
+      _editExclEntry = er;
+      document.getElementById('modal-edit-reason-sub').textContent = er.patient.name + ' — 修改排除原因';
+      document.getElementById('modal-edit-reason-note').value = er.note || '';
+      document.getElementById('edit-reason-error').classList.remove('show');
+      document.querySelectorAll('#edit-reason-chips .reason-chip').forEach(function (c) {
+        c.classList.toggle('selected', c.dataset.reason === er.reason);
+      });
+      L.showModal('modal-edit-reason');
     } else if (action === 'restore') {
 
       var rx = _excludedMap[chart]; if (!rx) return;
@@ -677,6 +745,39 @@
     var chip = ev.target.closest('.reason-chip'); if (!chip) return;
     document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
     chip.classList.add('selected');
+  });
+
+  document.getElementById('edit-reason-chips').addEventListener('click', function (ev) {
+    var chip = ev.target.closest('.reason-chip'); if (!chip) return;
+    document.querySelectorAll('#edit-reason-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
+    chip.classList.add('selected');
+  });
+
+  document.getElementById('btn-edit-reason-confirm').addEventListener('click', function () {
+    var selected = document.querySelector('#edit-reason-chips .reason-chip.selected');
+    var errEl = document.getElementById('edit-reason-error');
+    if (!selected) { errEl.textContent = '請選擇排除原因'; errEl.classList.add('show'); return; }
+    var reason = selected.dataset.reason;
+    var note = document.getElementById('modal-edit-reason-note').value.trim();
+    var confirmBtn = this, e = _editExclEntry;
+    if (!e) return;
+    errEl.classList.remove('show'); confirmBtn.disabled = true;
+    L.apiAction('PATCH', '/api/excluded', {
+      chart_number: e.patient.chart_number, category: e.category,
+      reason: reason, note: note, nurse: L.getNurse(),
+      name: e.patient.name,
+      birth_date: e.patient.birth_date,
+    })
+      .then(function () {
+        L.hideModal('modal-edit-reason'); L.showToast('排除原因已更新');
+        var chart = e.patient.chart_number;
+        var entry = _excludedMap[chart];
+        if (entry) { entry.reason = reason; entry.note = note; entry.auto = false; }
+        _editExclEntry = null;
+        renderExcluded();
+      })
+      .catch(function (err) { errEl.textContent = err.message || '更新失敗，請再試一次'; errEl.classList.add('show'); })
+      .finally(function () { confirmBtn.disabled = false; });
   });
 
   document.getElementById('btn-exclude-confirm').addEventListener('click', function () {

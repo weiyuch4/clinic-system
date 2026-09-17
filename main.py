@@ -37,7 +37,7 @@ from models import (
     MsptCompleteRequest, MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
     RenameUserRequest, ResetPasswordRequest, SalaryRecordRequest, SendLineNotificationsRequest, ShiftEntry, SubmitRequest,
-    UnexcludeRequest, UndoLineNotificationRequest,
+    UnexcludeRequest, UndoLineNotificationRequest, UpdateExclusionReasonRequest,
 )
 
 # ── Edit this for your clinic's name ───────────────────────────────────────────
@@ -1535,6 +1535,19 @@ def mark_excluded(req: ExcludeRequest, user: auth.CurrentUser = Depends(auth.get
     except Exception:
         logger.exception("mark_excluded failed for %s", req.entry.patient.chart_number)
         raise HTTPException(status_code=500, detail="排除記錄儲存失敗，請稍後再試")
+
+
+@app.patch("/api/excluded")
+def patch_excluded_reason(req: UpdateExclusionReasonRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    try:
+        contacts.update_excluded_reason(
+            req.chart_number, req.category, req.reason, req.note, req.nurse,
+            req.name, req.birth_date.isoformat() if req.birth_date else '', user.clinic_id,
+        )
+        _invalidate_report_cache(user.clinic_id)
+    except Exception:
+        logger.exception("patch_excluded_reason failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="更新失敗，請稍後再試")
 
 
 @app.delete("/api/excluded")
