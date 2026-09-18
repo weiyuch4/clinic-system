@@ -59,6 +59,10 @@
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
               <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
+        <button class="act-btn" id="btn-workflow" style="margin-left:auto;gap:5px;flex-shrink:0;padding:6px 12px;font-size:13px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          逐一追蹤
+        </button>
       </div>
 
       <div class="search-row">
@@ -439,6 +443,29 @@
       .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
+
+  // ── Workflow popup ───────────────────────────────────
+  var _wfPopup = null;
+  function _openWorkflow() {
+    var items = _pending.filter(match).map(function(e) {
+      var p = e.patient || {};
+      return {
+        name: p.name || '', chart_number: p.chart_number || '',
+        nat_id: p.nat_id || p.chart_number || '', birth_date: p.birth_date || '',
+        category: e.category || '', days_overdue: e.days_overdue || 0,
+        _entry: e, _mode: 'hepatitis', _tab: 'pending',
+      };
+    });
+    if (!items.length) { alert('目前沒有待聯絡的病患'); return; }
+    try {
+      localStorage.setItem('rx_workflow_tabs', JSON.stringify({ pending: { label: '待聯絡', items: items } }));
+      localStorage.setItem('rx_workflow_curtab', 'pending');
+    } catch(ex) {}
+    if (_wfPopup && !_wfPopup.closed) { _wfPopup.postMessage('workflow_reload', '*'); _wfPopup.focus(); }
+    else { _wfPopup = window.open('/workflow-popup', 'rx_workflow', 'width=420,height=520,resizable=yes,scrollbars=no,status=no,toolbar=no,menubar=no,location=no'); if (_wfPopup) _wfPopup.focus(); }
+  }
+  document.getElementById('btn-workflow').addEventListener('click', _openWorkflow);
+  window.addEventListener('message', function(ev) { if (ev.data === 'workflow_refresh') load(); });
 
   try {
     var _st = sessionStorage.getItem('hep_active_tab');

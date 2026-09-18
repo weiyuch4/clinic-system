@@ -88,9 +88,12 @@ function init() {
   var firstItem = ALL_TABS[TAB_KEYS[0]].items[0] || {};
   MODE = firstItem._mode || 'prescription';
 
-  if (MODE === 'mspt') {
+  if (MODE === 'mspt' || MODE === 'hepatitis') {
     document.documentElement.style.setProperty('--accent', '#4c1d95');
     document.documentElement.style.setProperty('--accent-h', '#6d28d9');
+  } else if (MODE === 'ckd') {
+    document.documentElement.style.setProperty('--accent', '#1e40af');
+    document.documentElement.style.setProperty('--accent-h', '#1d4ed8');
   }
 
   var curtab = localStorage.getItem('rx_workflow_curtab') || TAB_KEYS[0];
@@ -285,7 +288,7 @@ function render() {
     if (item.mspt_stage)       tags += '<span class="tag tag-stage">' + esc(item.mspt_stage) + '</span>';
     if (item.needs_blood_test) tags += '<span class="tag tag-blood">需抽血</span>';
     if (item.call_required)    tags += '<span class="tag tag-call2">第2次聯繫</span>';
-  } else {
+  } else if (MODE === 'prescription') {
     if (item.h_type === 'AE連續') tags += '<span class="tag tag-ae">連續處方</span>';
     else if (item.h_type)         tags += '<span class="tag tag-nishi">一般處方</span>';
     if (item.days_until_due !== undefined) {
@@ -293,6 +296,10 @@ function render() {
       var dTxt = d < 0 ? (Math.abs(d)+'天過期') : (d===0 ? '今日到期' : (d===1 ? '明天到期' : d+'天後到期'));
       tags += '<span class="tag ' + (d<=0?'tag-urgent':d<=2?'tag-soon':'tag-ok') + '">' + dTxt + '</span>';
     }
+  } else {
+    if (item.category) tags += '<span class="tag tag-nishi">' + esc(item.category) + '</span>';
+    if (item._tab === 'inactive') tags += '<span class="tag tag-call2">未複診</span>';
+    if (item.days_overdue > 0) tags += '<span class="tag tag-urgent">' + item.days_overdue + '天逾期</span>';
   }
 
   var fields = '';
@@ -300,8 +307,12 @@ function render() {
   if (MODE === 'mspt') {
     if (item.chart_number) fields += field('病歷號', esc(item.chart_number), item.chart_number, true);
     if (item.nat_id)       fields += field('身分證', esc(item.nat_id), item.nat_id, true);
-  } else {
+  } else if (MODE === 'prescription') {
     if (item.nat_id) fields += field('身分證', esc(item.nat_id), item.nat_id, true);
+  } else {
+    if (item.nat_id && item.nat_id !== item.chart_number)
+      fields += field('身分證', esc(item.nat_id), item.nat_id, true);
+    if (item.chart_number) fields += field('病歷號', esc(item.chart_number), item.chart_number, true);
   }
   var bd = fmtDate(item.birth_date);
   fields += field('生日', bd, bd, true);
@@ -334,6 +345,10 @@ function render() {
     act.innerHTML = prev + skip +
       '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
       '<button class="btn btn-pri" onclick="doPhoneComplete()">完成</button>';
+  } else if (MODE === 'hepatitis' || MODE === 'ckd' || MODE === 'chronic') {
+    act.innerHTML = prev + skip +
+      '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
+      '<button class="btn btn-pri" onclick="doContact()">已聯繫</button>';
   } else {
     act.innerHTML = prev + skip;
   }
