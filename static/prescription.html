@@ -141,7 +141,7 @@
   'use strict';
   var L = Layout;
   var _rxData = [];
-  var _pending = [], _contacted = [], _hold = [], _autoExcluded = [];
+  var _pending = [], _contacted = [], _hold = [];
   var _pendingMap = {}, _contactedMap = {}, _holdMap = {};
   var _tab = 'pending', _query = '';
   var _actionNat = null;
@@ -246,8 +246,6 @@
   }
 
   // ── Build lists from raw data ─────────────────────────
-  var _AUTO_EXCLUDE_CONTACTS = 2;
-  var _AUTO_EXCLUDE_DAYS     = 14;
 
   function _buildLists(report) {
     // Build h_type lookup from raw prescription data so contacted entries keep it after sync
@@ -280,18 +278,7 @@
       return kb < ka ? -1 : kb > ka ? 1 : 0;
     });
 
-    // Auto-exclude 連續 patients contacted twice (attempt=2) with no return after 14+ days
-    _autoExcluded = [];
-    _contacted = allContacted.filter(function(e) {
-      if (e.h_type !== 'AE連續') return true;
-      if ((e._attempt || 1) < _AUTO_EXCLUDE_CONTACTS) return true;
-      var daysSince = e.contacted_at
-        ? (Date.now() - new Date(e.contacted_at).getTime()) / 86400000
-        : 0;
-      if (daysSince < _AUTO_EXCLUDE_DAYS) return true;
-      _autoExcluded.push(e);
-      return false;
-    });
+    _contacted = allContacted;
 
     _hold = Object.values ? Object.values(hKeys) :
       Object.keys(hKeys).map(function(k){ return hKeys[k]; });
@@ -308,7 +295,6 @@
     document.getElementById('cnt-pending').textContent   = _pending.length;
     document.getElementById('cnt-contacted').textContent = _contacted.length;
     document.getElementById('cnt-hold').textContent      = _hold.length;
-    document.getElementById('cnt-excluded').textContent  = _autoExcluded.length || '';
     L.setNavBadge('prescription', _pending.length);
 
     _updatePageDate();
@@ -375,7 +361,7 @@
     renderList(_hold, holdRow, 'list-hold',
       function(e){ return e.patient ? e.patient.name : (e.manual_name || ''); },
       function(e){ return e.patient ? e.patient.chart_number : ''; });
-    renderList(_autoExcluded, excludedRow, 'list-excluded',
+    renderList([], excludedRow, 'list-excluded',
       function(e){ return e.patient ? e.patient.name : ''; },
       function(e){ return e.patient ? e.patient.chart_number : ''; });
   }
@@ -391,7 +377,6 @@
     document.getElementById('cnt-pending').textContent   = _pending.length;
     document.getElementById('cnt-contacted').textContent = _contacted.length;
     document.getElementById('cnt-hold').textContent      = _hold.length;
-    document.getElementById('cnt-excluded').textContent  = _autoExcluded.length || '';
     L.setNavBadge('prescription', _pending.length);
     _updatePageDate();
   }
