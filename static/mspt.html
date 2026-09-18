@@ -289,11 +289,16 @@
     var allFollowups = r.mspt_followups || [];
     _return = allFollowups.filter(function (e) { return e.needs_blood_test; });
     _phone  = allFollowups.filter(function (e) { return !e.needs_blood_test; });
-    _submittable = r.mspt_submittable || [];
+    _submittable = (r.mspt_submittable || []).slice().sort(function(a,b){ return String(b.blood_report_date||'').localeCompare(String(a.blood_report_date||'')); });
     _submitted   = (r.submitted || []).slice().sort(function(a,b){ return String(b.submitted_at||'').localeCompare(String(a.submitted_at||'')); });
     _inactive    = r.mspt_inactive    || [];
     _contacted   = (r.contacted || []).filter(function (e) { return e.category === '代謝症候群'; })
-                    .concat((r.called || []).filter(function (e) { return e.category === '代謝症候群'; }));
+                    .concat((r.called || []).filter(function (e) { return e.category === '代謝症候群'; }))
+                    .sort(function(a,b){
+                      var ka = String(a.contacted_at||'') + (a.contacted_time||'');
+                      var kb = String(b.contacted_at||'') + (b.contacted_time||'');
+                      return kb < ka ? -1 : kb > ka ? 1 : 0;
+                    });
     _hold        = (r.on_hold || []).filter(function (e) { return e.category === '代謝症候群'; });
 
     _activeMap = {};

@@ -159,7 +159,12 @@
     _pending   = r.ckd_followups  || [];
     _inactive  = r.ckd_inactive   || [];
     _contacted = (r.contacted || []).filter(function (e) { return e.category === '慢性腎臟病'; })
-                  .concat((r.called || []).filter(function (e) { return e.category === '慢性腎臟病'; }));
+                  .concat((r.called || []).filter(function (e) { return e.category === '慢性腎臟病'; }))
+                  .sort(function(a,b){
+                    var ka = String(a.contacted_at||'') + (a.contacted_time||'');
+                    var kb = String(b.contacted_at||'') + (b.contacted_time||'');
+                    return kb < ka ? -1 : kb > ka ? 1 : 0;
+                  });
     _hold      = (r.on_hold   || []).filter(function (e) { return e.category === '慢性腎臟病'; });
     _pendingMap  = {}; _pending.forEach(function (e) { _pendingMap[e.patient.chart_number]   = e; });
     _inactiveMap = {}; _inactive.forEach(function (e) { _inactiveMap[e.patient.chart_number]  = e; });
