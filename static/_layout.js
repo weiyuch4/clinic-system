@@ -41,6 +41,12 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 1, date: '2026-09-18', items: [
+      '新增公告系統：管理員可發布診所公告，護理師登入後即可查看',
+      '新增醫師留言區：醫師可從後台寫留言，護理師在備忘錄頁面可閱讀',
+      '新增聯繫記錄頁面：可查詢任意日期的聯絡歷史',
+      '逐一追蹤彈窗改版：新增分頁切換功能，顯示各類別數量',
+    ]},
     { version: 0, date: '2026-09-14', items: [
       '加班紀錄改為每位護理師各自獨立，不互相顯示',
       '手機底部導覽列改為純圖示，更簡潔',

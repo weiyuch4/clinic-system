@@ -172,11 +172,11 @@
 
   function pendingRow(e) {
     return L.patientRow({ entry: e,
-      actions: [{ label: '已聯繫', cls: 'act-primary', key: 'contact' }],
-      more:    [
-        { label: '暫緩',   key: 'hold' },
-        { label: '排除',   key: 'exclude', cls: 'item-danger' },
+      actions: [
+        { label: '已聯繫', cls: 'act-primary', key: 'contact' },
+        { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
       ],
+      more:    [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
     });
   }
   function contactedRow(e) {
