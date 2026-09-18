@@ -730,8 +730,8 @@ def get_me(user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
 
 @app.get("/api/nurse/ot-logs")
 def get_my_ot_logs(month: str = "", nurse: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
-    # Admins may query any nurse; nurses can only see their own logs
-    effective_nurse = (nurse.strip() if user.role == "admin" else "") or user.display_name
+    # Shared-session model: nurse identity comes from PIN selection on the frontend
+    effective_nurse = nurse.strip() or user.display_name
     return contacts.get_nurse_ot_logs(effective_nurse, user.clinic_id, month or None, legacy_nurse=user.display_name)
 
 
@@ -741,8 +741,8 @@ def add_my_ot_log(body: dict, user: auth.CurrentUser = Depends(auth.get_current_
     start_time = str(body.get("start_time", "")).strip()
     end_time   = str(body.get("end_time", "")).strip()
     note       = str(body.get("note", "")).strip()
-    # Always attribute to the authenticated user — never trust the request body for identity
-    nurse      = user.display_name
+    # Shared-session model: nurse name comes from PIN selection passed by the frontend
+    nurse      = str(body.get("nurse", "")).strip() or user.display_name
     if not date or not start_time or not end_time:
         raise HTTPException(status_code=422, detail="日期與時間不可空白")
     new_id = contacts.add_nurse_ot_log(nurse, user.clinic_id, date, start_time, end_time, note)
@@ -750,8 +750,9 @@ def add_my_ot_log(body: dict, user: auth.CurrentUser = Depends(auth.get_current_
 
 
 @app.delete("/api/nurse/ot-logs/{log_id}")
-def delete_my_ot_log(log_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
-    if not contacts.delete_nurse_ot_log(log_id, user.clinic_id, user.display_name, is_admin=user.role == "admin"):
+def delete_my_ot_log(log_id: int, nurse: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    # nurse param comes from PIN-selected identity on the frontend; admins bypass the check
+    if not contacts.delete_nurse_ot_log(log_id, user.clinic_id, nurse.strip(), is_admin=user.role == "admin"):
         raise HTTPException(status_code=404, detail="記錄不存在")
 
 

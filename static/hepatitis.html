@@ -16,8 +16,9 @@
 .vpn-banner-title{font-size:13.5px;font-weight:700;color:#4C1D95}
 .vpn-banner-sub{font-size:12px;color:#6D28D9;margin-top:2px}
 .vpn-count{margin-left:auto;font-size:22px;font-weight:700;color:#6D28D9;font-variant-numeric:tabular-nums;flex-shrink:0}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .vpn-banner{background:#1A0B35;border-color:#4C1D95;color:#C4B5FD}}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .vpn-banner{background:#1A0B35;border-color:#4C1D95;color:#C4B5FD}:root:not([data-theme="light"]) .vpn-banner-title,:root:not([data-theme="light"]) .vpn-banner-sub,:root:not([data-theme="light"]) .vpn-count{color:#C4B5FD}}
 :root[data-theme="dark"] .vpn-banner{background:#1A0B35;border-color:#4C1D95;color:#C4B5FD}
+:root[data-theme="dark"] .vpn-banner-title,:root[data-theme="dark"] .vpn-banner-sub,:root[data-theme="dark"] .vpn-count{color:#C4B5FD}
 
 .reason-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
 .reason-chip{padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);font-size:13px;cursor:pointer;color:var(--sub);font-weight:500;transition:all .15s;font-family:inherit}
@@ -156,7 +157,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=54"></script>
+<script src="/static/_layout.js?v=57"></script>
 <script>
 (function () {
   'use strict';
