@@ -21,10 +21,6 @@
 :root[data-theme="dark"] .ckd-bt{color:#BAE6FD}
 :root[data-theme="dark"] .ckd-bs,:root[data-theme="dark"] .ckd-bc{color:#7dd3fc}
 
-.reason-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
-.reason-chip{padding:7px 14px;border-radius:20px;border:1.5px solid var(--border);background:var(--card);font-size:13px;cursor:pointer;color:var(--sub);font-weight:500;transition:all .15s;font-family:inherit}
-.reason-chip:hover{border-color:#9ca3af;color:var(--text)}
-.reason-chip.selected{border-color:var(--red,#e53e3e);background:var(--red-soft,#fff5f5);color:var(--red,#e53e3e);font-weight:600}
 </style>
 </head>
 <body>
@@ -43,6 +39,17 @@
         <div><h1>慢性腎臟病</h1><p id="page-date">CKD 定期追蹤 — 逾期待聯繫</p></div>
       </div>
 
+      <div class="ckd-inactive-banner" id="ckd-inactive-banner" style="display:none">
+        <div class="ckd-bi">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0a3 3 0 1 0 6 0m-6 0h6m-6 0H3m12 0h6"/></svg>
+        </div>
+        <div>
+          <div class="ckd-bt">未複診病患提醒</div>
+          <div class="ckd-bs">慢性腎臟病患者已逾期未回診，請優先追蹤</div>
+        </div>
+        <span class="ckd-bc" id="ckd-inactive-cnt">0</span>
+      </div>
+
       <div class="filter-bar" id="filter-bar">
         <button class="filter-tab on" data-tab="pending">待聯絡 <span class="tc-count" id="cnt-pending">…</span></button>
         <button class="filter-tab" data-tab="inactive">未複診 <span class="tc-count" id="cnt-inactive">…</span></button>
@@ -53,17 +60,6 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
         </button>
-      </div>
-
-      <div class="ckd-inactive-banner" id="ckd-inactive-banner" style="display:none">
-        <div class="ckd-bi">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0a3 3 0 1 0 6 0m-6 0h6m-6 0H3m12 0h6"/></svg>
-        </div>
-        <div>
-          <div class="ckd-bt">未複診病患提醒</div>
-          <div class="ckd-bs">慢性腎臟病患者已逾期未回診，請優先追蹤</div>
-        </div>
-        <span class="ckd-bc" id="ckd-inactive-cnt">0</span>
       </div>
 
       <div class="search-row">

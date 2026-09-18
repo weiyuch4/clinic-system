@@ -919,6 +919,23 @@
       el._backdropHandler = function(e) { if (e.target === el) hideModal(id); };
       el.addEventListener('click', el._backdropHandler);
     }
+    if (!el._keyHandler) {
+      el._keyHandler = function(e) {
+        if (e.key === 'Escape') { hideModal(id); return; }
+        if (e.key === 'Tab') {
+          var focusable = Array.from(el.querySelectorAll('button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])'));
+          if (!focusable.length) return;
+          var first = focusable[0], last = focusable[focusable.length - 1];
+          if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+          else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+        }
+      };
+      el.addEventListener('keydown', el._keyHandler);
+    }
+    setTimeout(function () {
+      var first = el.querySelector('button,input,select,textarea,a[href],[tabindex]:not([tabindex="-1"])');
+      if (first) first.focus();
+    }, 30);
   }
   function hideModal(id) {
     var el = document.getElementById(id);
@@ -1025,7 +1042,7 @@
         return '<button class="pr-di' + (a.cls ? ' ' + escHtml(a.cls) : '') + '" data-action="' +
           escHtml(a.key) + '">' + escHtml(a.label) + '</button>';
       }).join('');
-      moreHtml = '<div class="pr-more-wrap"><button class="pr-more-btn" title="更多">•••</button>' +
+      moreHtml = '<div class="pr-more-wrap"><button class="pr-more-btn" title="更多" aria-label="更多">•••</button>' +
         '<div class="pr-dd">' + items + '</div></div>';
     }
     var infoParts = [];
