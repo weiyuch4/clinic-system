@@ -288,6 +288,7 @@
   document.getElementById('filter-bar').addEventListener('click', function (e) {
     var btn = e.target.closest('.filter-tab'); if (!btn) return;
     _tab = btn.dataset.tab;
+    try { sessionStorage.setItem('ckd_active_tab', _tab); } catch(ex) {}
     document.querySelectorAll('.filter-tab').forEach(function (b) { b.classList.remove('on'); });
     btn.classList.add('on');
     ['pending','inactive','contacted','hold','excluded'].forEach(function (t) {
@@ -396,6 +397,20 @@
       .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
   });
+
+  try {
+    var _st = sessionStorage.getItem('ckd_active_tab');
+    var _ckdTabs = ['pending','inactive','contacted','hold','excluded'];
+    if (_st && _ckdTabs.indexOf(_st) !== -1) {
+      _tab = _st;
+      var _stBtn = document.querySelector('.filter-tab[data-tab="' + _st + '"]');
+      if (_stBtn) {
+        document.querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('on'); });
+        _stBtn.classList.add('on');
+        _ckdTabs.forEach(function(t){ document.getElementById('list-'+t).style.display = t===_st ? '' : 'none'; });
+      }
+    }
+  } catch(ex) {}
 
   Layout.init({ activePage: 'ckd', onRefresh: load });
   load();

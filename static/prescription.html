@@ -432,6 +432,7 @@
   document.getElementById('filter-bar').addEventListener('click', function(ev) {
     var btn = ev.target.closest('.filter-tab'); if (!btn) return;
     _tab = btn.dataset.tab;
+    try { sessionStorage.setItem('rx_active_tab', _tab); } catch(ex) {}
     document.querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('on'); });
     btn.classList.add('on');
     ['pending','contacted','hold','excluded'].forEach(function(t){
@@ -619,6 +620,20 @@
   }
   document.getElementById('btn-workflow').addEventListener('click', _openWorkflow);
   window.addEventListener('message', function(ev){ if(ev.data==='workflow_refresh') _reloadReport(); });
+
+  try {
+    var _st = sessionStorage.getItem('rx_active_tab');
+    var _rxTabs = ['pending','contacted','hold','excluded'];
+    if (_st && _rxTabs.indexOf(_st) !== -1) {
+      _tab = _st;
+      var _stBtn = document.querySelector('.filter-tab[data-tab="' + _st + '"]');
+      if (_stBtn) {
+        document.querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('on'); });
+        _stBtn.classList.add('on');
+        _rxTabs.forEach(function(t){ document.getElementById('list-'+t).style.display = t===_st ? '' : 'none'; });
+      }
+    }
+  } catch(ex) {}
 
   Layout.init({ activePage: 'prescription', onRefresh: _load });
   _load();

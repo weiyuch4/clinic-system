@@ -260,7 +260,6 @@
   // entry stashed for modal confirm
   var _modalEntry = null, _excludeEntry = null, _submitEntry = null, _editExclEntry = null;
   var _exclSort = { col: 'date', dir: 'desc' };
-  var _submittedSort = { col: 'submitted_at', dir: 'desc' };
   // charts where all prior MSPT stages were tracked through dashboard
   var _completedSet = {};  // {chart_number: Set of completed stages}
 
@@ -402,56 +401,15 @@
   }
 
   function submittedRow(e) {
-    var chart = L.escHtml(e.patient.chart_number);
-    var name  = L.escHtml(e.patient.name);
-    var stage = L.escHtml(e.mspt_stage || '');
-    var submittedAt = e.submitted_at ? String(e.submitted_at).slice(5, 10).replace('-', '/') : '—';
-    return '<tr class="pr" data-chart="' + chart + '">' +
-      '<td style="color:var(--sub);font-size:12px">' + chart + '</td>' +
-      '<td style="font-weight:600">' + name + '</td>' +
-      '<td><span class="pbadge b-sub">' + stage + '</span></td>' +
-      '<td style="font-size:12px;color:var(--sub)">' + submittedAt + '</td>' +
-      '</tr>';
-  }
-  window.sortSubmittedCol = function(col) {
-    if (_submittedSort.col === col) {
-      _submittedSort.dir = _submittedSort.dir === 'desc' ? 'asc' : 'desc';
-    } else {
-      _submittedSort.col = col;
-      _submittedSort.dir = col === 'submitted_at' ? 'desc' : 'asc';
-    }
-    renderSubmitted();
-  };
-
-  function renderSubmitted() {
-    var filtered = _submitted.filter(match);
-    var col = _submittedSort.col, dir = _submittedSort.dir;
-    filtered = filtered.slice().sort(function(a, b) {
-      var va, vb;
-      if      (col === 'chart_number') { va = a.patient.chart_number || ''; vb = b.patient.chart_number || ''; }
-      else if (col === 'name')         { va = a.patient.name || '';          vb = b.patient.name || ''; }
-      else if (col === 'mspt_stage')   { va = a.mspt_stage || '';            vb = b.mspt_stage || ''; }
-      else                             { va = String(a.submitted_at || '');  vb = String(b.submitted_at || ''); }
-      var c = va < vb ? -1 : va > vb ? 1 : 0;
-      return dir === 'desc' ? -c : c;
+    return L.patientRow({
+      entry: {
+        patient: e.patient, category: '代謝症候群',
+        mspt_stage: e.mspt_stage, due_date: e.submitted_at,
+        days_overdue: 0, last_visit_date: null,
+      },
+      tags: ['<span class="pbadge b-sub">' + L.escHtml(e.mspt_stage) + '</span>'],
+      actions: [],
     });
-    function sTh(label, key) {
-      var on = _submittedSort.col === key;
-      var arrow = on ? (dir === 'desc' ? ' ▼' : ' ▲') : '';
-      return '<th style="cursor:pointer;user-select:none' + (on ? ';color:var(--primary,#1e3a5f)' : '') +
-        '" onclick="sortSubmittedCol(\'' + key + '\')">' + label + arrow + '</th>';
-    }
-    var el = document.getElementById('list-submitted');
-    if (!filtered.length) {
-      el.innerHTML = '<div class="sec-empty">' + (_submitted.length ? '沒有符合搜尋條件的病患' : '尚無申報記錄') + '</div>';
-    } else {
-      el.innerHTML = '<div class="ptbl-wrap"><table class="p-table" style="table-layout:fixed">' +
-        '<colgroup><col style="width:115px"><col><col style="width:90px"><col style="width:70px"></colgroup>' +
-        '<thead><tr>' + sTh('身份證','chart_number') + sTh('姓名','name') + sTh('階段','mspt_stage') + sTh('申報日','submitted_at') + '</tr></thead>' +
-        '<tbody>' + filtered.map(submittedRow).join('') + '</tbody></table></div>';
-    }
-    if (_tab === 'submitted')
-      document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
 
   function inactiveRow(e) {
@@ -569,7 +527,7 @@
     renderHintTab(_return, returnRow, 'list-return-rows', '目前沒有需要回診抽血的病患');
     renderHintTab(_phone,  phoneRow,  'list-phone-rows',  '目前沒有可電話完成的病患');
     renderList(_submittable, submittableRow, 'list-submittable', ['>到期日 <span', '>完成日期 <span']);
-    renderSubmitted();
+    renderList(_submitted, submittedRow, 'list-submitted', ['>到期日 <span', '>申報日 <span']);
     renderList(_inactive,    inactiveRow,    'list-inactive');
     renderList(_contacted,   contactedRow,   'list-contacted');
     renderList(_hold,        holdRow,        'list-hold');
@@ -579,6 +537,7 @@
   document.getElementById('filter-bar').addEventListener('click', function (e) {
     var btn = e.target.closest('.filter-tab'); if (!btn) return;
     _tab = btn.dataset.tab;
+    try { sessionStorage.setItem('mspt_active_tab', _tab); } catch(ex) {}
     document.querySelectorAll('.filter-tab').forEach(function (b) { b.classList.remove('on'); });
     btn.classList.add('on');
     ALL_TABS.forEach(function (t) {
@@ -886,6 +845,18 @@
     if (ev.data === 'workflow_refresh') _refreshBg();
   });
 
+  try {
+    var _st = sessionStorage.getItem('mspt_active_tab');
+    if (_st && ALL_TABS.indexOf(_st) !== -1) {
+      _tab = _st;
+      var _stBtn = document.querySelector('.filter-tab[data-tab="' + _st + '"]');
+      if (_stBtn) {
+        document.querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('on'); });
+        _stBtn.classList.add('on');
+        ALL_TABS.forEach(function(t){ document.getElementById('list-'+t).style.display = t===_st ? '' : 'none'; });
+      }
+    }
+  } catch(ex) {}
   Layout.init({ activePage: 'mspt', onRefresh: load });
   load();
 })();
