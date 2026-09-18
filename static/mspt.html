@@ -260,6 +260,7 @@
   // entry stashed for modal confirm
   var _modalEntry = null, _excludeEntry = null, _submitEntry = null, _editExclEntry = null;
   var _exclSort = { col: 'date', dir: 'desc' };
+  var _submittedSort = { col: 'submitted_at', dir: 'desc' };
   // charts where all prior MSPT stages were tracked through dashboard
   var _completedSet = {};  // {chart_number: Set of completed stages}
 
@@ -412,15 +413,41 @@
       '<td style="font-size:12px;color:var(--sub)">' + submittedAt + '</td>' +
       '</tr>';
   }
+  window.sortSubmittedCol = function(col) {
+    if (_submittedSort.col === col) {
+      _submittedSort.dir = _submittedSort.dir === 'desc' ? 'asc' : 'desc';
+    } else {
+      _submittedSort.col = col;
+      _submittedSort.dir = col === 'submitted_at' ? 'desc' : 'asc';
+    }
+    renderSubmitted();
+  };
+
   function renderSubmitted() {
     var filtered = _submitted.filter(match);
+    var col = _submittedSort.col, dir = _submittedSort.dir;
+    filtered = filtered.slice().sort(function(a, b) {
+      var va, vb;
+      if      (col === 'chart_number') { va = a.patient.chart_number || ''; vb = b.patient.chart_number || ''; }
+      else if (col === 'name')         { va = a.patient.name || '';          vb = b.patient.name || ''; }
+      else if (col === 'mspt_stage')   { va = a.mspt_stage || '';            vb = b.mspt_stage || ''; }
+      else                             { va = String(a.submitted_at || '');  vb = String(b.submitted_at || ''); }
+      var c = va < vb ? -1 : va > vb ? 1 : 0;
+      return dir === 'desc' ? -c : c;
+    });
+    function sTh(label, key) {
+      var on = _submittedSort.col === key;
+      var arrow = on ? (dir === 'desc' ? ' ▼' : ' ▲') : '';
+      return '<th style="cursor:pointer;user-select:none' + (on ? ';color:var(--primary,#1e3a5f)' : '') +
+        '" onclick="sortSubmittedCol(\'' + key + '\')">' + label + arrow + '</th>';
+    }
     var el = document.getElementById('list-submitted');
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (_submitted.length ? '沒有符合搜尋條件的病患' : '尚無申報記錄') + '</div>';
     } else {
       el.innerHTML = '<div class="ptbl-wrap"><table class="p-table" style="table-layout:fixed">' +
         '<colgroup><col style="width:115px"><col><col style="width:90px"><col style="width:70px"></colgroup>' +
-        '<thead><tr><th>身份證</th><th>姓名</th><th>階段</th><th>申報日</th></tr></thead>' +
+        '<thead><tr>' + sTh('身份證','chart_number') + sTh('姓名','name') + sTh('階段','mspt_stage') + sTh('申報日','submitted_at') + '</tr></thead>' +
         '<tbody>' + filtered.map(submittedRow).join('') + '</tbody></table></div>';
     }
     if (_tab === 'submitted')
