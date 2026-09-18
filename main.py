@@ -109,7 +109,12 @@ else:
 
 
 if not auth.has_any_users():
-    _default_pass = os.environ.get("BOOTSTRAP_ADMIN_PASS", "ClinicAdmin2026!")
+    _default_pass = os.environ.get("BOOTSTRAP_ADMIN_PASS", "")
+    if not _default_pass:
+        raise RuntimeError(
+            "BOOTSTRAP_ADMIN_PASS environment variable must be set before first run. "
+            "Set it to a strong password and restart."
+        )
     auth.bootstrap_clinic(
         clinic_slug="clinic1",
         clinic_name="診所",
@@ -117,11 +122,11 @@ if not auth.has_any_users():
         admin_password=_default_pass,
         nurse_names=[],
         nurse_password="",
+        must_change_password=True,
     )
     logger.warning(
-        "No users found — bootstrapped default admin account. "
-        "Username: clinic  Password: %s  (change this immediately after first login)",
-        _default_pass,
+        "No users found — bootstrapped admin account (username: clinic). "
+        "Password was set from BOOTSTRAP_ADMIN_PASS. Change it after first login."
     )
 
 if not contacts.get_nurses():  # first run on this DB — seed from the hardcoded defaults above
@@ -573,10 +578,10 @@ def add_bulletin(req: BulletinNoteRequest, user: auth.CurrentUser = Depends(auth
 
 
 @app.delete("/api/bulletin/{note_id}")
-def delete_bulletin(note_id: int, nurse: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+def delete_bulletin(note_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         note = contacts.get_bulletin_note(note_id, user.clinic_id)
-        if note and note["nurse"] != nurse:
+        if note and note["nurse"] != user.display_name and user.role != "admin":
             raise HTTPException(status_code=403, detail="只能刪除自己的留言")
         contacts.delete_bulletin_note(note_id, user.clinic_id)
     except HTTPException:
@@ -725,7 +730,8 @@ def get_me(user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
 
 @app.get("/api/nurse/ot-logs")
 def get_my_ot_logs(month: str = "", nurse: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
-    effective_nurse = nurse.strip() or user.display_name
+    # Admins may query any nurse; nurses can only see their own logs
+    effective_nurse = (nurse.strip() if user.role == "admin" else "") or user.display_name
     return contacts.get_nurse_ot_logs(effective_nurse, user.clinic_id, month or None, legacy_nurse=user.display_name)
 
 
@@ -735,7 +741,8 @@ def add_my_ot_log(body: dict, user: auth.CurrentUser = Depends(auth.get_current_
     start_time = str(body.get("start_time", "")).strip()
     end_time   = str(body.get("end_time", "")).strip()
     note       = str(body.get("note", "")).strip()
-    nurse      = str(body.get("nurse", "")).strip() or user.display_name
+    # Always attribute to the authenticated user — never trust the request body for identity
+    nurse      = user.display_name
     if not date or not start_time or not end_time:
         raise HTTPException(status_code=422, detail="日期與時間不可空白")
     new_id = contacts.add_nurse_ot_log(nurse, user.clinic_id, date, start_time, end_time, note)
@@ -744,7 +751,7 @@ def add_my_ot_log(body: dict, user: auth.CurrentUser = Depends(auth.get_current_
 
 @app.delete("/api/nurse/ot-logs/{log_id}")
 def delete_my_ot_log(log_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
-    if not contacts.delete_nurse_ot_log(log_id, user.clinic_id):
+    if not contacts.delete_nurse_ot_log(log_id, user.clinic_id, user.display_name, is_admin=user.role == "admin"):
         raise HTTPException(status_code=404, detail="記錄不存在")
 
 
@@ -1861,12 +1868,12 @@ async def send_line_notifications(req: SendLineNotificationsRequest, user: auth.
 
 
 @app.get("/api/send-line-notifications/status")
-def get_line_notifications_status() -> dict:
+def get_line_notifications_status(user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     return _line_batch_state
 
 
 @app.post("/api/send-line-notifications/cancel")
-async def cancel_line_notifications() -> dict:
+async def cancel_line_notifications(user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     """Cancel any in-progress batch and force-close the automation browser —
     covers both "it's stuck mid-batch" and "the browser itself is stuck for
     some unrelated reason" in one action. Always attempts the browser stop,
@@ -2149,10 +2156,10 @@ def unmark_mspt_manual(req: MsptManualRemoveRequest, user: auth.CurrentUser = De
         raise HTTPException(status_code=500, detail="撤銷手動標記失敗，請稍後再試")
 
 
-@app.get("/api/lab/{national_id}")
-def get_lab_results(national_id: str, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+@app.get("/api/lab")
+def get_lab_results(q: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     """Return structured blood test results. Tries local DBF files first; falls back to DB cache."""
-    nat_id = national_id.strip().upper()
+    nat_id = q.strip().upper()
     result = lab_results.get_lab_results(nat_id)
     if not result.get('bio') and not result.get('cbc'):
         cached = contacts.get_lab_cache(nat_id, user.clinic_id)

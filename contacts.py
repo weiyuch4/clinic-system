@@ -489,7 +489,7 @@ def add_blood_dismissed(nat_id: str, draw_date: str, name: str, reason: str, cli
                    VALUES (%s, %s, %s, %s, %s, %s)
                    ON CONFLICT (clinic_id, nat_id, draw_date) DO UPDATE SET
                        reason=EXCLUDED.reason, dismissed_at=EXCLUDED.dismissed_at""",
-                (clinic_id, nat_id, draw_date, name, reason, datetime.now().isoformat(timespec='seconds')),
+                (clinic_id, nat_id, draw_date, name, reason, datetime.now(_TW).isoformat(timespec='seconds')),
             )
 
 
@@ -501,7 +501,7 @@ def add_blood_notified(nat_id: str, draw_date: str, nurse: str, clinic_id: int =
                    VALUES (%s, %s, %s, %s, %s)
                    ON CONFLICT (clinic_id, nat_id, draw_date) DO UPDATE SET
                        notified_at=EXCLUDED.notified_at, nurse=EXCLUDED.nurse""",
-                (clinic_id, nat_id, draw_date, datetime.now().isoformat(timespec='seconds'), nurse),
+                (clinic_id, nat_id, draw_date, datetime.now(_TW).isoformat(timespec='seconds'), nurse),
             )
 
 
@@ -536,7 +536,7 @@ def add_blood_physical(nat_id: str, draw_date: str, name: str = '', nurse: str =
                    ON CONFLICT (clinic_id, nat_id, draw_date) DO UPDATE SET
                        nurse=EXCLUDED.nurse, moved_at=EXCLUDED.moved_at,
                        draw_codes=EXCLUDED.draw_codes, draw_code_names=EXCLUDED.draw_code_names""",
-                (clinic_id, nat_id, draw_date, name, datetime.now().isoformat(timespec='seconds'),
+                (clinic_id, nat_id, draw_date, name, datetime.now(_TW).isoformat(timespec='seconds'),
                  nurse, draw_codes, draw_code_names),
             )
 
@@ -591,7 +591,7 @@ def upsert_synced_blood_pending(payload: list[dict], clinic_id: int = 1) -> None
                    ON CONFLICT (clinic_id) DO UPDATE SET
                        payload=EXCLUDED.payload, synced_at=EXCLUDED.synced_at""",
                 (clinic_id, _json.dumps(payload, ensure_ascii=False, default=str),
-                 datetime.now().isoformat(timespec='seconds')),
+                 datetime.now(_TW).isoformat(timespec='seconds')),
             )
 
 
@@ -621,7 +621,7 @@ def patch_blood_pending_dismiss(nat_id: str, draw_date: str, clinic_id: int = 1)
                 synced_at = %s
                 WHERE clinic_id = %s
                 """,
-                (draw_date, nat_id, datetime.now().isoformat(timespec='seconds'), clinic_id),
+                (draw_date, nat_id, datetime.now(_TW).isoformat(timespec='seconds'), clinic_id),
             )
 
 
@@ -640,7 +640,7 @@ def upsert_lab_cache(lab_data: dict, clinic_id: int = 1) -> None:
                            SET data=EXCLUDED.data, synced_at=EXCLUDED.synced_at""",
                     (nat_id, clinic_id,
                      _json.dumps(data, ensure_ascii=False, default=str),
-                     datetime.now().isoformat(timespec='seconds')),
+                     datetime.now(_TW).isoformat(timespec='seconds')),
                 )
 
 
@@ -964,7 +964,7 @@ def record_mspt_blood_used(nat_id: str, stage: str, draw_iso_date: str, clinic_i
                    VALUES (%s, %s, %s, %s, %s)
                    ON CONFLICT (nat_id, stage) DO UPDATE
                    SET draw_date = EXCLUDED.draw_date, recorded_at = EXCLUDED.recorded_at""",
-                (nat_id, stage, draw_iso_date, datetime.now().isoformat(), clinic_id),
+                (nat_id, stage, draw_iso_date, datetime.now(_TW).isoformat(), clinic_id),
             )
 
 
@@ -1291,7 +1291,7 @@ def mark_mspt_checkedin(entry: FollowupEntry, nurse: str = '', clinic_id: int = 
                     entry.patient.name, entry.patient.birth_date.isoformat(),
                     entry.last_visit_date.isoformat() if entry.last_visit_date else None,
                     entry.last_stage, entry.days_overdue, entry.contact_reason,
-                    date.today().isoformat(), datetime.now().strftime('%H:%M'), nurse, clinic_id,
+                    date.today().isoformat(), datetime.now(_TW).strftime('%H:%M'), nurse, clinic_id,
                 ),
             )
 
@@ -1364,7 +1364,7 @@ def mark_hep_returned_completed(entry: FollowupEntry, nurse: str = '', clinic_id
                     entry.last_visit_date.isoformat(),
                     entry.patient.name, entry.patient.birth_date.isoformat(),
                     entry.disease_name, entry.days_overdue,
-                    date.today().isoformat(), datetime.now().strftime('%H:%M'), nurse, clinic_id,
+                    date.today().isoformat(), datetime.now(_TW).strftime('%H:%M'), nurse, clinic_id,
                 ),
             )
 
@@ -1441,7 +1441,7 @@ def log_line_notification(
                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                    RETURNING id""",
                 (chart_number, name, birth_date, category, template, status, detail,
-                 int(dry_run), nurse, date.today().isoformat(), datetime.now().strftime('%H:%M'), clinic_id),
+                 int(dry_run), nurse, date.today().isoformat(), datetime.now(_TW).strftime('%H:%M'), clinic_id),
             )
             return cur.fetchone()["id"]
 
@@ -1476,7 +1476,7 @@ def mark_line_notification_undone(log_id: int, nurse: str = '', clinic_id: int =
         with conn.cursor() as cur:
             cur.execute(
                 "UPDATE line_notification_log SET undone_at = %s, undone_by = %s WHERE id = %s AND clinic_id = %s",
-                (datetime.now().strftime('%Y-%m-%d %H:%M'), nurse, log_id, clinic_id),
+                (datetime.now(_TW).strftime('%Y-%m-%d %H:%M'), nurse, log_id, clinic_id),
             )
 
 
@@ -2296,7 +2296,7 @@ def is_week_published(week_start: str, clinic_id: int = 1) -> bool:
 
 
 def add_bulletin_note(nurse: str, content: str, clinic_id: int = 1) -> dict:
-    created_at = datetime.now().strftime('%Y-%m-%d %H:%M')
+    created_at = datetime.now(_TW).strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -2416,7 +2416,7 @@ def save_salary_record(
     sat_pay: int, float_bonus: int, ot_pay: int, total: int, ot_entries: str,
     clinic_id: int = 1, sick_days: int = 0,
 ) -> dict:
-    created_at = datetime.now().strftime('%Y-%m-%d %H:%M')
+    created_at = datetime.now(_TW).strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -2461,7 +2461,7 @@ def update_salary_record(
     sat_pay: int, float_bonus: int, ot_pay: int, total: int, ot_entries: str,
     clinic_id: int = 1, sick_days: int = 0,
 ) -> None:
-    updated_at = datetime.now().strftime('%Y-%m-%d %H:%M')
+    updated_at = datetime.now(_TW).strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -2508,7 +2508,7 @@ def get_nurse_ot_logs(nurse: str, clinic_id: int = 1, month: str | None = None, 
 
 
 def add_nurse_ot_log(nurse: str, clinic_id: int, date: str, start_time: str, end_time: str, note: str = '') -> int:
-    created_at = datetime.now().strftime('%Y-%m-%d %H:%M')
+    created_at = datetime.now(_TW).strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -2519,13 +2519,19 @@ def add_nurse_ot_log(nurse: str, clinic_id: int, date: str, start_time: str, end
             return cur.fetchone()["id"]
 
 
-def delete_nurse_ot_log(log_id: int, clinic_id: int = 1) -> bool:
+def delete_nurse_ot_log(log_id: int, clinic_id: int = 1, nurse: str = "", is_admin: bool = False) -> bool:
     with _conn() as conn:
         with conn.cursor() as cur:
-            cur.execute(
-                "DELETE FROM nurse_ot_logs WHERE id=%s AND clinic_id=%s",
-                (log_id, clinic_id),
-            )
+            if is_admin:
+                cur.execute(
+                    "DELETE FROM nurse_ot_logs WHERE id=%s AND clinic_id=%s",
+                    (log_id, clinic_id),
+                )
+            else:
+                cur.execute(
+                    "DELETE FROM nurse_ot_logs WHERE id=%s AND clinic_id=%s AND nurse=%s",
+                    (log_id, clinic_id, nurse),
+                )
             return cur.rowcount > 0
 
 

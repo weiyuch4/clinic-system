@@ -255,12 +255,24 @@
   var _AUTO_EXCLUDE_DAYS     = 14;
 
   function _buildLists(report) {
+    // Build h_type lookup from raw prescription data so contacted entries keep it after sync
+    var _rxHType = {};
+    _rxData.forEach(function(rx){ _rxHType[rx.nat_id] = rx.h_type || ''; });
+
     // Annotate attempt from which list the entry came from, then dedupe per patient
     var cKeys = {}, hKeys = {};
     (report.contacted || []).filter(function(e){ return e.category === '處方'; })
-      .forEach(function(e){ e._attempt = 1; cKeys[e.patient.chart_number] = e; });
+      .forEach(function(e){
+        e._attempt = 1;
+        if (!e.h_type && e.patient) e.h_type = _rxHType[e.patient.chart_number] || '';
+        cKeys[e.patient.chart_number] = e;
+      });
     (report.called || []).filter(function(e){ return e.category === '處方'; })
-      .forEach(function(e){ e._attempt = 2; cKeys[e.patient.chart_number] = e; });
+      .forEach(function(e){
+        e._attempt = 2;
+        if (!e.h_type && e.patient) e.h_type = _rxHType[e.patient.chart_number] || '';
+        cKeys[e.patient.chart_number] = e;
+      });
     (report.on_hold || [])
       .filter(function(e){ return e.category === '處方'; })
       .forEach(function(e){ if (e.patient) hKeys[e.patient.chart_number] = e; });

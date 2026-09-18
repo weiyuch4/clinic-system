@@ -114,7 +114,8 @@ def has_any_users(clinic_id: int = 1) -> bool:
 
 def bootstrap_clinic(clinic_slug: str, clinic_name: str,
                      admin_username: str, admin_password: str,
-                     nurse_names: list[str], nurse_password: str) -> None:
+                     nurse_names: list[str], nurse_password: str,
+                     must_change_password: bool = True) -> None:
     """Create clinic_id=1, admin account, and nurse accounts on first run."""
     with _conn() as conn:
         with conn.cursor() as cur:
@@ -126,9 +127,9 @@ def bootstrap_clinic(clinic_slug: str, clinic_name: str,
             cur.execute(
                 """INSERT INTO users
                    (clinic_id, username, display_name, role, password_hash, must_change_password)
-                   VALUES (1, %s, %s, 'admin', %s, 0)
+                   VALUES (1, %s, %s, 'admin', %s, %s)
                    ON CONFLICT DO NOTHING""",
-                (admin_username, admin_username, admin_hash)
+                (admin_username, admin_username, admin_hash, 1 if must_change_password else 0)
             )
             nurse_hash = hash_password(nurse_password)
             for name in nurse_names:

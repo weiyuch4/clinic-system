@@ -2182,12 +2182,12 @@ function renderNurses(stats) {
   const rows = nurses.map(n => {
     const s = stats[n] || {};
     const rowTot = COLS.reduce((a,[k]) => a + (s[k]||0), 0);
-    const initial = n === '（未選擇）' ? '?' : n[0];
+    const initial = n === '（未選擇）' ? '?' : Layout.escHtml(n[0]);
     return `<tr>
       <td class="l">
         <span class="chip">
           <span class="avatar">${initial}</span>
-          <span class="nurse-name">${n}</span>
+          <span class="nurse-name">${Layout.escHtml(n)}</span>
         </span>
       </td>
       ${COLS.map(([k]) => {
@@ -2263,7 +2263,7 @@ function renderDoctors(doctors) {
   const rows = doctors.map(d => {
     const lv = rateLevel(d.rate);
     return `<tr>
-      <td class="l"><strong>${d.doctor || '（未知）'}</strong></td>
+      <td class="l"><strong>${Layout.escHtml(d.doctor || '（未知）')}</strong></td>
       <td>${d.total}</td>
       <td>${d.returned}</td>
       <td>

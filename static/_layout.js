@@ -1110,8 +1110,8 @@
     }
     el.innerHTML = mine.map(function (s) {
       return '<div class="promo-slot">' +
-        '<div class="promo-slot-label">' + (_SLOT_LABEL[s.slot] || s.slot) + '</div>' +
-        '<div class="promo-slot-time">' + s.start_time + ' – ' + s.end_time + '</div>' +
+        '<div class="promo-slot-label">' + escHtml(_SLOT_LABEL[s.slot] || s.slot) + '</div>' +
+        '<div class="promo-slot-time">' + escHtml(s.start_time) + ' – ' + escHtml(s.end_time) + '</div>' +
       '</div>';
     }).join('');
   }
@@ -1446,7 +1446,7 @@
     document.getElementById('lab-panel-cbc').innerHTML = '';
     _labTab('bio');
     showModal('lab-modal');
-    apiFetch('/api/lab/' + encodeURIComponent(chartNumber || ''))
+    apiFetch('/api/lab?q=' + encodeURIComponent(chartNumber || ''))
       .then(function (data) { _renderLabResults(data); })
       .catch(function () {
         document.getElementById('lab-panel-bio').innerHTML =
