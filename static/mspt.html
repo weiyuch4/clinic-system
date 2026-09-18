@@ -851,7 +851,7 @@
   document.getElementById('btn-workflow').addEventListener('click', _openWorkflow);
 
   window.addEventListener('message', function (ev) {
-    if (ev.data === 'workflow_refresh') load();
+    if (ev.data === 'workflow_refresh') _refreshBg();
   });
 
   Layout.init({ activePage: 'mspt', onRefresh: load });

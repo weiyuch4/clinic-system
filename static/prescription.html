@@ -422,6 +422,7 @@
 
   // Fast reload: only refreshes the report (contacts/hold changed, prescriptions unchanged)
   function _reloadReport() {
+    L.clearReportCache();
     L.getReport(null, function(r){ _buildLists(r); })
       .then(function(r){ _buildLists(r); })
       .catch(function(e){ L.showError('資料載入失敗 — ' + (e.message || '')); });
