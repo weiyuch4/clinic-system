@@ -164,6 +164,20 @@
   </div>
 </div>
 
+<!-- Blood invalid confirm modal -->
+<div class="modal-overlay" id="modal-blood-invalid">
+  <div class="modal-box">
+    <div class="modal-title">送回需回診</div>
+    <div class="modal-sub" id="modal-blood-invalid-sub"></div>
+    <p style="font-size:13px;color:var(--text);margin:0 0 16px;line-height:1.6">血液報告結果無效或無法使用，將此病患送回「需回診」名單，重新安排抽血。</p>
+    <div class="modal-error" id="blood-invalid-error"></div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-blood-invalid')">取消</button>
+      <button class="act-btn act-warn" id="btn-blood-invalid-confirm">確認送回</button>
+    </div>
+  </div>
+</div>
+
 <!-- VPN submit confirm modal -->
 <div class="modal-overlay" id="modal-vpn">
   <div class="modal-box">
@@ -217,7 +231,7 @@
       </div>
       <div id="case-date-wrap" style="display:none;margin-top:8px">
         <label class="modal-label" style="margin-bottom:4px">結案日期</label>
-        <input type="date" class="modal-input" id="exclude-case-date">
+        <input type="date" class="modal-select" id="exclude-case-date">
       </div>
     </div>
     <div class="modal-field">
@@ -250,7 +264,7 @@
       </div>
       <div id="edit-case-date-wrap" style="display:none;margin-top:8px">
         <label class="modal-label" style="margin-bottom:4px">結案日期</label>
-        <input type="date" class="modal-input" id="edit-case-date">
+        <input type="date" class="modal-select" id="edit-case-date">
       </div>
     </div>
     <div class="modal-field">
@@ -371,7 +385,8 @@
     if (!_query) return true;
     var q = _query.toLowerCase(), p = entry.patient || {};
     return (p.name && p.name.toLowerCase().includes(q)) ||
-           (p.chart_number && String(p.chart_number).toLowerCase().includes(q));
+           (p.chart_number && String(p.chart_number).toLowerCase().includes(q)) ||
+           (entry.mspt_stage && entry.mspt_stage.toLowerCase().includes(q));
   }
 
   function returnRow(e) {
@@ -399,7 +414,7 @@
       { label: '完成', cls: 'act-primary', key: 'phone-complete' },
       { label: '暫緩', cls: 'act-warn',    key: 'hold' },
     ], more: [
-      { label: '血液無效，送回需回診', key: 'blood-invalid', cls: '' },
+      { label: '送回需回診', key: 'blood-invalid', cls: '' },
       { label: '排除', key: 'exclude', cls: 'item-danger' },
     ]});
   }
@@ -615,14 +630,11 @@
 
     } else if (action === 'blood-invalid') {
       var bEntry = _activeMap[chart]; if (!bEntry) return;
-      if (!confirm('確認將「' + bEntry.patient.name + '」的血液報告標記為無效，並送回需回診？')) return;
-      btn.disabled = true;
-      L.apiAction('POST', '/api/mspt-blood-invalid', { entry: bEntry, nurse: L.getNurse() })
-        .then(function () {
-          L.showToast('已送回需回診');
-          _refreshBg();
-        })
-        .catch(function (e) { L.showToast('操作失敗：' + (e.message || ''), 'error'); btn.disabled = false; });
+      _modalEntry = bEntry;
+      document.getElementById('modal-blood-invalid-sub').textContent = bEntry.patient.name + ' · ' + (bEntry.mspt_stage || '');
+      document.getElementById('blood-invalid-error').classList.remove('show');
+      document.getElementById('btn-blood-invalid-confirm').disabled = false;
+      L.showModal('modal-blood-invalid');
 
     } else if (action === 'hold') {
       var entry3 = _activeMap[chart]; if (!entry3) return;
@@ -734,6 +746,19 @@
       })
       .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
       .finally(function () { confirmBtn.disabled = false; });
+  });
+
+
+  document.getElementById('btn-blood-invalid-confirm').addEventListener('click', function () {
+    var entry = _modalEntry; if (!entry) return;
+    var confirmBtn = this, errEl = document.getElementById('blood-invalid-error');
+    errEl.classList.remove('show'); confirmBtn.disabled = true;
+    L.apiAction('POST', '/api/mspt-blood-invalid', { entry: entry, nurse: L.getNurse() })
+      .then(function () {
+        L.hideModal('modal-blood-invalid'); L.showToast('已送回需回診');
+        _refreshBg();
+      })
+      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); confirmBtn.disabled = false; });
   });
 
 
