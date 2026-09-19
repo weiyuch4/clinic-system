@@ -64,7 +64,33 @@
 
       <div class="search-row">
         <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
+        <button class="act-btn" id="btn-filter" style="flex-shrink:0;gap:5px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+          篩選<span class="filter-badge" id="filter-badge" style="display:none">0</span>
+        </button>
         <span class="sr-count" id="result-count"></span>
+      </div>
+      <div class="filter-panel" id="filter-panel" style="display:none">
+        <div class="chip-group" id="note-filter-group" style="display:none">
+          <span class="chip-label">備注</span>
+          <div class="type-chips" id="note-chips">
+            <button class="type-chip on" data-note="">全部</button>
+            <button class="type-chip" data-note="has">有備注</button>
+            <button class="type-chip" data-note="none">無備注</button>
+          </div>
+        </div>
+        <div class="chip-group" id="reason-filter-group" style="display:none">
+          <span class="chip-label">排除原因</span>
+          <div class="type-chips" id="reason-chips">
+            <button class="type-chip on" data-rfilter="">全部</button>
+            <button class="type-chip" data-rfilter="轉至其他診所">轉至其他診所</button>
+            <button class="type-chip" data-rfilter="轉至大醫院追蹤">轉至大醫院追蹤</button>
+            <button class="type-chip" data-rfilter="不願繼續用藥">不願繼續用藥</button>
+            <button class="type-chip" data-rfilter="病患已過世">病患已過世</button>
+            <button class="type-chip" data-rfilter="已自行停藥">已自行停藥</button>
+            <button class="type-chip" data-rfilter="其他">其他</button>
+          </div>
+        </div>
       </div>
 
       <div class="list-area" id="list-scroll">
@@ -151,7 +177,8 @@
 (function () {
   'use strict';
   var L = Layout;
-  var _tab = 'pending', _query = '';
+  var _tab = 'pending', _query = '', _noteFilter = '', _reasonFilter = '';
+  var _filterOpen = false;
   var _pending = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
   var _pendingMap = {}, _inactiveMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   var _actionChart = null, _excludeEntry = null;
@@ -196,6 +223,11 @@
   }
 
   function match(entry) {
+    if (_noteFilter) {
+      var hasNote = !!(entry.note && entry.note.trim());
+      if (_noteFilter === 'has' && !hasNote) return false;
+      if (_noteFilter === 'none' && hasNote) return false;
+    }
     if (!_query) return true;
     var q = _query.toLowerCase(), p = entry.patient || {};
     return (p.name && p.name.toLowerCase().includes(q)) ||
@@ -265,7 +297,11 @@
       '</tr>';
   }
   function renderExcluded() {
-    var filtered = _excluded.filter(match);
+    var filtered = _excluded.filter(function(e) {
+      if (!match(e)) return false;
+      if (_reasonFilter && e.reason !== _reasonFilter) return false;
+      return true;
+    });
     var el = document.getElementById('list-excluded');
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (_excluded.length ? '沒有符合搜尋條件的病患' : '尚無排除記錄') + '</div>';
@@ -295,8 +331,62 @@
     ['pending','inactive','contacted','hold','excluded'].forEach(function (t) {
       document.getElementById('list-' + t).style.display = t === _tab ? '' : 'none';
     });
-    var arr = {pending:_pending,inactive:_inactive,contacted:_contacted,hold:_hold,excluded:_excluded}[_tab] || [];
-    document.getElementById('result-count').textContent = '共 ' + arr.filter(match).length + ' 筆';
+    _resetCtxFilters();
+    _updateCtxFilters(_tab);
+    renderAll();
+  });
+
+  function _filterBadgeCount() {
+    return (_noteFilter ? 1 : 0) + (_reasonFilter ? 1 : 0);
+  }
+  function _updateFilterBadge() {
+    var n = _filterBadgeCount();
+    var b = document.getElementById('filter-badge');
+    b.textContent = n; b.style.display = n ? '' : 'none';
+    document.getElementById('btn-filter').classList.toggle('on', _filterOpen || n > 0);
+  }
+  function _toggleFilter() {
+    _filterOpen = !_filterOpen;
+    document.getElementById('filter-panel').style.display = _filterOpen ? '' : 'none';
+    document.getElementById('btn-filter').classList.toggle('on', _filterOpen || _filterBadgeCount() > 0);
+  }
+  function _updateCtxFilters(tab) {
+    var showNote = tab === 'hold' || tab === 'excluded';
+    document.getElementById('note-filter-group').style.display = showNote ? '' : 'none';
+    document.getElementById('reason-filter-group').style.display = tab === 'excluded' ? '' : 'none';
+  }
+  function _resetCtxFilters() {
+    _noteFilter = ''; _reasonFilter = '';
+    document.querySelectorAll('#note-chips .type-chip').forEach(function(c){ c.classList.toggle('on', c.dataset.note === ''); });
+    document.querySelectorAll('#reason-chips .type-chip').forEach(function(c){ c.classList.toggle('on', c.dataset.rfilter === ''); });
+    _updateFilterBadge();
+  }
+
+  document.getElementById('btn-filter').addEventListener('click', _toggleFilter);
+
+  document.getElementById('note-chips').addEventListener('click', function(ev) {
+    var chip = ev.target.closest('.type-chip'); if (!chip) return;
+    _noteFilter = chip.dataset.note;
+    document.querySelectorAll('#note-chips .type-chip').forEach(function(c){ c.classList.remove('on'); });
+    chip.classList.add('on');
+    _updateFilterBadge(); renderAll();
+  });
+
+  document.getElementById('reason-chips').addEventListener('click', function(ev) {
+    var chip = ev.target.closest('.type-chip'); if (!chip) return;
+    _reasonFilter = chip.dataset.rfilter;
+    document.querySelectorAll('#reason-chips .type-chip').forEach(function(c){ c.classList.remove('on'); });
+    chip.classList.add('on');
+    _updateFilterBadge(); renderExcluded();
+  });
+
+  document.addEventListener('click', function(ev) {
+    if (!_filterOpen) return;
+    if (!ev.target.closest('#filter-panel') && !ev.target.closest('#btn-filter')) {
+      _filterOpen = false;
+      document.getElementById('filter-panel').style.display = 'none';
+      document.getElementById('btn-filter').classList.toggle('on', _filterBadgeCount() > 0);
+    }
   });
 
   document.getElementById('search-input').addEventListener('input', function (e) { _query = e.target.value.trim(); renderAll(); });
@@ -445,6 +535,7 @@
       }
     }
   } catch(ex) {}
+  _updateCtxFilters(_tab);
 
   Layout.init({ activePage: 'ckd', onRefresh: load });
   load();
