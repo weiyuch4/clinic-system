@@ -585,18 +585,23 @@ def _query_all_prescriptions(as_of: date) -> list[dict]:
 
         p_path = ic_path[:-4] + 'P.DBF'
 
-        # Build {code_f: max_ps} from P file (one pass)
+        # Build {code_f: max_ps} and MSPT visit set from P file (one pass)
         cf_max_ps: dict[str, int] = {}
+        cf_mspt: set[str] = set()
         if os.path.exists(p_path):
             try:
                 for pr in _parse_dbf_cached(p_path):
-                    cf     = pr.get('CODE_F', '').strip()
-                    ps_str = pr.get('PS', '').strip()
-                    if not cf or not ps_str.isdigit():
+                    cf      = pr.get('CODE_F', '').strip()
+                    ps_str  = pr.get('PS', '').strip()
+                    drug_no = pr.get('DRUG_NO', '').strip()
+                    if not cf:
                         continue
-                    ps_val = int(ps_str)
-                    if ps_val > 0 and ps_val > cf_max_ps.get(cf, 0):
-                        cf_max_ps[cf] = ps_val
+                    if drug_no in _MSPT_CODE_MAP:
+                        cf_mspt.add(cf)
+                    if ps_str.isdigit():
+                        ps_val = int(ps_str)
+                        if ps_val > 0 and ps_val > cf_max_ps.get(cf, 0):
+                            cf_max_ps[cf] = ps_val
             except Exception:
                 pass
 
@@ -611,6 +616,8 @@ def _query_all_prescriptions(as_of: date) -> list[dict]:
             cf     = r.get('CODE_F', '').strip()
             if not nat_id or not cf:
                 continue
+            if cf in cf_mspt:
+                continue  # MSPT visit — tracked on the 代謝症候群 page, not here
             max_ps = cf_max_ps.get(cf, 0)
             if max_ps < 3:
                 continue  # procedure-only or blood-test visit (PS<3 = no trackable prescription)
