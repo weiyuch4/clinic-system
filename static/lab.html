@@ -133,10 +133,12 @@
         <div><h1>檢驗追蹤</h1><p id="page-date">外送抽血結果追蹤</p></div>
       </div>
 
-      <!-- Tab switcher -->
-      <div class="lab-tabs">
-        <button class="lab-tab active" id="tab-digital" onclick="switchTab('digital')">數位追蹤</button>
-        <button class="lab-tab" id="tab-physical" onclick="switchTab('physical')">實體報告 <span id="phys-badge" style="display:none"></span></button>
+      <!-- Tab switcher + action -->
+      <div style="display:flex;align-items:center;margin-bottom:14px">
+        <div class="lab-tabs" style="margin-bottom:0">
+          <button class="lab-tab active" id="tab-digital" onclick="switchTab('digital')">數位追蹤</button>
+          <button class="lab-tab" id="tab-physical" onclick="switchTab('physical')">實體報告 <span id="phys-badge" style="display:none"></span></button>
+        </div>
         <button class="act-btn" id="btn-workflow" style="margin-left:auto;gap:5px;flex-shrink:0;padding:6px 12px;font-size:13px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
