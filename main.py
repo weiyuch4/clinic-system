@@ -324,6 +324,23 @@ def admin_deactivate_user(user_id: int,
     return {"ok": True}
 
 
+@app.get("/api/admin/settings")
+def admin_get_settings(admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    return contacts.get_clinic_settings(admin.clinic_id)
+
+
+@app.patch("/api/admin/settings")
+def admin_update_settings(body: dict, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    allowed = set(contacts.CLINIC_SETTINGS_DEFAULTS.keys())
+    unknown = set(body.keys()) - allowed
+    if unknown:
+        raise HTTPException(status_code=400, detail=f"不支援的設定項目: {', '.join(unknown)}")
+    for k, v in body.items():
+        if not isinstance(v, int) or v < 1:
+            raise HTTPException(status_code=400, detail=f"{k} 必須為正整數")
+    return contacts.update_clinic_settings(body, admin.clinic_id)
+
+
 @app.post("/api/admin/users/{user_id}/reactivate")
 def admin_reactivate_user(user_id: int,
                           admin: auth.CurrentUser = Depends(auth.require_admin)):
@@ -1151,16 +1168,17 @@ def sync_status(request: Request) -> dict:
 
 @app.get("/api/report/prescriptions")
 def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
-    from database import PRESCRIPTION_GRACE_DAYS
     as_of = report_date or date.today()
     try:
         if CLOUD_MODE:
+            settings = contacts.get_clinic_settings(user.clinic_id)
+            grace = settings["prescription_grace_days"]
             rows = contacts.get_synced_prescriptions(user.clinic_id)
             results = []
             for r in rows:
                 due = date.fromisoformat(r['due_date'])
                 days_until_due = (due - as_of).days
-                if days_until_due < -PRESCRIPTION_GRACE_DAYS:
+                if days_until_due < -grace:
                     continue  # past grace period
                 if _PRESCRIPTION_START_DATE and due < _PRESCRIPTION_START_DATE:
                     continue  # pre-adoption prescriptions hidden for this clinic

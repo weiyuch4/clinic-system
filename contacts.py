@@ -440,6 +440,20 @@ _CREATE_ANNOUNCEMENT_READS = """
     )
 """
 
+_CREATE_CLINIC_SETTINGS = """
+    CREATE TABLE IF NOT EXISTS clinic_settings (
+        clinic_id  INTEGER PRIMARY KEY,
+        settings   JSONB   NOT NULL DEFAULT '{}'
+    )
+"""
+
+# Defaults used when a clinic has no override stored.
+CLINIC_SETTINGS_DEFAULTS: dict = {
+    "prescription_min_ps_days": 3,   # skip prescriptions shorter than this (blood tests etc.)
+    "prescription_grace_days":  60,  # days after due date before row disappears
+    "auto_exclude_days":        60,  # days after 2nd contact before auto-excluded
+}
+
 _CREATE_SYNCED_PRESCRIPTIONS = """
     CREATE TABLE IF NOT EXISTS synced_prescriptions (
         id         SERIAL PRIMARY KEY,
@@ -716,6 +730,7 @@ def init() -> None:
             cur.execute(_CREATE_DOCTOR_NOTES)
             cur.execute(_CREATE_ANNOUNCEMENTS)
             cur.execute(_CREATE_ANNOUNCEMENT_READS)
+            cur.execute(_CREATE_CLINIC_SETTINGS)
             cur.execute(_CREATE_SYNCED_PRESCRIPTIONS)
             cur.execute(_CREATE_SYNCED_DOCTOR_RATES)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
@@ -1063,8 +1078,9 @@ def unmark_mspt_phone_completed(chart_number: str, mspt_stage: str, clinic_id: i
 # ── Called entries split: recent vs auto-excluded ────────────────────────────
 
 def get_called_entries(clinic_id: int = 1) -> list[FollowupEntry]:
-    """Entries in 已二次通知 that are still within AUTO_EXCLUDE_DAYS."""
-    cutoff = (date.today() - timedelta(days=AUTO_EXCLUDE_DAYS)).isoformat()
+    """Entries in 已二次通知 that are still within auto_exclude_days."""
+    days = get_clinic_settings(clinic_id)["auto_exclude_days"]
+    cutoff = (date.today() - timedelta(days=days)).isoformat()
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -1087,8 +1103,9 @@ def get_called_entries(clinic_id: int = 1) -> list[FollowupEntry]:
 
 
 def get_auto_excluded_entries(clinic_id: int = 1) -> list[ExcludedEntry]:
-    """Called entries older than AUTO_EXCLUDE_DAYS → shown as auto-excluded."""
-    cutoff = (date.today() - timedelta(days=AUTO_EXCLUDE_DAYS)).isoformat()
+    """Called entries older than auto_exclude_days → shown as auto-excluded."""
+    days = get_clinic_settings(clinic_id)["auto_exclude_days"]
+    cutoff = (date.today() - timedelta(days=days)).isoformat()
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -2816,6 +2833,31 @@ def upsert_synced_candidates(candidates: list[dict], clinic_id: int = 1) -> None
                         for c in candidates
                     ],
                 )
+
+
+def get_clinic_settings(clinic_id: int = 1) -> dict:
+    """Return merged settings: defaults overridden by whatever the clinic has stored."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT settings FROM clinic_settings WHERE clinic_id = %s", (clinic_id,))
+            row = cur.fetchone()
+    stored = dict(row["settings"]) if row else {}
+    return {**CLINIC_SETTINGS_DEFAULTS, **stored}
+
+
+def update_clinic_settings(updates: dict, clinic_id: int = 1) -> dict:
+    """Merge updates into the clinic's stored settings; return the full merged result."""
+    current = get_clinic_settings(clinic_id)
+    merged = {**current, **updates}
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO clinic_settings (clinic_id, settings)
+                   VALUES (%s, %s::jsonb)
+                   ON CONFLICT (clinic_id) DO UPDATE SET settings = EXCLUDED.settings""",
+                (clinic_id, _json.dumps(merged)),
+            )
+    return merged
 
 
 def get_synced_prescriptions(clinic_id: int = 1) -> list[dict]:
