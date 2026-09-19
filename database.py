@@ -612,8 +612,8 @@ def _query_all_prescriptions(as_of: date) -> list[dict]:
             if not nat_id or not cf:
                 continue
             max_ps = cf_max_ps.get(cf, 0)
-            if max_ps == 0:
-                continue  # procedure-only visit — no prescription
+            if max_ps < 3:
+                continue  # procedure-only or blood-test visit (PS<3 = no trackable prescription)
             name  = r.get('NAME',  '').strip()
             birth = _roc_to_date(r.get('BIRTH', ''))
             if not name or not birth:
