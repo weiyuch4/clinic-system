@@ -2837,11 +2837,14 @@ def upsert_synced_candidates(candidates: list[dict], clinic_id: int = 1) -> None
 
 def get_clinic_settings(clinic_id: int = 1) -> dict:
     """Return merged settings: defaults overridden by whatever the clinic has stored."""
-    with _conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT settings FROM clinic_settings WHERE clinic_id = %s", (clinic_id,))
-            row = cur.fetchone()
-    stored = dict(row["settings"]) if row else {}
+    try:
+        with _conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT settings FROM clinic_settings WHERE clinic_id = %s", (clinic_id,))
+                row = cur.fetchone()
+        stored = dict(row["settings"]) if row else {}
+    except Exception:
+        stored = {}
     return {**CLINIC_SETTINGS_DEFAULTS, **stored}
 
 
