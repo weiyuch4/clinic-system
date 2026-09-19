@@ -82,10 +82,14 @@
 
       <div class="search-row">
         <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
+        <button class="act-btn" id="btn-filter" style="flex-shrink:0;gap:5px">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+          篩選<span class="filter-badge" id="filter-badge" style="display:none">0</span>
+        </button>
         <span class="sr-count" id="result-count"></span>
       </div>
 
-      <div class="filter-chips-bar">
+      <div class="filter-panel" id="filter-panel" style="display:none">
         <div class="chip-group">
           <span class="chip-label">階段</span>
           <div class="type-chips" id="type-chips">
@@ -97,10 +101,7 @@
             <button class="type-chip" data-stage="年度追蹤">年度追蹤</button>
           </div>
         </div>
-      </div>
-
-      <div class="filter-chips-bar" id="ctx-filter-bar" style="display:none">
-        <div class="chip-group" id="note-filter-group">
+        <div class="chip-group" id="note-filter-group" style="display:none">
           <span class="chip-label">備注</span>
           <div class="type-chips" id="note-chips">
             <button class="type-chip on" data-note="">全部</button>
@@ -409,6 +410,23 @@ document.addEventListener('click', function(ev) {
   var _activeMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   // entry stashed for modal confirm
   var _modalEntry = null, _excludeEntry = null, _submitEntry = null, _editExclEntry = null;
+  var _filterOpen = false;
+
+  function _filterBadgeCount() {
+    return (_stageFilter ? 1 : 0) + (_noteFilter ? 1 : 0) + (_reasonFilter ? 1 : 0);
+  }
+  function _updateFilterBadge() {
+    var n = _filterBadgeCount();
+    var b = document.getElementById('filter-badge');
+    b.textContent = n; b.style.display = n ? '' : 'none';
+    document.getElementById('btn-filter').classList.toggle('on', _filterOpen || n > 0);
+  }
+  function _toggleFilter() {
+    _filterOpen = !_filterOpen;
+    document.getElementById('filter-panel').style.display = _filterOpen ? '' : 'none';
+    document.getElementById('btn-filter').classList.toggle('on', _filterOpen || _filterBadgeCount() > 0);
+  }
+  document.getElementById('btn-filter').addEventListener('click', _toggleFilter);
   var _exclSort = { col: 'date', dir: 'desc' };
   // charts where all prior MSPT stages were tracked through dashboard
   var _completedSet = {};  // {chart_number: Set of completed stages}
@@ -701,8 +719,8 @@ document.addEventListener('click', function(ev) {
   }
 
   function _updateCtxFilters(tab) {
-    var showCtx = _NOTE_TABS.indexOf(tab) >= 0;
-    document.getElementById('ctx-filter-bar').style.display = showCtx ? '' : 'none';
+    var showNote = _NOTE_TABS.indexOf(tab) >= 0;
+    document.getElementById('note-filter-group').style.display = showNote ? '' : 'none';
     document.getElementById('reason-filter-group').style.display = tab === 'excluded' ? '' : 'none';
   }
 
@@ -710,7 +728,17 @@ document.addEventListener('click', function(ev) {
     _noteFilter = ''; _reasonFilter = '';
     document.querySelectorAll('#note-chips .type-chip').forEach(function(c){ c.classList.toggle('on', c.dataset.note === ''); });
     document.querySelectorAll('#reason-chips .type-chip').forEach(function(c){ c.classList.toggle('on', c.dataset.rfilter === ''); });
+    _updateFilterBadge();
   }
+
+  document.addEventListener('click', function(ev) {
+    if (_filterOpen && !ev.target.closest('#filter-panel') && !ev.target.closest('#btn-filter') &&
+        !ev.target.closest('.mdp-wrap')) {
+      _filterOpen = false;
+      document.getElementById('filter-panel').style.display = 'none';
+      document.getElementById('btn-filter').classList.toggle('on', _filterBadgeCount() > 0);
+    }
+  });
 
   document.getElementById('filter-bar').addEventListener('click', function (e) {
     var btn = e.target.closest('.filter-tab'); if (!btn) return;
@@ -737,7 +765,7 @@ document.addEventListener('click', function(ev) {
     _stageFilter = chip.dataset.stage;
     document.querySelectorAll('#type-chips .type-chip').forEach(function(c){ c.classList.remove('on'); });
     chip.classList.add('on');
-    renderAll();
+    _updateFilterBadge(); renderAll();
   });
 
   document.getElementById('note-chips').addEventListener('click', function(ev) {
@@ -745,7 +773,7 @@ document.addEventListener('click', function(ev) {
     _noteFilter = chip.dataset.note;
     document.querySelectorAll('#note-chips .type-chip').forEach(function(c){ c.classList.remove('on'); });
     chip.classList.add('on');
-    renderAll();
+    _updateFilterBadge(); renderAll();
   });
 
   document.getElementById('reason-chips').addEventListener('click', function(ev) {
@@ -753,7 +781,7 @@ document.addEventListener('click', function(ev) {
     _reasonFilter = chip.dataset.rfilter;
     document.querySelectorAll('#reason-chips .type-chip').forEach(function(c){ c.classList.remove('on'); });
     chip.classList.add('on');
-    renderExcluded();
+    _updateFilterBadge(); renderExcluded();
   });
 
   document.getElementById('list-scroll').addEventListener('click', function (ev) {
