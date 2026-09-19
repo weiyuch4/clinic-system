@@ -94,6 +94,9 @@ function init() {
   } else if (MODE === 'ckd') {
     document.documentElement.style.setProperty('--accent', '#1e40af');
     document.documentElement.style.setProperty('--accent-h', '#1d4ed8');
+  } else if (MODE === 'lab') {
+    document.documentElement.style.setProperty('--accent', '#0f766e');
+    document.documentElement.style.setProperty('--accent-h', '#0d9488');
   }
 
   var curtab = localStorage.getItem('rx_workflow_curtab') || TAB_KEYS[0];
@@ -284,7 +287,10 @@ function render() {
   prog.textContent = (idx + 1) + ' / ' + items.length;
 
   var tags = '';
-  if (MODE === 'mspt') {
+  if (MODE === 'lab') {
+    tags += '<span class="tag tag-blood">待通知</span>';
+    if (item.draw_date) tags += '<span class="tag tag-ok">抽血：' + fmtDate(item.draw_date) + '</span>';
+  } else if (MODE === 'mspt') {
     if (item.mspt_stage)       tags += '<span class="tag tag-stage">' + esc(item.mspt_stage) + '</span>';
     if (item.needs_blood_test) tags += '<span class="tag tag-blood">需抽血</span>';
     if (item.call_required)    tags += '<span class="tag tag-call2">第2次聯繫</span>';
@@ -304,7 +310,9 @@ function render() {
 
   var fields = '';
   fields += field('姓名', esc(item.name), item.name, true);
-  if (MODE === 'mspt') {
+  if (MODE === 'lab') {
+    if (item.nat_id) fields += field('身分證', esc(item.nat_id), item.nat_id, true);
+  } else if (MODE === 'mspt') {
     if (item.chart_number) fields += field('病歷號', esc(item.chart_number), item.chart_number, true);
     if (item.nat_id)       fields += field('身分證', esc(item.nat_id), item.nat_id, true);
   } else if (MODE === 'prescription') {
@@ -333,7 +341,10 @@ function render() {
   var skip = '<button class="btn btn-sec" onclick="go(1)">跳過 →</button>';
   var tab = item._tab || '';
 
-  if (MODE === 'prescription') {
+  if (MODE === 'lab') {
+    act.innerHTML = prev + skip +
+      '<button class="btn btn-pri" onclick="doLabNotify()">✓ 已通知</button>';
+  } else if (MODE === 'prescription') {
     act.innerHTML = prev + skip +
       '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
       '<button class="btn btn-pri" onclick="doContact()">已聯繫</button>';
@@ -352,6 +363,24 @@ function render() {
   } else {
     act.innerHTML = prev + skip;
   }
+}
+
+function doLabNotify() {
+  var items = currentItems();
+  var item = items[idx];
+  var actEl = document.getElementById('actions');
+  actEl.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+  var errEl = document.createElement('div');
+  errEl.style.cssText = 'color:#dc2626;font-size:12px;padding:4px 12px';
+  apiCall('POST', '/api/blood-notified', { nat_id: item.nat_id, draw_date: item.draw_date, nurse: NURSE },
+    function() { advance(); },
+    function(e) {
+      actEl.querySelectorAll('button').forEach(function(b){ b.disabled = false; });
+      errEl.textContent = e.message || '操作失敗';
+      actEl.parentNode.insertBefore(errEl, actEl);
+      setTimeout(function(){ errEl.remove(); }, 3000);
+    }
+  );
 }
 
 window.addEventListener('message', function(ev) {

@@ -131,6 +131,10 @@
 
       <div class="ph">
         <div><h1>檢驗追蹤</h1><p id="page-date">外送抽血結果追蹤</p></div>
+        <button class="filter-action" id="btn-workflow">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          逐一追蹤
+        </button>
       </div>
 
       <!-- Tab switcher -->
@@ -475,6 +479,35 @@
       L.showError('檢驗資料載入失敗 — ' + (e.message || e));
     });
   }
+
+  var _wfPopup = null;
+  function _openWorkflow() {
+    var items = [];
+    _days.forEach(function (day) {
+      (day.patients || []).forEach(function (p) {
+        if (p.results_back && !p.notified) {
+          items.push({
+            name: p.name || '',
+            chart_number: p.nat_id || '',
+            nat_id: p.nat_id || '',
+            birth_date: p.birth_date || '',
+            draw_date: day.date || '',
+            _mode: 'lab',
+            _tab: 'pending',
+          });
+        }
+      });
+    });
+    if (!items.length) { alert('目前沒有待通知的病患'); return; }
+    try {
+      localStorage.setItem('rx_workflow_tabs', JSON.stringify({ pending: { label: '待通知', items: items } }));
+      localStorage.setItem('rx_workflow_curtab', 'pending');
+    } catch (ex) {}
+    if (_wfPopup && !_wfPopup.closed) { _wfPopup.postMessage('workflow_reload', '*'); _wfPopup.focus(); }
+    else { _wfPopup = window.open('/workflow-popup', 'rx_workflow', 'width=420,height=520,left=200,top=100,resizable=yes'); if (_wfPopup) _wfPopup.focus(); }
+  }
+  document.getElementById('btn-workflow').addEventListener('click', _openWorkflow);
+  window.addEventListener('message', function (ev) { if (ev.data === 'workflow_refresh') load(); });
 
   Layout.init({ activePage: 'lab', onRefresh: load });
   load();

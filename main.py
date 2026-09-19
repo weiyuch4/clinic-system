@@ -1584,6 +1584,21 @@ def mspt_phone_complete(req: NurseEntryRequest, user: auth.CurrentUser = Depends
         raise HTTPException(status_code=500, detail="完成記錄失敗，請稍後再試")
 
 
+@app.post("/api/mspt-blood-invalid")
+def mspt_blood_invalid(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    """Clear blood-used record so patient returns to 需回診 (blood draw result was invalid/unusable)."""
+    try:
+        contacts.clear_mspt_blood_used(
+            req.entry.patient.chart_number,
+            req.entry.mspt_stage,
+            user.clinic_id,
+        )
+        _invalidate_report_cache(user.clinic_id)
+    except Exception:
+        logger.exception("mspt_blood_invalid failed for %s", req.entry.patient.chart_number)
+        raise HTTPException(status_code=500, detail="操作失敗，請稍後再試")
+
+
 @app.post("/api/excluded")
 def mark_excluded(req: ExcludeRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:

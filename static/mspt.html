@@ -77,6 +77,15 @@
         <span class="sr-count" id="result-count"></span>
       </div>
 
+      <div class="type-chips" id="type-chips">
+        <button class="type-chip on" data-stage="">全部</button>
+        <button class="type-chip" data-stage="收案">收案</button>
+        <button class="type-chip" data-stage="追1">追1</button>
+        <button class="type-chip" data-stage="追2">追2</button>
+        <button class="type-chip" data-stage="追3">追3</button>
+        <button class="type-chip" data-stage="年度追蹤">年度追蹤</button>
+      </div>
+
       <div class="list-area" id="list-scroll">
         <div id="list-return">
           <div class="tab-hint tab-hint-warn">
@@ -203,7 +212,12 @@
         <button class="reason-chip" data-reason="不願繼續用藥">不願繼續用藥</button>
         <button class="reason-chip" data-reason="病患已過世">病患已過世</button>
         <button class="reason-chip" data-reason="已自行停藥">已自行停藥</button>
+        <button class="reason-chip" data-reason="已結案">已結案</button>
         <button class="reason-chip" data-reason="其他">其他</button>
+      </div>
+      <div id="case-date-wrap" style="display:none;margin-top:8px">
+        <label class="modal-label" style="margin-bottom:4px">結案日期</label>
+        <input type="date" class="modal-input" id="exclude-case-date">
       </div>
     </div>
     <div class="modal-field">
@@ -231,7 +245,12 @@
         <button class="reason-chip" data-reason="病患已過世">病患已過世</button>
         <button class="reason-chip" data-reason="已自行停藥">已自行停藥</button>
         <button class="reason-chip" data-reason="長期未回應">長期未回應</button>
+        <button class="reason-chip" data-reason="已結案">已結案</button>
         <button class="reason-chip" data-reason="其他">其他</button>
+      </div>
+      <div id="edit-case-date-wrap" style="display:none;margin-top:8px">
+        <label class="modal-label" style="margin-bottom:4px">結案日期</label>
+        <input type="date" class="modal-input" id="edit-case-date">
       </div>
     </div>
     <div class="modal-field">
@@ -251,7 +270,7 @@
 (function () {
   'use strict';
   var L = Layout;
-  var _tab = 'return', _query = '';
+  var _tab = 'return', _query = '', _stageFilter = '';
   var _return = [], _phone = [], _submittable = [], _submitted = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
   var _activeMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   // entry stashed for modal confirm
@@ -348,6 +367,7 @@
   }
 
   function match(entry) {
+    if (_stageFilter && entry.mspt_stage !== _stageFilter) return false;
     if (!_query) return true;
     var q = _query.toLowerCase(), p = entry.patient || {};
     return (p.name && p.name.toLowerCase().includes(q)) ||
@@ -378,7 +398,10 @@
     return L.patientRow({ entry: e, tags: tags, actions: [
       { label: '完成', cls: 'act-primary', key: 'phone-complete' },
       { label: '暫緩', cls: 'act-warn',    key: 'hold' },
-    ], more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }]});
+    ], more: [
+      { label: '血液無效，送回需回診', key: 'blood-invalid', cls: '' },
+      { label: '排除', key: 'exclude', cls: 'item-danger' },
+    ]});
   }
 
   function submittableRow(e) {
@@ -549,6 +572,14 @@
 
   document.getElementById('search-input').addEventListener('input', function (e) { _query = e.target.value.trim(); renderAll(); });
 
+  document.getElementById('type-chips').addEventListener('click', function(ev) {
+    var chip = ev.target.closest('.type-chip'); if (!chip) return;
+    _stageFilter = chip.dataset.stage;
+    document.querySelectorAll('#type-chips .type-chip').forEach(function(c){ c.classList.remove('on'); });
+    chip.classList.add('on');
+    renderAll();
+  });
+
   document.getElementById('list-scroll').addEventListener('click', function (ev) {
     var th = ev.target.closest('th[data-sort-col]');
     if (th) {
@@ -578,6 +609,17 @@
         .then(function () {
           L.showToast('已完成，進入可申報佇列');
           _removeFromActive(entry2.patient.chart_number);
+          _refreshBg();
+        })
+        .catch(function (e) { L.showToast('操作失敗：' + (e.message || ''), 'error'); btn.disabled = false; });
+
+    } else if (action === 'blood-invalid') {
+      var bEntry = _activeMap[chart]; if (!bEntry) return;
+      if (!confirm('確認將「' + bEntry.patient.name + '」的血液報告標記為無效，並送回需回診？')) return;
+      btn.disabled = true;
+      L.apiAction('POST', '/api/mspt-blood-invalid', { entry: bEntry, nurse: L.getNurse() })
+        .then(function () {
+          L.showToast('已送回需回診');
           _refreshBg();
         })
         .catch(function (e) { L.showToast('操作失敗：' + (e.message || ''), 'error'); btn.disabled = false; });
@@ -643,6 +685,8 @@
       document.getElementById('modal-exclude-note').value = '';
       document.getElementById('exclude-error').classList.remove('show');
       document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
+      document.getElementById('case-date-wrap').style.display = 'none';
+      document.getElementById('exclude-case-date').value = new Date().toISOString().slice(0, 10);
       L.showModal('modal-exclude');
     } else if (action === 'edit-reason') {
       var er = _excludedMap[chart]; if (!er) return;
@@ -651,8 +695,11 @@
       document.getElementById('modal-edit-reason-note').value = er.note || '';
       document.getElementById('edit-reason-error').classList.remove('show');
       document.querySelectorAll('#edit-reason-chips .reason-chip').forEach(function (c) {
-        c.classList.toggle('selected', c.dataset.reason === er.reason);
+        c.classList.toggle('selected', c.dataset.reason === er.reason || er.reason.startsWith('已結案'));
       });
+      var isCase = er.reason.startsWith('已結案');
+      document.getElementById('edit-case-date-wrap').style.display = isCase ? '' : 'none';
+      document.getElementById('edit-case-date').value = new Date().toISOString().slice(0, 10);
       L.showModal('modal-edit-reason');
     } else if (action === 'restore') {
 
@@ -733,12 +780,14 @@
     var chip = ev.target.closest('.reason-chip'); if (!chip) return;
     document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
     chip.classList.add('selected');
+    document.getElementById('case-date-wrap').style.display = chip.dataset.reason === '已結案' ? '' : 'none';
   });
 
   document.getElementById('edit-reason-chips').addEventListener('click', function (ev) {
     var chip = ev.target.closest('.reason-chip'); if (!chip) return;
     document.querySelectorAll('#edit-reason-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
     chip.classList.add('selected');
+    document.getElementById('edit-case-date-wrap').style.display = chip.dataset.reason === '已結案' ? '' : 'none';
   });
 
   document.getElementById('btn-edit-reason-confirm').addEventListener('click', function () {
@@ -746,6 +795,11 @@
     var errEl = document.getElementById('edit-reason-error');
     if (!selected) { errEl.textContent = '請選擇排除原因'; errEl.classList.add('show'); return; }
     var reason = selected.dataset.reason;
+    if (reason === '已結案') {
+      var iso = document.getElementById('edit-case-date').value;
+      if (!iso) { errEl.textContent = '請選擇結案日期'; errEl.classList.add('show'); return; }
+      var p = iso.split('-'); reason = '已結案（' + (parseInt(p[0]) - 1911) + '/' + p[1] + '/' + p[2] + '）';
+    }
     var note = document.getElementById('modal-edit-reason-note').value.trim();
     var confirmBtn = this, e = _editExclEntry;
     if (!e) return;
@@ -773,6 +827,11 @@
     var errEl = document.getElementById('exclude-error');
     if (!selected) { errEl.textContent = '請選擇排除原因'; errEl.classList.add('show'); return; }
     var reason = selected.dataset.reason;
+    if (reason === '已結案') {
+      var iso = document.getElementById('exclude-case-date').value;
+      if (!iso) { errEl.textContent = '請選擇結案日期'; errEl.classList.add('show'); return; }
+      var p = iso.split('-'); reason = '已結案（' + (parseInt(p[0]) - 1911) + '/' + p[1] + '/' + p[2] + '）';
+    }
     var note = document.getElementById('modal-exclude-note').value.trim();
     var confirmBtn = this;
     errEl.classList.remove('show');
