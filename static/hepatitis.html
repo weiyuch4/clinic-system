@@ -374,8 +374,13 @@
     document.getElementById('btn-filter').classList.toggle('on', _filterOpen || _filterBadgeCount() > 0);
   }
   function _updateCtxFilters(tab) {
-    var showNote = tab === 'hold' || tab === 'excluded';
-    document.getElementById('note-filter-group').style.display = showNote ? '' : 'none';
+    var hasFilters = tab === 'hold' || tab === 'excluded';
+    document.getElementById('btn-filter').style.display = hasFilters ? '' : 'none';
+    if (!hasFilters && _filterOpen) {
+      _filterOpen = false;
+      document.getElementById('filter-panel').style.display = 'none';
+    }
+    document.getElementById('note-filter-group').style.display = hasFilters ? '' : 'none';
     document.getElementById('reason-filter-group').style.display = tab === 'excluded' ? '' : 'none';
   }
   function _resetCtxFilters() {
