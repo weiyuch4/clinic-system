@@ -26,6 +26,14 @@
 :root[data-theme="dark"] .tab-hint-warn{background:#1c1200;border-color:#78350f;color:#fcd34d}
 :root[data-theme="dark"] .tab-hint-info{background:#0d1f3b;border-color:#1d4ed8;color:#93c5fd}
 .modal-hint{font-size:12.5px;padding:9px 11px;border-radius:7px;border:1px solid;margin-bottom:2px}
+.mdp-trigger{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:600 13px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;padding:7px 12px;height:36px;cursor:pointer;white-space:nowrap;transition:border-color .12s,box-shadow .12s;user-select:none;width:100%}
+.mdp-trigger:hover{border-color:var(--sub)}.mdp-trigger.open{border-color:var(--g5);box-shadow:0 0 0 3px rgba(107,114,128,.12)}.mdp-trigger svg{width:13px;height:13px;color:var(--muted);flex-shrink:0}
+.mdp-wrap{position:relative}.pick-drop{position:absolute;top:calc(100% + 6px);left:0;z-index:700;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.07);overflow:hidden;animation:pick-in .12s ease}
+@keyframes pick-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
+.cal-drop{padding:14px;width:248px}.cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}.cal-nav-btn{width:26px;height:26px;border:none;border-radius:6px;background:var(--bg);color:var(--sub);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s}.cal-nav-btn:hover{background:var(--g0);color:var(--text)}.cal-month-lbl{font-size:13.5px;font-weight:700;color:var(--text)}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}.cal-dow{font-size:10px;font-weight:700;text-align:center;color:var(--muted);padding:0 0 8px;letter-spacing:.04em}
+.cal-day{height:30px;border:none;border-radius:6px;background:transparent;font-size:12.5px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s;font-variant-numeric:tabular-nums}
+.cal-day:hover:not(:disabled){background:var(--g0)}.cal-day.cal-today{font-weight:700;color:#2563EB}.cal-day.cal-sel{background:#2563EB;color:#fff;font-weight:700}.cal-day.cal-sel:hover{background:#1D4ED8}.cal-day.cal-other{color:var(--muted)}.cal-day:disabled{opacity:.25;cursor:default}
 
 </style>
 </head>
@@ -231,7 +239,13 @@
       </div>
       <div id="case-date-wrap" style="display:none;margin-top:8px">
         <label class="modal-label" style="margin-bottom:4px">結案日期</label>
-        <input type="date" class="modal-select" id="exclude-case-date">
+        <div class="mdp-wrap">
+          <button type="button" class="mdp-trigger" id="btn-exclude-case" onclick="mdpToggle('exclude')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span id="disp-exclude-case">選擇日期</span>
+          </button>
+          <div class="pick-drop cal-drop" id="drop-exclude-case" style="display:none"></div>
+        </div>
       </div>
     </div>
     <div class="modal-field">
@@ -264,7 +278,13 @@
       </div>
       <div id="edit-case-date-wrap" style="display:none;margin-top:8px">
         <label class="modal-label" style="margin-bottom:4px">結案日期</label>
-        <input type="date" class="modal-select" id="edit-case-date">
+        <div class="mdp-wrap">
+          <button type="button" class="mdp-trigger" id="btn-edit-case" onclick="mdpToggle('edit')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            <span id="disp-edit-case">選擇日期</span>
+          </button>
+          <div class="pick-drop cal-drop" id="drop-edit-case" style="display:none"></div>
+        </div>
       </div>
     </div>
     <div class="modal-field">
@@ -280,6 +300,75 @@
 </div>
 
 <script src="/static/_layout.js?v=57"></script>
+<script>
+// ── Modal date picker ──────────────────────────────────────────────────────
+var _mdp = {
+  exclude: { y:0, m:0, d:0, navY:0, navM:0, iso:'' },
+  edit:    { y:0, m:0, d:0, navY:0, navM:0, iso:'' }
+};
+function _mdpTodayInit(s) {
+  var t = new Date();
+  s.y = t.getFullYear(); s.m = t.getMonth()+1; s.d = t.getDate();
+  s.navY = s.y; s.navM = s.m;
+  s.iso = s.y + '-' + String(s.m).padStart(2,'0') + '-' + String(s.d).padStart(2,'0');
+}
+function _mdpDisp(id) {
+  document.getElementById('disp-' + id + '-case').textContent = _mdp[id].iso || '選擇日期';
+}
+function _mdpRender(id) {
+  var s = _mdp[id];
+  var drop = document.getElementById('drop-' + id + '-case');
+  var t = new Date(), daysInMon = new Date(s.navY, s.navM, 0).getDate(), firstDow = new Date(s.navY, s.navM-1, 1).getDay();
+  var cells = '';
+  for (var b = 0; b < firstDow; b++) cells += '<button class="cal-day cal-other" disabled></button>';
+  for (var d = 1; d <= daysInMon; d++) {
+    var isTod = s.navY===t.getFullYear() && s.navM===t.getMonth()+1 && d===t.getDate();
+    var isSel = s.y===s.navY && s.m===s.navM && s.d===d;
+    cells += '<button class="cal-day' + (isSel?' cal-sel':isTod?' cal-today':'') + '" onclick="mdpSelect(\''+id+'\','+d+')">'+d+'</button>';
+  }
+  drop.innerHTML = '<div class="cal-head">' +
+    '<button class="cal-nav-btn" onclick="mdpNav(\''+id+'\',-1)">‹</button>' +
+    '<span class="cal-month-lbl">'+s.navY+' 年 '+s.navM+' 月</span>' +
+    '<button class="cal-nav-btn" onclick="mdpNav(\''+id+'\',1)">›</button>' +
+    '</div><div class="cal-grid">' +
+    ['日','一','二','三','四','五','六'].map(function(d){return '<div class="cal-dow">'+d+'</div>';}).join('') +
+    cells + '</div>';
+}
+window.mdpToggle = function(id) {
+  var drop = document.getElementById('drop-' + id + '-case');
+  var btn  = document.getElementById('btn-' + id + '-case');
+  if (drop.style.display === 'none') {
+    if (!_mdp[id].y) _mdpTodayInit(_mdp[id]);
+    _mdpRender(id);
+    drop.style.display = '';
+    btn.classList.add('open');
+  } else {
+    drop.style.display = 'none';
+    btn.classList.remove('open');
+  }
+};
+window.mdpNav = function(id, dir) {
+  var s = _mdp[id]; s.navM += dir;
+  if (s.navM > 12) { s.navM = 1; s.navY++; } else if (s.navM < 1) { s.navM = 12; s.navY--; }
+  _mdpRender(id);
+};
+window.mdpSelect = function(id, d) {
+  var s = _mdp[id]; s.y = s.navY; s.m = s.navM; s.d = d;
+  s.iso = s.y + '-' + String(s.m).padStart(2,'0') + '-' + String(s.d).padStart(2,'0');
+  _mdpDisp(id);
+  document.getElementById('drop-' + id + '-case').style.display = 'none';
+  document.getElementById('btn-' + id + '-case').classList.remove('open');
+};
+document.addEventListener('click', function(ev) {
+  ['exclude','edit'].forEach(function(id) {
+    var drop = document.getElementById('drop-' + id + '-case');
+    var btn  = document.getElementById('btn-' + id + '-case');
+    if (drop && btn && drop.style.display !== 'none' && !drop.contains(ev.target) && !btn.contains(ev.target)) {
+      drop.style.display = 'none'; btn.classList.remove('open');
+    }
+  });
+});
+</script>
 <script>
 (function () {
   'use strict';
@@ -385,8 +474,7 @@
     if (!_query) return true;
     var q = _query.toLowerCase(), p = entry.patient || {};
     return (p.name && p.name.toLowerCase().includes(q)) ||
-           (p.chart_number && String(p.chart_number).toLowerCase().includes(q)) ||
-           (entry.mspt_stage && entry.mspt_stage.toLowerCase().includes(q));
+           (p.chart_number && String(p.chart_number).toLowerCase().includes(q));
   }
 
   function returnRow(e) {
@@ -698,7 +786,7 @@
       document.getElementById('exclude-error').classList.remove('show');
       document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
       document.getElementById('case-date-wrap').style.display = 'none';
-      document.getElementById('exclude-case-date').value = new Date().toISOString().slice(0, 10);
+      _mdpTodayInit(_mdp.exclude); _mdpDisp('exclude');
       L.showModal('modal-exclude');
     } else if (action === 'edit-reason') {
       var er = _excludedMap[chart]; if (!er) return;
@@ -711,7 +799,7 @@
       });
       var isCase = er.reason.startsWith('已結案');
       document.getElementById('edit-case-date-wrap').style.display = isCase ? '' : 'none';
-      document.getElementById('edit-case-date').value = new Date().toISOString().slice(0, 10);
+      _mdpTodayInit(_mdp.edit); _mdpDisp('edit');
       L.showModal('modal-edit-reason');
     } else if (action === 'restore') {
 
@@ -821,7 +909,7 @@
     if (!selected) { errEl.textContent = '請選擇排除原因'; errEl.classList.add('show'); return; }
     var reason = selected.dataset.reason;
     if (reason === '已結案') {
-      var iso = document.getElementById('edit-case-date').value;
+      var iso = _mdp.edit.iso;
       if (!iso) { errEl.textContent = '請選擇結案日期'; errEl.classList.add('show'); return; }
       var p = iso.split('-'); reason = '已結案（' + (parseInt(p[0]) - 1911) + '/' + p[1] + '/' + p[2] + '）';
     }
@@ -853,7 +941,7 @@
     if (!selected) { errEl.textContent = '請選擇排除原因'; errEl.classList.add('show'); return; }
     var reason = selected.dataset.reason;
     if (reason === '已結案') {
-      var iso = document.getElementById('exclude-case-date').value;
+      var iso = _mdp.exclude.iso;
       if (!iso) { errEl.textContent = '請選擇結案日期'; errEl.classList.add('show'); return; }
       var p = iso.split('-'); reason = '已結案（' + (parseInt(p[0]) - 1911) + '/' + p[1] + '/' + p[2] + '）';
     }

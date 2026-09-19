@@ -49,11 +49,25 @@
         <span class="sr-count" id="result-count"></span>
       </div>
 
-      <div class="type-chips" id="type-chips">
-        <button class="type-chip on" data-type="">全部</button>
-        <button class="type-chip" data-type="一般">一般</button>
-        <button class="type-chip" data-type="連續">連續</button>
-        <button class="type-chip" data-type="關懷">關懷</button>
+      <div class="filter-chips-bar">
+        <div class="chip-group">
+          <span class="chip-label">類型</span>
+          <div class="type-chips" id="type-chips">
+            <button class="type-chip on" data-type="">全部</button>
+            <button class="type-chip" data-type="一般">一般</button>
+            <button class="type-chip" data-type="連續">連續</button>
+            <button class="type-chip" data-type="關懷">關懷</button>
+          </div>
+        </div>
+        <div class="chip-group">
+          <span class="chip-label">到期</span>
+          <div class="type-chips" id="urgency-chips">
+            <button class="type-chip on" data-urgency="">全部</button>
+            <button class="type-chip" data-urgency="overdue">已逾期</button>
+            <button class="type-chip" data-urgency="today">今日</button>
+            <button class="type-chip" data-urgency="soon">三天內</button>
+          </div>
+        </div>
       </div>
 
       <div class="list-area" id="list-scroll">
@@ -150,7 +164,7 @@
   var _rxData = [];
   var _pending = [], _contacted = [], _hold = [];
   var _pendingMap = {}, _contactedMap = {}, _holdMap = {};
-  var _tab = 'pending', _query = '', _typeFilter = '';
+  var _tab = 'pending', _query = '', _typeFilter = '', _urgencyFilter = '';
   var _sort = { col: 'days', dir: 'asc' };
   var _actionNat = null;
 
@@ -165,11 +179,11 @@
     return '<th data-sort="' + col + '" style="cursor:pointer;user-select:none;white-space:nowrap">' + label + _sortArrow(col) + '</th>';
   }
 
-  function rxTable(rowsHtml, sortable) {
-    var hdr = sortable
-      ? '<th>身份證</th><th>病患</th>' + _sortTh('type','處方類型') + _sortTh('days','到期') +
-        _sortTh('due','到期日') + _sortTh('ps','開藥天') + '<th>備註</th><th></th>'
-      : '<th>身份證</th><th>病患</th><th>處方類型</th><th>到期</th><th>到期日</th><th>開藥天</th><th>備註</th><th></th>';
+  function rxTable(rowsHtml) {
+    var hdr = _sortTh('nat','身份證') + _sortTh('name','病患') +
+      _sortTh('type','處方類型') + _sortTh('days','到期') +
+      _sortTh('due','到期日') + _sortTh('ps','開藥天') +
+      _sortTh('note','備註') + '<th></th>';
     return '<div class="ptbl-wrap"><table class="p-table">' +
       '<colgroup>' +
         '<col style="width:115px">' +
@@ -185,18 +199,12 @@
       '<tbody>' + rowsHtml + '</tbody></table></div>';
   }
 
-  function _sortPending(arr) {
+  function _sortArr(arr, getKey) {
     return arr.slice().sort(function(a, b) {
       var dir = _sort.dir === 'asc' ? 1 : -1;
-      if (_sort.col === 'days') return dir * ((a.days_until_due || 0) - (b.days_until_due || 0));
-      if (_sort.col === 'due')  return dir * (String(a.due_date || '').localeCompare(String(b.due_date || '')));
-      if (_sort.col === 'ps')   return dir * ((a.ps || 0) - (b.ps || 0));
-      if (_sort.col === 'type') {
-        var ta = (a.h_type === 'AE連續' ? '1' : '0') + (a.is_care ? '1' : '0');
-        var tb = (b.h_type === 'AE連續' ? '1' : '0') + (b.is_care ? '1' : '0');
-        return dir * ta.localeCompare(tb);
-      }
-      return 0;
+      var va = getKey(_sort.col, a), vb = getKey(_sort.col, b);
+      if (typeof va === 'number' && typeof vb === 'number') return dir * (va - vb);
+      return dir * String(va || '').localeCompare(String(vb || ''));
     });
   }
 
@@ -369,58 +377,98 @@
   }
 
   // ── Render ────────────────────────────────────────────
-  function match(name, nat, extra) {
+  function match(name, nat) {
     if (!_query) return true;
-    if (name.toLowerCase().includes(_query) || nat.toLowerCase().includes(_query)) return true;
-    if (extra && extra.toLowerCase().includes(_query)) return true;
-    return false;
+    return name.toLowerCase().includes(_query) || nat.toLowerCase().includes(_query);
   }
 
   function matchType(e, hType, isCare) {
-    if (!_typeFilter) return true;
     if (_typeFilter === '連續') return hType === 'AE連續';
     if (_typeFilter === '關懷') return !!isCare;
     if (_typeFilter === '一般') return hType !== 'AE連續';
     return true;
   }
 
-  function renderList(entries, rowFn, id, getName, getNat, getType, getExtra) {
+  function matchUrgency(e) {
+    if (!_urgencyFilter) return true;
+    var d = e.days_until_due;
+    if (d === undefined) return true;
+    if (_urgencyFilter === 'overdue') return d < 0;
+    if (_urgencyFilter === 'today')   return d === 0;
+    if (_urgencyFilter === 'soon')    return d >= 0 && d <= 3;
+    return true;
+  }
+
+  function renderList(entries, rowFn, id, getName, getNat, getType, getSortKey) {
     var isPending = id === 'list-pending';
     var filtered = entries.filter(function(e){
-      if (!match(getName(e), getNat(e), getExtra ? getExtra(e) : '')) return false;
-      if (getType) { var t = getType(e); return matchType(e, t[0], t[1]); }
+      if (!match(getName(e), getNat(e))) return false;
+      if (getType) { var t = getType(e); if (!matchType(e, t[0], t[1])) return false; }
+      if (isPending && !matchUrgency(e)) return false;
       return true;
     });
-    if (isPending) filtered = _sortPending(filtered);
+    if (getSortKey) filtered = _sortArr(filtered, getSortKey);
     var el = document.getElementById(id);
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件的病患' : '目前沒有記錄') + '</div>';
     } else {
-      el.innerHTML = rxTable(filtered.map(rowFn).join(''), isPending);
+      el.innerHTML = rxTable(filtered.map(rowFn).join(''));
     }
     if (_tab === id.replace('list-',''))
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
 
   function renderAll() {
-    renderList(_pending,   pendingRow,   'list-pending',
+    renderList(_pending, pendingRow, 'list-pending',
       function(e){ return e.name || ''; },
       function(e){ return e.nat_id || ''; },
       function(e){ return [e.h_type || '', e.is_care]; },
-      function(e){ return (e.icd_name || '') + ' ' + (e.h_type === 'AE連續' ? '連續' : '一般') + (e.is_care ? ' 關懷' : ''); });
+      function(col, e) {
+        if (col === 'nat')  return e.nat_id || '';
+        if (col === 'name') return e.name || '';
+        if (col === 'type') return (e.h_type === 'AE連續' ? '1' : '0') + (e.is_care ? '1' : '0');
+        if (col === 'days') return e.days_until_due !== undefined ? e.days_until_due : 9999;
+        if (col === 'due')  return e.due_date || '';
+        if (col === 'ps')   return e.ps || 0;
+        if (col === 'note') return e.icd_name || '';
+        return '';
+      });
     renderList(_contacted, contactedRow, 'list-contacted',
       function(e){ return e.patient ? e.patient.name : ''; },
       function(e){ return e.patient ? e.patient.chart_number : ''; },
       function(e){ return [e.h_type || '', false]; },
-      function(e){ return e.h_type === 'AE連續' ? '連續' : '一般'; });
+      function(col, e) {
+        if (col === 'nat')  return e.patient ? e.patient.chart_number : '';
+        if (col === 'name') return e.patient ? e.patient.name : '';
+        if (col === 'type') return e.h_type === 'AE連續' ? '1' : '0';
+        if (col === 'days') return e.contacted_at || '';
+        if (col === 'due')  return e.due_date || '';
+        if (col === 'note') return e.note || '';
+        return '';
+      });
     renderList(_hold, holdRow, 'list-hold',
       function(e){ return e.patient ? e.patient.name : (e.manual_name || ''); },
       function(e){ return e.patient ? e.patient.chart_number : ''; },
       function(e){ return [e.h_type || '', false]; },
-      function(e){ return e.h_type === 'AE連續' ? '連續' : '一般'; });
+      function(col, e) {
+        if (col === 'nat')  return e.patient ? e.patient.chart_number : '';
+        if (col === 'name') return e.patient ? e.patient.name : (e.manual_name || '');
+        if (col === 'due')  return e.due_date || '';
+        if (col === 'note') return e.note || '';
+        return '';
+      });
     renderList([], excludedRow, 'list-excluded',
       function(e){ return e.patient ? e.patient.name : ''; },
-      function(e){ return e.patient ? e.patient.chart_number : ''; });
+      function(e){ return e.patient ? e.patient.chart_number : ''; },
+      null,
+      function(col, e) {
+        if (col === 'nat')  return e.patient ? e.patient.chart_number : '';
+        if (col === 'name') return e.patient ? e.patient.name : '';
+        if (col === 'days') return e.contacted_at || '';
+        if (col === 'due')  return e.due_date || '';
+        if (col === 'note') return e.note || '';
+        return '';
+      });
   }
 
   // ── Optimistic update helpers ─────────────────────────
@@ -499,6 +547,14 @@
     var chip = ev.target.closest('.type-chip'); if (!chip) return;
     _typeFilter = chip.dataset.type;
     document.querySelectorAll('#type-chips .type-chip').forEach(function(c){ c.classList.remove('on'); });
+    chip.classList.add('on');
+    renderAll();
+  });
+
+  document.getElementById('urgency-chips').addEventListener('click', function(ev) {
+    var chip = ev.target.closest('.type-chip'); if (!chip) return;
+    _urgencyFilter = chip.dataset.urgency;
+    document.querySelectorAll('#urgency-chips .type-chip').forEach(function(c){ c.classList.remove('on'); });
     chip.classList.add('on');
     renderAll();
   });
