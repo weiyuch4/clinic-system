@@ -324,6 +324,7 @@ class DoctorNoteRequest(BaseModel):
 class LoginRequest(BaseModel):
     username: str
     password: str
+    remember: bool = False
 
 
 class LoginResponse(BaseModel):

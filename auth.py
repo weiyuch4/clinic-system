@@ -279,8 +279,8 @@ def get_all_users_including_inactive(clinic_id: int) -> list:
 
 # ── JWT tokens ──────────────────────────────────────────────────────────────────
 
-def create_access_token(user_id: int, clinic_id: int, role: str, display_name: str) -> str:
-    exp = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_MINUTES)
+def create_access_token(user_id: int, clinic_id: int, role: str, display_name: str, minutes: int | None = None) -> str:
+    exp = datetime.now(timezone.utc) + timedelta(minutes=minutes if minutes is not None else ACCESS_TOKEN_MINUTES)
     payload = {
         "sub": str(user_id),
         "clinic_id": clinic_id,

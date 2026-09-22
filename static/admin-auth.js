@@ -1,6 +1,5 @@
-/* Admin portal auth — sessionStorage only, zero persistent traces.
-   Replaces auth-client.js on admin pages. The token lives only in
-   sessionStorage: tab/window close clears it automatically. */
+/* Admin portal auth — sessionStorage on desktop (zero persistent traces),
+   localStorage on mobile (30-day token so re-login isn't required each session). */
 (function () {
   'use strict';
 
@@ -8,9 +7,14 @@
   var _orig = window.fetch.bind(window);
   var _authed = false;
 
-  function getToken()    { return sessionStorage.getItem(KEY); }
-  function setToken(t)   { sessionStorage.setItem(KEY, t); }
-  function clearToken()  { sessionStorage.removeItem(KEY); }
+  // Mobile: persist token in localStorage so it survives browser closes.
+  // Desktop: sessionStorage wipes on tab close, keeping the shared PC secure.
+  var _isMobile = /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
+  var _store = _isMobile ? localStorage : sessionStorage;
+
+  function getToken()    { return _store.getItem(KEY); }
+  function setToken(t)   { _store.setItem(KEY, t); }
+  function clearToken()  { _store.removeItem(KEY); }
 
   function decoded(t) {
     try {
@@ -89,7 +93,7 @@
       _orig('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: u, password: pw }),
+        body: JSON.stringify({ username: u, password: pw, remember: _isMobile }),
       }).then(function (r) {
         return r.json().then(function (d) { return { ok: r.ok, data: d }; });
       }).then(function (res) {

@@ -1207,6 +1207,102 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 }
 .sched-fill-btn:hover { background: var(--bg); color: var(--blue); }
 
+/* ── Mobile layout ───────────────────────────────────────────────────────── */
+.mob-adm-tabs { display: none; }
+
+@media (max-width: 767px) {
+  .admsb { display: none !important; }
+  .mob-adm-tabs {
+    display: flex;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    background: var(--surface);
+    border-bottom: 1.5px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    flex-shrink: 0;
+    padding: 0 4px;
+  }
+  .mob-adm-tabs::-webkit-scrollbar { display: none; }
+  .mob-adm-tab {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 13px 14px 11px;
+    font: 600 13px/1 var(--font);
+    color: var(--text-3);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    border-bottom: 2.5px solid transparent;
+    white-space: nowrap;
+    transition: color .12s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mob-adm-tab.active { color: var(--blue); border-bottom-color: var(--blue); }
+  .mob-adm-tab svg { flex-shrink: 0; }
+
+  /* Main layout */
+  .body-row { flex-direction: column; overflow: visible; }
+  .ct { overflow: visible !important; }
+  main { padding: 14px 14px 80px; }
+
+  /* Section max-width: full width on mobile */
+  .section > div[style] { max-width: none !important; }
+
+  /* Section bar wraps on small screens */
+  .section-bar { flex-wrap: wrap; gap: 8px; padding: 10px 14px; }
+
+  /* KPI cards: 2-column */
+  .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+  .kpi-card { padding: 13px 14px 11px; }
+  .kpi-value { font-size: 26px; }
+
+  /* Schedule: one card per row */
+  .sched-cards { grid-template-columns: 1fr !important; gap: 12px; }
+
+  /* Schedule toolbar wraps to two lines */
+  .sched-toolbar { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+  .sched-toolbar .week-picker { flex: 1; min-width: 0; }
+  .sched-toolbar > div:last-child { width: 100%; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Scrollable schedule table inside each nurse card */
+  .sched-mini-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .sched-nurse-card { overflow: visible; }
+
+  /* Bigger touch targets for schedule time buttons */
+  .sched-time-btn { min-height: 44px; min-width: 68px; font-size: 11px; padding: 6px 4px; }
+
+  /* Time-range popover → bottom sheet */
+  .sched-time-popover {
+    position: fixed !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    top: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    border-radius: 18px 18px 0 0;
+    border: none;
+    border-top: 1.5px solid var(--border);
+    max-height: 75vh;
+    overflow-y: auto;
+    padding: 18px 18px calc(env(safe-area-inset-bottom, 0px) + 18px);
+  }
+
+  /* Staff modal: full width on mobile */
+  .sched-staff-modal { width: calc(100vw - 32px); max-width: none; }
+
+  /* Buttons: slightly taller for touch */
+  .btn-sm { padding: 9px 14px; }
+
+  /* Nurse/doctor stats table: horizontal scroll */
+  .tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+}
+
 @media print {
   @page { size: landscape; margin: 10mm; }
 
@@ -1327,6 +1423,28 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   <div class="main" style="display:flex;flex-direction:column">
     <div id="topbar"></div>
     <div class="body-row">
+    <div class="mob-adm-tabs" id="mob-adm-tabs">
+      <button class="mob-adm-tab tab active" data-section="nurses">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        護理師統計
+      </button>
+      <button class="mob-adm-tab tab" data-section="doctors">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        醫師回診率
+      </button>
+      <button class="mob-adm-tab tab" data-section="schedule">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="14" x2="8" y2="14"/><line x1="12" y1="14" x2="12" y2="14"/><line x1="16" y1="14" x2="16" y2="14"/></svg>
+        排班表
+      </button>
+      <button class="mob-adm-tab tab" data-section="announcements">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        公告管理
+      </button>
+      <button class="mob-adm-tab tab" data-section="doctor-notes">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        醫師留言
+      </button>
+    </div>
     <nav class="admsb">
       <div class="admsb-label">統計</div>
       <button class="tab active" data-section="nurses">
@@ -2111,13 +2229,19 @@ document.querySelectorAll('.tab').forEach(btn => {
     document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     btn.classList.add('active');
-    activeSection = btn.dataset.section;
+    // Keep the matching mobile-bar tab in sync
+    const sec = btn.dataset.section;
+    document.querySelectorAll(`.mob-adm-tab[data-section="${sec}"]`).forEach(b => b.classList.add('active'));
+    activeSection = sec;
     $(activeSection).classList.add('active');
     localStorage.setItem('admin_tab', activeSection);
     if (activeSection === 'schedule') {
       $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
     }
     load(activeSection);
+    // Scroll active mobile tab into view
+    const mobTab = document.querySelector(`.mob-adm-tab[data-section="${sec}"]`);
+    if (mobTab) mobTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   };
 });
 
@@ -3446,10 +3570,12 @@ function renderGrid(nurses, pharmacists = []) {
         <span class="card-spacer"></span>
         <span class="sched-total-badge" data-nurse-total="${nurse}">${calcWeeklyHours(nurse).toFixed(2)} 小時</span>
       </div>
-      <table class="sched-mini">
-        <thead><tr><th class="l"></th>${dayHeadCells}</tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
+      <div class="sched-mini-wrap">
+        <table class="sched-mini">
+          <thead><tr><th class="l"></th>${dayHeadCells}</tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
     </div>`;
   }
 
@@ -4898,7 +5024,11 @@ document.getElementById('admin-ct').addEventListener('scroll', () => {
   document.getElementById('back-to-top').classList.toggle('visible', document.getElementById('admin-ct').scrollTop > 300);
 });
 
-const _savedAdminTab = localStorage.getItem('admin_tab');
+const _MOB_SECTIONS = new Set(['nurses', 'doctors', 'schedule', 'announcements', 'doctor-notes']);
+const _isMobView = window.innerWidth < 768;
+let _savedAdminTab = localStorage.getItem('admin_tab');
+// On mobile, fall back to 'nurses' if saved tab isn't in the mobile section set
+if (_isMobView && _savedAdminTab && !_MOB_SECTIONS.has(_savedAdminTab)) _savedAdminTab = 'nurses';
 if (_savedAdminTab && $(_savedAdminTab)) {
   document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.section === _savedAdminTab));
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
