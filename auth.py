@@ -376,7 +376,7 @@ class CurrentUser:
         self.display_name = display_name
 
 
-def get_current_user(
+async def get_current_user(
     creds: Optional[HTTPAuthorizationCredentials] = Depends(_bearer),
 ) -> CurrentUser:
     if not creds:

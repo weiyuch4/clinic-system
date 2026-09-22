@@ -1604,9 +1604,9 @@ def mark_excluded(req: ExcludeRequest, user: auth.CurrentUser = Depends(auth.get
     try:
         contacts.mark_excluded(req.entry, req.reason, req.note, req.nurse, user.clinic_id)
         _invalidate_report_cache(user.clinic_id)
-    except Exception:
+    except Exception as exc:
         logger.exception("mark_excluded failed for %s", req.entry.patient.chart_number)
-        raise HTTPException(status_code=500, detail="排除記錄儲存失敗，請稍後再試")
+        raise HTTPException(status_code=500, detail=f"排除記錄儲存失敗 [{type(exc).__name__}]，請稍後再試")
 
 
 @app.patch("/api/excluded")
