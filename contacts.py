@@ -1137,7 +1137,7 @@ def mark_excluded(entry: FollowupEntry, reason: str, note: str = '', nurse: str 
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """INSERT INTO excluded
+                """INSERT INTO excluded AS ex
                    (chart_number, category, name, birth_date, mspt_stage, due_date,
                     last_visit_date, last_stage, reason, note, excluded_at, nurse, clinic_id)
                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
@@ -1194,7 +1194,7 @@ def update_excluded_reason(
             if cur.rowcount == 0:
                 # Auto-excluded entry (computed from contacts table) — insert a manual record
                 cur.execute(
-                    """INSERT INTO excluded (chart_number, category, name, birth_date, reason, note, excluded_at, nurse, clinic_id)
+                    """INSERT INTO excluded AS ex (chart_number, category, name, birth_date, reason, note, excluded_at, nurse, clinic_id)
                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                        ON CONFLICT (chart_number, category) DO UPDATE SET
                            reason=EXCLUDED.reason, note=EXCLUDED.note, nurse=EXCLUDED.nurse""",
