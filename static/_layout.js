@@ -98,6 +98,9 @@
   ];
   if (_role === 'admin') {
     MOBILE_NAV.splice(3, 0, { id: 'admin', label: '後台', href: '/admin' });
+    // Admin doesn't use the nurse selector; point 我的 to settings instead
+    var meIdx = MOBILE_NAV.findIndex(function (n) { return n.id === 'me'; });
+    if (meIdx !== -1) MOBILE_NAV[meIdx] = { id: 'me', label: '我的', href: '/change-password' };
   }
 
   // ── Private state ────────────────────────────────────
@@ -755,22 +758,27 @@
         '</div>' +
         '<button class="ib" id="btn-theme" title="切換深色模式">' + ICONS.moon + '</button>' +
         '<button class="ib" id="btn-refresh" title="重新整理">' + ICONS.refresh + '</button>' +
-        '<div class="nurse-wrap" id="nurse-wrap">' +
-          '<button class="nurse-btn" id="nurse-btn" type="button">' +
-            '<div class="av" id="nurse-av">?</div>' +
-            '<span class="nurse-lbl" id="nurse-lbl">選擇護理師</span>' +
-            '<svg class="nurse-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
-          '</button>' +
-          '<div class="nurse-dd" id="nurse-dd">' +
-            '<div class="nurse-dd-hd">值班護理師</div>' +
-            '<div class="nurse-opts" id="nurse-opts"></div>' +
-            '<div class="nurse-dd-sep"></div>' +
-            '<button class="nurse-change-pin" id="nurse-change-pin" type="button" style="display:none">更改我的 PIN</button>' +
-            '<button class="nurse-clear" id="nurse-clear" type="button">清除選擇</button>' +
-            '<div class="nurse-dd-sep"></div>' +
-            '<button class="nurse-logout" id="nurse-logout" type="button">登出</button>' +
-          '</div>' +
-        '</div>' +
+        (_role === 'admin' ?
+          '<button class="ib" id="btn-logout" title="登出" onclick="(function(){fetch(\'/auth/logout\',{method:\'POST\',credentials:\'include\'});localStorage.removeItem(\'clinic_token\');location.href=\'/login\';})()"><svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\'><path d=\'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\'/><polyline points=\'16 17 21 12 16 7\'/><line x1=\'21\' y1=\'12\' x2=\'9\' y2=\'12\'/></svg></button>'
+        : '') +
+        (_role !== 'admin' ?
+          '<div class="nurse-wrap" id="nurse-wrap">' +
+            '<button class="nurse-btn" id="nurse-btn" type="button">' +
+              '<div class="av" id="nurse-av">?</div>' +
+              '<span class="nurse-lbl" id="nurse-lbl">選擇護理師</span>' +
+              '<svg class="nurse-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>' +
+            '</button>' +
+            '<div class="nurse-dd" id="nurse-dd">' +
+              '<div class="nurse-dd-hd">值班護理師</div>' +
+              '<div class="nurse-opts" id="nurse-opts"></div>' +
+              '<div class="nurse-dd-sep"></div>' +
+              '<button class="nurse-change-pin" id="nurse-change-pin" type="button" style="display:none">更改我的 PIN</button>' +
+              '<button class="nurse-clear" id="nurse-clear" type="button">清除選擇</button>' +
+              '<div class="nurse-dd-sep"></div>' +
+              '<button class="nurse-logout" id="nurse-logout" type="button">登出</button>' +
+            '</div>' +
+          '</div>'
+        : '') +
       '</div>';
 
     var btn = document.getElementById('btn-refresh');

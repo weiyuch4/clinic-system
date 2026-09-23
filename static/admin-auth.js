@@ -35,6 +35,19 @@
     }
   }
 
+  // Fallback: if the main app has an admin-role token, use it so the
+  // user doesn't need to log in twice when navigating here from the main app.
+  if (!_authed) {
+    var mainToken = localStorage.getItem('clinic_token');
+    if (mainToken) {
+      var mp = decoded(mainToken);
+      if (mp && mp.role === 'admin' && mp.exp * 1000 > Date.now()) {
+        setToken(mainToken);
+        _authed = true;
+      }
+    }
+  }
+
   // Patch window.fetch: inject admin token on all /api/* calls
   window.fetch = function (url, opts) {
     opts = opts || {};
