@@ -665,8 +665,6 @@
       document.body.classList.add('nurse-sheet-open');
     };
   }
-  Layout._openAdminMenu = function () {}; // stub until init runs
-
   // ── Topbar ───────────────────────────────────────────
   var _MOB_TITLES = {
     schedule: '排班表', 'nurse-ot': '加班紀錄', notes: '備忘錄',
