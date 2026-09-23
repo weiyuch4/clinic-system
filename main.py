@@ -1589,13 +1589,26 @@ def mspt_phone_complete(req: NurseEntryRequest, user: auth.CurrentUser = Depends
 
 @app.post("/api/mspt-blood-invalid")
 def mspt_blood_invalid(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
-    """Clear blood-used record so patient returns to 需回診 (blood draw result was invalid/unusable)."""
+    """Mark a blood draw as invalid so the patient returns to 需回診.
+
+    Two cases:
+    - Manual blood_used entry only: clear it so the date is no longer recorded.
+    - BIO-file draw (blood_draw_date set on entry): insert that date into mspt_blood_used
+      so it appears in used_dates and is excluded from future blood searches, making
+      needs_blood_test=True again for stages that require a fresh draw.
+    Also evicts the entry from _blood_status_cache so the next API call recomputes
+    rather than returning the stale cached result.
+    """
     try:
-        contacts.clear_mspt_blood_used(
-            req.entry.patient.chart_number,
-            req.entry.mspt_stage,
-            user.clinic_id,
-        )
+        nat_id = req.entry.patient.chart_number
+        stage  = req.entry.mspt_stage
+        if req.entry.blood_draw_date:
+            # Mark the BIO draw date as excluded by recording it as "used"
+            contacts.record_mspt_blood_used(nat_id, stage, req.entry.blood_draw_date, user.clinic_id)
+        else:
+            contacts.clear_mspt_blood_used(nat_id, stage, user.clinic_id)
+        # Evict the cached blood status so the next request recomputes from DB
+        database._blood_status_cache.pop(f"{nat_id}:{stage}", None)
         _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("mspt_blood_invalid failed for %s", req.entry.patient.chart_number)
