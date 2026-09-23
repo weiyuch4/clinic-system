@@ -1872,12 +1872,14 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
                     'endoscopy_codes': list(endo),
                 }
 
+        phone_idx = _get_patdb_phone_index()
         patients = [
             {
                 **info,
                 'is_allergy': all(_nhi.is_allergy_code(c) for c in info['draw_codes']),
                 'draw_code_names': [_nhi.CODE_NAMES_EN.get(c) or _nhi.CODE_NAMES.get(c, c) for c in info['draw_codes']],
                 'is_endoscopy': bool(info['endoscopy_codes']),
+                'phone': phone_idx.get(info['nat_id'], ''),
             }
             for info in sorted(by_nat_id.values(), key=lambda p: p['name'])
             if (info['nat_id'], draw_date.isoformat()) not in dismissed
