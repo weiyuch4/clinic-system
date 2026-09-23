@@ -137,8 +137,9 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .nurse-opt.sel .nurse-chk{opacity:1}
 .nurse-pin-icon{width:16px;height:16px;display:flex;align-items:center;color:var(--muted);flex-shrink:0}
 .nurse-dd-sep{height:1px;background:var(--border);margin:5px 0}
-.nurse-clear,.nurse-change-pin{display:flex;align-items:center;justify-content:center;width:100%;padding:9px 14px;font-size:12.5px;color:var(--muted);cursor:pointer;border:none;background:transparent;transition:color .1s;font-family:inherit}
+.nurse-clear,.nurse-change-pin,.nurse-logout{display:flex;align-items:center;justify-content:center;width:100%;padding:9px 14px;font-size:12.5px;color:var(--muted);cursor:pointer;border:none;background:transparent;transition:color .1s;font-family:inherit}
 .nurse-clear:hover,.nurse-change-pin:hover{color:var(--text)}
+.nurse-logout{color:#c0392b}.nurse-logout:hover{color:#e74c3c}
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]) .nurse-dd{box-shadow:0 8px 28px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.22)}}
 :root[data-theme=dark] .nurse-dd{box-shadow:0 8px 28px rgba(0,0,0,.45),0 2px 6px rgba(0,0,0,.22)}
 
@@ -565,7 +566,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .nurse-opts{padding:0 10px!important}
   .nurse-opt{padding:12px 10px!important;font-size:15px!important}
   .nurse-opt-av{width:34px!important;height:34px!important;font-size:14px!important}
-  .nurse-clear,.nurse-change-pin{font-size:14px!important;padding:12px 20px!important}
+  .nurse-clear,.nurse-change-pin,.nurse-logout{font-size:14px!important;padding:12px 20px!important}
   .nurse-dd.open{transform:translateY(0);pointer-events:auto!important}
   /* Backdrop */
   .nurse-sheet-bd{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:499;opacity:0;transition:opacity .25s;pointer-events:none}

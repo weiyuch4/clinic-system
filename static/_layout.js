@@ -429,6 +429,13 @@
           _openChangePinModal(_nurse);
         });
       }
+
+      var logoutBtn = document.getElementById('nurse-logout');
+      if (logoutBtn) {
+        logoutBtn.addEventListener('click', function () {
+          if (window.clinicAuth) window.clinicAuth.logout();
+        });
+      }
     }).catch(function (e) {
       console.error('Failed to load nurse list:', e);
     });
@@ -758,6 +765,8 @@
             '<div class="nurse-dd-sep"></div>' +
             '<button class="nurse-change-pin" id="nurse-change-pin" type="button" style="display:none">更改我的 PIN</button>' +
             '<button class="nurse-clear" id="nurse-clear" type="button">清除選擇</button>' +
+            '<div class="nurse-dd-sep"></div>' +
+            '<button class="nurse-logout" id="nurse-logout" type="button">登出</button>' +
           '</div>' +
         '</div>' +
       '</div>';
