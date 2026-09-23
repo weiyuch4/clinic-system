@@ -433,7 +433,9 @@
       var logoutBtn = document.getElementById('nurse-logout');
       if (logoutBtn) {
         logoutBtn.addEventListener('click', function () {
-          if (window.clinicAuth) window.clinicAuth.logout();
+          fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+          localStorage.removeItem('clinic_token');
+          location.href = '/login';
         });
       }
     }).catch(function (e) {
