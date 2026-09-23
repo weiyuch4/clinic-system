@@ -1352,6 +1352,9 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
   /* ── back-to-top: keep above any safe-area ───────────────────────────── */
   #back-to-top { bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); right: 16px; }
+
+  /* ── ct padding: restore bottom clearance for fixed nav ─────────────── */
+  #admin-ct { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important; }
 }
 
 @media print {
@@ -2177,7 +2180,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 <script>
 'use strict';
 
-Layout.init({ activePage: '' });
+Layout.init({ activePage: 'admin' });
 
 // ── Admin topbar (replaces standard nurse topbar) ─────────────────────────────
 (function() {
