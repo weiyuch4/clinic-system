@@ -1840,13 +1840,18 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
         if not visits:
             continue
 
-        # Lab codes per CODE_F (skip draft visits with empty FEE — billing not finalized)
+        # Lab and endoscopy codes per CODE_F (skip drafts with empty FEE)
         cf_codes: dict[str, list[str]] = {}
+        cf_endo:  dict[str, list[str]] = {}
         for r in _parse_dbf_cached(ic_p):
             cf   = r.get('CODE_F',  '').strip()
             drug = r.get('DRUG_NO', '').strip()
-            if cf in visits and cf_fee.get(cf) and _is_lab_order(drug, lab_code_set):
+            if not (cf in visits and cf_fee.get(cf)):
+                continue
+            if _is_lab_order(drug, lab_code_set):
                 cf_codes.setdefault(cf, []).append(drug)
+            elif drug.startswith('28'):
+                cf_endo.setdefault(cf, []).append(drug)
 
         # Merge multiple visits on same day for the same patient
         by_nat_id: dict[str, dict] = {}
@@ -1855,16 +1860,24 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
             if not codes:
                 continue
             nat_id = info['nat_id']
+            endo   = cf_endo.get(cf, [])
             if nat_id in by_nat_id:
                 by_nat_id[nat_id]['draw_codes'].extend(codes)
+                by_nat_id[nat_id]['endoscopy_codes'].extend(endo)
             else:
-                by_nat_id[nat_id] = {'name': info['name'], 'nat_id': nat_id, 'birth_date': info.get('birth_date'), 'draw_codes': list(codes)}
+                by_nat_id[nat_id] = {
+                    'name': info['name'], 'nat_id': nat_id,
+                    'birth_date': info.get('birth_date'),
+                    'draw_codes': list(codes),
+                    'endoscopy_codes': list(endo),
+                }
 
         patients = [
             {
                 **info,
                 'is_allergy': all(_nhi.is_allergy_code(c) for c in info['draw_codes']),
                 'draw_code_names': [_nhi.CODE_NAMES_EN.get(c) or _nhi.CODE_NAMES.get(c, c) for c in info['draw_codes']],
+                'is_endoscopy': bool(info['endoscopy_codes']),
             }
             for info in sorted(by_nat_id.values(), key=lambda p: p['name'])
             if (info['nat_id'], draw_date.isoformat()) not in dismissed

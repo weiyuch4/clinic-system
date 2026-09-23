@@ -51,6 +51,9 @@
 .allergy-chip{background:#FFE4E6;color:#9F1239;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .allergy-chip{background:#2A0A0F;color:#FCA5A5}}
 :root[data-theme="dark"] .allergy-chip{background:#2A0A0F;color:#FCA5A5}
+.endo-chip{background:#E0F2FE;color:#0369A1;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .endo-chip{background:#082F49;color:#7DD3FC}}
+:root[data-theme="dark"] .endo-chip{background:#082F49;color:#7DD3FC}
 
 /* ── right side: status + action ────────────────────────────────── */
 .lab-right{margin-left:auto;display:flex;align-items:center;gap:8px;flex-shrink:0}
@@ -218,19 +221,24 @@
     var needsNotify = 0;
     days.forEach(function (d) {
       (d.patients || []).forEach(function (p) {
-        if (p.results_back && !p.notified) needsNotify++;
+        if (!p.is_endoscopy && p.results_back && !p.notified) needsNotify++;
       });
     });
 
     document.getElementById('page-date').textContent =
       needsNotify > 0 ? '待通知：' + needsNotify + ' 人' : '外送抽血結果追蹤';
 
-    if (!days.length || days.every(function (d) { return !(d.patients || []).length; })) {
+    // Exclude endoscopy patients — they show in 實體報告
+    var filteredDays = days.map(function (d) {
+      return { date: d.date, patients: (d.patients || []).filter(function (p) { return !p.is_endoscopy; }) };
+    });
+
+    if (!filteredDays.length || filteredDays.every(function (d) { return !d.patients.length; })) {
       container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">近期無外送抽血記錄</div>';
       return;
     }
 
-    container.innerHTML = days.map(function (day) {
+    container.innerHTML = filteredDays.map(function (day) {
       var pts = day.patients || [];
       if (!pts.length) return '';
 
@@ -294,11 +302,31 @@
   // ── Physical tab render ───────────────────────────────────────────
 
   function renderPhysical(items) {
+    // Merge DB-stored physical items with endoscopy patients from pending data
+    var endoItems = [];
+    _days.forEach(function (day) {
+      (day.patients || []).forEach(function (p) {
+        if (!p.is_endoscopy) return;
+        // Avoid duplication if already in physical list
+        var alreadyPhys = items.some(function (i) { return i.nat_id === p.nat_id && i.draw_date === day.date; });
+        if (!alreadyPhys) {
+          endoItems.push({
+            nat_id: p.nat_id, name: p.name, draw_date: day.date,
+            draw_codes: JSON.stringify(p.draw_codes || []),
+            draw_code_names: JSON.stringify(p.draw_code_names || []),
+            endoscopy_codes: p.endoscopy_codes || [],
+            _is_endoscopy: true,
+          });
+        }
+      });
+    });
+    var allItems = items.concat(endoItems);
+
     var container = document.getElementById('phys-list');
     var badge = document.getElementById('phys-badge');
 
-    if (items.length) {
-      badge.textContent = items.length;
+    if (allItems.length) {
+      badge.textContent = allItems.length;
       badge.style.display = 'inline';
       badge.style.background = '#EDE9FE';
       badge.style.color = '#6D28D9';
@@ -311,7 +339,7 @@
       badge.style.display = 'none';
     }
 
-    if (!items.length) {
+    if (!allItems.length) {
       container.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">目前無等待實體報告的患者</div>';
       return;
     }
@@ -319,7 +347,7 @@
     // Group by draw_date
     var byDate = {};
     var dateOrder = [];
-    items.forEach(function (item) {
+    allItems.forEach(function (item) {
       if (!byDate[item.draw_date]) { byDate[item.draw_date] = []; dateOrder.push(item.draw_date); }
       byDate[item.draw_date].push(item);
     });
@@ -335,10 +363,12 @@
         pts.map(function (item) {
           var daysWaiting = daysSince(item.draw_date);
           var daysLabel = daysWaiting === 0 ? '今天抽血' : '等待 ' + daysWaiting + ' 天';
+          var endoTag = item._is_endoscopy ? '<span class="endo-chip">胃/大腸鏡</span>' : '';
           return '<div class="phys-row">' +
             '<div class="lab-pt"><span class="lab-name">' + L.escHtml(item.name || item.nat_id) + '</span>' +
               '<div class="lab-meta"><span class="pr-copy" data-copy="' + L.escHtml(item.nat_id) + '" title="點擊複製">' + L.escHtml(item.nat_id) + '</span></div>' +
             '</div>' +
+            endoTag +
             (function () {
               var pcodes = []; try { pcodes = JSON.parse(item.draw_codes || '[]'); } catch(e) {}
               var pnames = []; try { pnames = JSON.parse(item.draw_code_names || '[]'); } catch(e) {}
@@ -348,8 +378,8 @@
               return '<div class="lab-codes">' + pChips + '<span class="phys-days">' + L.escHtml(daysLabel) + '</span></div>';
             }()) +
             '<div class="lab-right">' +
-              '<button class="lab-btn lab-btn-undo" data-action="phys-back" data-nat="' + L.escHtml(item.nat_id) + '" data-date="' + L.escHtml(item.draw_date) + '" title="移回數位追蹤">移回</button>' +
-              '<button class="lab-btn lab-btn-done" data-action="phys-done" data-nat="' + L.escHtml(item.nat_id) + '" data-date="' + L.escHtml(item.draw_date) + '" data-name="' + L.escHtml(item.name || '') + '">已通知病患</button>' +
+              (item._is_endoscopy ? '' : '<button class="lab-btn lab-btn-undo" data-action="phys-back" data-nat="' + L.escHtml(item.nat_id) + '" data-date="' + L.escHtml(item.draw_date) + '" title="移回數位追蹤">移回</button>') +
+              '<button class="lab-btn lab-btn-done" data-action="phys-done" data-nat="' + L.escHtml(item.nat_id) + '" data-date="' + L.escHtml(item.draw_date) + '" data-name="' + L.escHtml(item.name || '') + '" data-endo="' + (item._is_endoscopy ? '1' : '') + '">已通知病患</button>' +
             '</div>' +
           '</div>';
         }).join('') +
@@ -442,6 +472,23 @@
     }
 
     if (action === 'phys-done') {
+      if (btn.dataset.endo === '1') {
+        // Endoscopy patient: mark via blood-notified, update _days
+        L.apiAction('POST', '/api/blood-notified', { nat_id: nat, draw_date: drawDate, nurse: L.getNurse() })
+          .then(function () {
+            _days.forEach(function (d) {
+              if (d.date !== drawDate) return;
+              (d.patients || []).forEach(function (p) { if (p.nat_id === nat) p.notified = true; });
+            });
+            renderPhysical(_physical);
+            L.showToast('已標記完成，病患已通知');
+          })
+          .catch(function (e) {
+            L.showToast('操作失敗：' + (e.message || ''), 'error');
+            btn.disabled = false;
+          });
+        return;
+      }
       L.apiAction('POST', '/api/blood-physical/done', { nat_id: nat, draw_date: drawDate, name: name, nurse: L.getNurse() })
         .then(function () {
           _physical = _physical.filter(function (i) { return !(i.nat_id === nat && i.draw_date === drawDate); });
