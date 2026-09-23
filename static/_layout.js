@@ -98,9 +98,7 @@
   ];
   if (_role === 'admin') {
     MOBILE_NAV.splice(3, 0, { id: 'admin', label: '後台', href: '/admin' });
-    // Admin doesn't use the nurse selector; point 我的 to settings instead
-    var meIdx = MOBILE_NAV.findIndex(function (n) { return n.id === 'me'; });
-    if (meIdx !== -1) MOBILE_NAV[meIdx] = { id: 'me', label: '我的', href: '/change-password' };
+    // me item stays href: null — rendered as a logout-only dropdown for admin
   }
 
   // ── Private state ────────────────────────────────────
@@ -611,7 +609,11 @@
         var cls = 'mn-item' + (isActive ? ' on' : '');
         var inner = '<span class="mn-ic">' + (ICONS[item.id] || '') + '</span>';
         if (item.href === null) {
-          // "我的" shows nurse avatar and opens the nurse selector dropdown
+          if (_role === 'admin') {
+            // Admin: person icon opens a logout-only account menu
+            return '<button type="button" class="' + cls + '" onclick="event.stopPropagation();Layout._openAdminMenu()">' + inner + '</button>';
+          }
+          // Nurse: avatar opens the nurse selector dropdown
           var avChar = _nurse ? _nurse.slice(-1) : '?';
           var avInner = '<span class="mn-ic"><div class="av" id="mob-nurse-av">' + avChar + '</div></span>';
           return '<button type="button" class="' + cls + '" onclick="event.stopPropagation();Layout.openNurseSelector()">' + avInner + '</button>';
@@ -621,6 +623,49 @@
     '</div>';
     document.body.appendChild(nav);
   }
+
+  // ── Admin mobile account menu ────────────────────────
+  function _initAdminMobileMenu() {
+    if (_role !== 'admin') return;
+
+    var backdrop = document.createElement('div');
+    backdrop.className = 'nurse-sheet-bd';
+    backdrop.id = 'adm-acct-bd';
+    document.body.appendChild(backdrop);
+
+    var dd = document.createElement('div');
+    dd.id = 'adm-acct-dd';
+    dd.className = 'nurse-dd';
+    dd.innerHTML =
+      '<div class="nurse-dd-hd">帳號</div>' +
+      '<div class="nurse-dd-sep"></div>' +
+      '<button class="nurse-logout" id="adm-acct-logout" type="button">登出</button>';
+    document.body.appendChild(dd);
+
+    function closeMenu() {
+      dd.classList.remove('open');
+      backdrop.classList.remove('show');
+      document.body.classList.remove('nurse-sheet-open');
+    }
+    backdrop.addEventListener('click', closeMenu);
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
+
+    var logoutBtn = document.getElementById('adm-acct-logout');
+    if (logoutBtn) {
+      logoutBtn.addEventListener('click', function () {
+        fetch('/auth/logout', { method: 'POST', credentials: 'include' });
+        localStorage.removeItem('clinic_token');
+        location.href = '/login';
+      });
+    }
+
+    Layout._openAdminMenu = function () {
+      dd.classList.add('open');
+      backdrop.classList.add('show');
+      document.body.classList.add('nurse-sheet-open');
+    };
+  }
+  Layout._openAdminMenu = function () {}; // stub until init runs
 
   // ── Topbar ───────────────────────────────────────────
   var _MOB_TITLES = {
@@ -1387,6 +1432,7 @@
     _renderTopbar();
     _injectPinModal();
     _initNurseSelector();
+    _initAdminMobileMenu();
     loadShiftSidebar();
     if (_onRefresh) {
       document.addEventListener('visibilitychange', function () {
