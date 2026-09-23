@@ -1177,6 +1177,7 @@ def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = 
             settings = contacts.get_clinic_settings(user.clinic_id)
             grace = settings["prescription_grace_days"]
             rows = contacts.get_synced_prescriptions(user.clinic_id)
+            phone_map = contacts.get_candidate_phone_map(user.clinic_id)
             results = []
             for r in rows:
                 due = date.fromisoformat(r['due_date'])
@@ -1185,12 +1186,17 @@ def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = 
                     continue  # past grace period
                 if _PRESCRIPTION_START_DATE and due < _PRESCRIPTION_START_DATE:
                     continue  # pre-adoption prescriptions hidden for this clinic
+                ph, mob = phone_map.get(r['nat_id'], ('', ''))
                 results.append({
                     **r,
                     'days_until_due': days_until_due,
+                    'phone': ph,
+                    'mobile': mob,
                 })
             return sorted(results, key=lambda e: e['days_until_due'])
-        return database._query_all_prescriptions(as_of)
+        phone_idx = database._get_patdb_phone_index()
+        return [{**r, 'phone': phone_idx.get(r['nat_id'], ''), 'mobile': ''}
+                for r in database._query_all_prescriptions(as_of)]
     except Exception as exc:
         logger.exception("get_prescriptions failed: %s", exc)
         raise HTTPException(status_code=500, detail="資料載入失敗，請稍後再試")

@@ -2863,6 +2863,18 @@ def update_clinic_settings(updates: dict, clinic_id: int = 1) -> dict:
     return merged
 
 
+def get_candidate_phone_map(clinic_id: int = 1) -> dict[str, tuple[str, str]]:
+    """Return {chart_number: (phone, mobile)} from synced_candidates for phone enrichment."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT chart_number, phone, mobile FROM synced_candidates WHERE clinic_id = %s",
+                (clinic_id,),
+            )
+            return {r['chart_number']: (r.get('phone', '') or '', r.get('mobile', '') or '')
+                    for r in cur.fetchall()}
+
+
 def get_synced_prescriptions(clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
         with conn.cursor() as cur:
