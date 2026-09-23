@@ -1209,6 +1209,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
 /* ── Mobile layout ───────────────────────────────────────────────────────── */
 .mob-adm-nav { display: none; }
+@keyframes secMenu-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
 
 @media (max-width: 767px) {
   /* ── Hide desktop sidebar ───────────────────────────────────────────── */
@@ -1237,38 +1238,60 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
     z-index: 200;
   }
 
-  /* ── Tab strip — text-only, indicator line (YouTube / Google style) ─── */
-  .mob-adm-tabs {
-    display: flex;
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch;
-    scrollbar-width: none;
-    padding: 0 4px;
-    align-items: stretch;
-    flex-shrink: 0;
-  }
-  .mob-adm-tabs::-webkit-scrollbar { display: none; }
-  .mob-adm-tab {
-    flex-shrink: 0;
+  /* ── Section dropdown picker ─────────────────────────────────────────── */
+  .adm-sec-picker { padding: 8px 14px; position: relative; }
+  .adm-sec-btn {
     display: flex;
     align-items: center;
-    justify-content: center;
-    padding: 0 18px;
-    height: 46px;
-    font: 500 13.5px/1 var(--font);
-    color: var(--text-2);
-    border: none;
-    background: transparent;
+    justify-content: space-between;
+    width: 100%;
+    padding: 10px 14px;
+    background: var(--bg);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font: 700 14px/1 var(--font);
+    color: var(--text-1);
     cursor: pointer;
-    border-bottom: 2px solid transparent;
-    white-space: nowrap;
-    transition: color .15s, border-color .15s;
     -webkit-tap-highlight-color: transparent;
-    letter-spacing: .01em;
+    text-align: left;
+    transition: border-color .15s;
   }
-  .mob-adm-tab.active { color: var(--blue); font-weight: 700; border-bottom-color: var(--blue); }
-  /* hide any icons left in the buttons — text only on mobile */
-  .mob-adm-tab svg { display: none; }
+  .adm-sec-btn.open { border-color: var(--blue); }
+  .adm-sec-btn svg { flex-shrink: 0; color: var(--text-3); transition: transform .2s; }
+  .adm-sec-btn.open svg { transform: rotate(180deg); }
+  .adm-sec-menu {
+    display: none;
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    top: 100%;
+    margin-top: 2px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0,0,0,.14);
+    z-index: 500;
+    overflow: hidden;
+    animation: secMenu-in .12s ease;
+  }
+  .adm-sec-menu.open { display: block; }
+  .adm-sec-opt {
+    display: block;
+    width: 100%;
+    padding: 13px 16px;
+    text-align: left;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    background: transparent;
+    font: 500 14px/1.2 var(--font);
+    color: var(--text-2);
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .1s, color .1s;
+  }
+  .adm-sec-opt:last-child { border-bottom: none; }
+  .adm-sec-opt.active { color: var(--blue); font-weight: 700; background: var(--blue-bg); }
+  .adm-sec-opt:not(.active):active { background: var(--bg); }
 
   /* ── KPI cards: 2-column ─────────────────────────────────────────────── */
   .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
@@ -1427,7 +1450,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .modal-overlay.closing > * { animation:modal-out .14s ease-in forwards; }
 </style>
 <script src="/static/_layout.js?v=61"></script>
-<script src="/static/admin-auth.js?v=4"></script>
+<script src="/static/admin-auth.js?v=5"></script>
 </head>
 <body>
 
@@ -1452,12 +1475,18 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
     <div id="topbar"></div>
     <div class="body-row">
     <div class="mob-adm-nav">
-      <div class="mob-adm-tabs" id="mob-adm-tabs">
-        <button class="mob-adm-tab tab active" data-section="nurses">護理師統計</button>
-        <button class="mob-adm-tab tab" data-section="doctors">醫師回診率</button>
-        <button class="mob-adm-tab tab" data-section="schedule">排班表</button>
-        <button class="mob-adm-tab tab" data-section="announcements">公告管理</button>
-        <button class="mob-adm-tab tab" data-section="doctor-notes">醫師留言</button>
+      <div class="adm-sec-picker">
+        <button class="adm-sec-btn" id="adm-sec-btn" type="button">
+          <span id="adm-sec-label">護理師統計</span>
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="adm-sec-menu" id="adm-sec-menu">
+          <button class="adm-sec-opt tab active" data-section="nurses" data-label="護理師統計">護理師統計</button>
+          <button class="adm-sec-opt tab" data-section="doctors" data-label="醫師回診率">醫師回診率</button>
+          <button class="adm-sec-opt tab" data-section="schedule" data-label="排班表">排班表</button>
+          <button class="adm-sec-opt tab" data-section="announcements" data-label="公告管理">公告管理</button>
+          <button class="adm-sec-opt tab" data-section="doctor-notes" data-label="醫師留言">醫師留言</button>
+        </div>
       </div>
     </div>
     <nav class="admsb">
@@ -2244,9 +2273,15 @@ document.querySelectorAll('.tab').forEach(btn => {
     document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
     document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
     btn.classList.add('active');
-    // Keep the matching mobile-bar tab in sync
     const sec = btn.dataset.section;
-    document.querySelectorAll(`.mob-adm-tab[data-section="${sec}"]`).forEach(b => b.classList.add('active'));
+    // Update mobile dropdown label
+    const lbl = document.getElementById('adm-sec-label');
+    if (lbl && btn.dataset.label) lbl.textContent = btn.dataset.label;
+    // Close mobile dropdown
+    const menu = document.getElementById('adm-sec-menu');
+    const sbtn = document.getElementById('adm-sec-btn');
+    if (menu) menu.classList.remove('open');
+    if (sbtn) sbtn.classList.remove('open');
     activeSection = sec;
     $(activeSection).classList.add('active');
     localStorage.setItem('admin_tab', activeSection);
@@ -2254,11 +2289,25 @@ document.querySelectorAll('.tab').forEach(btn => {
       $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
     }
     load(activeSection);
-    // Scroll active mobile tab into view
-    const mobTab = document.querySelector(`.mob-adm-tab[data-section="${sec}"]`);
-    if (mobTab) mobTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
   };
 });
+
+// ── Mobile section picker dropdown ────────────────────────────────────────────
+(function() {
+  var sbtn = document.getElementById('adm-sec-btn');
+  var menu = document.getElementById('adm-sec-menu');
+  if (!sbtn || !menu) return;
+  sbtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var open = menu.classList.toggle('open');
+    sbtn.classList.toggle('open', open);
+  });
+  document.addEventListener('click', function() {
+    menu.classList.remove('open');
+    sbtn.classList.remove('open');
+  });
+  menu.addEventListener('click', function(e) { e.stopPropagation(); });
+})();
 
 // ── Nurse constants ───────────────────────────────────────────────────────────
 const COLS = [
@@ -5049,6 +5098,10 @@ if (_savedAdminTab && $(_savedAdminTab)) {
   document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
   $(_savedAdminTab).classList.add('active');
   activeSection = _savedAdminTab;
+  // Restore mobile dropdown label
+  const activeOpt = document.querySelector(`.adm-sec-opt[data-section="${_savedAdminTab}"]`);
+  const lbl = document.getElementById('adm-sec-label');
+  if (activeOpt && lbl) lbl.textContent = activeOpt.dataset.label;
 }
 // ── Lab code settings ─────────────────────────────────────────────────────────
 // ── Lab code settings ─────────────────────────────────────────────────────────
