@@ -115,6 +115,12 @@
 .phys-row:last-child{border-bottom:none}
 .phys-days{font-size:12px;color:#6B7280;font-style:italic}
 
+/* ── 已完成 toggle ───────────────────────────────────────────────── */
+.lab-done-toggle{display:flex;align-items:center;gap:6px;padding:9px 17px;font-size:12px;color:var(--muted);cursor:pointer;border-top:1px solid var(--border);user-select:none}
+.lab-done-toggle:hover{color:var(--text);background:var(--bg)}
+.lab-done-toggle svg{flex-shrink:0;transition:transform .2s}
+.lab-done-toggle.open svg{transform:rotate(180deg)}
+
 /* ── layout ──────────────────────────────────────────────────────── */
 .scroll-area{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
 .lab-section-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em;padding:0 2px;margin-bottom:-4px}
@@ -215,6 +221,43 @@
 
   // ── Digital tab render ────────────────────────────────────────────
 
+  function _renderPatientRow(p, dateStr) {
+    var codes = Array.isArray(p.draw_codes)
+      ? p.draw_codes.map(String).filter(Boolean)
+      : (p.draw_codes || '').split(',').map(function (c) { return c.trim(); }).filter(Boolean);
+    var names = Array.isArray(p.draw_code_names) ? p.draw_code_names : [];
+    var codeHtml = codes.map(function (c, i) {
+      return '<span class="lab-code-chip" title="' + L.escHtml(c) + '">' + L.escHtml(names[i] || c) + '</span>';
+    }).join('');
+    var allergyHtml = p.is_allergy ? '<span class="allergy-chip">過敏</span>' : '';
+    var statusHtml;
+    if (p.notified) {
+      statusHtml = '<div class="lab-notified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已通知</div>';
+    } else if (p.results_back) {
+      statusHtml = '<div class="lab-back"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已出報告</div>';
+    } else if (p.overdue) {
+      statusHtml = '<div class="lab-overdue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>超時待出</div>';
+    } else {
+      statusHtml = '<div class="lab-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>待出報告</div>';
+    }
+    var actionHtml = '';
+    if (!p.notified) {
+      if (!p.results_back) {
+        actionHtml += '<button class="lab-btn lab-btn-physical" data-action="to-physical" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(dateStr) + '" data-name="' + L.escHtml(p.name) + '" title="移至實體報告追蹤">其他檢驗所</button>';
+      }
+      actionHtml += '<button class="lab-btn lab-btn-notify" data-action="notify" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(dateStr) + '">已通知病患</button>';
+    } else {
+      actionHtml += '<button class="lab-btn lab-btn-undo" data-action="undo-notify" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(dateStr) + '">撤銷</button>';
+    }
+    var rowClass = 'lab-row' + (p.results_back && !p.notified ? ' needs-notify' : '');
+    return '<div class="' + rowClass + '">' +
+      '<div class="lab-pt"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + makeMeta(p.nat_id, p.birth_date) + '</div>' +
+      allergyHtml +
+      '<div class="lab-codes">' + codeHtml + '</div>' +
+      '<div class="lab-right">' + statusHtml + actionHtml + '</div>' +
+    '</div>';
+  }
+
   function renderDays(days) {
     var container = document.getElementById('lab-list');
 
@@ -242,61 +285,47 @@
       var pts = day.patients || [];
       if (!pts.length) return '';
 
-      var needNotifyCount = pts.filter(function (p) { return p.results_back && !p.notified; }).length;
-      var overdueCount    = pts.filter(function (p) { return p.overdue; }).length;
+      var activePts = pts.filter(function (p) { return !p.notified; });
+      var donePts   = pts.filter(function (p) { return p.notified; });
+
+      var needNotifyCount = activePts.filter(function (p) { return p.results_back; }).length;
+      var overdueCount    = activePts.filter(function (p) { return p.overdue; }).length;
+      var doneId = 'done-' + day.date.replace(/-/g, '');
+
+      var doneSection = donePts.length
+        ? '<div class="lab-done-toggle" data-done="' + doneId + '">' +
+            '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>' +
+            '已完成 ' + donePts.length + ' 筆' +
+          '</div>' +
+          '<div id="' + doneId + '" style="display:none">' +
+            donePts.map(function (p) { return _renderPatientRow(p, day.date); }).join('') +
+          '</div>'
+        : '';
 
       return '<div class="lab-group">' +
         '<div class="lab-ghead">' +
           '<span class="lab-gdate">抽血日：' + L.escHtml(day.date) + '</span>' +
-          '<span class="lab-gcount">' + pts.length + ' 人</span>' +
-          (overdueCount ? '<span class="lab-goverdue">超時待出 ' + overdueCount + '</span>' : '') +
+          '<span class="lab-gcount">' + activePts.length + ' 人</span>' +
+          (overdueCount    ? '<span class="lab-goverdue">超時待出 ' + overdueCount + '</span>' : '') +
           (needNotifyCount ? '<span class="lab-gnotify">待通知 ' + needNotifyCount + '</span>' : '') +
         '</div>' +
-        pts.map(function (p) {
-          var codes = Array.isArray(p.draw_codes)
-            ? p.draw_codes.map(String).filter(Boolean)
-            : (p.draw_codes || '').split(',').map(function (c) { return c.trim(); }).filter(Boolean);
-          var names = Array.isArray(p.draw_code_names) ? p.draw_code_names : [];
-          var codeHtml = codes.map(function (c, i) {
-            return '<span class="lab-code-chip" title="' + L.escHtml(c) + '">' + L.escHtml(names[i] || c) + '</span>';
-          }).join('');
-
-          var allergyHtml = p.is_allergy ? '<span class="allergy-chip">過敏</span>' : '';
-
-          var statusHtml;
-          if (p.notified) {
-            statusHtml = '<div class="lab-notified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已通知</div>';
-          } else if (p.results_back) {
-            statusHtml = '<div class="lab-back"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已出報告</div>';
-          } else if (p.overdue) {
-            statusHtml = '<div class="lab-overdue"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>超時待出</div>';
-          } else {
-            statusHtml = '<div class="lab-pending"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>待出報告</div>';
-          }
-
-          var actionHtml = '';
-          if (!p.notified) {
-            // 其他檢驗所: only when results haven't arrived digitally yet
-            if (!p.results_back) {
-              actionHtml += '<button class="lab-btn lab-btn-physical" data-action="to-physical" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '" data-name="' + L.escHtml(p.name) + '" title="移至實體報告追蹤">其他檢驗所</button>';
-            }
-            actionHtml += '<button class="lab-btn lab-btn-notify" data-action="notify" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '">已通知病患</button>';
-          } else {
-            actionHtml += '<button class="lab-btn lab-btn-undo" data-action="undo-notify" data-nat="' + L.escHtml(p.nat_id) + '" data-date="' + L.escHtml(day.date) + '">撤銷</button>';
-          }
-
-          var rowClass = 'lab-row' + (p.results_back && !p.notified ? ' needs-notify' : '');
-          return '<div class="' + rowClass + '">' +
-            '<div class="lab-pt"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + makeMeta(p.nat_id, p.birth_date) + '</div>' +
-            allergyHtml +
-            '<div class="lab-codes">' + codeHtml + '</div>' +
-            '<div class="lab-right">' + statusHtml + actionHtml + '</div>' +
-          '</div>';
-        }).join('') +
+        activePts.map(function (p) { return _renderPatientRow(p, day.date); }).join('') +
+        doneSection +
       '</div>';
     }).join('');
 
     bindCopyClicks(container);
+
+    // Toggle 已完成 sections
+    container.querySelectorAll('.lab-done-toggle').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var target = document.getElementById(btn.dataset.done);
+        if (!target) return;
+        var open = target.style.display !== 'none';
+        target.style.display = open ? 'none' : 'block';
+        btn.classList.toggle('open', !open);
+      });
+    });
   }
 
   // ── Physical tab render ───────────────────────────────────────────

@@ -218,8 +218,8 @@ def do_sync() -> None:
                 for p in old_day['patients']:
                     if (p['nat_id'], old_day['date']) in physical_keys:
                         continue  # sent to external lab — tracked on physical tab, not here
-                    if p.get('results_back') and (p['nat_id'], old_day['date']) in notified_keys:
-                        continue  # results back and nurse already notified patient — drop it
+                    if (p['nat_id'], old_day['date']) in notified_keys:
+                        continue  # nurse already notified patient — drop it regardless of results_back
                     if (p['nat_id'], old_day['date']) in already_covered:
                         continue
                     # Check if results arrived since last sync
