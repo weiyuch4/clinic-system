@@ -1370,7 +1370,8 @@
     _onNurseChange = config.onNurseChange || null;
 
     // Mobile: redirect restricted pages before rendering anything
-    if (_isMobile && !MOBILE_ALLOWED[_activePage]) {
+    // Admin bypasses the whitelist — they can access any page they navigate to
+    if (_isMobile && _role !== 'admin' && !MOBILE_ALLOWED[_activePage]) {
       window.location.replace('/schedule');
       return;
     }
