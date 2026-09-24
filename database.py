@@ -1841,8 +1841,9 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
             continue
 
         # Lab and endoscopy codes per CODE_F (skip drafts with empty FEE)
-        cf_codes: dict[str, list[str]] = {}
-        cf_endo:  dict[str, list[str]] = {}
+        cf_codes:  dict[str, list[str]] = {}
+        cf_endo:   dict[str, list[str]] = {}
+        cf_biopsy: set[str] = set()
         for r in _parse_dbf_cached(ic_p):
             cf   = r.get('CODE_F',  '').strip()
             drug = r.get('DRUG_NO', '').strip()
@@ -1852,6 +1853,8 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
                 cf_codes.setdefault(cf, []).append(drug)
             elif drug.startswith('28'):
                 cf_endo.setdefault(cf, []).append(drug)
+            elif drug == '49027C':
+                cf_biopsy.add(cf)
 
         # Merge multiple visits on same day for the same patient
         by_nat_id: dict[str, dict] = {}
@@ -1861,15 +1864,19 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
                 continue
             nat_id = info['nat_id']
             endo   = cf_endo.get(cf, [])
+            is_biopsy_cf = bool(endo) and cf in cf_biopsy
             if nat_id in by_nat_id:
                 by_nat_id[nat_id]['draw_codes'].extend(codes)
                 by_nat_id[nat_id]['endoscopy_codes'].extend(endo)
+                if is_biopsy_cf:
+                    by_nat_id[nat_id]['has_biopsy'] = True
             else:
                 by_nat_id[nat_id] = {
                     'name': info['name'], 'nat_id': nat_id,
                     'birth_date': info.get('birth_date'),
                     'draw_codes': list(codes),
                     'endoscopy_codes': list(endo),
+                    'has_biopsy': is_biopsy_cf,
                 }
 
         phone_idx = _get_patdb_phone_index()
@@ -1879,6 +1886,7 @@ def get_blood_draw_patients(as_of: date, lookback_days: int = 5, clinic_id: int 
                 'is_allergy': all(_nhi.is_allergy_code(c) for c in info['draw_codes']),
                 'draw_code_names': [_nhi.CODE_NAMES_EN.get(c) or _nhi.CODE_NAMES.get(c, c) for c in info['draw_codes']],
                 'is_endoscopy': bool(info['endoscopy_codes']),
+                'has_biopsy': info.get('has_biopsy', False),
                 'phone': phone_idx.get(info['nat_id'], ''),
             }
             for info in sorted(by_nat_id.values(), key=lambda p: p['name'])

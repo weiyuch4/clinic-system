@@ -230,6 +230,7 @@
       return '<span class="lab-code-chip" title="' + L.escHtml(c) + '">' + L.escHtml(names[i] || c) + '</span>';
     }).join('');
     var allergyHtml = p.is_allergy ? '<span class="allergy-chip">過敏</span>' : '';
+    var endoHtml = (p.is_endoscopy && !p.has_biopsy) ? '<span class="endo-chip">胃/大腸鏡</span>' : '';
     var statusHtml;
     if (p.notified) {
       statusHtml = '<div class="lab-notified"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>已通知</div>';
@@ -252,7 +253,7 @@
     var rowClass = 'lab-row' + (p.results_back && !p.notified ? ' needs-notify' : '');
     return '<div class="' + rowClass + '">' +
       '<div class="lab-pt"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + makeMeta(p.nat_id, p.birth_date) + '</div>' +
-      allergyHtml +
+      allergyHtml + endoHtml +
       '<div class="lab-codes">' + codeHtml + '</div>' +
       '<div class="lab-right">' + statusHtml + actionHtml + '</div>' +
     '</div>';
@@ -264,16 +265,16 @@
     var needsNotify = 0;
     days.forEach(function (d) {
       (d.patients || []).forEach(function (p) {
-        if (!p.is_endoscopy && p.results_back && !p.notified) needsNotify++;
+        if (!p.has_biopsy && p.results_back && !p.notified) needsNotify++;
       });
     });
 
     document.getElementById('page-date').textContent =
       needsNotify > 0 ? '待通知：' + needsNotify + ' 人' : '外送抽血結果追蹤';
 
-    // Exclude endoscopy patients — they show in 實體報告
+    // Exclude biopsy patients — they show in 實體報告; endoscopy-only stays here with a chip
     var filteredDays = days.map(function (d) {
-      return { date: d.date, patients: (d.patients || []).filter(function (p) { return !p.is_endoscopy; }) };
+      return { date: d.date, patients: (d.patients || []).filter(function (p) { return !p.has_biopsy; }) };
     });
 
     if (!filteredDays.length || filteredDays.every(function (d) { return !d.patients.length; })) {
@@ -335,7 +336,7 @@
     var endoItems = [];
     _days.forEach(function (day) {
       (day.patients || []).forEach(function (p) {
-        if (!p.is_endoscopy) return;
+        if (!p.has_biopsy) return;
         // Avoid duplication if already in physical list
         var alreadyPhys = items.some(function (i) { return i.nat_id === p.nat_id && i.draw_date === day.date; });
         if (!alreadyPhys) {
@@ -392,7 +393,7 @@
         pts.map(function (item) {
           var daysWaiting = daysSince(item.draw_date);
           var daysLabel = daysWaiting === 0 ? '今天抽血' : '等待 ' + daysWaiting + ' 天';
-          var endoTag = item._is_endoscopy ? '<span class="endo-chip">胃/大腸鏡</span>' : '';
+          var endoTag = item._is_endoscopy ? '<span class="endo-chip">胃/大腸鏡＋切片</span>' : '';
           return '<div class="phys-row">' +
             '<div class="lab-pt"><span class="lab-name">' + L.escHtml(item.name || item.nat_id) + '</span>' +
               '<div class="lab-meta"><span class="pr-copy" data-copy="' + L.escHtml(item.nat_id) + '" title="點擊複製">' + L.escHtml(item.nat_id) + '</span></div>' +
