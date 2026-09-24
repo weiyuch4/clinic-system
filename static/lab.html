@@ -252,7 +252,7 @@
     }
     var rowClass = 'lab-row' + (p.results_back && !p.notified ? ' needs-notify' : '');
     return '<div class="' + rowClass + '">' +
-      '<div class="lab-pt"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + endoHtml + makeMeta(p.nat_id, p.birth_date) + '</div>' +
+      '<div class="lab-pt"><div style="display:flex;align-items:center;gap:5px"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + endoHtml + '</div>' + makeMeta(p.nat_id, p.birth_date) + '</div>' +
       allergyHtml +
       '<div class="lab-codes">' + codeHtml + '</div>' +
       '<div class="lab-right">' + statusHtml + actionHtml + '</div>' +
