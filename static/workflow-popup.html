@@ -243,6 +243,24 @@ function doHold() {
   );
 }
 
+function doNoLine() {
+  var items = currentItems();
+  var item = items[idx];
+  var actEl = document.getElementById('actions');
+  actEl.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+  var errEl = document.createElement('div');
+  errEl.style.cssText = 'color:#dc2626;font-size:12px;padding:4px 12px';
+  apiCall('POST', '/api/on-hold', { entry: item._entry, note: '未加LINE', nurse: NURSE },
+    function() { advance(); },
+    function(e) {
+      actEl.querySelectorAll('button').forEach(function(b){ b.disabled = false; });
+      errEl.textContent = e.message || '操作失敗';
+      actEl.parentNode.insertBefore(errEl, actEl);
+      setTimeout(function(){ errEl.remove(); }, 3000);
+    }
+  );
+}
+
 function doPhoneComplete() {
   var items = currentItems();
   var item = items[idx];
@@ -349,6 +367,7 @@ function render() {
   } else if (MODE === 'prescription') {
     act.innerHTML = prev + skip +
       '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
+      '<button class="btn btn-sec" onclick="doNoLine()" style="background:#f0fdf4;color:#15803d;border:1.5px solid #bbf7d0">未加LINE</button>' +
       '<button class="btn btn-pri" onclick="doContact()">已聯繫</button>';
   } else if (MODE === 'mspt' && (tab === 'return' || tab === 'inactive')) {
     act.innerHTML = prev + skip +
