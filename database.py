@@ -91,7 +91,10 @@ def mspt_blood_status(
         import contacts as _contacts
         _used = _contacts.get_mspt_blood_used(nat_id)
     used = _used
-    used_dates = set(used.values())
+    # Nurse manually waived the blood-test requirement — treat as no blood needed
+    if any(v == 'waived' for v in used.values()):
+        return False, None
+    used_dates = {v for v in used.values() if v != 'waived'}
 
     def _avail() -> str | None:
         if skip_lab:

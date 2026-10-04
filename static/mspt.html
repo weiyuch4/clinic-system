@@ -541,7 +541,10 @@ document.addEventListener('click', function(ev) {
         { label: '已聯繫', cls: 'act-primary', key: 'contact' },
         { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
       ],
-      more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
+      more: [
+        { label: '送去可電話完成', key: 'waive-blood', cls: '' },
+        { label: '排除', key: 'exclude', cls: 'item-danger' },
+      ],
     });
   }
 
@@ -813,6 +816,17 @@ document.addEventListener('click', function(ev) {
         .then(function () {
           L.showToast('已完成，進入可申報佇列');
           _removeFromActive(entry2.patient.chart_number);
+          _refreshBg();
+        })
+        .catch(function (e) { L.showToast('操作失敗：' + (e.message || ''), 'error'); btn.disabled = false; });
+
+    } else if (action === 'waive-blood') {
+      var wEntry = _activeMap[chart]; if (!wEntry) return;
+      btn.disabled = true;
+      L.apiAction('POST', '/api/mspt-waive-blood', { entry: wEntry, nurse: L.getNurse() })
+        .then(function () {
+          L.showToast('已送去可電話完成');
+          _removeFromActive(wEntry.patient.chart_number);
           _refreshBg();
         })
         .catch(function (e) { L.showToast('操作失敗：' + (e.message || ''), 'error'); btn.disabled = false; });

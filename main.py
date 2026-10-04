@@ -1621,6 +1621,22 @@ def mspt_blood_invalid(req: NurseEntryRequest, user: auth.CurrentUser = Depends(
         raise HTTPException(status_code=500, detail="操作失敗，請稍後再試")
 
 
+@app.post("/api/mspt-waive-blood")
+def mspt_waive_blood(req: NurseEntryRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    """Nurse manually overrides: patient does not need a new blood draw.
+    Stores 'waived' sentinel in mspt_blood_used so needs_blood_test returns False,
+    moving them from 需回診 to 可電話完成."""
+    try:
+        nat_id = req.entry.patient.chart_number
+        stage  = req.entry.mspt_stage
+        contacts.record_mspt_blood_used(nat_id, stage, 'waived', user.clinic_id)
+        database._blood_status_cache.pop(f"{nat_id}:{stage}", None)
+        _invalidate_report_cache(user.clinic_id)
+    except Exception:
+        logger.exception("mspt_waive_blood failed for %s", req.entry.patient.chart_number)
+        raise HTTPException(status_code=500, detail="操作失敗，請稍後再試")
+
+
 @app.post("/api/excluded")
 def mark_excluded(req: ExcludeRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
