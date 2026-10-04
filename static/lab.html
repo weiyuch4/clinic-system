@@ -199,7 +199,7 @@
     return Math.floor((now - d) / 86400000);
   }
 
-  function makeMeta(natId, birthDate) {
+  function makeMeta(natId, birthDate, phone, mobile) {
     var parts = [];
     if (natId) parts.push('<span class="pr-copy" data-copy="' + L.escHtml(natId) + '" title="點擊複製身份證">' + L.escHtml(natId) + '</span>');
     if (birthDate) {
@@ -207,6 +207,8 @@
       var roc = bp.length === 3 ? ((parseInt(bp[0], 10) - 1911) + '/' + bp[1] + '/' + bp[2]) : birthDate;
       parts.push('<span class="pr-copy" data-copy="' + L.escHtml(birthDate) + '" title="點擊複製生日（ISO）">' + L.escHtml(roc) + '</span>');
     }
+    var ph = mobile || phone || '';
+    if (ph) parts.push('<span class="pr-copy" data-copy="' + L.escHtml(ph) + '" title="點擊複製電話">' + L.escHtml(ph) + '</span>');
     return parts.length ? '<div class="lab-meta">' + parts.join('<span class="lab-meta-sep">·</span>') + '</div>' : '';
   }
 
@@ -252,7 +254,7 @@
     }
     var rowClass = 'lab-row' + (p.results_back && !p.notified ? ' needs-notify' : '');
     return '<div class="' + rowClass + '">' +
-      '<div class="lab-pt"><div style="display:flex;align-items:center;gap:5px"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + endoHtml + '</div>' + makeMeta(p.nat_id, p.birth_date) + '</div>' +
+      '<div class="lab-pt"><div style="display:flex;align-items:center;gap:5px"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + endoHtml + '</div>' + makeMeta(p.nat_id, p.birth_date, p.phone, p.mobile) + '</div>' +
       allergyHtml +
       '<div class="lab-codes">' + codeHtml + '</div>' +
       '<div class="lab-right">' + statusHtml + actionHtml + '</div>' +
@@ -572,6 +574,7 @@
             birth_date: p.birth_date || '',
             draw_date: day.date || '',
             phone: p.phone || '',
+            mobile: p.mobile || '',
             _mode: 'lab',
             _tab: 'pending',
           });

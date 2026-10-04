@@ -2026,6 +2026,17 @@ def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -
                 p['overdue'] = draw_age > 5 and not p.get('results_back', False)
         # Drop empty day groups
         days = [d for d in days if d['patients']]
+        # Enrich with phone/mobile
+        if CLOUD_MODE:
+            phone_map = contacts.get_candidate_phone_map(cid)
+        else:
+            _pidx = database._get_patdb_phone_index()
+            phone_map = {k: (v, '') for k, v in _pidx.items()}
+        for day in days:
+            for p in day['patients']:
+                ph, mob = phone_map.get(p.get('nat_id', ''), ('', ''))
+                p['phone'] = ph
+                p['mobile'] = mob
         _blood_pending_cache[cid] = days
         return days
     except Exception:
