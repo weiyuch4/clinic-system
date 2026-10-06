@@ -2048,8 +2048,8 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <option value="">選擇藥師</option>
       </select>
       <div class="seg-toggle" id="ph-sal-mode-toggle">
-        <button class="seg-btn active" data-phmode="full" onclick="setPhSalMode('full')">全職</button>
-        <button class="seg-btn" data-phmode="part" onclick="setPhSalMode('part')">兼職</button>
+        <button class="seg-btn active" data-phmode="full" onclick="setPhSalMode('full')">月薪</button>
+        <button class="seg-btn" data-phmode="part" onclick="setPhSalMode('part')">時薪</button>
       </div>
     </div>
     <div class="card">
@@ -2060,18 +2060,48 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       </div>
       <div class="sal-body">
         <!-- 固定項目 -->
-        <div class="sal-row" id="ph-sal-base-row">
+        <div class="sal-row ph-sal-full-only" id="ph-sal-base-row">
           <span class="sal-label">底薪</span>
-          <span class="sal-amount" id="ph-sal-base">30,500</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <input type="number" id="ph-sal-base-inp" value="30500" min="0" step="1"
+              style="width:90px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+              oninput="_phSalBase=parseInt(this.value)||0;recalcPhSalary()">
+            元
+          </span>
         </div>
         <div class="sal-row ph-sal-full-only">
           <span class="sal-label">
             <input type="checkbox" id="ph-sal-attendance-chk" checked onchange="recalcPhSalary()">
             全勤獎金
           </span>
-          <span class="sal-amount" id="ph-sal-attendance-amt">2,000</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <input type="number" id="ph-sal-attendance-inp" value="2000" min="0" step="1"
+              style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+              oninput="_phSalAttendance=parseInt(this.value)||0;recalcPhSalary()">
+            元
+          </span>
         </div>
-        <div class="sal-part-rate-note" id="ph-sal-part-note" style="display:none">兼職時薪：<strong>250 元/h</strong>（一般）；<strong>335 元/h</strong>（加班，250 × 1.34）</div>
+        <!-- 時薪 rates -->
+        <div id="ph-sal-part-rates" style="display:none">
+          <div class="sal-row">
+            <span class="sal-label">時薪</span>
+            <span style="display:flex;align-items:center;gap:5px">
+              <input type="number" id="ph-sal-hourly-rate-inp" value="250" min="0" step="1"
+                style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+                oninput="_phSalHourlyRate=parseInt(this.value)||0;recalcPhSalary()">
+              元/h
+            </span>
+          </div>
+          <div class="sal-row">
+            <span class="sal-label">加班時薪</span>
+            <span style="display:flex;align-items:center;gap:5px">
+              <input type="number" id="ph-sal-hourly-ot-rate-inp" value="335" min="0" step="1"
+                style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+                oninput="_phSalHourlyOtRate=parseInt(this.value)||0;recalcPhSalary()">
+              元/h
+            </span>
+          </div>
+        </div>
 
         <!-- 加班記錄 -->
         <div class="sal-section-head" style="margin-top:18px">
@@ -2111,6 +2141,15 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
             </div>
             <button class="btn-sm" style="margin-left:auto;font-size:11px;padding:4px 12px" onclick="applyPhBatch()">批量新增</button>
           </div>
+        </div>
+        <div class="sal-row ph-sal-full-only" id="ph-sal-ot-rate-row" style="margin-bottom:2px">
+          <span class="sal-label">加班時薪</span>
+          <span style="display:flex;align-items:center;gap:5px">
+            <input type="number" id="ph-sal-ot-rate-inp" value="175" min="0" step="1"
+              style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+              oninput="_phSalOtRate=parseInt(this.value)||0;recalcPhSalary()">
+            元/h
+          </span>
         </div>
         <div class="sal-ot-list" id="ph-sal-ot-list" style="margin-bottom:12px"></div>
 
@@ -5009,6 +5048,11 @@ let _phSalEditingId = null;
 const PH_SAL_BASE = 30500;
 const PH_SAL_ATTENDANCE = 2000;
 const PH_SAL_SAT_RATE = 175;
+let _phSalBase = PH_SAL_BASE;
+let _phSalAttendance = PH_SAL_ATTENDANCE;
+let _phSalOtRate = PH_SAL_SAT_RATE;
+let _phSalHourlyRate = 250;
+let _phSalHourlyOtRate = 335;
 
 function phSalMonthStr() {
   return `${_phSalYear}-${String(_phSalMon).padStart(2,'0')}`;
@@ -5031,10 +5075,10 @@ function setPhSalMode(mode) {
   document.querySelectorAll('#ph-sal-mode-toggle .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.phmode === mode));
   const isFull = mode === 'full';
   document.querySelectorAll('#sal-pharm-pane .ph-sal-full-only').forEach(el => el.style.display = isFull ? '' : 'none');
-  const partNote = $('ph-sal-part-note');
-  if (partNote) partNote.style.display = isFull ? 'none' : '';
+  const partRates = $('ph-sal-part-rates');
+  if (partRates) partRates.style.display = isFull ? 'none' : '';
   const otLabel = $('ph-sal-ot-label');
-  if (otLabel) otLabel.textContent = isFull ? '一般加班費' : '兼職薪資';
+  if (otLabel) otLabel.textContent = isFull ? '一般加班費' : '時薪合計';
   recalcPhSalary();
   renderPhOtRows();
 }
@@ -5157,9 +5201,8 @@ function recalcPhSalary() {
   let total = 0;
 
   if (!isPart) {
-    total += PH_SAL_BASE;
-    const attendance = $('ph-sal-attendance-chk') && $('ph-sal-attendance-chk').checked ? PH_SAL_ATTENDANCE : 0;
-    $('ph-sal-attendance-amt').textContent = attendance.toLocaleString('zh-TW');
+    total += _phSalBase;
+    const attendance = $('ph-sal-attendance-chk') && $('ph-sal-attendance-chk').checked ? _phSalAttendance : 0;
     total += attendance;
   }
 
@@ -5171,19 +5214,19 @@ function recalcPhSalary() {
     const resEl = document.getElementById('ph-sal-ot-result-' + i);
     if (tagEl) { tagEl.className = 'sal-ot-tag'; tagEl.textContent = info.label || ''; if (info.isSaturday) tagEl.classList.add('sat'); }
     if (isPart) {
-      const rate = row.isOt ? 335 : 250;
+      const rate = row.isOt ? _phSalHourlyOtRate : _phSalHourlyRate;
       const pay = Math.round((mins / 60) * rate);
       otTotal += pay;
       if (resEl && mins > 0) resEl.textContent = (mins/60).toFixed(1) + 'h × ' + fmtNT(rate) + ' 元/h → ' + fmtNT(pay) + ' 元';
       else if (resEl) resEl.textContent = '';
     } else {
       if (info.isSaturday) {
-        const pay = calcOvertimePay(mins, '休息日', PH_SAL_SAT_RATE);
+        const pay = calcOvertimePay(mins, '休息日', _phSalOtRate);
         satPay += pay;
         if (resEl && mins > 0) resEl.textContent = '周六 ' + (mins/60).toFixed(1) + 'h → ' + fmtNT(Math.ceil(pay)) + ' 元';
         else if (resEl) resEl.textContent = '';
       } else {
-        const pay = calcOvertimePay(mins, '平日', PH_SAL_SAT_RATE);
+        const pay = calcOvertimePay(mins, '平日', _phSalOtRate);
         otTotal += pay;
         if (resEl && mins > 0) resEl.textContent = (mins/60).toFixed(1) + 'h → ' + fmtNT(Math.ceil(pay)) + ' 元';
         else if (resEl) resEl.textContent = '';
@@ -5233,7 +5276,7 @@ function _currentPhSalaryPayload() {
   return {
     nurse:       $('ph-sal-person').value,
     month:       phSalMonthStr(),
-    attendance:  isPart ? 0 : ($('ph-sal-attendance-chk').checked ? PH_SAL_ATTENDANCE : 0),
+    attendance:  isPart ? 0 : ($('ph-sal-attendance-chk').checked ? _phSalAttendance : 0),
     performance: 0,
     sat_pay:     isPart ? 0 : (parseInt(($('ph-sal-sat-amt').textContent || '').replace(/,/g, '')) || 0),
     float_bonus: 0,
@@ -5241,6 +5284,8 @@ function _currentPhSalaryPayload() {
     total,
     sick_days:   0,
     ot_entries:  JSON.stringify({ mode: _phSalMode, rows: _phSalOtRows, extras: _phSalExtras,
+                   base: _phSalBase, attendance: _phSalAttendance, ot_rate: _phSalOtRate,
+                   hourly_rate: _phSalHourlyRate, hourly_ot_rate: _phSalHourlyOtRate,
                    labor_ins: parseInt(($('ph-sal-labor-ins') || {}).value) || 0,
                    health_ins: parseInt(($('ph-sal-health-ins') || {}).value) || 0,
                    _role: 'pharm' }),
@@ -5304,6 +5349,16 @@ async function loadPhSalRecord(id) {
       else { _phSalOtRows = parsed.rows || []; setPhSalMode(parsed.mode || 'full'); }
     } catch(_) { _phSalOtRows = []; setPhSalMode('full'); }
     _phSalExtras = Array.isArray(parsed.extras) ? parsed.extras : [];
+    _phSalBase         = parsed.base         !== undefined ? parsed.base         : PH_SAL_BASE;
+    _phSalAttendance   = parsed.attendance   !== undefined ? parsed.attendance   : PH_SAL_ATTENDANCE;
+    _phSalOtRate       = parsed.ot_rate      !== undefined ? parsed.ot_rate      : PH_SAL_SAT_RATE;
+    _phSalHourlyRate   = parsed.hourly_rate  !== undefined ? parsed.hourly_rate  : 250;
+    _phSalHourlyOtRate = parsed.hourly_ot_rate !== undefined ? parsed.hourly_ot_rate : 335;
+    if ($('ph-sal-base-inp'))           $('ph-sal-base-inp').value           = _phSalBase;
+    if ($('ph-sal-attendance-inp'))     $('ph-sal-attendance-inp').value     = _phSalAttendance;
+    if ($('ph-sal-ot-rate-inp'))        $('ph-sal-ot-rate-inp').value        = _phSalOtRate;
+    if ($('ph-sal-hourly-rate-inp'))    $('ph-sal-hourly-rate-inp').value    = _phSalHourlyRate;
+    if ($('ph-sal-hourly-ot-rate-inp')) $('ph-sal-hourly-ot-rate-inp').value = _phSalHourlyOtRate;
     if ($('ph-sal-labor-ins'))  $('ph-sal-labor-ins').value  = parsed.labor_ins  || 0;
     if ($('ph-sal-health-ins')) $('ph-sal-health-ins').value = parsed.health_ins || 0;
     if ($('ph-sal-attendance-chk')) $('ph-sal-attendance-chk').checked = rec.attendance > 0;
