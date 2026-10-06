@@ -5539,7 +5539,11 @@ function printPhPaySlip() {
   <div class="sig"><div class="sig-line"></div><div class="sig-lbl">主管簽名</div></div>
   <div class="sig"><div class="sig-line"></div><div class="sig-lbl">藥師簽名</div></div>
 </div>
-<script>window.onload = () => window.print();<\/script>
+<script>window.onload = function() {
+  var b = document.body, h = b.scrollHeight, max = 688;
+  if (h > max) { b.style.zoom = (max / h).toFixed(4); }
+  window.print();
+};<\/script>
 </body></html>`;
 
   const w = window.open('', '_blank', 'width=560,height=820');
@@ -6132,7 +6136,11 @@ function printPaySlip() {
   <div class="sig"><div class="sig-line"></div><div class="sig-lbl">主管簽名</div></div>
   <div class="sig"><div class="sig-line"></div><div class="sig-lbl">護理師簽名</div></div>
 </div>
-<script>window.onload = () => window.print();<\/script>
+<script>window.onload = function() {
+  var b = document.body, h = b.scrollHeight, max = 688;
+  if (h > max) { b.style.zoom = (max / h).toFixed(4); }
+  window.print();
+};<\/script>
 </body></html>`;
 
   const w = window.open('', '_blank', 'width=560,height=820');
