@@ -7,9 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>管理員後台</title>
-<link rel="stylesheet" href="/static/_layout.css?v=62">
+<link rel="stylesheet" href="/static/_layout.css?v=63">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
@@ -870,6 +870,27 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   background: #FFFBEB; border: 1px solid var(--amber); flex-shrink: 0;
 }
 
+/* ── Mobile day-based schedule view (hidden on desktop) ────────────────── */
+.mob-sched { display: none; }
+.mob-day-tabs { display: flex; gap: 5px; padding-bottom: 12px; overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+.mob-day-tabs::-webkit-scrollbar { display: none; }
+.mob-day-tab { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; padding: 7px 11px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; min-width: 42px; gap: 1px; transition: background .1s, border-color .1s; -webkit-tap-highlight-color: transparent; }
+.mob-day-tab.on { background: var(--blue); border-color: var(--blue); color: #fff; }
+.mob-day-tab .mdt-dow { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.mob-day-tab .mdt-dt { font-size: 10px; opacity: .8; }
+.mob-day-page { display: none; }
+.mob-day-page.on { display: block; }
+.mob-day-nurse { background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
+.mob-day-nurse-hd { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; color: var(--text-1); }
+.mob-day-slots { display: grid; grid-template-columns: repeat(3, 1fr); padding: 8px; gap: 7px; }
+.mob-sched-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 10px 4px; border-radius: 9px; border: 1.5px solid var(--border); background: var(--bg); min-height: 62px; cursor: pointer; width: 100%; -webkit-tap-highlight-color: transparent; transition: background .1s, border-color .1s; }
+.mob-sched-btn .ms-lbl { font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: .03em; }
+.mob-sched-btn .ms-time { font-size: 11.5px; color: var(--text-1); font-weight: 600; }
+.mob-sched-btn.is-empty { border-style: dashed; }
+.mob-sched-btn.is-empty .ms-time { color: var(--text-3); font-weight: 400; }
+.mob-sched-btn.has-clean { background: #FFFBEB; border-color: var(--amber); }
+.mob-sched-btn:not(.is-empty):active { background: var(--blue-bg); border-color: var(--blue); }
+
 /* time-range popover */
 .sched-time-popover {
   position: fixed;
@@ -1299,13 +1320,11 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   .kpi-value { font-size: 26px; }
 
   /* ── Schedule ────────────────────────────────────────────────────────── */
-  .sched-cards { grid-template-columns: 1fr !important; gap: 12px; }
+  .sched-cards { display: none !important; }
+  .mob-sched { display: block; }
   .sched-toolbar { flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
   .sched-toolbar .week-picker { flex: 1; min-width: 0; }
   .sched-toolbar > div:last-child { width: 100%; display: flex; gap: 8px; flex-wrap: wrap; }
-  .sched-mini-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-  .sched-nurse-card { overflow: visible; }
-  .sched-time-btn { min-height: 44px; min-width: 68px; font-size: 11px; padding: 6px 4px; }
 
   /* ── Time-range popover → bottom sheet ──────────────────────────────── */
   .sched-time-popover {
@@ -1452,7 +1471,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .modal-overlay.closing { display:flex; animation:modal-bd-out .14s ease-in forwards; pointer-events:none; }
 .modal-overlay.closing > * { animation:modal-out .14s ease-in forwards; }
 </style>
-<script src="/static/_layout.js?v=62"></script>
+<script src="/static/_layout.js?v=63"></script>
 <script src="/static/admin-auth.js?v=5"></script>
 </head>
 <body>
@@ -3655,7 +3674,40 @@ function renderGrid(nurses, pharmacists = []) {
     html += pharmacists.map(makeCard).join('');
   }
 
-  $('sched-grid').innerHTML = `<div class="sched-cards">${html}</div>`;
+  const allPeople = [...nurses, ...pharmacists];
+  const mobTabsHtml = days.map((d, i) =>
+    `<button type="button" class="mob-day-tab${i === 0 ? ' on' : ''}" data-day-idx="${i}">
+      <span class="mdt-dow">${DOW_LABELS[i]}</span>
+      <span class="mdt-dt">${fmtMD(d)}</span>
+    </button>`
+  ).join('');
+
+  const mobPagesHtml = days.map((d, i) => {
+    const nurseRows = allPeople.map(nurse => {
+      const slots = SLOTS.map(slot => {
+        const entry2 = cellMap[`${nurse}|${d}|${slot}`] || {};
+        const hv = entry2.start_time && entry2.end_time;
+        const hc = entry2.clean_start && entry2.clean_end;
+        const lbl = hv ? `${entry2.start_time}–${entry2.end_time}` : '－';
+        const tt = hc ? ` title="清潔時段 ${entry2.clean_start}–${entry2.clean_end}"` : '';
+        return `<button type="button" class="sched-time-btn mob-sched-btn${hv ? '' : ' is-empty'}${hc ? ' has-clean' : ''}"${tt}
+          data-nurse="${nurse}" data-date="${d}" data-slot="${slot}"
+          data-start="${entry2.start_time || ''}" data-end="${entry2.end_time || ''}"
+          data-clean-start="${entry2.clean_start || ''}" data-clean-end="${entry2.clean_end || ''}">
+          <span class="ms-lbl">${slot}</span>
+          <span class="ms-time">${lbl}</span>
+        </button>`;
+      }).join('');
+      return `<div class="mob-day-nurse">
+        <div class="mob-day-nurse-hd">${nurse}</div>
+        <div class="mob-day-slots">${slots}</div>
+      </div>`;
+    }).join('');
+    return `<div class="mob-day-page${i === 0 ? ' on' : ''}">${nurseRows || '<p style="padding:12px;color:var(--text-3);font-size:13px">尚無排班人員</p>'}</div>`;
+  }).join('');
+
+  $('sched-grid').innerHTML = `<div class="sched-cards">${html}</div>` +
+    `<div class="mob-sched"><div class="mob-day-tabs">${mobTabsHtml}</div><div class="mob-day-pages">${mobPagesHtml}</div></div>`;
 }
 
 const NURSE_COLORS = ['#2563EB', '#059669', '#D97706', '#7C3AED', '#DB2777', '#0891B2'];
@@ -3763,7 +3815,15 @@ function renderCoverage(nurses, pharmacists = []) {
 
 $('sched-grid').addEventListener('click', (e) => {
   const timeBtn = e.target.closest('.sched-time-btn');
-  if (timeBtn) openTimePopover(timeBtn);
+  if (timeBtn) { openTimePopover(timeBtn); return; }
+
+  const dayTab = e.target.closest('.mob-day-tab');
+  if (dayTab) {
+    const idx = parseInt(dayTab.dataset.dayIdx, 10);
+    const grid = $('sched-grid');
+    grid.querySelectorAll('.mob-day-tab').forEach(t => t.classList.toggle('on', t === dayTab));
+    grid.querySelectorAll('.mob-day-page').forEach((p, i) => p.classList.toggle('on', i === idx));
+  }
 });
 
 function openStaffModal() {
