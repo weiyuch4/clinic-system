@@ -5707,6 +5707,8 @@ function printPaySlip() {
       ${partDays     > 0 ? `<tr><td>工作天數</td><td>${partDays} 天</td></tr>` : ''}
       ${partRegular  > 0 ? `<tr><td>工時薪資</td><td>NT$ ${partRegular.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${partOt       > 0 ? `<tr><td>加班費</td><td>NT$ ${partOt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${partLaborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${partLaborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${partHealthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${partHealthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
