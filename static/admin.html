@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>管理員後台</title>
-<link rel="stylesheet" href="/static/_layout.css?v=65">
+<link rel="stylesheet" href="/static/_layout.css?v=66">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
@@ -967,6 +967,22 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 }
 .stp-dur-btn:hover { border-color: var(--blue); }
 .stp-dur-btn.disabled { opacity: .35; pointer-events: none; }
+.stp-divider { height: 1px; background: var(--border); margin: 4px 0 10px; border: none; }
+.stp-scroll-row { display: flex; height: 110px; margin-bottom: 2px; }
+.stp-confirm {
+  background: var(--blue);
+  border: none;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background .1s;
+}
+.stp-confirm:disabled { opacity: .4; cursor: default; }
+.stp-confirm:not(:disabled):hover { background: #1D4ED8; }
+.stp-cur-time { font-size: 12px; font-weight: 700; color: var(--blue); font-variant-numeric: tabular-nums; }
 
 /* view toggle */
 .seg-toggle {
@@ -1694,6 +1710,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         </div>
         <button class="btn-sm" id="sched-publish-btn" onclick="togglePublish()">—</button>
         <button class="btn-sm" onclick="copyLastWeek()">複製上週</button>
+        <button class="btn-sm" id="sched-time-mode-btn" onclick="toggleSchedTimeMode()" style="font-size:11px;padding:4px 10px">⌚ 自訂時間</button>
       </div>
     </div>
     <div class="sched-legend" id="sched-legend" style="margin-bottom:12px">
@@ -1756,7 +1773,6 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addOtRow()">＋ 新增</button>
           <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px" onclick="toggleBatchPanel()">批量新增</button>
           <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px;color:var(--blue)" onclick="toggleImportPanel()">匯入護理師記錄</button>
-          <button class="btn-sm" id="sal-time-mode-btn" style="margin-left:auto;font-size:11px;padding:4px 10px" onclick="toggleSalTimeMode()">⌚ 選擇器</button>
         </div>
         <div id="sal-import-panel" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-s);padding:12px 14px;margin-top:8px;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -2049,7 +2065,6 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           加班記錄
           <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addPhOtRow()">＋ 新增</button>
           <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px" onclick="togglePhBatchPanel()">批量新增</button>
-          <button class="btn-sm" id="ph-time-mode-btn" style="margin-left:auto;font-size:11px;padding:4px 10px" onclick="toggleSalTimeMode()">⌚ 選擇器</button>
         </div>
         <div id="ph-sal-batch-panel" class="sal-batch-panel" style="display:none;margin-top:8px">
           <div class="sal-batch-row">
@@ -3733,6 +3748,8 @@ let weekPublished = false;
 
 async function loadSchedule() {
   $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
+  const tmBtn = $('sched-time-mode-btn');
+  if (tmBtn) tmBtn.style.color = _schedTimeMode === 'scroll' ? 'var(--blue)' : '';
   $('sched-grid').innerHTML = shimTable(4, 8);
   try {
     const [nurses, pharmacists, shifts, pub] = await Promise.all([
@@ -4072,6 +4089,16 @@ async function removeNursePrompt(name) {
 
 let _stpState = null;
 
+let _schedTimeMode = localStorage.getItem('sched_time_mode') || 'chips';
+
+function toggleSchedTimeMode() {
+  _schedTimeMode = _schedTimeMode === 'chips' ? 'scroll' : 'chips';
+  localStorage.setItem('sched_time_mode', _schedTimeMode);
+  const btn = $('sched-time-mode-btn');
+  if (btn) btn.style.color = _schedTimeMode === 'scroll' ? 'var(--blue)' : '';
+  $('sched-time-popover').classList.remove('show');
+}
+
 function openTimePopover(btn) {
   _stpState = {
     btn,
@@ -4111,7 +4138,79 @@ function cleanStartOptions(start, end) {
   return opts;
 }
 
+function _stpCleanHtml(start, end, cleanStart, cleanEnd) {
+  if (!(start && end)) return '';
+  const cleanChips = cleanStartOptions(start, end).map(t =>
+    `<button class="stp-chip${t === cleanStart ? ' selected' : ''}" data-role="clean-start" data-time="${t}">${t}</button>`
+  ).join('');
+  const dur15Disabled = cleanStart && toMinutes(cleanStart) + 15 > toMinutes(end);
+  const dur30Disabled = cleanStart && toMinutes(cleanStart) + 30 > toMinutes(end);
+  const clearCleanBtn = (cleanStart && cleanEnd)
+    ? `<button class="stp-clear" data-role="clear-clean">清除清潔時段</button>` : '';
+  return `
+    <hr class="stp-divider">
+    <div class="stp-label"><span class="sched-legend-swatch"></span> 清潔時段（選填）</div>
+    <div class="stp-chips">${cleanChips}</div>
+    <div class="stp-clean-footer">
+      <div class="stp-dur-group">
+        <button class="stp-dur-btn${dur15Disabled ? ' disabled' : ''}" data-dur="15">15分</button>
+        <button class="stp-dur-btn${dur30Disabled ? ' disabled' : ''}" data-dur="30">30分</button>
+      </div>
+      ${clearCleanBtn}
+    </div>`;
+}
+
+function _stpScrollCols(timeStr, field) {
+  const [h, m] = timeStr ? timeStr.split(':').map(Number) : [8, 0];
+  const roundedM = Math.round(m / 5) * 5 % 60;
+  let hOpts = '', mOpts = '';
+  for (let hh = 0; hh < 24; hh++) {
+    hOpts += `<div class="stp-opt${hh === h ? ' st-sel' : ''}" data-stpf="${field}" data-stpp="h" data-v="${hh}">${spkPad2(hh)}</div>`;
+  }
+  for (let mm = 0; mm < 60; mm += 5) {
+    mOpts += `<div class="stp-opt${mm === roundedM ? ' st-sel' : ''}" data-stpf="${field}" data-stpp="m" data-v="${mm}">${spkPad2(mm)}</div>`;
+  }
+  return `<div class="stp-col">${hOpts}</div><div class="stp-sep">:</div><div class="stp-col">${mOpts}</div>`;
+}
+
+function renderSchedScrollPicker() {
+  const { start, end, cleanStart, cleanEnd, slot } = _stpState;
+  const sRange = SLOT_RANGE[slot];
+  const sStr = start || sRange[0];
+  const eStr = end   || sRange[1];
+  const duration = (start && end) ? `${timeDiffHours(start, end).toFixed(2)} 小時` : '';
+  const confirmDis = (start && end) ? '' : ' disabled';
+
+  $('sched-time-popover').innerHTML = `
+    <div class="stp-label" style="display:flex;justify-content:space-between;align-items:center">
+      <span>開始時間</span><span class="stp-cur-time">${start || '—'}</span>
+    </div>
+    <div class="stp-scroll-row">${_stpScrollCols(sStr, 'start')}</div>
+    <div class="stp-label" style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+      <span>結束時間</span><span class="stp-cur-time">${end || '—'}</span>
+    </div>
+    <div class="stp-scroll-row">${_stpScrollCols(eStr, 'end')}</div>
+    ${_stpCleanHtml(start, end, cleanStart, cleanEnd)}
+    <div class="stp-footer">
+      <span class="stp-duration">${duration}</span>
+      <button class="stp-confirm"${confirmDis} onclick="stpScrollConfirm()">確定</button>
+      <button class="stp-clear">清除</button>
+    </div>`;
+
+  requestAnimationFrame(() => {
+    $('sched-time-popover').querySelectorAll('.stp-opt.st-sel').forEach(el => {
+      el.scrollIntoView({ block: 'nearest' });
+    });
+  });
+}
+
+function stpScrollConfirm() {
+  commitTimeSelection(_stpState.start, _stpState.end, _stpState.cleanStart, _stpState.cleanEnd);
+}
+
 function renderTimePopover() {
+  if (_schedTimeMode === 'scroll') { renderSchedScrollPicker(); return; }
+
   const { start, end, cleanStart, cleanEnd, slot } = _stpState;
   const options = SLOT_TIME_OPTIONS[slot];
   const startChips = options.map(t =>
@@ -4123,34 +4222,12 @@ function renderTimePopover() {
   }).join('');
   const duration = (start && end) ? `${timeDiffHours(start, end).toFixed(2)} 小時` : '';
 
-  let cleanHtml = '';
-  if (start && end) {
-    const cleanChips = cleanStartOptions(start, end).map(t =>
-      `<button class="stp-chip${t === cleanStart ? ' selected' : ''}" data-role="clean-start" data-time="${t}">${t}</button>`
-    ).join('');
-    const dur15Disabled = cleanStart && toMinutes(cleanStart) + 15 > toMinutes(end);
-    const dur30Disabled = cleanStart && toMinutes(cleanStart) + 30 > toMinutes(end);
-    const clearCleanBtn = (cleanStart && cleanEnd)
-      ? `<button class="stp-clear" data-role="clear-clean">清除清潔時段</button>` : '';
-    cleanHtml = `
-      <div class="stp-sep"></div>
-      <div class="stp-label"><span class="sched-legend-swatch"></span> 清潔時段（選填）</div>
-      <div class="stp-chips">${cleanChips}</div>
-      <div class="stp-clean-footer">
-        <div class="stp-dur-group">
-          <button class="stp-dur-btn${dur15Disabled ? ' disabled' : ''}" data-dur="15">15分</button>
-          <button class="stp-dur-btn${dur30Disabled ? ' disabled' : ''}" data-dur="30">30分</button>
-        </div>
-        ${clearCleanBtn}
-      </div>`;
-  }
-
   $('sched-time-popover').innerHTML = `
     <div class="stp-label">開始時間</div>
     <div class="stp-chips">${startChips}</div>
     <div class="stp-label">結束時間</div>
     <div class="stp-chips">${endChips}</div>
-    ${cleanHtml}
+    ${_stpCleanHtml(start, end, cleanStart, cleanEnd)}
     <div class="stp-footer">
       <span class="stp-duration">${duration}</span>
       <button class="stp-clear">清除</button>
@@ -4176,6 +4253,27 @@ $('sched-time-popover').addEventListener('click', (e) => {
     commitTimeSelection(_stpState.start, _stpState.end, _stpState.cleanStart, cleanEnd);
     return;
   }
+
+  // Scroll column picker interactions
+  const stpOpt = e.target.closest('.stp-opt[data-stpf]');
+  if (stpOpt) {
+    const field = stpOpt.dataset.stpf;   // 'start' or 'end'
+    const part  = stpOpt.dataset.stpp;   // 'h' or 'm'
+    const val   = Number(stpOpt.dataset.v);
+    const sRange = SLOT_RANGE[_stpState.slot];
+    const curTime = _stpState[field] || (field === 'start' ? sRange[0] : sRange[1]);
+    const [curH, curM] = curTime.split(':').map(Number);
+    const newH = part === 'h' ? val : curH;
+    const newM = part === 'm' ? val : (Math.round(curM / 5) * 5 % 60);
+    _stpState[field] = `${spkPad2(newH)}:${spkPad2(newM)}`;
+    if (field === 'start' && _stpState.end && _stpState.end <= _stpState.start) {
+      _stpState.end = '';
+      _stpState.cleanStart = ''; _stpState.cleanEnd = '';
+    }
+    renderSchedScrollPicker();
+    return;
+  }
+
   const chip = e.target.closest('.stp-chip');
   if (!chip || chip.classList.contains('disabled')) return;
   if (chip.dataset.role === 'start') {
@@ -4341,27 +4439,8 @@ const _SPK_CAL = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" str
 const _SPK_CLK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>';
 const _SPK_MONS = ['','1','2','3','4','5','6','7','8','9','10','11','12'];
 let _salPkOpen  = null;   // {section:'ot'|'pharm-ot', idx, field:'date'|'start'|'end', trigger}
-let _salOtTimeMode = localStorage.getItem('sal_ot_time_mode') || 'picker';
 
 function _salRows(section) { return section === 'pharm-ot' ? _phSalOtRows : _salOtRows; }
-
-function _updateTimeModeBtn() {
-  const isPicker = _salOtTimeMode === 'picker';
-  ['sal-time-mode-btn', 'ph-time-mode-btn'].forEach(id => {
-    const el = $(id);
-    if (!el) return;
-    el.textContent = isPicker ? '⌚ 選擇器' : '⌨ 直接輸入';
-    el.style.color  = isPicker ? 'var(--blue)' : '';
-  });
-}
-
-function toggleSalTimeMode() {
-  _salOtTimeMode = _salOtTimeMode === 'picker' ? 'native' : 'picker';
-  localStorage.setItem('sal_ot_time_mode', _salOtTimeMode);
-  _updateTimeModeBtn();
-  renderOtRows();
-  renderPhOtRows();
-}
 let _salDpNavY  = 0, _salDpNavM = 0;
 
 function spkPad2(n) { return String(n).padStart(2, '0'); }
@@ -4566,7 +4645,6 @@ function setSalMode(mode) {
 
 function initSalaryTab() {
   updateSalMonthDisplay();
-  _updateTimeModeBtn();
   const sel = $('sal-nurse');
   if (sel.options.length <= 1) {
     api('/api/nurses').then(names => {
@@ -4959,25 +5037,19 @@ function newPhSalaryRecord() {
 function renderPhOtRows() {
   const list = $('ph-sal-ot-list');
   if (!list) return;
-  _updateTimeModeBtn();
   if (!_phSalOtRows.length) {
     list.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:4px 0 8px">尚無加班記錄</div>';
     recalcPhSalary();
     return;
   }
   const isPart = _phSalMode === 'part';
-  const usePicker = _salOtTimeMode === 'picker';
   list.innerHTML = _phSalOtRows.map((row, i) => {
     const info = getDayInfo(row.date);
     const dv = row.date  || '選擇日期';
     const sv = row.start || '18:00';
     const ev = row.end   || '20:00';
-    const datePart = usePicker
-      ? `<button class="sal-pick-trigger" onclick="salOpenPicker('pharm-ot',${i},'date',this)">${_SPK_CAL}<span class="spk-val">${dv}</span></button>`
-      : `<input type="date" class="sal-date-input" value="${row.date || ''}" oninput="_phSalOtRows[${i}].date=this.value;renderPhOtRows()">`;
-    const timePart = usePicker
-      ? `<button class="sal-pick-trigger" onclick="salOpenPicker('pharm-ot',${i},'start',this)">${_SPK_CLK}<span class="spk-val">${sv}</span></button><span class="sal-time-sep">—</span><button class="sal-pick-trigger" onclick="salOpenPicker('pharm-ot',${i},'end',this)">${_SPK_CLK}<span class="spk-val">${ev}</span></button>`
-      : `<input type="time" class="sal-time-inp" value="${row.start || ''}" oninput="_phSalOtRows[${i}].start=this.value;recalcPhSalary()"><span class="sal-time-sep">—</span><input type="time" class="sal-time-inp" value="${row.end || ''}" oninput="_phSalOtRows[${i}].end=this.value;recalcPhSalary()">`;
+    const datePart = `<button class="sal-pick-trigger" onclick="salOpenPicker('pharm-ot',${i},'date',this)">${_SPK_CAL}<span class="spk-val">${dv}</span></button>`;
+    const timePart = `<button class="sal-pick-trigger" onclick="salOpenPicker('pharm-ot',${i},'start',this)">${_SPK_CLK}<span class="spk-val">${sv}</span></button><span class="sal-time-sep">—</span><button class="sal-pick-trigger" onclick="salOpenPicker('pharm-ot',${i},'end',this)">${_SPK_CLK}<span class="spk-val">${ev}</span></button>`;
     return `<div class="sal-ot-entry">
       ${datePart}${timePart}
       ${isPart ? `<label class="sal-part-ot-chk"><input type="checkbox" id="ph-sal-ot-isot-${i}"${row.isOt ? ' checked' : ''} onchange="_phSalOtRows[${i}].isOt=this.checked;recalcPhSalary()"> 加班</label>` : `<span class="sal-ot-tag" id="ph-sal-ot-tag-${i}"></span>`}
@@ -5393,24 +5465,19 @@ function toggleBatchBonus() {
 
 function renderOtRows() {
   salClosePicker();
-  _updateTimeModeBtn();
   const isPart = _salMode === 'part';
-  const usePicker = _salOtTimeMode === 'picker';
   $('sal-ot-list').innerHTML = _salOtRows.map((r, i) => {
     const dv = r.date  || '選擇日期';
     const sv = r.start || '18:00';
     const ev = r.end   || '20:00';
-    const timeCells = usePicker
-      ? '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'start\',this)">' +
+    const timeCells =
+        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'start\',this)">' +
           _SPK_CLK + '<span class="spk-val">' + sv + '</span>' +
         '</button>' +
         '<span class="sal-time-sep">—</span>' +
         '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'end\',this)">' +
           _SPK_CLK + '<span class="spk-val">' + ev + '</span>' +
-        '</button>'
-      : '<input type="time" class="sal-time-inp" value="' + sv + '" oninput="_salOtRows[' + i + '].start=this.value;recalcSalary()">' +
-        '<span class="sal-time-sep">—</span>' +
-        '<input type="time" class="sal-time-inp" value="' + ev + '" oninput="_salOtRows[' + i + '].end=this.value;recalcSalary()">';
+        '</button>';
     return (
       '<div class="sal-ot-entry">' +
         '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'date\',this)">' +
