@@ -641,7 +641,7 @@
         '<td data-label="時間">'+r.start_time+' — '+r.end_time+'</td>' +
         '<td class="ot-hours" data-label="工時">'+(mins>0?fmtHours(mins):'—')+'</td>' +
         '<td class="ot-note" data-label="備註">'+L.escHtml(r.note||'')+'</td>' +
-        '<td style="display:flex;align-items:center;gap:2px">' +
+        '<td>' +
           '<button class="ot-edit" onclick="editEntry('+r.id+')" title="編輯">✎</button>' +
           '<button class="ot-del" onclick="deleteEntry('+r.id+')" title="刪除">×</button>' +
         '</td>' +
