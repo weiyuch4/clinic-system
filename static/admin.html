@@ -983,7 +983,6 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 }
 .stp-mode-btn:hover:not(.stp-active) { border-color: var(--blue); color: var(--text-1); }
 .stp-mode-btn.stp-active { background: var(--blue); border-color: var(--blue); color: #fff; }
-.stp-scroll-row { display: flex; height: 110px; margin-bottom: 2px; }
 .stp-confirm {
   background: var(--blue);
   border: none;
@@ -4170,24 +4169,21 @@ function _stpCleanHtml(start, end, cleanStart, cleanEnd) {
     </div>`;
 }
 
-function _stpScrollCols(timeStr, field) {
-  const [h, m] = timeStr ? timeStr.split(':').map(Number) : [8, 0];
-  const roundedM = Math.round(m / 5) * 5 % 60;
-  let hOpts = '', mOpts = '';
-  for (let hh = 0; hh < 24; hh++) {
-    hOpts += `<div class="stp-opt${hh === h ? ' st-sel' : ''}" data-stpf="${field}" data-stpp="h" data-v="${hh}">${spkPad2(hh)}</div>`;
+function _stpTimeCol(timeStr, field, slot) {
+  const [rs, re] = SLOT_RANGE[slot];
+  const lo  = Math.max(0, toMinutes(rs) - 120);
+  const hi  = Math.min(23 * 60 + 55, toMinutes(re) + 120);
+  const cur = timeStr ? toMinutes(timeStr) : (field === 'start' ? toMinutes(rs) : toMinutes(re));
+  let opts = '';
+  for (let t = lo; t <= hi; t += 5) {
+    const val = `${String(Math.floor(t / 60)).padStart(2,'0')}:${String(t % 60).padStart(2,'0')}`;
+    opts += `<div class="stp-opt${t === cur ? ' st-sel' : ''}" data-stpf="${field}" data-v="${val}">${val}</div>`;
   }
-  for (let mm = 0; mm < 60; mm += 5) {
-    mOpts += `<div class="stp-opt${mm === roundedM ? ' st-sel' : ''}" data-stpf="${field}" data-stpp="m" data-v="${mm}">${spkPad2(mm)}</div>`;
-  }
-  return `<div class="stp-col">${hOpts}</div><div class="stp-sep">:</div><div class="stp-col">${mOpts}</div>`;
+  return `<div class="stp-col" style="height:110px">${opts}</div>`;
 }
 
 function renderSchedScrollPicker() {
   const { start, end, cleanStart, cleanEnd, slot } = _stpState;
-  const sRange = SLOT_RANGE[slot];
-  const sStr = start || sRange[0];
-  const eStr = end   || sRange[1];
   const duration = (start && end) ? `${timeDiffHours(start, end).toFixed(2)} 小時` : '';
   const confirmDis = (start && end) ? '' : ' disabled';
 
@@ -4196,14 +4192,20 @@ function renderSchedScrollPicker() {
       <button class="stp-mode-btn" data-stp-mode="chips">快選</button>
       <button class="stp-mode-btn stp-active" data-stp-mode="scroll">自訂</button>
     </div>
-    <div class="stp-label" style="display:flex;justify-content:space-between;align-items:center">
-      <span>開始時間</span><span class="stp-cur-time">${start || '—'}</span>
+    <div style="display:flex;gap:10px">
+      <div style="flex:1;min-width:0">
+        <div class="stp-label" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span>開始</span><span class="stp-cur-time">${start || '—'}</span>
+        </div>
+        ${_stpTimeCol(start, 'start', slot)}
+      </div>
+      <div style="flex:1;min-width:0">
+        <div class="stp-label" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+          <span>結束</span><span class="stp-cur-time">${end || '—'}</span>
+        </div>
+        ${_stpTimeCol(end, 'end', slot)}
+      </div>
     </div>
-    <div class="stp-scroll-row">${_stpScrollCols(sStr, 'start')}</div>
-    <div class="stp-label" style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
-      <span>結束時間</span><span class="stp-cur-time">${end || '—'}</span>
-    </div>
-    <div class="stp-scroll-row">${_stpScrollCols(eStr, 'end')}</div>
     ${_stpCleanHtml(start, end, cleanStart, cleanEnd)}
     <div class="stp-footer">
       <span class="stp-duration">${duration}</span>
@@ -4275,18 +4277,11 @@ $('sched-time-popover').addEventListener('click', (e) => {
     return;
   }
 
-  // Scroll column picker interactions
+  // Scroll column picker interactions — data-v is a full HH:MM string
   const stpOpt = e.target.closest('.stp-opt[data-stpf]');
   if (stpOpt) {
-    const field = stpOpt.dataset.stpf;   // 'start' or 'end'
-    const part  = stpOpt.dataset.stpp;   // 'h' or 'm'
-    const val   = Number(stpOpt.dataset.v);
-    const sRange = SLOT_RANGE[_stpState.slot];
-    const curTime = _stpState[field] || (field === 'start' ? sRange[0] : sRange[1]);
-    const [curH, curM] = curTime.split(':').map(Number);
-    const newH = part === 'h' ? val : curH;
-    const newM = part === 'm' ? val : (Math.round(curM / 5) * 5 % 60);
-    _stpState[field] = `${spkPad2(newH)}:${spkPad2(newM)}`;
+    const field = stpOpt.dataset.stpf;
+    _stpState[field] = stpOpt.dataset.v;
     if (field === 'start' && _stpState.end && _stpState.end <= _stpState.start) {
       _stpState.end = '';
       _stpState.cleanStart = ''; _stpState.cleanEnd = '';
