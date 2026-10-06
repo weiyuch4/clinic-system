@@ -968,6 +968,21 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .stp-dur-btn:hover { border-color: var(--blue); }
 .stp-dur-btn.disabled { opacity: .35; pointer-events: none; }
 .stp-divider { height: 1px; background: var(--border); margin: 4px 0 10px; border: none; }
+.stp-mode-row { display: flex; gap: 4px; margin-bottom: 10px; }
+.stp-mode-btn {
+  flex: 1;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 5px 0;
+  font: 600 11.5px/1 var(--font);
+  color: var(--text-3);
+  cursor: pointer;
+  transition: background .1s, border-color .1s, color .1s;
+  text-align: center;
+}
+.stp-mode-btn:hover:not(.stp-active) { border-color: var(--blue); color: var(--text-1); }
+.stp-mode-btn.stp-active { background: var(--blue); border-color: var(--blue); color: #fff; }
 .stp-scroll-row { display: flex; height: 110px; margin-bottom: 2px; }
 .stp-confirm {
   background: var(--blue);
@@ -1710,7 +1725,6 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         </div>
         <button class="btn-sm" id="sched-publish-btn" onclick="togglePublish()">—</button>
         <button class="btn-sm" onclick="copyLastWeek()">複製上週</button>
-        <button class="btn-sm" id="sched-time-mode-btn" onclick="toggleSchedTimeMode()" style="font-size:11px;padding:4px 10px">⌚ 自訂時間</button>
       </div>
     </div>
     <div class="sched-legend" id="sched-legend" style="margin-bottom:12px">
@@ -3748,8 +3762,6 @@ let weekPublished = false;
 
 async function loadSchedule() {
   $('sched-week-display').textContent = `${fmtMD(weekStart)} – ${fmtMD(addDays(weekStart, 5))}`;
-  const tmBtn = $('sched-time-mode-btn');
-  if (tmBtn) tmBtn.style.color = _schedTimeMode === 'scroll' ? 'var(--blue)' : '';
   $('sched-grid').innerHTML = shimTable(4, 8);
   try {
     const [nurses, pharmacists, shifts, pub] = await Promise.all([
@@ -4091,12 +4103,10 @@ let _stpState = null;
 
 let _schedTimeMode = localStorage.getItem('sched_time_mode') || 'chips';
 
-function toggleSchedTimeMode() {
-  _schedTimeMode = _schedTimeMode === 'chips' ? 'scroll' : 'chips';
+function toggleSchedTimeMode(mode) {
+  _schedTimeMode = mode || (_schedTimeMode === 'chips' ? 'scroll' : 'chips');
   localStorage.setItem('sched_time_mode', _schedTimeMode);
-  const btn = $('sched-time-mode-btn');
-  if (btn) btn.style.color = _schedTimeMode === 'scroll' ? 'var(--blue)' : '';
-  $('sched-time-popover').classList.remove('show');
+  if ($('sched-time-popover').classList.contains('show')) renderTimePopover();
 }
 
 function openTimePopover(btn) {
@@ -4182,6 +4192,10 @@ function renderSchedScrollPicker() {
   const confirmDis = (start && end) ? '' : ' disabled';
 
   $('sched-time-popover').innerHTML = `
+    <div class="stp-mode-row">
+      <button class="stp-mode-btn" data-stp-mode="chips">快選</button>
+      <button class="stp-mode-btn stp-active" data-stp-mode="scroll">自訂</button>
+    </div>
     <div class="stp-label" style="display:flex;justify-content:space-between;align-items:center">
       <span>開始時間</span><span class="stp-cur-time">${start || '—'}</span>
     </div>
@@ -4223,6 +4237,10 @@ function renderTimePopover() {
   const duration = (start && end) ? `${timeDiffHours(start, end).toFixed(2)} 小時` : '';
 
   $('sched-time-popover').innerHTML = `
+    <div class="stp-mode-row">
+      <button class="stp-mode-btn stp-active" data-stp-mode="chips">快選</button>
+      <button class="stp-mode-btn" data-stp-mode="scroll">自訂</button>
+    </div>
     <div class="stp-label">開始時間</div>
     <div class="stp-chips">${startChips}</div>
     <div class="stp-label">結束時間</div>
@@ -4237,6 +4255,9 @@ function renderTimePopover() {
 $('sched-time-popover').addEventListener('click', (e) => {
   e.stopPropagation();  // prevent the document-level outside-click listener from seeing this —
                          // it mutates innerHTML below, which detaches e.target before bubbling reaches document
+
+  const modeBtn = e.target.closest('.stp-mode-btn[data-stp-mode]');
+  if (modeBtn) { toggleSchedTimeMode(modeBtn.dataset.stpMode); return; }
 
   if (e.target.closest('[data-role="clear-clean"]')) {
     commitTimeSelection(_stpState.start, _stpState.end, null, null);
