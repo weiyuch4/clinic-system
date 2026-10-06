@@ -4537,14 +4537,17 @@ function salTpRender() {
   if (!wrap || !_salPkOpen) return;
   const rows = _salRows(_salPkOpen.section);
   const timeVal = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
+  const isPharm = _salPkOpen && _salPkOpen.section === 'pharm-ot';
   const selH = parseInt(timeVal.slice(0,2));
-  const selM = Math.round(parseInt(timeVal.slice(3,5)) / 5) * 5 % 60;
+  const rawM = parseInt(timeVal.slice(3,5));
+  const selM = isPharm ? rawM : (Math.round(rawM / 5) * 5 % 60);
+  const mStep = isPharm ? 1 : 5;
   let hc = '', mc = '';
   for (let h = 0; h < 24; h++) {
     const cls = h === selH ? 'stp-opt st-sel' : 'stp-opt';
     hc += '<div class="' + cls + '" onclick="salTpSelH(' + h + ')">' + spkPad2(h) + '</div>';
   }
-  for (let m = 0; m < 60; m += 5) {
+  for (let m = 0; m < 60; m += mStep) {
     const cls = m === selM ? 'stp-opt st-sel' : 'stp-opt';
     mc += '<div class="' + cls + '" onclick="salTpSelM(' + m + ')">' + spkPad2(m) + '</div>';
   }
