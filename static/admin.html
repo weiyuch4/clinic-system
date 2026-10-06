@@ -2071,18 +2071,6 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
             元
           </span>
         </div>
-        <div class="sal-row ph-sal-full-only">
-          <span class="sal-label">
-            <input type="checkbox" id="ph-sal-attendance-chk" checked onchange="recalcPhSalary()">
-            全勤獎金
-          </span>
-          <span style="display:flex;align-items:center;gap:5px">
-            <input type="number" id="ph-sal-attendance-inp" value="2000" min="0" step="1"
-              style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
-              oninput="_phSalAttendance=parseInt(this.value)||0;recalcPhSalary()">
-            元
-          </span>
-        </div>
         <!-- 時薪 rates -->
         <div id="ph-sal-part-rates" style="display:none">
           <div class="sal-row">
@@ -5210,8 +5198,6 @@ function recalcPhSalary() {
 
   if (!isPart) {
     total += _phSalBase;
-    const attendance = $('ph-sal-attendance-chk') && $('ph-sal-attendance-chk').checked ? _phSalAttendance : 0;
-    total += attendance;
   }
 
   let satPay = 0, otTotal = 0;
@@ -5310,14 +5296,12 @@ function printPhPaySlip() {
       ${healthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   } else {
-    const att = $('ph-sal-attendance-chk').checked;
     const sat = $('ph-sal-sat-amt').textContent;
     const ot  = $('ph-sal-ot-total').textContent;
     const laborIns  = parseInt(($('ph-sal-labor-ins')  || {}).value) || 0;
     const healthIns = parseInt(($('ph-sal-health-ins') || {}).value) || 0;
     rows = `
       <tr><td>月薪</td><td>NT$ ${_phSalBase.toLocaleString('zh-TW')}</td></tr>
-      <tr><td>全勤獎金</td><td>${att ? 'NT$ ' + _phSalAttendance.toLocaleString('zh-TW') : '—'}</td></tr>
       ${parseInt((sat||'').replace(/,/g,'')) > 0 ? `<tr><td>周六加班費</td><td>${fmt(sat)}</td></tr>` : ''}
       ${parseInt((ot||'').replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
       ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
@@ -5379,7 +5363,7 @@ function _currentPhSalaryPayload() {
   return {
     nurse:       $('ph-sal-person').value,
     month:       phSalMonthStr(),
-    attendance:  isPart ? 0 : ($('ph-sal-attendance-chk').checked ? _phSalAttendance : 0),
+    attendance:  0,
     performance: 0,
     sat_pay:     isPart ? 0 : (parseInt(($('ph-sal-sat-amt').textContent || '').replace(/,/g, '')) || 0),
     float_bonus: 0,
@@ -5458,13 +5442,11 @@ async function loadPhSalRecord(id) {
     _phSalHourlyRate   = parsed.hourly_rate  !== undefined ? parsed.hourly_rate  : 250;
     _phSalHourlyOtRate = parsed.hourly_ot_rate !== undefined ? parsed.hourly_ot_rate : 335;
     if ($('ph-sal-base-inp'))           $('ph-sal-base-inp').value           = _phSalBase;
-    if ($('ph-sal-attendance-inp'))     $('ph-sal-attendance-inp').value     = _phSalAttendance;
     if ($('ph-sal-ot-rate-inp'))        $('ph-sal-ot-rate-inp').value        = _phSalOtRate;
     if ($('ph-sal-hourly-rate-inp'))    $('ph-sal-hourly-rate-inp').value    = _phSalHourlyRate;
     if ($('ph-sal-hourly-ot-rate-inp')) $('ph-sal-hourly-ot-rate-inp').value = _phSalHourlyOtRate;
     if ($('ph-sal-labor-ins'))  $('ph-sal-labor-ins').value  = parsed.labor_ins  || 0;
     if ($('ph-sal-health-ins')) $('ph-sal-health-ins').value = parsed.health_ins || 0;
-    if ($('ph-sal-attendance-chk')) $('ph-sal-attendance-chk').checked = rec.attendance > 0;
     renderPhOtRows();
     renderPhSalExtras();
     recalcPhSalary();
