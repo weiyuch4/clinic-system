@@ -5470,12 +5470,13 @@ function printPhPaySlip() {
     const fmtTime = mins => { const h = Math.floor(mins/60), m = mins%60; return m > 0 ? `${h} 小時 ${m} 分` : `${h} 小時`; };
     const laborIns  = parseInt(($('ph-sal-labor-ins')  || {}).value) || 0;
     const healthIns = parseInt(($('ph-sal-health-ins') || {}).value) || 0;
+    const regPay = (()=>{ let t=0; _phRegRows.forEach(r=>{const m=calcMinutes(r.start,r.end);t+=Math.round((m/60)*_phSalHourlyRate);}); return t; })();
+    const otPay  = regularTotal + otTotal;
     rows = `
       ${regMins > 0 ? `<tr><td>上班時數</td><td>${fmtTime(regMins)}</td></tr>` : ''}
+      ${regPay  > 0 ? `<tr><td>上班合計</td><td>NT$ ${regPay.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${otMins  > 0 ? `<tr><td>加班時數</td><td>${fmtTime(otMins)}</td></tr>` : ''}
-      ${regularTotal > 0 ? `<tr><td>工時薪資</td><td>NT$ ${regularTotal.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${otTotal > 0 ? `<tr><td>加班費</td><td>NT$ ${otTotal.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${(()=>{ let t=0; _phRegRows.forEach(r=>{const m=calcMinutes(r.start,r.end);t+=Math.round((m/60)*_phSalHourlyRate);}); return t>0?`<tr><td>上班合計</td><td>NT$ ${t.toLocaleString('zh-TW')}</td></tr>`:''; })()}
+      ${otPay   > 0 ? `<tr><td>加班合計</td><td>NT$ ${otPay.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${laborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
