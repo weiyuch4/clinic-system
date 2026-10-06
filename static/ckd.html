@@ -172,6 +172,18 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-reintake">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-reintake-title">再收案</div>
+    <div class="modal-sub" id="modal-reintake-sub"></div>
+    <div class="modal-error" id="reintake-error"></div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-reintake')">取消</button>
+      <button class="act-btn act-warn" id="btn-reintake-confirm">確認再收案</button>
+    </div>
+  </div>
+</div>
+
 <script src="/static/_layout.js?v=62"></script>
 <script>
 (function () {
@@ -181,13 +193,13 @@
   var _filterOpen = false;
   var _pending = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
   var _pendingMap = {}, _inactiveMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
-  var _actionChart = null, _excludeEntry = null;
+  var _actionChart = null, _excludeEntry = null, _reintakeEntry = null;
 
   function applyReport(r) {
     _pending   = r.ckd_followups  || [];
     _inactive  = r.ckd_inactive   || [];
     _contacted = (r.contacted || []).filter(function (e) { return e.category === '慢性腎臟病'; })
-                  .concat((r.called || []).filter(function (e) { return e.category === '慢性腎臟病'; }))
+                  .concat((r.called || []).filter(function (e) { return e.category === '慢性腎臟病'; }).map(function(e) { return Object.assign({}, e, {_called: true}); }))
                   .sort(function(a,b){
                     var ka = String(a.contacted_at||'') + (a.contacted_time||'');
                     var kb = String(b.contacted_at||'') + (b.contacted_time||'');
@@ -245,14 +257,17 @@
       tags: ['<span class="pbadge b-prog">未複診</span>'],
       actions: [
         { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-        { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+        { label: '再收案', cls: 'act-warn',    key: 'reintake' },
       ],
-      more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
+      more: [{ label: '暫緩', key: 'hold', cls: '' }, { label: '排除', key: 'exclude', cls: 'item-danger' }],
     });
   }
   function contactedRow(e) {
+    var badge = e._called
+      ? '<span class="pbadge b-call">已二次通知</span>'
+      : '<span class="pbadge b-done">已聯繫</span>';
     return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge b-done">已聯繫</span>'],
+      tags: [badge],
       actions: [{ label: '撤銷', cls: '', key: 'undo-contact' }],
     });
   }
@@ -443,6 +458,13 @@
         .then(function () { L.showToast('已恢復追蹤：' + rx.patient.name); load(); })
         .catch(function (e) { L.showToast('恢復失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
+    } else if (action === 'reintake') {
+      var riEntry = _inactiveMap[_actionChart]; if (!riEntry) return;
+      _reintakeEntry = riEntry;
+      document.getElementById('modal-reintake-title').textContent = '再收案：' + riEntry.patient.name;
+      document.getElementById('modal-reintake-sub').textContent = '確認病患已回診，將恢復為一般追蹤狀態。';
+      document.getElementById('reintake-error').classList.remove('show');
+      L.showModal('modal-reintake');
     }
   });
 
@@ -472,6 +494,23 @@
       .finally(function () { confirmBtn.disabled = false; });
   });
 
+
+  document.getElementById('btn-reintake-confirm').addEventListener('click', function () {
+    if (!_reintakeEntry) return;
+    var confirmBtn = this;
+    var errEl = document.getElementById('reintake-error');
+    errEl.classList.remove('show');
+    confirmBtn.disabled = true;
+    L.apiAction('POST', '/api/hep-reintake', {
+      chart_number: _reintakeEntry.patient.chart_number,
+      category: '慢性腎臟病',
+      name: _reintakeEntry.patient.name,
+      nurse: L.getNurse(),
+    })
+      .then(function () { L.hideModal('modal-reintake'); L.showToast('已再收案：' + _reintakeEntry.patient.name); load(); })
+      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .finally(function () { confirmBtn.disabled = false; });
+  });
 
   document.getElementById('exclude-chips').addEventListener('click', function (ev) {
     var chip = ev.target.closest('.reason-chip'); if (!chip) return;

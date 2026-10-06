@@ -1244,6 +1244,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             f_line_recently_sent   = exe.submit(contacts.get_line_recently_sent_map, cid)
             f_hep_returned_keys    = exe.submit(contacts.get_hep_returned_completed_keys, cid)
             f_hep_reintake_charts  = exe.submit(contacts.get_hep_reintake_chart_numbers, cid)
+            f_ckd_reintake_charts  = exe.submit(contacts.get_ckd_reintake_chart_numbers, cid)
             f_manual_overrides     = exe.submit(contacts.get_mspt_manual_overrides, cid)
             f_contacted            = exe.submit(contacts.get_contacted_with_dates, cid)
             f_manual_pickup_map    = exe.submit(contacts.get_manual_pickup_map, cid)
@@ -1297,6 +1298,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
         line_recently_sent_map      = f_line_recently_sent.result()
         hep_returned_completed_keys = f_hep_returned_keys.result()
         hep_reintake_charts         = f_hep_reintake_charts.result()
+        ckd_reintake_charts         = f_ckd_reintake_charts.result()
         manual_overrides            = f_manual_overrides.result()
         contacted_with_dates        = f_contacted.result()
         manual_pickup_map           = f_manual_pickup_map.result()
@@ -1526,8 +1528,13 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             chronic_manual_pickups=contacts.get_manual_pickup_entries(cid),
             on_hold=_enrich_phones(contacts.get_on_hold_entries(cid)),
             mspt_manual=contacts.get_mspt_manual_entries(cid),
-            ckd_followups=filter_followups(report.ckd_followups),
-            ckd_inactive=filter_followups(report.ckd_inactive),
+            ckd_followups=filter_followups(
+                report.ckd_followups +
+                [e for e in report.ckd_inactive if e.patient.chart_number in ckd_reintake_charts]
+            ),
+            ckd_inactive=filter_followups(
+                [e for e in report.ckd_inactive if e.patient.chart_number not in ckd_reintake_charts]
+            ),
         )
         if report_date is None:
             _report_cache[cid] = (date.today(), _result)

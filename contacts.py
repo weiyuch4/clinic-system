@@ -1480,10 +1480,22 @@ def remove_hep_reintake(chart_number: str, category: str, clinic_id: int = 1) ->
 
 
 def get_hep_reintake_chart_numbers(clinic_id: int = 1) -> set[str]:
+    """Returns chart_numbers for all hepatitis re-intake records (B肝 + C肝)."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT chart_number FROM hep_reintake WHERE clinic_id=%s",
+                "SELECT chart_number FROM hep_reintake WHERE clinic_id=%s AND category IN ('B肝','C肝')",
+                (clinic_id,),
+            )
+            rows = cur.fetchall()
+    return {r["chart_number"] for r in rows}
+
+
+def get_ckd_reintake_chart_numbers(clinic_id: int = 1) -> set[str]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT chart_number FROM hep_reintake WHERE clinic_id=%s AND category='慢性腎臟病'",
                 (clinic_id,),
             )
             rows = cur.fetchall()
