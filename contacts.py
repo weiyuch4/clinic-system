@@ -2536,6 +2536,22 @@ def add_nurse_ot_log(nurse: str, clinic_id: int, date: str, start_time: str, end
             return cur.fetchone()["id"]
 
 
+def update_nurse_ot_log(log_id: int, clinic_id: int, date: str, start_time: str, end_time: str, note: str = '', nurse: str = '', is_admin: bool = False) -> bool:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            if is_admin:
+                cur.execute(
+                    "UPDATE nurse_ot_logs SET date=%s, start_time=%s, end_time=%s, note=%s WHERE id=%s AND clinic_id=%s",
+                    (date, start_time, end_time, note.strip(), log_id, clinic_id),
+                )
+            else:
+                cur.execute(
+                    "UPDATE nurse_ot_logs SET date=%s, start_time=%s, end_time=%s, note=%s WHERE id=%s AND clinic_id=%s AND nurse=%s",
+                    (date, start_time, end_time, note.strip(), log_id, clinic_id, nurse),
+                )
+            return cur.rowcount > 0
+
+
 def delete_nurse_ot_log(log_id: int, clinic_id: int = 1, nurse: str = "", is_admin: bool = False) -> bool:
     with _conn() as conn:
         with conn.cursor() as cur:

@@ -776,6 +776,20 @@ def delete_my_ot_log(log_id: int, nurse: str = "", user: auth.CurrentUser = Depe
         raise HTTPException(status_code=404, detail="記錄不存在")
 
 
+@app.put("/api/nurse/ot-logs/{log_id}")
+def update_my_ot_log(log_id: int, body: dict, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    date       = str(body.get("date", "")).strip()
+    start_time = str(body.get("start_time", "")).strip()
+    end_time   = str(body.get("end_time", "")).strip()
+    note       = str(body.get("note", "")).strip()
+    nurse      = str(body.get("nurse", "")).strip() or user.display_name
+    if not date or not start_time or not end_time:
+        raise HTTPException(status_code=422, detail="日期與時間不可空白")
+    if not contacts.update_nurse_ot_log(log_id, user.clinic_id, date, start_time, end_time, note, nurse=nurse, is_admin=user.role == "admin"):
+        raise HTTPException(status_code=404, detail="記錄不存在")
+    return {"ok": True}
+
+
 @app.get("/api/admin/nurse-ot-logs")
 def get_nurse_ot_logs_admin(
     nurse: str, month: str = "",
