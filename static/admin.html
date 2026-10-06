@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>管理員後台</title>
-<link rel="stylesheet" href="/static/_layout.css?v=63">
+<link rel="stylesheet" href="/static/_layout.css?v=64">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
@@ -1508,6 +1508,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           <button class="adm-sec-opt tab" data-section="schedule" data-label="排班表">排班表</button>
           <button class="adm-sec-opt tab" data-section="announcements" data-label="公告管理">公告管理</button>
           <button class="adm-sec-opt tab" data-section="doctor-notes" data-label="醫師留言">醫師留言</button>
+          <button class="adm-sec-opt tab" data-section="salary" data-label="薪資計算">薪資計算</button>
         </div>
       </div>
     </div>
@@ -1703,6 +1704,11 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
   <!-- ── 薪資計算 ── -->
   <section id="salary" class="section">
+  <div style="display:flex;gap:6px;margin-bottom:14px">
+    <button id="sal-tab-nurse-btn" class="seg-btn active" onclick="switchSalTab('nurse')" style="flex:1;padding:8px 0;font-size:13px;font-weight:600">護理師</button>
+    <button id="sal-tab-pharm-btn" class="seg-btn" onclick="switchSalTab('pharm')" style="flex:1;padding:8px 0;font-size:13px;font-weight:600">藥師</button>
+  </div>
+  <div id="sal-nurse-pane">
     <div class="sal-toolbar">
       <div class="month-picker" style="flex-shrink:0">
         <button class="mp-btn" onclick="stepSalMonth(-1)">&#8592;</button>
@@ -1756,7 +1762,11 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
             <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">護理師</span>
             <span id="sal-import-nurse" style="font-size:13px;font-weight:600;color:var(--text-1)">—</span>
             <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">月份</span>
-            <span id="sal-import-month" style="font-size:13px;font-weight:600;color:var(--text-1)">—</span>
+            <div class="month-picker" style="box-shadow:none;border-color:var(--border)">
+              <button class="mp-btn" onclick="stepImportMonth(-1)">&#8592;</button>
+              <span id="sal-import-month" style="font-size:13px;font-weight:600;color:var(--text-1);min-width:90px;text-align:center">—</span>
+              <button class="mp-btn" onclick="stepImportMonth(1)">&#8594;</button>
+            </div>
             <button class="btn-sm" style="font-size:11px;padding:4px 12px" onclick="fetchImportLogs()">載入記錄</button>
           </div>
           <div id="sal-import-preview" style="display:none;margin-top:10px;font-size:12.5px;color:var(--text-2)"></div>
@@ -1995,6 +2005,156 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <div class="bonus-grid" id="bonus-grid" style="padding:16px 20px 20px"></div>
       </div>
     </div>
+  </div> <!-- end sal-nurse-pane -->
+
+  <div id="sal-pharm-pane" style="display:none">
+    <div class="sal-toolbar">
+      <div class="month-picker" style="flex-shrink:0">
+        <button class="mp-btn" onclick="stepPhSalMonth(-1)">&#8592;</button>
+        <span class="month-display" id="ph-sal-month-display" style="min-width:112px;text-align:center">—</span>
+        <button class="mp-btn" onclick="stepPhSalMonth(1)">&#8594;</button>
+      </div>
+      <select id="ph-sal-person" class="sal-select">
+        <option value="">選擇藥師</option>
+      </select>
+      <div class="seg-toggle" id="ph-sal-mode-toggle">
+        <button class="seg-btn active" data-phmode="full" onclick="setPhSalMode('full')">全職</button>
+        <button class="seg-btn" data-phmode="part" onclick="setPhSalMode('part')">兼職</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">藥師薪資明細</span>
+        <span class="card-spacer"></span>
+        <button class="btn-sm" onclick="window.print()">列印</button>
+      </div>
+      <div class="sal-body">
+        <!-- 固定項目 -->
+        <div class="sal-row" id="ph-sal-base-row">
+          <span class="sal-label">底薪</span>
+          <span class="sal-amount" id="ph-sal-base">30,500</span>
+        </div>
+        <div class="sal-row ph-sal-full-only">
+          <span class="sal-label">
+            <input type="checkbox" id="ph-sal-attendance-chk" checked onchange="recalcPhSalary()">
+            全勤獎金
+          </span>
+          <span class="sal-amount" id="ph-sal-attendance-amt">2,000</span>
+        </div>
+        <div class="sal-part-rate-note" id="ph-sal-part-note" style="display:none">兼職時薪：<strong>250 元/h</strong>（一般）；<strong>335 元/h</strong>（加班，250 × 1.34）</div>
+
+        <!-- 加班記錄 -->
+        <div class="sal-section-head" style="margin-top:18px">
+          加班記錄
+          <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addPhOtRow()">＋ 新增</button>
+          <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px" onclick="togglePhBatchPanel()">批量新增</button>
+        </div>
+        <div id="ph-sal-batch-panel" class="sal-batch-panel" style="display:none;margin-top:8px">
+          <div class="sal-batch-row">
+            <div class="sal-batch-field">
+              <span class="sal-batch-lbl">日期範圍</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="date" id="ph-bi-batch-from" class="sal-date-input">
+                <span style="color:var(--text-3)">~</span>
+                <input type="date" id="ph-bi-batch-to" class="sal-date-input">
+              </div>
+            </div>
+            <div class="sal-batch-field">
+              <span class="sal-batch-lbl">時間</span>
+              <div style="display:flex;align-items:center;gap:6px">
+                <input type="time" id="ph-bi-batch-start" class="sal-time-inp" value="18:00">
+                <span class="sal-time-sep">—</span>
+                <input type="time" id="ph-bi-batch-end" class="sal-time-inp" value="20:00">
+              </div>
+            </div>
+          </div>
+          <div class="sal-batch-row">
+            <span class="sal-batch-lbl">星期幾</span>
+            <div style="display:flex;gap:4px">
+              <button class="sal-day-btn active" data-day="1" onclick="this.classList.toggle('active')">一</button>
+              <button class="sal-day-btn active" data-day="2" onclick="this.classList.toggle('active')">二</button>
+              <button class="sal-day-btn active" data-day="3" onclick="this.classList.toggle('active')">三</button>
+              <button class="sal-day-btn active" data-day="4" onclick="this.classList.toggle('active')">四</button>
+              <button class="sal-day-btn active" data-day="5" onclick="this.classList.toggle('active')">五</button>
+              <button class="sal-day-btn" data-day="6" onclick="this.classList.toggle('active')">六</button>
+              <button class="sal-day-btn" data-day="0" onclick="this.classList.toggle('active')">日</button>
+            </div>
+            <button class="btn-sm" style="margin-left:auto;font-size:11px;padding:4px 12px" onclick="applyPhBatch()">批量新增</button>
+          </div>
+        </div>
+        <div class="sal-ot-list" id="ph-sal-ot-list" style="margin-bottom:12px"></div>
+
+        <div class="sal-row ph-sal-full-only">
+          <span class="sal-label">周六加班費</span>
+          <span class="sal-amount" id="ph-sal-sat-amt">0</span>
+        </div>
+        <div class="sal-row">
+          <span class="sal-label" id="ph-sal-ot-label">一般加班費</span>
+          <span class="sal-amount" id="ph-sal-ot-total">0</span>
+        </div>
+
+        <!-- 其他獎金 / 扣款 -->
+        <div class="sal-section-head" style="margin-top:18px">
+          其他獎金 / 扣款
+          <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addPhSalExtra()">＋ 新增</button>
+        </div>
+        <div id="ph-sal-extras-list" style="margin-bottom:4px"></div>
+        <div class="sal-row" id="ph-sal-extras-row" style="display:none">
+          <span class="sal-label" style="color:var(--muted)">其他合計</span>
+          <span class="sal-amount" id="ph-sal-extras-total">—</span>
+        </div>
+
+        <!-- 勞保/健保扣款 -->
+        <div class="sal-section-head" style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <span>法定扣款</span>
+          <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-left:auto">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
+              勞保
+              <input type="number" id="ph-sal-labor-ins" min="0" value="0" step="1"
+                style="width:72px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+                oninput="recalcPhSalary()"> 元
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
+              健保
+              <input type="number" id="ph-sal-health-ins" min="0" value="0" step="1"
+                style="width:72px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+                oninput="recalcPhSalary()"> 元
+            </label>
+          </div>
+        </div>
+        <div class="sal-row" id="ph-sal-ins-row" style="display:none">
+          <span class="sal-label" style="color:var(--red)">勞健保扣款</span>
+          <span class="sal-amount" id="ph-sal-ins-deduct" style="color:var(--red)">—</span>
+        </div>
+
+        <!-- 合計 -->
+        <hr class="sal-divider">
+        <div class="sal-total-row">
+          <span class="sal-total-label">本月薪資合計</span>
+          <span class="sal-total-amount" id="ph-sal-grand-total">—</span>
+        </div>
+        <div class="sal-note" id="ph-sal-hourly-note"></div>
+
+        <!-- 儲存 -->
+        <div style="margin-top:20px;display:flex;align-items:center;gap:10px;justify-content:flex-end">
+          <span id="ph-sal-editing-badge" style="display:none;font-size:12px;color:var(--blue);font-weight:600">✎ 編輯中</span>
+          <button class="btn-sm" onclick="newPhSalaryRecord()" id="ph-sal-new-btn" style="display:none">新增記錄</button>
+          <button class="btn-sm primary" onclick="savePhSalaryRecord()" id="ph-sal-save-btn">儲存薪資記錄</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 歷史紀錄 -->
+    <div class="card" id="ph-sal-history-card" style="margin-top:16px;display:none">
+      <div class="card-head">
+        <span class="card-title">已儲存的薪資紀錄</span>
+        <span class="card-spacer"></span>
+        <span class="card-meta" id="ph-sal-history-meta"></span>
+      </div>
+      <div id="ph-sal-history-list"></div>
+    </div>
+  </div> <!-- end sal-pharm-pane -->
+
   </section>
 
   <!-- ── Lab code settings ── -->
@@ -2259,7 +2419,9 @@ const DOW_LABELS = ['一', '二', '三', '四', '五', '六'];  // 診所週日�
 let weekStart = mondayOf(today);
 
 async function api(path, options = {}) {
-  const r = await fetch(path, { credentials: 'include', ...options });
+  const token = localStorage.getItem('admin_token') || localStorage.getItem('clinic_token') || '';
+  const authH = token ? { Authorization: 'Bearer ' + token } : {};
+  const r = await fetch(path, { credentials: 'include', ...options, headers: { ...authH, ...(options.headers || {}) } });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
   return r.json();
 }
@@ -4594,7 +4756,20 @@ function addOtRow() {
   recalcSalary();
 }
 
+let _importYear = new Date().getFullYear();
+let _importMon  = new Date().getMonth() + 1;
 let _importedLogs = [];
+
+function updateImportMonthDisplay() {
+  const el = $('sal-import-month');
+  if (el) el.textContent = `${_importYear} 年 ${ZH_MON[_importMon - 1]} 月`;
+}
+function stepImportMonth(dir) {
+  _importMon += dir;
+  if (_importMon > 12) { _importMon = 1; _importYear++; }
+  if (_importMon < 1)  { _importMon = 12; _importYear--; }
+  updateImportMonthDisplay();
+}
 
 function toggleImportPanel() {
   const p = $('sal-import-panel');
@@ -4603,7 +4778,9 @@ function toggleImportPanel() {
   if (opening) {
     const nurse = $('sal-nurse') ? $('sal-nurse').value : '';
     $('sal-import-nurse').textContent = nurse || '（未選擇）';
-    $('sal-import-month').textContent = `${_salYear} 年 ${ZH_MON[_salMon-1]} 月`;
+    _importYear = _salYear;
+    _importMon  = _salMon;
+    updateImportMonthDisplay();
     $('sal-import-preview').style.display = 'none';
     $('sal-import-actions').style.display = 'none';
     _importedLogs = [];
@@ -4612,13 +4789,18 @@ function toggleImportPanel() {
 
 async function fetchImportLogs() {
   const nurse = $('sal-nurse') ? $('sal-nurse').value : '';
-  const month = salMonthStr();
+  const month = `${_importYear}-${String(_importMon).padStart(2,'0')}`;
   if (!nurse) { $('sal-import-preview').style.display=''; $('sal-import-preview').textContent='請先選擇護理師'; return; }
   $('sal-import-preview').style.display = '';
   $('sal-import-preview').textContent = '載入中…';
   $('sal-import-actions').style.display = 'none';
   try {
-    const logs = await L.apiFetch(`/api/admin/nurse-ot-logs?nurse=${encodeURIComponent(nurse)}&month=${encodeURIComponent(month)}`);
+    const token = localStorage.getItem('admin_token') || localStorage.getItem('clinic_token') || '';
+    const r = await fetch(`/api/admin/nurse-ot-logs?nurse=${encodeURIComponent(nurse)}&month=${encodeURIComponent(month)}`, {
+      headers: { Authorization: 'Bearer ' + token }
+    });
+    if (!r.ok) throw new Error(r.status);
+    const logs = await r.json();
     _importedLogs = logs;
     if (!logs.length) {
       $('sal-import-preview').textContent = '該月份尚無護理師自登記錄';
@@ -4695,6 +4877,346 @@ function removeOtRow(i) {
   _salOtRows.splice(i, 1);
   renderOtRows();
   recalcSalary();
+}
+
+// ── Pharmacist salary tab ──────────────────────────────────────────────────
+let _phSalYear = new Date().getFullYear();
+let _phSalMon  = new Date().getMonth() + 1;
+let _phSalMode = 'full';
+let _phSalOtRows = [];
+let _phSalExtras = [];
+let _phSalEditingId = null;
+const PH_SAL_BASE = 30500;
+const PH_SAL_ATTENDANCE = 2000;
+const PH_SAL_SAT_RATE = 175;
+
+function phSalMonthStr() {
+  return `${_phSalYear}-${String(_phSalMon).padStart(2,'0')}`;
+}
+function updatePhSalMonthDisplay() {
+  const el = $('ph-sal-month-display');
+  if (el) el.textContent = `${_phSalYear} 年 ${ZH_MON[_phSalMon - 1]} 月`;
+}
+function stepPhSalMonth(dir) {
+  _phSalMon += dir;
+  if (_phSalMon > 12) { _phSalMon = 1; _phSalYear++; }
+  if (_phSalMon < 1)  { _phSalMon = 12; _phSalYear--; }
+  updatePhSalMonthDisplay();
+  setPhEditingRecord(null);
+  loadPhSalaryHistory();
+}
+
+function setPhSalMode(mode) {
+  _phSalMode = mode;
+  document.querySelectorAll('#ph-sal-mode-toggle .seg-btn').forEach(b => b.classList.toggle('active', b.dataset.phmode === mode));
+  const isFull = mode === 'full';
+  document.querySelectorAll('#sal-pharm-pane .ph-sal-full-only').forEach(el => el.style.display = isFull ? '' : 'none');
+  const partNote = $('ph-sal-part-note');
+  if (partNote) partNote.style.display = isFull ? 'none' : '';
+  const otLabel = $('ph-sal-ot-label');
+  if (otLabel) otLabel.textContent = isFull ? '一般加班費' : '兼職薪資';
+  recalcPhSalary();
+  renderPhOtRows();
+}
+
+function setPhEditingRecord(id) {
+  _phSalEditingId = id;
+  $('ph-sal-editing-badge').style.display = id ? '' : 'none';
+  $('ph-sal-new-btn').style.display = id ? '' : 'none';
+  $('ph-sal-save-btn').textContent = id ? '更新記錄' : '儲存薪資記錄';
+}
+function newPhSalaryRecord() {
+  setPhEditingRecord(null);
+  document.querySelectorAll('#ph-sal-history-list .sal-hist-row').forEach(r => r.classList.remove('selected'));
+}
+
+function renderPhOtRows() {
+  const list = $('ph-sal-ot-list');
+  if (!list) return;
+  if (!_phSalOtRows.length) {
+    list.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:4px 0 8px">尚無加班記錄</div>';
+    recalcPhSalary();
+    return;
+  }
+  const isPart = _phSalMode === 'part';
+  list.innerHTML = _phSalOtRows.map((row, i) => {
+    const info = getDayInfo(row.date);
+    return `<div class="sal-ot-row">
+      <input type="date" class="sal-date-input" value="${row.date || ''}" oninput="_phSalOtRows[${i}].date=this.value;renderPhOtRows()">
+      <input type="time" class="sal-time-inp" value="${row.start || ''}" oninput="_phSalOtRows[${i}].start=this.value;recalcPhSalary()">
+      <span class="sal-time-sep">—</span>
+      <input type="time" class="sal-time-inp" value="${row.end || ''}" oninput="_phSalOtRows[${i}].end=this.value;recalcPhSalary()">
+      ${isPart ? `<label class="sal-ot-chk"><input type="checkbox" ${row.isOt ? 'checked' : ''} onchange="_phSalOtRows[${i}].isOt=this.checked;recalcPhSalary()"> 加班</label>` : `<span class="sal-ot-day ${info.cls}">${info.label||'—'}</span>`}
+      <button class="sal-ot-del" onclick="removePhOtRow(${i})">✕</button>
+    </div>`;
+  }).join('');
+  recalcPhSalary();
+}
+
+function addPhOtRow() {
+  const mv = phSalMonthStr();
+  const defaultDate = mv ? mv + '-01' : new Date().toISOString().slice(0, 10);
+  const prev = _phSalOtRows.length ? _phSalOtRows[_phSalOtRows.length - 1] : null;
+  _phSalOtRows.push({ date: defaultDate, start: prev ? prev.start : '18:00', end: prev ? prev.end : '20:00', isOt: false });
+  renderPhOtRows();
+  recalcPhSalary();
+}
+function removePhOtRow(i) {
+  _phSalOtRows.splice(i, 1);
+  renderPhOtRows();
+  recalcPhSalary();
+}
+
+function togglePhBatchPanel() {
+  const p = $('ph-sal-batch-panel');
+  const opening = p.style.display === 'none';
+  p.style.display = opening ? '' : 'none';
+  if (opening) {
+    const mv = phSalMonthStr();
+    if (mv) {
+      const [y, m] = mv.split('-').map(Number);
+      const last = new Date(y, m, 0).getDate();
+      $('ph-bi-batch-from').value = mv + '-01';
+      $('ph-bi-batch-to').value   = mv + '-' + String(last).padStart(2, '0');
+    }
+  }
+}
+function applyPhBatch() {
+  const from  = $('ph-bi-batch-from').value;
+  const to    = $('ph-bi-batch-to').value;
+  const start = $('ph-bi-batch-start').value;
+  const end   = $('ph-bi-batch-end').value;
+  if (!from || !to || !start || !end) return;
+  const activeDays = new Set(
+    [...document.querySelectorAll('#ph-sal-batch-panel .sal-day-btn.active')].map(b => parseInt(b.dataset.day))
+  );
+  const cur  = new Date(from + 'T00:00:00');
+  const last = new Date(to   + 'T00:00:00');
+  while (cur <= last) {
+    if (activeDays.has(cur.getDay())) {
+      const d = cur.toISOString().slice(0, 10);
+      if (!_phSalOtRows.some(r => r.date === d && r.start === start && r.end === end))
+        _phSalOtRows.push({ date: d, start, end, isOt: false });
+    }
+    cur.setDate(cur.getDate() + 1);
+  }
+  _phSalOtRows.sort((a, b) => a.date.localeCompare(b.date));
+  renderPhOtRows();
+  $('ph-sal-batch-panel').style.display = 'none';
+}
+
+function addPhSalExtra() {
+  _phSalExtras.push({ name: '', amount: 0 });
+  renderPhSalExtras();
+}
+function removePhSalExtra(i) {
+  _phSalExtras.splice(i, 1);
+  renderPhSalExtras();
+  recalcPhSalary();
+}
+function renderPhSalExtras() {
+  const list = $('ph-sal-extras-list');
+  if (!list) return;
+  list.innerHTML = _phSalExtras.map((ex, i) => `
+    <div class="sal-extra-row">
+      <input type="text" class="sal-extra-name" placeholder="項目名稱" value="${ex.name || ''}"
+        oninput="_phSalExtras[${i}].name=this.value">
+      <input type="number" class="sal-extra-amt" placeholder="金額" value="${ex.amount || 0}"
+        oninput="_phSalExtras[${i}].amount=parseInt(this.value)||0;recalcPhSalary()">
+      <button class="sal-ot-del" onclick="removePhSalExtra(${i})">✕</button>
+    </div>`).join('');
+  $('ph-sal-extras-row').style.display = _phSalExtras.length ? '' : 'none';
+  recalcPhSalary();
+}
+
+function recalcPhSalary() {
+  const isPart = _phSalMode === 'part';
+  let total = 0;
+
+  if (!isPart) {
+    total += PH_SAL_BASE;
+    const attendance = $('ph-sal-attendance-chk') && $('ph-sal-attendance-chk').checked ? PH_SAL_ATTENDANCE : 0;
+    $('ph-sal-attendance-amt').textContent = attendance.toLocaleString('zh-TW');
+    total += attendance;
+  }
+
+  let satPay = 0, otTotal = 0;
+  _phSalOtRows.forEach(row => {
+    const mins = calcMinutes(row.start, row.end);
+    const info = getDayInfo(row.date);
+    if (isPart) {
+      const rate = row.isOt ? 335 : 250;
+      otTotal += Math.round((mins / 60) * rate);
+    } else {
+      if (info.isSaturday) {
+        satPay += calcOvertimePay(mins, '休息日', PH_SAL_SAT_RATE);
+      } else {
+        otTotal += calcOvertimePay(mins, '平日', PH_SAL_SAT_RATE);
+      }
+    }
+  });
+  satPay = Math.ceil(satPay);
+  otTotal = Math.ceil(otTotal);
+  if (!isPart) {
+    $('ph-sal-sat-amt').textContent = fmtNT(satPay);
+    total += satPay;
+  }
+  $('ph-sal-ot-total').textContent = fmtNT(otTotal);
+  total += otTotal;
+
+  let extrasTotal = 0;
+  _phSalExtras.forEach(ex => extrasTotal += (ex.amount || 0));
+  if (_phSalExtras.length) {
+    $('ph-sal-extras-total').textContent = fmtNT(extrasTotal);
+    $('ph-sal-extras-row').style.display = '';
+  }
+  total += extrasTotal;
+
+  const laborIns  = parseInt(($('ph-sal-labor-ins')  || {}).value) || 0;
+  const healthIns = parseInt(($('ph-sal-health-ins') || {}).value) || 0;
+  const insTotal  = laborIns + healthIns;
+  if (insTotal > 0) {
+    $('ph-sal-ins-deduct').textContent = `-${fmtNT(insTotal)}`;
+    $('ph-sal-ins-row').style.display = '';
+    total -= insTotal;
+  } else {
+    $('ph-sal-ins-row').style.display = 'none';
+  }
+
+  $('ph-sal-grand-total').textContent = total > 0 ? fmtNT(total) : '—';
+  if (isPart) {
+    const h = _phSalOtRows.reduce((acc, r) => acc + calcMinutes(r.start, r.end), 0) / 60;
+    $('ph-sal-hourly-note').textContent = h > 0 ? `共 ${h.toFixed(1)} 小時，合計 ${fmtNT(total)} 元` : '';
+  } else {
+    $('ph-sal-hourly-note').textContent = '';
+  }
+}
+
+function _currentPhSalaryPayload() {
+  const isPart = _phSalMode === 'part';
+  const total = parseInt(($('ph-sal-grand-total').textContent || '').replace(/[^0-9]/g, '')) || 0;
+  return {
+    nurse:       $('ph-sal-person').value,
+    month:       phSalMonthStr(),
+    attendance:  isPart ? 0 : ($('ph-sal-attendance-chk').checked ? PH_SAL_ATTENDANCE : 0),
+    performance: 0,
+    sat_pay:     isPart ? 0 : (parseInt(($('ph-sal-sat-amt').textContent || '').replace(/,/g, '')) || 0),
+    float_bonus: 0,
+    ot_pay:      isPart ? total : (parseInt(($('ph-sal-ot-total').textContent || '').replace(/,/g, '')) || 0),
+    total,
+    sick_days:   0,
+    ot_entries:  JSON.stringify({ mode: _phSalMode, rows: _phSalOtRows, extras: _phSalExtras,
+                   labor_ins: parseInt(($('ph-sal-labor-ins') || {}).value) || 0,
+                   health_ins: parseInt(($('ph-sal-health-ins') || {}).value) || 0,
+                   _role: 'pharm' }),
+  };
+}
+
+async function savePhSalaryRecord() {
+  const person = $('ph-sal-person').value;
+  if (!person) { alert('請先選擇藥師'); return; }
+  if ($('ph-sal-grand-total').textContent === '—') { alert('請先計算薪資'); return; }
+  const btn = $('ph-sal-save-btn');
+  btn.disabled = true;
+  try {
+    const payload = _currentPhSalaryPayload();
+    if (_phSalEditingId) {
+      await api(`/api/admin/salary/${_phSalEditingId}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    } else {
+      await api('/api/admin/salary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+    }
+    setPhEditingRecord(null);
+    loadPhSalaryHistory();
+  } catch(e) {
+    alert('儲存失敗：' + e.message);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function loadPhSalaryHistory() {
+  const person = $('ph-sal-person') ? $('ph-sal-person').value : '';
+  const month  = phSalMonthStr();
+  if (!person) { $('ph-sal-history-card').style.display = 'none'; return; }
+  try {
+    const recs = await api(`/api/admin/salary?nurse=${encodeURIComponent(person)}&month=${encodeURIComponent(month)}`);
+    const card = $('ph-sal-history-card');
+    if (!recs.length) { card.style.display = 'none'; return; }
+    card.style.display = '';
+    $('ph-sal-history-meta').textContent = `${recs.length} 筆`;
+    $('ph-sal-history-list').innerHTML = recs.map(r =>
+      `<div class="sal-hist-row${r.id === _phSalEditingId ? ' selected' : ''}" data-id="${r.id}" onclick="loadPhSalRecord(${r.id})" style="cursor:pointer">
+        <span class="sal-hist-date">${r.month}</span>
+        <span class="sal-hist-name">${r.nurse}</span>
+        <span class="sal-hist-total">${(r.total || 0).toLocaleString('zh-TW')}</span>
+        <button class="sal-hist-del" onclick="event.stopPropagation();deletePhSalRecord(${r.id})">刪除</button>
+      </div>`
+    ).join('');
+  } catch(_) { $('ph-sal-history-card').style.display = 'none'; }
+}
+
+async function loadPhSalRecord(id) {
+  try {
+    const recs = await api(`/api/admin/salary?nurse=${encodeURIComponent($('ph-sal-person').value)}&month=${encodeURIComponent(phSalMonthStr())}`);
+    const rec = recs.find(r => r.id === id);
+    if (!rec) return;
+    setPhEditingRecord(id);
+    document.querySelectorAll('#ph-sal-history-list .sal-hist-row').forEach(r => r.classList.toggle('selected', r.dataset.id == id));
+    let parsed = {};
+    try {
+      parsed = JSON.parse(rec.ot_entries || '{}');
+      if (Array.isArray(parsed)) { _phSalOtRows = parsed; setPhSalMode('full'); }
+      else { _phSalOtRows = parsed.rows || []; setPhSalMode(parsed.mode || 'full'); }
+    } catch(_) { _phSalOtRows = []; setPhSalMode('full'); }
+    _phSalExtras = Array.isArray(parsed.extras) ? parsed.extras : [];
+    if ($('ph-sal-labor-ins'))  $('ph-sal-labor-ins').value  = parsed.labor_ins  || 0;
+    if ($('ph-sal-health-ins')) $('ph-sal-health-ins').value = parsed.health_ins || 0;
+    if ($('ph-sal-attendance-chk')) $('ph-sal-attendance-chk').checked = rec.attendance > 0;
+    renderPhOtRows();
+    renderPhSalExtras();
+    recalcPhSalary();
+  } catch(e) { alert('載入失敗'); }
+}
+
+async function deletePhSalRecord(id) {
+  if (!confirm('確定刪除此薪資紀錄？')) return;
+  try {
+    await api(`/api/admin/salary/${id}`, { method: 'DELETE' });
+    if (_phSalEditingId === id) setPhEditingRecord(null);
+    loadPhSalaryHistory();
+  } catch(e) { alert('刪除失敗'); }
+}
+
+function initPhSalaryTab() {
+  updatePhSalMonthDisplay();
+  const sel = $('ph-sal-person');
+  if (sel && sel.options.length <= 1) {
+    api('/api/pharmacists').then(names => {
+      names.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = n;
+        sel.appendChild(opt);
+      });
+      loadPhSalaryHistory();
+    }).catch(() => {});
+  }
+  recalcPhSalary();
+}
+
+document.addEventListener('change', e => {
+  if (e.target.id === 'ph-sal-person') {
+    setPhEditingRecord(null);
+    loadPhSalaryHistory();
+  }
+});
+
+function switchSalTab(tab) {
+  const isNurse = tab === 'nurse';
+  $('sal-nurse-pane').style.display = isNurse ? '' : 'none';
+  $('sal-pharm-pane').style.display = isNurse ? 'none' : '';
+  $('sal-tab-nurse-btn').classList.toggle('active', isNurse);
+  $('sal-tab-pharm-btn').classList.toggle('active', !isNurse);
+  if (!isNurse) initPhSalaryTab();
 }
 
 function getDayInfo(dateStr) {
