@@ -2093,9 +2093,20 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           </div>
         </div>
 
-        <!-- 上班記錄 -->
+        <!-- 上班記錄 (regular hours × 時薪) -->
         <div class="sal-section-head" style="margin-top:18px">
           上班記錄
+          <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addPhRegRow()">＋ 新增</button>
+        </div>
+        <div class="sal-ot-list" id="ph-reg-list" style="margin-bottom:8px"></div>
+        <div class="sal-row" id="ph-reg-row" style="display:none">
+          <span class="sal-label">上班合計</span>
+          <span class="sal-amount" id="ph-reg-total">0</span>
+        </div>
+
+        <!-- 加班記錄 -->
+        <div class="sal-section-head" style="margin-top:18px">
+          加班記錄
           <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addPhOtRow()">＋ 新增</button>
           <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px" onclick="togglePhBatchPanel()">批量新增</button>
         </div>
@@ -4501,7 +4512,11 @@ const _SPK_CLK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" str
 const _SPK_MONS = ['','1','2','3','4','5','6','7','8','9','10','11','12'];
 let _salPkOpen  = null;   // {section:'ot'|'pharm-ot', idx, field:'date'|'start'|'end', trigger}
 
-function _salRows(section) { return section === 'pharm-ot' ? _phSalOtRows : _salOtRows; }
+function _salRows(section) {
+  if (section === 'pharm-ot')  return _phSalOtRows;
+  if (section === 'pharm-reg') return _phRegRows;
+  return _salOtRows;
+}
 let _salDpNavY  = 0, _salDpNavM = 0;
 
 function spkPad2(n) { return String(n).padStart(2, '0'); }
@@ -4543,7 +4558,7 @@ function salTpRender() {
   if (!wrap || !_salPkOpen) return;
   const rows = _salRows(_salPkOpen.section);
   const timeVal = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
-  const isPharm = _salPkOpen && _salPkOpen.section === 'pharm-ot';
+  const isPharm = _salPkOpen && (_salPkOpen.section === 'pharm-ot' || _salPkOpen.section === 'pharm-reg');
   const selH = parseInt(timeVal.slice(0,2));
   const rawM = parseInt(timeVal.slice(3,5));
   const selM = isPharm ? rawM : (Math.round(rawM / 5) * 5 % 60);
@@ -4585,7 +4600,7 @@ window.salDpSelect = function(day) {
   const spn = _salPkOpen.trigger.querySelector('.spk-val');
   if (spn) spn.textContent = val;
   salClosePicker();
-  if (section === 'pharm-ot') recalcPhSalary(); else recalcSalary();
+  if (section === 'pharm-ot' || section === 'pharm-reg') recalcPhSalary(); else recalcSalary();
 };
 
 window.salTpSelH = function(h) {
@@ -4596,7 +4611,7 @@ window.salTpSelH = function(h) {
   const spn = _salPkOpen.trigger.querySelector('.spk-val');
   if (spn) spn.textContent = rows[_salPkOpen.idx][_salPkOpen.field];
   salTpRender();
-  if (_salPkOpen.section === 'pharm-ot') recalcPhSalary(); else recalcSalary();
+  if (_salPkOpen.section === 'pharm-ot' || _salPkOpen.section === 'pharm-reg') recalcPhSalary(); else recalcSalary();
 };
 
 window.salTpSelM = function(m) {
@@ -4608,7 +4623,7 @@ window.salTpSelM = function(m) {
   const spn = _salPkOpen.trigger.querySelector('.spk-val');
   if (spn) spn.textContent = rows[_salPkOpen.idx][_salPkOpen.field];
   salClosePicker();
-  if (section === 'pharm-ot') recalcPhSalary(); else recalcSalary();
+  if (section === 'pharm-ot' || section === 'pharm-reg') recalcPhSalary(); else recalcSalary();
 };
 
 function salOpenPicker(section, idx, field, triggerEl) {
@@ -5052,6 +5067,7 @@ let _phSalYear = new Date().getFullYear();
 let _phSalMon  = new Date().getMonth() + 1;
 let _phSalMode = 'full';
 let _phSalOtRows = [];
+let _phRegRows   = [];
 let _phSalExtras = [];
 let _phSalEditingId = null;
 const PH_SAL_BASE = 30500;
@@ -5090,6 +5106,7 @@ function setPhSalMode(mode) {
   if (otLabel) otLabel.textContent = isFull ? '一般加班費' : '時薪合計';
   recalcPhSalary();
   renderPhOtRows();
+  renderPhRegRows();
 }
 
 function setPhEditingRecord(id) {
@@ -5101,6 +5118,8 @@ function setPhEditingRecord(id) {
 function newPhSalaryRecord() {
   setPhEditingRecord(null);
   document.querySelectorAll('#ph-sal-history-list .sal-hist-row').forEach(r => r.classList.remove('selected'));
+  _phRegRows = [];
+  renderPhRegRows();
   phSlipClearDates();
 }
 
@@ -5108,7 +5127,7 @@ function renderPhOtRows() {
   const list = $('ph-sal-ot-list');
   if (!list) return;
   if (!_phSalOtRows.length) {
-    list.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:4px 0 8px">尚無上班記錄</div>';
+    list.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:4px 0 8px">尚無加班記錄</div>';
     recalcPhSalary();
     return;
   }
@@ -5128,6 +5147,40 @@ function renderPhOtRows() {
     </div>`;
   }).join('');
   recalcPhSalary();
+}
+
+function renderPhRegRows() {
+  const list = $('ph-reg-list');
+  if (!list) return;
+  if (!_phRegRows.length) {
+    list.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:4px 0 8px">尚無上班記錄</div>';
+    recalcPhSalary();
+    return;
+  }
+  list.innerHTML = _phRegRows.map((row, i) => {
+    const dv = row.date  || phSalMonthStr() + '-01';
+    const sv = row.start || '09:00';
+    const ev = row.end   || '18:00';
+    const datePart = `<button class="sal-pick-trigger" onclick="salOpenPicker('pharm-reg',${i},'date',this)">${_SPK_CAL}<span class="spk-val">${dv}</span></button>`;
+    const timePart = `<button class="sal-pick-trigger" onclick="salOpenPicker('pharm-reg',${i},'start',this)">${_SPK_CLK}<span class="spk-val">${sv}</span></button><span class="sal-time-sep">—</span><button class="sal-pick-trigger" onclick="salOpenPicker('pharm-reg',${i},'end',this)">${_SPK_CLK}<span class="spk-val">${ev}</span></button>`;
+    return `<div class="sal-ot-entry">
+      ${datePart}${timePart}
+      <span style="color:var(--text-2);font-size:12.5px;font-variant-numeric:tabular-nums;flex:1" id="ph-reg-result-${i}"></span>
+      <button class="sal-del" onclick="removePhRegRow(${i})">×</button>
+    </div>`;
+  }).join('');
+  recalcPhSalary();
+}
+function addPhRegRow() {
+  const mv = phSalMonthStr();
+  const defaultDate = mv ? mv + '-01' : new Date().toISOString().slice(0, 10);
+  const prev = _phRegRows.length ? _phRegRows[_phRegRows.length - 1] : null;
+  _phRegRows.push({ date: defaultDate, start: prev ? prev.start : '09:00', end: prev ? prev.end : '18:00' });
+  renderPhRegRows();
+}
+function removePhRegRow(i) {
+  _phRegRows.splice(i, 1);
+  renderPhRegRows();
 }
 
 function addPhOtRow() {
@@ -5251,6 +5304,23 @@ function recalcPhSalary() {
   }
   $('ph-sal-ot-total').textContent = fmtNT(otTotal);
   total += otTotal;
+
+  let regTotal = 0;
+  _phRegRows.forEach((row, i) => {
+    const mins = calcMinutes(row.start, row.end);
+    const pay = Math.round((mins / 60) * _phSalHourlyRate);
+    regTotal += pay;
+    const resEl = document.getElementById('ph-reg-result-' + i);
+    if (resEl && mins > 0) resEl.textContent = (mins / 60).toFixed(1) + 'h × ' + fmtNT(_phSalHourlyRate) + ' 元/h → ' + fmtNT(pay) + ' 元';
+    else if (resEl) resEl.textContent = '';
+  });
+  if (_phRegRows.length) {
+    $('ph-reg-total').textContent = fmtNT(regTotal);
+    $('ph-reg-row').style.display = '';
+  } else {
+    $('ph-reg-row').style.display = 'none';
+  }
+  total += regTotal;
 
   let extrasTotal = 0;
   _phSalExtras.forEach(ex => extrasTotal += (ex.amount || 0));
@@ -5401,6 +5471,7 @@ function printPhPaySlip() {
       ${days > 0 ? `<tr><td>工作天數</td><td>${days} 天</td></tr>` : ''}
       ${regularTotal > 0 ? `<tr><td>工時薪資</td><td>NT$ ${regularTotal.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${otTotal > 0 ? `<tr><td>加班費</td><td>NT$ ${otTotal.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${(()=>{ let t=0; _phRegRows.forEach(r=>{const m=calcMinutes(r.start,r.end);t+=Math.round((m/60)*_phSalHourlyRate);}); return t>0?`<tr><td>上班合計</td><td>NT$ ${t.toLocaleString('zh-TW')}</td></tr>`:''; })()}
       ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${laborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
@@ -5415,6 +5486,7 @@ function printPhPaySlip() {
       <tr><td>月薪</td><td>NT$ ${_phSalBase.toLocaleString('zh-TW')}</td></tr>
       ${parseInt((sat||'').replace(/,/g,'')) > 0 ? `<tr><td>周六加班費</td><td>${fmt(sat)}</td></tr>` : ''}
       ${parseInt((ot||'').replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
+      ${(()=>{ let t=0; _phRegRows.forEach(r=>{const m=calcMinutes(r.start,r.end);t+=Math.round((m/60)*_phSalHourlyRate);}); return t>0?`<tr><td>上班合計</td><td>NT$ ${t.toLocaleString('zh-TW')}</td></tr>`:''; })()}
       ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${laborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
@@ -5487,6 +5559,7 @@ function _currentPhSalaryPayload() {
                    hourly_rate: _phSalHourlyRate, hourly_ot_rate: _phSalHourlyOtRate,
                    labor_ins: parseInt(($('ph-sal-labor-ins') || {}).value) || 0,
                    health_ins: parseInt(($('ph-sal-health-ins') || {}).value) || 0,
+                   reg_rows: _phRegRows,
                    slip_start: _phSlipStart, slip_end: _phSlipEnd,
                    _role: 'pharm' }),
   };
@@ -5568,6 +5641,8 @@ async function loadPhSalRecord(id) {
     if (sev) sev.textContent = _phSlipEnd   || '結束日期（選填）';
     const scb = document.getElementById('ph-slip-clear');
     if (scb) scb.style.display = (_phSlipStart || _phSlipEnd) ? '' : 'none';
+    _phRegRows = Array.isArray(parsed.reg_rows) ? parsed.reg_rows : [];
+    renderPhRegRows();
     renderPhOtRows();
     renderPhSalExtras();
     recalcPhSalary();
