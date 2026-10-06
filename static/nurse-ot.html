@@ -168,7 +168,7 @@
   animation:pick-in .14s ease;
 }
 .edit-card-title { font-size:15px; font-weight:700; color:var(--text); margin-bottom:14px; }
-.edit-field { display:flex; flex-direction:column; gap:5px; }
+.edit-field { display:flex; flex-direction:column; gap:5px; position:relative; }
 .edit-inp {
   border:1.5px solid var(--border); border-radius:8px; background:var(--card);
   color:var(--text); font:400 13px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;
@@ -366,16 +366,28 @@
           <div style="display:flex;flex-direction:column;gap:12px">
             <div class="edit-field">
               <span class="add-lbl">日期</span>
-              <input type="date" id="edit-date" class="edit-inp">
+              <button type="button" class="pick-trigger" id="edp-trigger" onclick="editTogglePicker('edp')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span class="pick-trigger-val" id="edp-display" style="min-width:102px">選擇日期</span>
+              </button>
+              <div class="pick-drop cal-drop" id="edp-drop" style="display:none"></div>
             </div>
             <div style="display:flex;gap:10px">
               <div class="edit-field" style="flex:1">
                 <span class="add-lbl">開始時間</span>
-                <input type="time" id="edit-start" class="edit-inp">
+                <button type="button" class="pick-trigger" id="etp-start-trigger" onclick="editTogglePicker('etp-start')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 15"/></svg>
+                  <span class="pick-trigger-val" id="etp-start-display" style="min-width:42px">18:00</span>
+                </button>
+                <div class="pick-drop time-drop" id="etp-start-drop" style="display:none"></div>
               </div>
               <div class="edit-field" style="flex:1">
                 <span class="add-lbl">結束時間</span>
-                <input type="time" id="edit-end" class="edit-inp">
+                <button type="button" class="pick-trigger" id="etp-end-trigger" onclick="editTogglePicker('etp-end')">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 15 15"/></svg>
+                  <span class="pick-trigger-val" id="etp-end-display" style="min-width:42px">20:00</span>
+                </button>
+                <div class="pick-drop time-drop" id="etp-end-drop" style="display:none"></div>
               </div>
             </div>
             <div class="edit-field">
@@ -574,14 +586,19 @@
 
   // close on outside click
   document.addEventListener('mousedown', function(e) {
-    if (!_openPicker) return;
-    var wrap = document.getElementById(_openPicker+'-wrap') ||
-               document.getElementById(_openPicker.replace('tp-','tp-').replace('tp-','').replace('tp-start','tp-start').replace('tp-end','tp-end'));
-    // find the wrapping .add-field
-    var trigger = document.getElementById(_openPicker+'-trigger');
-    var drop    = document.getElementById(_openPicker+'-drop');
-    if (trigger && !trigger.contains(e.target) && drop && !drop.contains(e.target)) {
-      closePicker();
+    if (_openPicker) {
+      var trigger = document.getElementById(_openPicker+'-trigger');
+      var drop    = document.getElementById(_openPicker+'-drop');
+      if (trigger && !trigger.contains(e.target) && drop && !drop.contains(e.target)) {
+        closePicker();
+      }
+    }
+    if (_editOpenPicker) {
+      var eTrigger = document.getElementById(_editOpenPicker+'-trigger');
+      var eDrop    = document.getElementById(_editOpenPicker+'-drop');
+      if (eTrigger && !eTrigger.contains(e.target) && eDrop && !eDrop.contains(e.target)) {
+        editClosePicker();
+      }
     }
   }, true);
 
@@ -719,22 +736,152 @@
       .catch(function() { alert('刪除失敗'); });
   };
 
-  /* ── edit ────────────────────────────────────────────────────────────── */
+  /* ── edit picker state ───────────────────────────────────────────────── */
   var _editId = null;
+  var _editDpYear = 0, _editDpMon = 0, _editDpDay = 0;
+  var _editDpNavYear = 0, _editDpNavMon = 0;
+  var _editTp = { 'etp-start': { h: 18, m: 0 }, 'etp-end': { h: 20, m: 0 } };
+  var _editOpenPicker = null;
 
+  /* ── edit date picker ────────────────────────────────────────────────── */
+  function editDpRender() {
+    var drop = document.getElementById('edp-drop');
+    var today = todayParts();
+    var daysInMon = new Date(_editDpNavYear, _editDpNavMon, 0).getDate();
+    var firstDow  = new Date(_editDpNavYear, _editDpNavMon-1, 1).getDay();
+    var label = _editDpNavYear + ' 年 ' + MON_ZH[_editDpNavMon] + ' 月';
+    var cells = '';
+    for (var b = 0; b < firstDow; b++) cells += '<button class="cal-day cal-other" disabled></button>';
+    for (var d = 1; d <= daysInMon; d++) {
+      var cls = 'cal-day';
+      var isTod = (_editDpNavYear===today[0] && _editDpNavMon===today[1] && d===today[2]);
+      var isSel = (_editDpYear===_editDpNavYear && _editDpMon===_editDpNavMon && _editDpDay===d);
+      if (isSel) cls += ' cal-sel';
+      else if (isTod) cls += ' cal-today';
+      cells += '<button class="'+cls+'" onclick="editDpSelect('+d+')">'+d+'</button>';
+    }
+    drop.innerHTML =
+      '<div class="cal-head">' +
+        '<button class="cal-nav-btn" onclick="editDpNav(-1)">‹</button>' +
+        '<span class="cal-month-lbl">'+label+'</span>' +
+        '<button class="cal-nav-btn" onclick="editDpNav(1)">›</button>' +
+      '</div>' +
+      '<div class="cal-grid">' +
+        ['日','一','二','三','四','五','六'].map(function(d){return '<div class="cal-dow">'+d+'</div>';}).join('') +
+        cells +
+      '</div>';
+  }
+
+  window.editDpNav = function(dir) {
+    _editDpNavMon += dir;
+    if (_editDpNavMon > 12) { _editDpNavMon = 1;  _editDpNavYear++; }
+    if (_editDpNavMon < 1)  { _editDpNavMon = 12; _editDpNavYear--; }
+    editDpRender();
+  };
+
+  window.editDpSelect = function(day) {
+    _editDpYear = _editDpNavYear; _editDpMon = _editDpNavMon; _editDpDay = day;
+    var val = _editDpYear + '-' + pad2(_editDpMon) + '-' + pad2(_editDpDay);
+    document.getElementById('edp-display').textContent = val;
+    editClosePicker();
+  };
+
+  /* ── edit time picker ────────────────────────────────────────────────── */
+  function editTpRender(id) {
+    var drop = document.getElementById(id+'-drop');
+    var st   = _editTp[id];
+    var hCells = '', mCells = '';
+    for (var h = 0; h < 24; h++) {
+      var hCls = (h === st.h) ? 'time-opt t-sel' : 'time-opt';
+      hCells += '<div class="'+hCls+'" onclick="editTpSelH(\''+id+'\','+h+')">'+pad2(h)+'</div>';
+    }
+    for (var mi = 0; mi < 60; mi += 5) {
+      var mCls = (mi === st.m) ? 'time-opt t-sel' : 'time-opt';
+      mCells += '<div class="'+mCls+'" onclick="editTpSelM(\''+id+'\','+mi+')">'+pad2(mi)+'</div>';
+    }
+    drop.innerHTML =
+      '<div class="time-col" id="'+id+'-hcol">'+hCells+'</div>' +
+      '<div class="time-sep">:</div>' +
+      '<div class="time-col" id="'+id+'-mcol">'+mCells+'</div>';
+    requestAnimationFrame(function() {
+      var hSel = drop.querySelector('.t-sel');
+      if (hSel) hSel.scrollIntoView({ block:'center' });
+      var mSel = drop.querySelectorAll('.t-sel')[1];
+      if (mSel) mSel.scrollIntoView({ block:'center' });
+    });
+  }
+
+  function editTpUpdate(id) {
+    var st = _editTp[id];
+    document.getElementById(id+'-display').textContent = pad2(st.h) + ':' + pad2(st.m);
+    editTpRender(id);
+  }
+
+  window.editTpSelH = function(id, h) {
+    _editTp[id].h = h;
+    editTpUpdate(id);
+  };
+  window.editTpSelM = function(id, m) {
+    _editTp[id].m = m;
+    editTpUpdate(id);
+    editClosePicker();
+  };
+
+  /* ── edit picker open/close ──────────────────────────────────────────── */
+  function editOpenPicker(id) {
+    _editOpenPicker = id;
+    if (id === 'edp') {
+      var today = todayParts();
+      _editDpNavYear = _editDpYear || today[0];
+      _editDpNavMon  = _editDpMon  || today[1];
+      editDpRender();
+    } else {
+      editTpRender(id);
+    }
+    document.getElementById(id+'-drop').style.display = '';
+    document.getElementById(id+'-trigger').classList.add('open');
+  }
+
+  function editClosePicker() {
+    if (!_editOpenPicker) return;
+    document.getElementById(_editOpenPicker+'-drop').style.display = 'none';
+    document.getElementById(_editOpenPicker+'-trigger').classList.remove('open');
+    _editOpenPicker = null;
+  }
+
+  window.editTogglePicker = function(id) {
+    if (_editOpenPicker === id) { editClosePicker(); return; }
+    editClosePicker();
+    editOpenPicker(id);
+  };
+
+  /* ── edit ────────────────────────────────────────────────────────────── */
   window.editEntry = function(id) {
     var rec = _logs.find(function(l) { return l.id === id; });
     if (!rec) return;
     _editId = id;
-    document.getElementById('edit-date').value  = rec.date || '';
-    document.getElementById('edit-start').value = rec.start_time || '';
-    document.getElementById('edit-end').value   = rec.end_time || '';
-    document.getElementById('edit-note').value  = rec.note || '';
+    editClosePicker();
+    if (rec.date) {
+      var dp = rec.date.split('-').map(Number);
+      _editDpYear = dp[0]; _editDpMon = dp[1]; _editDpDay = dp[2];
+      document.getElementById('edp-display').textContent = rec.date;
+    } else {
+      _editDpYear = 0; _editDpMon = 0; _editDpDay = 0;
+      document.getElementById('edp-display').textContent = '選擇日期';
+    }
+    var sp = (rec.start_time || '18:00').split(':').map(Number);
+    _editTp['etp-start'] = { h: sp[0], m: sp[1] };
+    document.getElementById('etp-start-display').textContent = pad2(sp[0]) + ':' + pad2(sp[1]);
+    var ep = (rec.end_time || '20:00').split(':').map(Number);
+    _editTp['etp-end'] = { h: ep[0], m: ep[1] };
+    document.getElementById('etp-end-display').textContent = pad2(ep[0]) + ':' + pad2(ep[1]);
+    document.getElementById('edit-note').value = rec.note || '';
     document.getElementById('edit-err').style.display = 'none';
     document.getElementById('edit-modal').classList.add('show');
   };
 
   window.cancelEdit = function() {
+    editClosePicker();
     _editId = null;
     document.getElementById('edit-modal').classList.remove('show');
   };
@@ -745,25 +892,27 @@
 
   window.saveEdit = function() {
     if (!_editId) return;
-    var date  = document.getElementById('edit-date').value;
-    var start = document.getElementById('edit-start').value;
-    var end   = document.getElementById('edit-end').value;
-    var note  = document.getElementById('edit-note').value;
+    var date = _editDpYear ? (_editDpYear+'-'+pad2(_editDpMon)+'-'+pad2(_editDpDay)) : '';
+    var st   = _editTp['etp-start'];
+    var et   = _editTp['etp-end'];
+    var note = document.getElementById('edit-note').value;
     var errEl = document.getElementById('edit-err');
     errEl.style.display = 'none';
-    if (!date || !start || !end) {
-      errEl.className = 'ot-err-msg'; errEl.textContent = '日期與時間不可空白'; errEl.style.display = '';
+    if (!date) {
+      errEl.className = 'ot-err-msg'; errEl.textContent = '請選擇日期'; errEl.style.display = '';
       return;
     }
-    var sp = start.split(':').map(Number), ep = end.split(':').map(Number);
-    if (calcMins(sp[0],sp[1],ep[0],ep[1]) <= 0) {
+    if (calcMins(st.h,st.m,et.h,et.m) <= 0) {
       errEl.className = 'ot-err-msg'; errEl.textContent = '結束時間必須晚於開始時間'; errEl.style.display = '';
       return;
     }
     var btn = document.getElementById('edit-save-btn');
     btn.disabled = true; btn.textContent = '儲存中…';
     L.apiAction('PUT', '/api/nurse/ot-logs/' + _editId, {
-      date: date, start_time: start, end_time: end, note: note,
+      date: date,
+      start_time: pad2(st.h)+':'+pad2(st.m),
+      end_time:   pad2(et.h)+':'+pad2(et.m),
+      note: note,
       nurse: _nurseFilter,
     })
     .then(function() { cancelEdit(); loadLogs(); })
