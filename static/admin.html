@@ -5464,15 +5464,15 @@ function printPhPaySlip() {
       const pay = Math.round((mins / 60) * rate);
       if (r.isOt) otTotal += pay; else regularTotal += pay;
     });
-    let totalMins = 0;
-    _phSalOtRows.forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) totalMins += m; });
-    _phRegRows.forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) totalMins += m; });
-    const totalH = Math.floor(totalMins / 60), totalMin = totalMins % 60;
-    const totalTimeStr = totalMin > 0 ? `${totalH} 小時 ${totalMin} 分` : `${totalH} 小時`;
+    let regMins = 0, otMins = 0;
+    _phRegRows.forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) regMins += m; });
+    _phSalOtRows.forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) otMins += m; });
+    const fmtTime = mins => { const h = Math.floor(mins/60), m = mins%60; return m > 0 ? `${h} 小時 ${m} 分` : `${h} 小時`; };
     const laborIns  = parseInt(($('ph-sal-labor-ins')  || {}).value) || 0;
     const healthIns = parseInt(($('ph-sal-health-ins') || {}).value) || 0;
     rows = `
-      ${totalMins > 0 ? `<tr><td>總工時</td><td>${totalTimeStr}</td></tr>` : ''}
+      ${regMins > 0 ? `<tr><td>上班時數</td><td>${fmtTime(regMins)}</td></tr>` : ''}
+      ${otMins  > 0 ? `<tr><td>加班時數</td><td>${fmtTime(otMins)}</td></tr>` : ''}
       ${regularTotal > 0 ? `<tr><td>工時薪資</td><td>NT$ ${regularTotal.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${otTotal > 0 ? `<tr><td>加班費</td><td>NT$ ${otTotal.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${(()=>{ let t=0; _phRegRows.forEach(r=>{const m=calcMinutes(r.start,r.end);t+=Math.round((m/60)*_phSalHourlyRate);}); return t>0?`<tr><td>上班合計</td><td>NT$ ${t.toLocaleString('zh-TW')}</td></tr>`:''; })()}
