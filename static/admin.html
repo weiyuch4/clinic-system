@@ -2093,9 +2093,9 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           </div>
         </div>
 
-        <!-- 加班記錄 -->
+        <!-- 上班記錄 -->
         <div class="sal-section-head" style="margin-top:18px">
-          加班記錄
+          上班記錄
           <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addPhOtRow()">＋ 新增</button>
           <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px" onclick="togglePhBatchPanel()">批量新增</button>
         </div>
@@ -5108,7 +5108,7 @@ function renderPhOtRows() {
   const list = $('ph-sal-ot-list');
   if (!list) return;
   if (!_phSalOtRows.length) {
-    list.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:4px 0 8px">尚無加班記錄</div>';
+    list.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:4px 0 8px">尚無上班記錄</div>';
     recalcPhSalary();
     return;
   }
