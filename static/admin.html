@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>管理員後台</title>
-<link rel="stylesheet" href="/static/_layout.css?v=64">
+<link rel="stylesheet" href="/static/_layout.css?v=65">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
@@ -1756,6 +1756,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addOtRow()">＋ 新增</button>
           <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px" onclick="toggleBatchPanel()">批量新增</button>
           <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px;color:var(--blue)" onclick="toggleImportPanel()">匯入護理師記錄</button>
+          <button class="btn-sm" id="sal-time-mode-btn" style="margin-left:auto;font-size:11px;padding:4px 10px" onclick="toggleSalTimeMode()">⌚ 選擇器</button>
         </div>
         <div id="sal-import-panel" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-s);padding:12px 14px;margin-top:8px;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -2048,6 +2049,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           加班記錄
           <button class="btn-sm" style="margin-left:10px;font-size:11px;padding:4px 10px" onclick="addPhOtRow()">＋ 新增</button>
           <button class="btn-sm" style="margin-left:6px;font-size:11px;padding:4px 10px" onclick="togglePhBatchPanel()">批量新增</button>
+          <button class="btn-sm" id="ph-time-mode-btn" style="margin-left:auto;font-size:11px;padding:4px 10px" onclick="toggleSalTimeMode()">⌚ 選擇器</button>
         </div>
         <div id="ph-sal-batch-panel" class="sal-batch-panel" style="display:none;margin-top:8px">
           <div class="sal-batch-row">
@@ -4338,7 +4340,28 @@ function stepSalMonth(dir) {
 const _SPK_CAL = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 7h12M5 2v2M11 2v2"/></svg>';
 const _SPK_CLK = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2"/></svg>';
 const _SPK_MONS = ['','1','2','3','4','5','6','7','8','9','10','11','12'];
-let _salPkOpen  = null;   // {section:'ot'|'sick', idx, field:'date'|'start'|'end', trigger}
+let _salPkOpen  = null;   // {section:'ot'|'pharm-ot', idx, field:'date'|'start'|'end', trigger}
+let _salOtTimeMode = localStorage.getItem('sal_ot_time_mode') || 'picker';
+
+function _salRows(section) { return section === 'pharm-ot' ? _phSalOtRows : _salOtRows; }
+
+function _updateTimeModeBtn() {
+  const isPicker = _salOtTimeMode === 'picker';
+  ['sal-time-mode-btn', 'ph-time-mode-btn'].forEach(id => {
+    const el = $(id);
+    if (!el) return;
+    el.textContent = isPicker ? '⌚ 選擇器' : '⌨ 直接輸入';
+    el.style.color  = isPicker ? 'var(--blue)' : '';
+  });
+}
+
+function toggleSalTimeMode() {
+  _salOtTimeMode = _salOtTimeMode === 'picker' ? 'native' : 'picker';
+  localStorage.setItem('sal_ot_time_mode', _salOtTimeMode);
+  _updateTimeModeBtn();
+  renderOtRows();
+  renderPhOtRows();
+}
 let _salDpNavY  = 0, _salDpNavM = 0;
 
 function spkPad2(n) { return String(n).padStart(2, '0'); }
@@ -4346,7 +4369,7 @@ function spkPad2(n) { return String(n).padStart(2, '0'); }
 function salDpRender() {
   const wrap = document.getElementById('sal-cal-in');
   if (!wrap || !_salPkOpen) return;
-  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salOtRows;
+  const rows = _salRows(_salPkOpen.section);
   const selVal = rows[_salPkOpen.idx].date || '';
   const [selY, selM, selD] = selVal ? selVal.split('-').map(Number) : [0,0,0];
   const today = new Date();
@@ -4378,7 +4401,7 @@ function salDpRender() {
 function salTpRender() {
   const wrap = document.getElementById('sal-tp-in');
   if (!wrap || !_salPkOpen) return;
-  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salOtRows;
+  const rows = _salRows(_salPkOpen.section);
   const timeVal = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
   const selH = parseInt(timeVal.slice(0,2));
   const selM = Math.round(parseInt(timeVal.slice(3,5)) / 5) * 5 % 60;
@@ -4412,35 +4435,37 @@ window.salDpNav = function(dir) {
 
 window.salDpSelect = function(day) {
   if (!_salPkOpen) return;
+  const section = _salPkOpen.section;
   const val = _salDpNavY + '-' + spkPad2(_salDpNavM) + '-' + spkPad2(day);
-  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salOtRows;
+  const rows = _salRows(section);
   rows[_salPkOpen.idx].date = val;
   const spn = _salPkOpen.trigger.querySelector('.spk-val');
   if (spn) spn.textContent = val;
   salClosePicker();
-  recalcSalary();
+  if (section === 'pharm-ot') recalcPhSalary(); else recalcSalary();
 };
 
 window.salTpSelH = function(h) {
   if (!_salPkOpen) return;
-  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salOtRows;
+  const rows = _salRows(_salPkOpen.section);
   const old = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
   rows[_salPkOpen.idx][_salPkOpen.field] = spkPad2(h) + ':' + old.slice(3);
   const spn = _salPkOpen.trigger.querySelector('.spk-val');
   if (spn) spn.textContent = rows[_salPkOpen.idx][_salPkOpen.field];
   salTpRender();
-  recalcSalary();
+  if (_salPkOpen.section === 'pharm-ot') recalcPhSalary(); else recalcSalary();
 };
 
 window.salTpSelM = function(m) {
   if (!_salPkOpen) return;
-  const rows = _salPkOpen.section === 'ot' ? _salOtRows : _salOtRows;
+  const section = _salPkOpen.section;
+  const rows = _salRows(section);
   const old = rows[_salPkOpen.idx][_salPkOpen.field] || '00:00';
   rows[_salPkOpen.idx][_salPkOpen.field] = old.slice(0,3) + spkPad2(m);
   const spn = _salPkOpen.trigger.querySelector('.spk-val');
   if (spn) spn.textContent = rows[_salPkOpen.idx][_salPkOpen.field];
   salClosePicker();
-  recalcSalary();
+  if (section === 'pharm-ot') recalcPhSalary(); else recalcSalary();
 };
 
 function salOpenPicker(section, idx, field, triggerEl) {
@@ -4450,7 +4475,7 @@ function salOpenPicker(section, idx, field, triggerEl) {
   const top  = rect.bottom + 6;
   let   left = rect.left;
   if (field === 'date') {
-    const rows = section === 'ot' ? _salOtRows : _salOtRows;
+    const rows = _salRows(section);
     const v = rows[idx].date;
     if (v) { _salDpNavY = parseInt(v.slice(0,4)); _salDpNavM = parseInt(v.slice(5,7)); }
     else   { const n = new Date(); _salDpNavY = n.getFullYear(); _salDpNavM = n.getMonth()+1; }
@@ -4541,6 +4566,7 @@ function setSalMode(mode) {
 
 function initSalaryTab() {
   updateSalMonthDisplay();
+  _updateTimeModeBtn();
   const sel = $('sal-nurse');
   if (sel.options.length <= 1) {
     api('/api/nurses').then(names => {
@@ -4933,21 +4959,30 @@ function newPhSalaryRecord() {
 function renderPhOtRows() {
   const list = $('ph-sal-ot-list');
   if (!list) return;
+  _updateTimeModeBtn();
   if (!_phSalOtRows.length) {
     list.innerHTML = '<div style="font-size:12.5px;color:var(--muted);padding:4px 0 8px">尚無加班記錄</div>';
     recalcPhSalary();
     return;
   }
   const isPart = _phSalMode === 'part';
+  const usePicker = _salOtTimeMode === 'picker';
   list.innerHTML = _phSalOtRows.map((row, i) => {
     const info = getDayInfo(row.date);
-    return `<div class="sal-ot-row">
-      <input type="date" class="sal-date-input" value="${row.date || ''}" oninput="_phSalOtRows[${i}].date=this.value;renderPhOtRows()">
-      <input type="time" class="sal-time-inp" value="${row.start || ''}" oninput="_phSalOtRows[${i}].start=this.value;recalcPhSalary()">
-      <span class="sal-time-sep">—</span>
-      <input type="time" class="sal-time-inp" value="${row.end || ''}" oninput="_phSalOtRows[${i}].end=this.value;recalcPhSalary()">
-      ${isPart ? `<label class="sal-ot-chk"><input type="checkbox" ${row.isOt ? 'checked' : ''} onchange="_phSalOtRows[${i}].isOt=this.checked;recalcPhSalary()"> 加班</label>` : `<span class="sal-ot-day ${info.cls}">${info.label||'—'}</span>`}
-      <button class="sal-ot-del" onclick="removePhOtRow(${i})">✕</button>
+    const dv = row.date  || '選擇日期';
+    const sv = row.start || '18:00';
+    const ev = row.end   || '20:00';
+    const datePart = usePicker
+      ? `<button class="sal-pick-trigger" onclick="salOpenPicker('pharm-ot',${i},'date',this)">${_SPK_CAL}<span class="spk-val">${dv}</span></button>`
+      : `<input type="date" class="sal-date-input" value="${row.date || ''}" oninput="_phSalOtRows[${i}].date=this.value;renderPhOtRows()">`;
+    const timePart = usePicker
+      ? `<button class="sal-pick-trigger" onclick="salOpenPicker('pharm-ot',${i},'start',this)">${_SPK_CLK}<span class="spk-val">${sv}</span></button><span class="sal-time-sep">—</span><button class="sal-pick-trigger" onclick="salOpenPicker('pharm-ot',${i},'end',this)">${_SPK_CLK}<span class="spk-val">${ev}</span></button>`
+      : `<input type="time" class="sal-time-inp" value="${row.start || ''}" oninput="_phSalOtRows[${i}].start=this.value;recalcPhSalary()"><span class="sal-time-sep">—</span><input type="time" class="sal-time-inp" value="${row.end || ''}" oninput="_phSalOtRows[${i}].end=this.value;recalcPhSalary()">`;
+    return `<div class="sal-ot-entry">
+      ${datePart}${timePart}
+      ${isPart ? `<label class="sal-part-ot-chk"><input type="checkbox" id="ph-sal-ot-isot-${i}"${row.isOt ? ' checked' : ''} onchange="_phSalOtRows[${i}].isOt=this.checked;recalcPhSalary()"> 加班</label>` : `<span class="sal-ot-tag" id="ph-sal-ot-tag-${i}"></span>`}
+      <span style="color:var(--text-2);font-size:12.5px;font-variant-numeric:tabular-nums;flex:1" id="ph-sal-ot-result-${i}"></span>
+      <button class="sal-del" onclick="removePhOtRow(${i})">×</button>
     </div>`;
   }).join('');
   recalcPhSalary();
@@ -5041,17 +5076,29 @@ function recalcPhSalary() {
   }
 
   let satPay = 0, otTotal = 0;
-  _phSalOtRows.forEach(row => {
+  _phSalOtRows.forEach((row, i) => {
     const mins = calcMinutes(row.start, row.end);
     const info = getDayInfo(row.date);
+    const tagEl = document.getElementById('ph-sal-ot-tag-' + i);
+    const resEl = document.getElementById('ph-sal-ot-result-' + i);
+    if (tagEl) { tagEl.className = 'sal-ot-tag'; tagEl.textContent = info.label || ''; if (info.isSaturday) tagEl.classList.add('sat'); }
     if (isPart) {
       const rate = row.isOt ? 335 : 250;
-      otTotal += Math.round((mins / 60) * rate);
+      const pay = Math.round((mins / 60) * rate);
+      otTotal += pay;
+      if (resEl && mins > 0) resEl.textContent = (mins/60).toFixed(1) + 'h × ' + fmtNT(rate) + ' 元/h → ' + fmtNT(pay) + ' 元';
+      else if (resEl) resEl.textContent = '';
     } else {
       if (info.isSaturday) {
-        satPay += calcOvertimePay(mins, '休息日', PH_SAL_SAT_RATE);
+        const pay = calcOvertimePay(mins, '休息日', PH_SAL_SAT_RATE);
+        satPay += pay;
+        if (resEl && mins > 0) resEl.textContent = '周六 ' + (mins/60).toFixed(1) + 'h → ' + fmtNT(Math.ceil(pay)) + ' 元';
+        else if (resEl) resEl.textContent = '';
       } else {
-        otTotal += calcOvertimePay(mins, '平日', PH_SAL_SAT_RATE);
+        const pay = calcOvertimePay(mins, '平日', PH_SAL_SAT_RATE);
+        otTotal += pay;
+        if (resEl && mins > 0) resEl.textContent = (mins/60).toFixed(1) + 'h → ' + fmtNT(Math.ceil(pay)) + ' 元';
+        else if (resEl) resEl.textContent = '';
       }
     }
   });
@@ -5346,23 +5393,30 @@ function toggleBatchBonus() {
 
 function renderOtRows() {
   salClosePicker();
+  _updateTimeModeBtn();
   const isPart = _salMode === 'part';
+  const usePicker = _salOtTimeMode === 'picker';
   $('sal-ot-list').innerHTML = _salOtRows.map((r, i) => {
     const dv = r.date  || '選擇日期';
     const sv = r.start || '18:00';
     const ev = r.end   || '20:00';
-    return (
-      '<div class="sal-ot-entry">' +
-        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'date\',this)">' +
-          _SPK_CAL + '<span class="spk-val">' + dv + '</span>' +
-        '</button>' +
-        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'start\',this)">' +
+    const timeCells = usePicker
+      ? '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'start\',this)">' +
           _SPK_CLK + '<span class="spk-val">' + sv + '</span>' +
         '</button>' +
         '<span class="sal-time-sep">—</span>' +
         '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'end\',this)">' +
           _SPK_CLK + '<span class="spk-val">' + ev + '</span>' +
+        '</button>'
+      : '<input type="time" class="sal-time-inp" value="' + sv + '" oninput="_salOtRows[' + i + '].start=this.value;recalcSalary()">' +
+        '<span class="sal-time-sep">—</span>' +
+        '<input type="time" class="sal-time-inp" value="' + ev + '" oninput="_salOtRows[' + i + '].end=this.value;recalcSalary()">';
+    return (
+      '<div class="sal-ot-entry">' +
+        '<button class="sal-pick-trigger" onclick="salOpenPicker(\'ot\',' + i + ',\'date\',this)">' +
+          _SPK_CAL + '<span class="spk-val">' + dv + '</span>' +
         '</button>' +
+        timeCells +
         (isPart
           ? '<label class="sal-part-ot-chk"><input type="checkbox" id="sal-ot-isot-' + i + '"' + (r.isOt ? ' checked' : '') +
             ' onchange="_salOtRows[' + i + '].isOt=this.checked;recalcSalary()"> 加班</label>'
