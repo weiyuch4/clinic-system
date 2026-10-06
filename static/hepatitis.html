@@ -183,6 +183,18 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-reintake">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-reintake-title">再收案</div>
+    <div class="modal-sub" id="modal-reintake-sub"></div>
+    <div class="modal-error" id="reintake-error"></div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-reintake')">取消</button>
+      <button class="act-btn act-warn" id="btn-reintake-confirm">確認再收案</button>
+    </div>
+  </div>
+</div>
+
 <script src="/static/_layout.js?v=62"></script>
 <script>
 (function () {
@@ -192,13 +204,13 @@
   var _filterOpen = false;
   var _pending = [], _returned = [], _contacted = [], _hold = [], _excluded = [];
   var _pendingMap = {}, _returnedMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
-  var _actionChart = null, _actionEntry = null, _excludeEntry = null;
+  var _actionChart = null, _actionEntry = null, _excludeEntry = null, _reintakeEntry = null;
 
   function applyReport(r) {
     _pending   = r.hep_followups  || [];
     _returned  = r.hep_returned   || [];
     _contacted = (r.contacted || []).filter(function (e) { return e.category === 'B肝' || e.category === 'C肝'; })
-                  .concat((r.called || []).filter(function (e) { return e.category === 'B肝' || e.category === 'C肝'; }))
+                  .concat((r.called || []).filter(function (e) { return e.category === 'B肝' || e.category === 'C肝'; }).map(function(e) { return Object.assign({}, e, {_called: true}); }))
                   .sort(function(a,b){
                     var ka = String(a.contacted_at||'') + (a.contacted_time||'');
                     var kb = String(b.contacted_at||'') + (b.contacted_time||'');
@@ -274,10 +286,53 @@
     });
   }
   function contactedRow(e) {
+    var badge = e._called
+      ? '<span class="pbadge b-call">已二次通知</span>'
+      : '<span class="pbadge b-done">已聯繫</span>';
     return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge b-done">已聯繫</span>'],
+      tags: [badge],
       actions: [{ label: '撤銷', cls: '', key: 'undo-contact' }],
     });
+  }
+  function closedRow(e) {
+    var stageLabel = e.last_stage || '結案';
+    var badgeCls = e.last_stage === '再收案' ? 'b-pend' : 'b-call';
+    return L.patientRow({ entry: e,
+      tags: ['<span class="pbadge ' + badgeCls + '">' + L.escHtml(stageLabel) + '</span>'],
+      actions: [
+        { label: '已聯繫', cls: 'act-primary', key: 'contact' },
+        { label: '再收案', cls: 'act-warn',    key: 'reintake' },
+      ],
+      more: [{ label: '暫緩', key: 'hold', cls: '' }, { label: '排除', key: 'exclude', cls: 'item-danger' }],
+    });
+  }
+  function renderPending() {
+    var active = [], closed = [];
+    _pending.forEach(function(e) {
+      if (e.last_stage === '結案' || e.last_stage === '再收案') { closed.push(e); }
+      else { active.push(e); }
+    });
+    var filteredActive = active.filter(match);
+    var filteredClosed = closed.filter(match);
+    var total = filteredActive.length + filteredClosed.length;
+    var el = document.getElementById('list-pending');
+    var html = '';
+    if (filteredActive.length) {
+      html += L.patientTable(filteredActive.map(pendingRow).join(''), ['下期收案']);
+    } else if (!filteredClosed.length) {
+      html += '<div class="sec-empty">' + (_pending.length ? '沒有符合搜尋條件的病患' : '目前沒有記錄') + '</div>';
+    }
+    if (filteredClosed.length) {
+      html += '<div style="margin:14px 0 6px;display:flex;align-items:center;gap:8px">' +
+        '<span style="font-size:13px;font-weight:700;color:var(--text-2)">已結案</span>' +
+        '<span style="font-size:11px;color:var(--sub);background:var(--tag-bg,var(--panel));padding:2px 8px;border-radius:20px;font-weight:600">' + filteredClosed.length + ' 人</span>' +
+        '<span style="font-size:11px;color:var(--sub)">— 仍需通知回診抽血</span>' +
+        '</div>';
+      html += L.patientTable(filteredClosed.map(closedRow).join(''), []);
+    }
+    el.innerHTML = html;
+    if (_tab === 'pending')
+      document.getElementById('result-count').textContent = '共 ' + total + ' 筆';
   }
   function holdRow(e) {
     var note = e.note || '暫緩';
@@ -338,7 +393,7 @@
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
   function renderAll() {
-    renderList(_pending,   pendingRow,   'list-pending',   ['下期收案']);
+    renderPending();
     renderList(_returned,  returnedRow,  'list-returned');
     renderList(_contacted, contactedRow, 'list-contacted');
     renderList(_hold,      holdRow,      'list-hold');
@@ -472,6 +527,13 @@
         .then(function () { L.showToast('已恢復追蹤：' + rx.patient.name); load(); })
         .catch(function (e) { L.showToast('恢復失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
+    } else if (action === 'reintake') {
+      var reEntry = _pendingMap[_actionChart]; if (!reEntry) return;
+      _reintakeEntry = reEntry;
+      document.getElementById('modal-reintake-title').textContent = '再收案：' + reEntry.patient.name;
+      document.getElementById('modal-reintake-sub').textContent = '確認病患已回診抽血，將恢復為一般追蹤狀態。';
+      document.getElementById('reintake-error').classList.remove('show');
+      L.showModal('modal-reintake');
     }
   });
 
@@ -513,6 +575,23 @@
       .finally(function () { confirmBtn.disabled = false; });
   });
 
+
+  document.getElementById('btn-reintake-confirm').addEventListener('click', function () {
+    if (!_reintakeEntry) return;
+    var confirmBtn = this;
+    var errEl = document.getElementById('reintake-error');
+    errEl.classList.remove('show');
+    confirmBtn.disabled = true;
+    L.apiAction('POST', '/api/hep-reintake', {
+      chart_number: _reintakeEntry.patient.chart_number,
+      category: _reintakeEntry.category || 'B肝',
+      name: _reintakeEntry.patient.name,
+      nurse: L.getNurse(),
+    })
+      .then(function () { L.hideModal('modal-reintake'); L.showToast('已再收案：' + _reintakeEntry.patient.name); load(); })
+      .catch(function (e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .finally(function () { confirmBtn.disabled = false; });
+  });
 
   document.getElementById('exclude-chips').addEventListener('click', function (ev) {
     var chip = ev.target.closest('.reason-chip'); if (!chip) return;

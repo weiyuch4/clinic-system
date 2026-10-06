@@ -190,6 +190,13 @@ class HepReturnedCompleteRequest(BaseModel):
     last_visit_date: date
 
 
+class HepReintakeRequest(BaseModel):
+    chart_number: str
+    category: str = 'B肝'
+    name: str = ''
+    nurse: str = ''
+
+
 class SendLineNotificationsRequest(BaseModel):
     category: Literal["慢簽", "代謝症候群", "B肝", "慢性腎臟病"]
     nurse: str = ""

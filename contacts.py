@@ -188,6 +188,18 @@ _CREATE_HEP_RETURNED_COMPLETED = """
     )
 """
 
+_CREATE_HEP_REINTAKE = """
+    CREATE TABLE IF NOT EXISTS hep_reintake (
+        chart_number    TEXT NOT NULL,
+        category        TEXT NOT NULL DEFAULT 'B肝',
+        name            TEXT,
+        nurse           TEXT DEFAULT '',
+        reintake_at     TEXT NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (chart_number, category, clinic_id)
+    )
+"""
+
 _CREATE_LINE_NOTIFICATION_LOG = """
     CREATE TABLE IF NOT EXISTS line_notification_log (
         id           SERIAL PRIMARY KEY,
@@ -708,6 +720,7 @@ def init() -> None:
             cur.execute(_CREATE_ON_HOLD)
             cur.execute(_CREATE_MANUAL_PICKUPS)
             cur.execute(_CREATE_HEP_RETURNED_COMPLETED)
+            cur.execute(_CREATE_HEP_REINTAKE)
             cur.execute(_CREATE_LINE_NOTIFICATION_LOG)
             cur.execute(_CREATE_LINE_UNLINKED)
             cur.execute(_CREATE_LINE_RECENTLY_SENT)
@@ -1443,6 +1456,38 @@ def get_hep_returned_completed_entries(clinic_id: int = 1) -> list[FollowupEntry
         )
         for r in rows
     ]
+
+
+def add_hep_reintake(chart_number: str, category: str, name: str = '', nurse: str = '', clinic_id: int = 1) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO hep_reintake (chart_number, category, name, nurse, reintake_at, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s)
+                   ON CONFLICT (chart_number, category, clinic_id) DO UPDATE SET
+                       name=EXCLUDED.name, nurse=EXCLUDED.nurse, reintake_at=EXCLUDED.reintake_at""",
+                (chart_number, category, name, nurse, date.today().isoformat(), clinic_id),
+            )
+
+
+def remove_hep_reintake(chart_number: str, category: str, clinic_id: int = 1) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM hep_reintake WHERE chart_number=%s AND category=%s AND clinic_id=%s",
+                (chart_number, category, clinic_id),
+            )
+
+
+def get_hep_reintake_chart_numbers(clinic_id: int = 1) -> set[str]:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT chart_number FROM hep_reintake WHERE clinic_id=%s",
+                (clinic_id,),
+            )
+            rows = cur.fetchall()
+    return {r["chart_number"] for r in rows}
 
 
 def log_line_notification(

@@ -32,7 +32,7 @@ from models import (
     BloodDismissRequest, BloodNotifiedRequest, BloodPhysicalRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
     StickyNoteRequest, DoctorNoteRequest,
     CreateUserRequest, DailyReport,
-    ExcludeRequest, FollowupEntry, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
+    ExcludeRequest, FollowupEntry, HepReintakeRequest, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
     ManualOnHoldRequest, ManualPickupRequest,
     MsptCompleteRequest, MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
@@ -1243,6 +1243,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             f_alleypin             = exe.submit(contacts.get_alleypin_not_found_chart_numbers, cid)
             f_line_recently_sent   = exe.submit(contacts.get_line_recently_sent_map, cid)
             f_hep_returned_keys    = exe.submit(contacts.get_hep_returned_completed_keys, cid)
+            f_hep_reintake_charts  = exe.submit(contacts.get_hep_reintake_chart_numbers, cid)
             f_manual_overrides     = exe.submit(contacts.get_mspt_manual_overrides, cid)
             f_contacted            = exe.submit(contacts.get_contacted_with_dates, cid)
             f_manual_pickup_map    = exe.submit(contacts.get_manual_pickup_map, cid)
@@ -1295,6 +1296,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
         alleypin_not_found_charts   = f_alleypin.result()
         line_recently_sent_map      = f_line_recently_sent.result()
         hep_returned_completed_keys = f_hep_returned_keys.result()
+        hep_reintake_charts         = f_hep_reintake_charts.result()
         manual_overrides            = f_manual_overrides.result()
         contacted_with_dates        = f_contacted.result()
         manual_pickup_map           = f_manual_pickup_map.result()
@@ -1458,6 +1460,14 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
         # Same pattern for B/C肝: a nurse can manually mark 完成B肝 from the
         # pending list (e.g. the IC visit/order wasn't captured), which should
         # suppress the entry until IC data itself shows a newer confirmed visit.
+        def apply_hep_reintake(entries: list[FollowupEntry]) -> list[FollowupEntry]:
+            if not hep_reintake_charts:
+                return entries
+            return [
+                e.model_copy(update={'last_stage': '收案'}) if e.patient.chart_number in hep_reintake_charts else e
+                for e in entries
+            ]
+
         def hep_suppressed(entry: FollowupEntry) -> bool:
             completed_str = hep_completed_latest.get(entry.patient.chart_number)
             if not completed_str:
@@ -1497,7 +1507,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             # open-ended 結案/再收案 backlog, which can accumulate indefinitely.
             hep_followups=sorted(
                 [
-                    e for e in filter_followups(report.hep_followups) + filter_followups(report.hep_inactive)
+                    e for e in filter_followups(apply_hep_reintake(report.hep_followups)) + filter_followups(apply_hep_reintake(report.hep_inactive))
                     if not hep_suppressed(e)
                 ],
                 key=lambda e: e.days_overdue,
@@ -1752,6 +1762,26 @@ def unmark_hep_returned_completed(req: HepReturnedCompleteRequest, user: auth.Cu
     except Exception:
         logger.exception("unmark_hep_returned_completed failed for %s", req.chart_number)
         raise HTTPException(status_code=500, detail="撤銷失敗，請稍後再試")
+
+
+@app.post("/api/hep-reintake")
+def add_hep_reintake(req: HepReintakeRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    try:
+        contacts.add_hep_reintake(req.chart_number, req.category, req.name, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
+    except Exception:
+        logger.exception("add_hep_reintake failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="再收案記錄儲存失敗，請稍後再試")
+
+
+@app.delete("/api/hep-reintake")
+def remove_hep_reintake(req: HepReintakeRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    try:
+        contacts.remove_hep_reintake(req.chart_number, req.category, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
+    except Exception:
+        logger.exception("remove_hep_reintake failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="撤銷再收案失敗，請稍後再試")
 
 
 @app.post("/api/manual-pickup")
