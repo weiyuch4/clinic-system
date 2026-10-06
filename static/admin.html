@@ -1129,6 +1129,8 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .sal-ot-result { font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; min-width: 80px; }
 .sal-del { background: none; border: none; color: var(--text-3); font-size: 15px; cursor: pointer; padding: 2px 4px; border-radius: 4px; }
 .sal-del:hover { color: var(--red); }
+.sal-hist-del { background: none; border: 1px solid var(--border); border-radius: 5px; color: var(--text-3); font-size: 12px; cursor: pointer; padding: 2px 10px; }
+.sal-hist-del:hover { color: var(--red); border-color: var(--red); }
 .sal-ot-entry {
   background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-s);
   padding: 10px 14px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
@@ -2208,6 +2210,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <div style="margin-top:20px;display:flex;align-items:center;gap:10px;justify-content:flex-end">
           <span id="ph-sal-editing-badge" style="display:none;font-size:12px;color:var(--blue);font-weight:600">✎ 編輯中</span>
           <button class="btn-sm" onclick="newPhSalaryRecord()" id="ph-sal-new-btn" style="display:none">新增記錄</button>
+          <button class="btn-sm" onclick="printPhPaySlip()" id="ph-sal-print-btn">列印薪資條</button>
           <button class="btn-sm primary" onclick="savePhSalaryRecord()" id="ph-sal-save-btn">儲存薪資記錄</button>
         </div>
       </div>
@@ -5188,12 +5191,14 @@ function renderPhSalExtras() {
   const list = $('ph-sal-extras-list');
   if (!list) return;
   list.innerHTML = _phSalExtras.map((ex, i) => `
-    <div class="sal-extra-row">
-      <input type="text" class="sal-extra-name" placeholder="項目名稱" value="${ex.name || ''}"
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+      <input type="text" value="${(ex.name||'').replace(/"/g,'&quot;')}" placeholder="名稱（例：端午節獎金）"
+        style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;background:var(--card);color:var(--text)"
         oninput="_phSalExtras[${i}].name=this.value">
-      <input type="number" class="sal-extra-amt" placeholder="金額" value="${ex.amount || 0}"
+      <input type="number" value="${ex.amount || 0}" placeholder="金額（負數為扣款）"
+        style="width:130px;border:1.5px solid var(--border);border-radius:7px;padding:6px 10px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
         oninput="_phSalExtras[${i}].amount=parseInt(this.value)||0;recalcPhSalary()">
-      <button class="sal-ot-del" onclick="removePhSalExtra(${i})">✕</button>
+      <button class="sal-del" onclick="removePhSalExtra(${i})">×</button>
     </div>`).join('');
   $('ph-sal-extras-row').style.display = _phSalExtras.length ? '' : 'none';
   recalcPhSalary();
@@ -5271,6 +5276,101 @@ function recalcPhSalary() {
   } else {
     $('ph-sal-hourly-note').textContent = '';
   }
+}
+
+function printPhPaySlip() {
+  const person = $('ph-sal-person').value;
+  const totalText = $('ph-sal-grand-total').textContent;
+  if (!person || totalText === '—') { alert('請先完成薪資計算'); return; }
+
+  const isPart = _phSalMode === 'part';
+  const monthLabel = `${_phSalYear} 年 ${ZH_MON[_phSalMon-1]} 月`;
+  const fmt = v => { const n = parseInt((v||'').replace(/,/g,'')); return n > 0 ? 'NT$ ' + n.toLocaleString('zh-TW') : '—'; };
+
+  let rows = '';
+  if (isPart) {
+    let regularTotal = 0, otTotal = 0;
+    _phSalOtRows.forEach(r => {
+      const mins = calcMinutes(r.start, r.end);
+      if (mins <= 0) return;
+      const rate = r.isOt ? _phSalHourlyOtRate : _phSalHourlyRate;
+      const pay = Math.round((mins / 60) * rate);
+      if (r.isOt) otTotal += pay; else regularTotal += pay;
+    });
+    const days = [...new Set(_phSalOtRows.map(r => r.date).filter(Boolean))].length || _phSalOtRows.length;
+    const laborIns  = parseInt(($('ph-sal-labor-ins')  || {}).value) || 0;
+    const healthIns = parseInt(($('ph-sal-health-ins') || {}).value) || 0;
+    rows = `
+      ${days > 0 ? `<tr><td>工作天數</td><td>${days} 天</td></tr>` : ''}
+      ${regularTotal > 0 ? `<tr><td>工時薪資</td><td>NT$ ${regularTotal.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${otTotal > 0 ? `<tr><td>加班費</td><td>NT$ ${otTotal.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${laborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${healthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
+    `;
+  } else {
+    const att = $('ph-sal-attendance-chk').checked;
+    const sat = $('ph-sal-sat-amt').textContent;
+    const ot  = $('ph-sal-ot-total').textContent;
+    const laborIns  = parseInt(($('ph-sal-labor-ins')  || {}).value) || 0;
+    const healthIns = parseInt(($('ph-sal-health-ins') || {}).value) || 0;
+    rows = `
+      <tr><td>月薪</td><td>NT$ ${_phSalBase.toLocaleString('zh-TW')}</td></tr>
+      <tr><td>全勤獎金</td><td>${att ? 'NT$ ' + _phSalAttendance.toLocaleString('zh-TW') : '—'}</td></tr>
+      ${parseInt((sat||'').replace(/,/g,'')) > 0 ? `<tr><td>周六加班費</td><td>${fmt(sat)}</td></tr>` : ''}
+      ${parseInt((ot||'').replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
+      ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${laborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${healthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
+    `;
+  }
+
+  const html = `<!DOCTYPE html><html lang="zh-TW"><head>
+<meta charset="UTF-8">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<title>薪資條 ${person} ${monthLabel}</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif; padding:40px 48px; color:#111; font-size:14px; }
+  h1 { font-size:20px; font-weight:700; text-align:center; letter-spacing:.08em; margin-bottom:6px; }
+  .sub { text-align:center; font-size:12px; color:#666; margin-bottom:28px; letter-spacing:.04em; }
+  .meta { display:flex; gap:32px; margin-bottom:20px; padding-bottom:12px; border-bottom:2px solid #111; }
+  .meta-item { display:flex; flex-direction:column; gap:2px; }
+  .meta-lbl { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#666; }
+  .meta-val { font-size:15px; font-weight:700; }
+  table { width:100%; border-collapse:collapse; }
+  td { padding:9px 0; border-bottom:1px solid #e5e7eb; }
+  td:last-child { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+  .total-row td { padding-top:14px; border-bottom:none; font-size:16px; font-weight:700; border-top:2px solid #111; }
+  .sigs { display:flex; gap:48px; margin-top:52px; }
+  .sig { flex:1; }
+  .sig-line { border-bottom:1px solid #555; height:36px; margin-bottom:8px; }
+  .sig-lbl { font-size:11px; color:#666; text-align:center; }
+  @page { size: A5 portrait; margin: 0; }
+  @media print { html { background:#fff; } body { padding:14mm 16mm; max-width:100%; } button { display:none; } }
+</style>
+</head><body>
+<h1>薪資條</h1>
+<div class="sub">本薪資條僅供個人核對使用</div>
+<div class="meta">
+  <div class="meta-item"><span class="meta-lbl">藥師</span><span class="meta-val">${person}</span></div>
+  <div class="meta-item"><span class="meta-lbl">月份</span><span class="meta-val">${monthLabel}</span></div>
+</div>
+<table>
+  <tbody>${rows}</tbody>
+  <tfoot><tr class="total-row"><td>本月薪資合計</td><td>${totalText}</td></tr></tfoot>
+</table>
+<div class="sigs">
+  <div class="sig"><div class="sig-line"></div><div class="sig-lbl">主管簽名</div></div>
+  <div class="sig"><div class="sig-line"></div><div class="sig-lbl">藥師簽名</div></div>
+</div>
+<script>window.onload = () => window.print();<\/script>
+</body></html>`;
+
+  const w = window.open('', '_blank', 'width=560,height=820');
+  if (w) { w.document.write(html); w.document.close(); }
 }
 
 function _currentPhSalaryPayload() {
