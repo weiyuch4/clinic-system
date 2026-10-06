@@ -5769,7 +5769,12 @@ function printPaySlip() {
   .sig { flex:1; }
   .sig-line { border-bottom:1px solid #555; height:36px; margin-bottom:8px; }
   .sig-lbl { font-size:11px; color:#666; text-align:center; }
-  @media print { body { padding:24px 32px; } button { display:none; } }
+  @page { size: A5 portrait; margin: 0; }
+  @media print {
+    html { background:#fff; }
+    body { padding:14mm 16mm; max-width:100%; }
+    button { display:none; }
+  }
 </style>
 </head><body>
 <h1>薪資條</h1>
@@ -5789,7 +5794,7 @@ function printPaySlip() {
 <script>window.onload = () => window.print();<\/script>
 </body></html>`;
 
-  const w = window.open('', '_blank', 'width=600,height=700');
+  const w = window.open('', '_blank', 'width=560,height=820');
   if (!w) { alert('請允許彈出視窗（pop-up），再點一次列印'); return; }
   w.document.write(html);
   w.document.close();
