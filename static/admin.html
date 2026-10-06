@@ -2194,8 +2194,23 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         </div>
         <div class="sal-note" id="ph-sal-hourly-note"></div>
 
+        <!-- 薪資條支付期間 -->
+        <div style="margin-top:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:13px;color:var(--text-2);min-width:60px">薪資條期間</span>
+          <button class="sal-pick-trigger" id="ph-slip-start-btn" onclick="phSlipOpen('start',this)">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 7h12M5 2v2M11 2v2"/></svg>
+            <span class="spk-val" id="ph-slip-start-val">開始日期（選填）</span>
+          </button>
+          <span style="color:var(--muted);font-size:13px">—</span>
+          <button class="sal-pick-trigger" id="ph-slip-end-btn" onclick="phSlipOpen('end',this)">
+            <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 7h12M5 2v2M11 2v2"/></svg>
+            <span class="spk-val" id="ph-slip-end-val">結束日期（選填）</span>
+          </button>
+          <button id="ph-slip-clear" style="display:none;background:none;border:none;font-size:12px;color:var(--muted);cursor:pointer;padding:2px 6px;border-radius:4px" onclick="phSlipClearDates()">清除</button>
+        </div>
+
         <!-- 儲存 -->
-        <div style="margin-top:20px;display:flex;align-items:center;gap:10px;justify-content:flex-end">
+        <div style="margin-top:16px;display:flex;align-items:center;gap:10px;justify-content:flex-end">
           <span id="ph-sal-editing-badge" style="display:none;font-size:12px;color:var(--blue);font-weight:600">✎ 編輯中</span>
           <button class="btn-sm" onclick="newPhSalaryRecord()" id="ph-sal-new-btn" style="display:none">新增記錄</button>
           <button class="btn-sm" onclick="printPhPaySlip()" id="ph-sal-print-btn">列印薪資條</button>
@@ -5086,6 +5101,7 @@ function setPhEditingRecord(id) {
 function newPhSalaryRecord() {
   setPhEditingRecord(null);
   document.querySelectorAll('#ph-sal-history-list .sal-hist-row').forEach(r => r.classList.remove('selected'));
+  phSlipClearDates();
 }
 
 function renderPhOtRows() {
@@ -5264,6 +5280,101 @@ function recalcPhSalary() {
   }
 }
 
+// ── Pay-slip period date pickers ──────────────────────────────────────────
+let _phSlipStart = '', _phSlipEnd = '', _phSlipOpen = null, _phSlipTrigger = null;
+let _phSlipNavY = 0, _phSlipNavM = 0;
+
+function phSlipOpen(which, triggerEl) {
+  if (_phSlipOpen === which) { phSlipClose(); return; }
+  phSlipClose();
+  salClosePicker();
+  _phSlipOpen = which;
+  _phSlipTrigger = triggerEl;
+  const val = which === 'start' ? _phSlipStart : _phSlipEnd;
+  if (val) { _phSlipNavY = parseInt(val.slice(0,4)); _phSlipNavM = parseInt(val.slice(5,7)); }
+  else { const n = new Date(); _phSlipNavY = n.getFullYear(); _phSlipNavM = n.getMonth()+1; }
+  phSlipRender();
+  const rect = triggerEl.getBoundingClientRect();
+  let left = rect.left;
+  if (left + 248 > window.innerWidth - 8) left = window.innerWidth - 256;
+  const dp = document.getElementById('ph-slip-dp-drop');
+  dp.style.top = (rect.bottom + 6) + 'px'; dp.style.left = left + 'px'; dp.style.display = '';
+  triggerEl.classList.add('open');
+}
+function phSlipClose() {
+  if (_phSlipTrigger) { _phSlipTrigger.classList.remove('open'); _phSlipTrigger = null; }
+  const dp = document.getElementById('ph-slip-dp-drop');
+  if (dp) dp.style.display = 'none';
+  _phSlipOpen = null;
+}
+function phSlipRender() {
+  const wrap = document.getElementById('ph-slip-cal-in');
+  if (!wrap || !_phSlipOpen) return;
+  const val = _phSlipOpen === 'start' ? _phSlipStart : _phSlipEnd;
+  const [selY, selM, selD] = val ? val.split('-').map(Number) : [0,0,0];
+  const today = new Date();
+  const [tY, tM, tD] = [today.getFullYear(), today.getMonth()+1, today.getDate()];
+  const daysInMon = new Date(_phSlipNavY, _phSlipNavM, 0).getDate();
+  const firstDow  = new Date(_phSlipNavY, _phSlipNavM-1, 1).getDay();
+  const label = _phSlipNavY + ' 年 ' + _SPK_MONS[_phSlipNavM] + ' 月';
+  let cells = '';
+  for (let b = 0; b < firstDow; b++) cells += '<button class="scal-day sc-other" disabled></button>';
+  for (let d = 1; d <= daysInMon; d++) {
+    const isSel = (selY===_phSlipNavY && selM===_phSlipNavM && selD===d);
+    const isTod = (tY===_phSlipNavY && tM===_phSlipNavM && tD===d);
+    let cls = 'scal-day';
+    if (isSel) cls += ' sc-sel'; else if (isTod) cls += ' sc-today';
+    cells += '<button class="' + cls + '" onclick="phSlipSel(' + d + ')">' + d + '</button>';
+  }
+  wrap.innerHTML =
+    '<div class="scal-head">' +
+      '<button class="scal-nav" onclick="phSlipNav(-1)">&#8249;</button>' +
+      '<span class="scal-mlbl">' + label + '</span>' +
+      '<button class="scal-nav" onclick="phSlipNav(1)">&#8250;</button>' +
+    '</div>' +
+    '<div class="scal-grid">' +
+      ['日','一','二','三','四','五','六'].map(d => '<div class="scal-dow">' + d + '</div>').join('') +
+      cells +
+    '</div>';
+}
+function phSlipNav(dir) {
+  _phSlipNavM += dir;
+  if (_phSlipNavM > 12) { _phSlipNavM = 1; _phSlipNavY++; }
+  if (_phSlipNavM < 1)  { _phSlipNavM = 12; _phSlipNavY--; }
+  phSlipRender();
+}
+window.phSlipSel = function(day) {
+  const val = _phSlipNavY + '-' + spkPad2(_phSlipNavM) + '-' + spkPad2(day);
+  if (_phSlipOpen === 'start') {
+    _phSlipStart = val;
+    const el = document.getElementById('ph-slip-start-val');
+    if (el) el.textContent = val;
+  } else {
+    _phSlipEnd = val;
+    const el = document.getElementById('ph-slip-end-val');
+    if (el) el.textContent = val;
+  }
+  phSlipClose();
+  const cb = document.getElementById('ph-slip-clear');
+  if (cb) cb.style.display = (_phSlipStart || _phSlipEnd) ? '' : 'none';
+};
+function phSlipClearDates() {
+  _phSlipStart = ''; _phSlipEnd = '';
+  const sv = document.getElementById('ph-slip-start-val');
+  const ev = document.getElementById('ph-slip-end-val');
+  if (sv) sv.textContent = '開始日期（選填）';
+  if (ev) ev.textContent = '結束日期（選填）';
+  const cb = document.getElementById('ph-slip-clear');
+  if (cb) cb.style.display = 'none';
+}
+document.addEventListener('mousedown', function(e) {
+  if (!_phSlipOpen) return;
+  const dp = document.getElementById('ph-slip-dp-drop');
+  if (_phSlipTrigger && _phSlipTrigger.contains(e.target)) return;
+  if (dp && dp.contains(e.target)) return;
+  phSlipClose();
+}, true);
+
 function printPhPaySlip() {
   const person = $('ph-sal-person').value;
   const totalText = $('ph-sal-grand-total').textContent;
@@ -5341,6 +5452,7 @@ function printPhPaySlip() {
 <div class="meta">
   <div class="meta-item"><span class="meta-lbl">藥師</span><span class="meta-val">${person}</span></div>
   <div class="meta-item"><span class="meta-lbl">月份</span><span class="meta-val">${monthLabel}</span></div>
+  ${(_phSlipStart || _phSlipEnd) ? `<div class="meta-item"><span class="meta-lbl">支付期間</span><span class="meta-val">${_phSlipStart || '—'} ～ ${_phSlipEnd || '—'}</span></div>` : ''}
 </div>
 <table>
   <tbody>${rows}</tbody>
@@ -5375,6 +5487,7 @@ function _currentPhSalaryPayload() {
                    hourly_rate: _phSalHourlyRate, hourly_ot_rate: _phSalHourlyOtRate,
                    labor_ins: parseInt(($('ph-sal-labor-ins') || {}).value) || 0,
                    health_ins: parseInt(($('ph-sal-health-ins') || {}).value) || 0,
+                   slip_start: _phSlipStart, slip_end: _phSlipEnd,
                    _role: 'pharm' }),
   };
 }
@@ -5447,6 +5560,14 @@ async function loadPhSalRecord(id) {
     if ($('ph-sal-hourly-ot-rate-inp')) $('ph-sal-hourly-ot-rate-inp').value = _phSalHourlyOtRate;
     if ($('ph-sal-labor-ins'))  $('ph-sal-labor-ins').value  = parsed.labor_ins  || 0;
     if ($('ph-sal-health-ins')) $('ph-sal-health-ins').value = parsed.health_ins || 0;
+    _phSlipStart = parsed.slip_start || '';
+    _phSlipEnd   = parsed.slip_end   || '';
+    const ssv = document.getElementById('ph-slip-start-val');
+    const sev = document.getElementById('ph-slip-end-val');
+    if (ssv) ssv.textContent = _phSlipStart || '開始日期（選填）';
+    if (sev) sev.textContent = _phSlipEnd   || '結束日期（選填）';
+    const scb = document.getElementById('ph-slip-clear');
+    if (scb) scb.style.display = (_phSlipStart || _phSlipEnd) ? '' : 'none';
     renderPhOtRows();
     renderPhSalExtras();
     recalcPhSalary();
@@ -6274,5 +6395,6 @@ document.querySelectorAll('.tab[data-section="doctor-notes"]').forEach(t => {
 <!-- salary picker dropdowns -->
 <div id="sal-dp-drop" class="sal-pk-drop" style="display:none"><div class="sal-cal-in" id="sal-cal-in"></div></div>
 <div id="sal-tp-drop" class="sal-pk-drop" style="display:none"><div class="sal-tp-in" id="sal-tp-in"></div></div>
+<div id="ph-slip-dp-drop" class="sal-pk-drop" style="display:none"><div class="sal-cal-in" id="ph-slip-cal-in"></div></div>
 </body>
 </html>
