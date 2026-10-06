@@ -2071,6 +2071,12 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
             元
           </span>
         </div>
+        <div class="sal-row ph-sal-full-only" style="align-items:center;padding-top:2px;padding-bottom:4px">
+          <span class="sal-label" style="font-size:12px;color:var(--muted)">月薪備注</span>
+          <input type="text" id="ph-sal-base-note-inp" placeholder="例：含全勤獎金、執照費（顯示於薪資條）"
+            style="flex:1;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:12px;background:var(--card);color:var(--text)"
+            oninput="_phSalBaseNote=this.value">
+        </div>
         <!-- 時薪 rates -->
         <div id="ph-sal-part-rates" style="display:none">
           <div class="sal-row">
@@ -2154,12 +2160,8 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         </div>
         <div class="sal-ot-list" id="ph-sal-ot-list" style="margin-bottom:12px"></div>
 
-        <div class="sal-row ph-sal-full-only">
-          <span class="sal-label">周六加班費</span>
-          <span class="sal-amount" id="ph-sal-sat-amt">0</span>
-        </div>
         <div class="sal-row">
-          <span class="sal-label" id="ph-sal-ot-label">一般加班費</span>
+          <span class="sal-label">加班費</span>
           <span class="sal-amount" id="ph-sal-ot-total">0</span>
         </div>
 
@@ -5074,6 +5076,7 @@ const PH_SAL_BASE = 30500;
 const PH_SAL_ATTENDANCE = 2000;
 const PH_SAL_SAT_RATE = 175;
 let _phSalBase = PH_SAL_BASE;
+let _phSalBaseNote = '';
 let _phSalAttendance = PH_SAL_ATTENDANCE;
 let _phSalOtRate = PH_SAL_SAT_RATE;
 let _phSalHourlyRate = 250;
@@ -5119,6 +5122,8 @@ function newPhSalaryRecord() {
   setPhEditingRecord(null);
   document.querySelectorAll('#ph-sal-history-list .sal-hist-row').forEach(r => r.classList.remove('selected'));
   _phRegRows = [];
+  _phSalBaseNote = '';
+  if ($('ph-sal-base-note-inp')) $('ph-sal-base-note-inp').value = '';
   renderPhRegRows();
   phSlipClearDates();
 }
@@ -5278,7 +5283,7 @@ function recalcPhSalary() {
     if (tagEl) { tagEl.className = 'sal-ot-tag'; tagEl.textContent = info.label || ''; if (info.isSaturday) tagEl.classList.add('sat'); }
     if (isPart) {
       const rate = row.isOt ? _phSalHourlyOtRate : _phSalHourlyRate;
-      const pay = Math.round((mins / 60) * rate);
+      const pay = Math.ceil((mins / 60) * rate);
       otTotal += pay;
       if (resEl && mins > 0) resEl.textContent = (mins/60).toFixed(1) + 'h × ' + fmtNT(rate) + ' 元/h → ' + fmtNT(pay) + ' 元';
       else if (resEl) resEl.textContent = '';
@@ -5299,8 +5304,7 @@ function recalcPhSalary() {
   satPay = Math.ceil(satPay);
   otTotal = Math.ceil(otTotal);
   if (!isPart) {
-    $('ph-sal-sat-amt').textContent = fmtNT(satPay);
-    total += satPay;
+    otTotal += satPay;
   }
   $('ph-sal-ot-total').textContent = fmtNT(otTotal);
   total += otTotal;
@@ -5308,7 +5312,7 @@ function recalcPhSalary() {
   let regTotal = 0;
   _phRegRows.forEach((row, i) => {
     const mins = calcMinutes(row.start, row.end);
-    const pay = Math.round((mins / 60) * _phSalHourlyRate);
+    const pay = Math.ceil((mins / 60) * _phSalHourlyRate);
     regTotal += pay;
     const resEl = document.getElementById('ph-reg-result-' + i);
     if (resEl && mins > 0) resEl.textContent = (mins / 60).toFixed(1) + 'h × ' + fmtNT(_phSalHourlyRate) + ' 元/h → ' + fmtNT(pay) + ' 元';
@@ -5483,13 +5487,11 @@ function printPhPaySlip() {
       ${healthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   } else {
-    const sat = $('ph-sal-sat-amt').textContent;
     const ot  = $('ph-sal-ot-total').textContent;
     const laborIns  = parseInt(($('ph-sal-labor-ins')  || {}).value) || 0;
     const healthIns = parseInt(($('ph-sal-health-ins') || {}).value) || 0;
     rows = `
-      <tr><td>月薪</td><td>NT$ ${_phSalBase.toLocaleString('zh-TW')}</td></tr>
-      ${parseInt((sat||'').replace(/,/g,'')) > 0 ? `<tr><td>周六加班費</td><td>${fmt(sat)}</td></tr>` : ''}
+      <tr><td>月薪${_phSalBaseNote ? '（' + _phSalBaseNote + '）' : ''}</td><td>NT$ ${_phSalBase.toLocaleString('zh-TW')}</td></tr>
       ${parseInt((ot||'').replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
       ${(()=>{ let t=0; _phRegRows.forEach(r=>{const m=calcMinutes(r.start,r.end);t+=Math.round((m/60)*_phSalHourlyRate);}); return t>0?`<tr><td>上班合計</td><td>NT$ ${t.toLocaleString('zh-TW')}</td></tr>`:''; })()}
       ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
@@ -5558,13 +5560,14 @@ function _currentPhSalaryPayload() {
     month:       phSalMonthStr(),
     attendance:  0,
     performance: 0,
-    sat_pay:     isPart ? 0 : (parseInt(($('ph-sal-sat-amt').textContent || '').replace(/,/g, '')) || 0),
+    sat_pay:     0,
     float_bonus: 0,
     ot_pay:      isPart ? total : (parseInt(($('ph-sal-ot-total').textContent || '').replace(/,/g, '')) || 0),
     total,
     sick_days:   0,
     ot_entries:  JSON.stringify({ mode: _phSalMode, rows: _phSalOtRows, extras: _phSalExtras,
-                   base: _phSalBase, attendance: _phSalAttendance, ot_rate: _phSalOtRate,
+                   base: _phSalBase, base_note: _phSalBaseNote,
+                   attendance: _phSalAttendance, ot_rate: _phSalOtRate,
                    hourly_rate: _phSalHourlyRate, hourly_ot_rate: _phSalHourlyOtRate,
                    labor_ins: parseInt(($('ph-sal-labor-ins') || {}).value) || 0,
                    health_ins: parseInt(($('ph-sal-health-ins') || {}).value) || 0,
@@ -5632,11 +5635,13 @@ async function loadPhSalRecord(id) {
     } catch(_) { _phSalOtRows = []; setPhSalMode('full'); }
     _phSalExtras = Array.isArray(parsed.extras) ? parsed.extras : [];
     _phSalBase         = parsed.base         !== undefined ? parsed.base         : PH_SAL_BASE;
+    _phSalBaseNote     = parsed.base_note    !== undefined ? parsed.base_note    : '';
     _phSalAttendance   = parsed.attendance   !== undefined ? parsed.attendance   : PH_SAL_ATTENDANCE;
     _phSalOtRate       = parsed.ot_rate      !== undefined ? parsed.ot_rate      : PH_SAL_SAT_RATE;
     _phSalHourlyRate   = parsed.hourly_rate  !== undefined ? parsed.hourly_rate  : 250;
     _phSalHourlyOtRate = parsed.hourly_ot_rate !== undefined ? parsed.hourly_ot_rate : 335;
     if ($('ph-sal-base-inp'))           $('ph-sal-base-inp').value           = _phSalBase;
+    if ($('ph-sal-base-note-inp'))      $('ph-sal-base-note-inp').value      = _phSalBaseNote;
     if ($('ph-sal-ot-rate-inp'))        $('ph-sal-ot-rate-inp').value        = _phSalOtRate;
     if ($('ph-sal-hourly-rate-inp'))    $('ph-sal-hourly-rate-inp').value    = _phSalHourlyRate;
     if ($('ph-sal-hourly-ot-rate-inp')) $('ph-sal-hourly-ot-rate-inp').value = _phSalHourlyOtRate;
