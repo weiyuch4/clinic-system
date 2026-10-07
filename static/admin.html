@@ -1951,6 +1951,12 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
                 style="width:72px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
                 oninput="recalcSalary()"> 元
             </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
+              勞退
+              <input type="number" id="sal-pension" min="0" value="0" step="1"
+                style="width:72px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+                oninput="recalcSalary()"> 元
+            </label>
           </div>
         </div>
         <div class="sal-row" id="sal-ins-row" style="display:none">
@@ -2190,6 +2196,12 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
             <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
               健保
               <input type="number" id="ph-sal-health-ins" min="0" value="0" step="1"
+                style="width:72px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+                oninput="recalcPhSalary()"> 元
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2)">
+              勞退
+              <input type="number" id="ph-sal-pension" min="0" value="0" step="1"
                 style="width:72px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
                 oninput="recalcPhSalary()"> 元
             </label>
@@ -4792,6 +4804,7 @@ function _currentSalaryPayload() {
     ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg, extras: _salExtras,
                   labor_ins: parseInt(($('sal-labor-ins')||{}).value)||0,
                   health_ins: parseInt(($('sal-health-ins')||{}).value)||0,
+                  pension: parseInt(($('sal-pension')||{}).value)||0,
                   unworked_days: parseInt(($('sal-unworked-days')||{}).value)||0}),
   };
 }
@@ -4868,6 +4881,7 @@ function loadSalaryRecord(record) {
   // restore insurance deductions
   if ($('sal-labor-ins'))  $('sal-labor-ins').value  = parsed.labor_ins  || 0;
   if ($('sal-health-ins')) $('sal-health-ins').value = parsed.health_ins || 0;
+  if ($('sal-pension'))    $('sal-pension').value    = parsed.pension    || 0;
 
   // restore proration
   if ($('sal-unworked-days')) $('sal-unworked-days').value = parsed.unworked_days || 0;
@@ -5337,7 +5351,8 @@ function recalcPhSalary() {
 
   const laborIns  = parseInt(($('ph-sal-labor-ins')  || {}).value) || 0;
   const healthIns = parseInt(($('ph-sal-health-ins') || {}).value) || 0;
-  const insTotal  = laborIns + healthIns;
+  const pension   = parseInt(($('ph-sal-pension')    || {}).value) || 0;
+  const insTotal  = laborIns + healthIns + pension;
   if (insTotal > 0) {
     $('ph-sal-ins-deduct').textContent = `-${fmtNT(insTotal)}`;
     $('ph-sal-ins-row').style.display = '';
@@ -5475,6 +5490,7 @@ function printPhPaySlip() {
     const fmtTime = mins => { const h = Math.floor(mins/60), m = mins%60; return m > 0 ? `${h} 小時 ${m} 分` : `${h} 小時`; };
     const laborIns  = parseInt(($('ph-sal-labor-ins')  || {}).value) || 0;
     const healthIns = parseInt(($('ph-sal-health-ins') || {}).value) || 0;
+    const pension   = parseInt(($('ph-sal-pension')    || {}).value) || 0;
     const regPay = (()=>{ let t=0; _phRegRows.forEach(r=>{const m=calcMinutes(r.start,r.end);t+=Math.round((m/60)*_phSalHourlyRate);}); return t; })();
     const otPay  = regularTotal + otTotal;
     rows = `
@@ -5486,11 +5502,13 @@ function printPhPaySlip() {
       ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${laborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${healthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${(typeof pension !== 'undefined' && pension > 0) ? `<tr style="color:#dc2626"><td>勞退自提</td><td>−NT$ ${pension.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   } else {
     const ot  = $('ph-sal-ot-total').textContent;
     const laborIns  = parseInt(($('ph-sal-labor-ins')  || {}).value) || 0;
     const healthIns = parseInt(($('ph-sal-health-ins') || {}).value) || 0;
+    const pension   = parseInt(($('ph-sal-pension')    || {}).value) || 0;
     rows = `
       <tr><td>月薪${_phSalBaseNote ? '（' + _phSalBaseNote + '）' : ''}</td><td>NT$ ${_phSalBase.toLocaleString('zh-TW')}</td></tr>
       ${parseInt((ot||'').replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
@@ -5499,6 +5517,7 @@ function printPhPaySlip() {
       ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${laborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${healthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${(typeof pension !== 'undefined' && pension > 0) ? `<tr style="color:#dc2626"><td>勞退自提</td><td>−NT$ ${pension.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   }
 
@@ -5558,6 +5577,7 @@ function _buildNurseSlipItems(parsed, rec) {
   const extras = Array.isArray(parsed.extras) ? parsed.extras : [];
   const laborIns = parsed.labor_ins || 0;
   const healthIns = parsed.health_ins || 0;
+  const pension = parsed.pension || 0;
   const unworkedDays = parsed.unworked_days || 0;
   const sickDays = rec.sick_days || 0;
   const [ry, rm] = (rec.month || '').split('-').map(Number);
@@ -5598,6 +5618,7 @@ function _buildNurseSlipItems(parsed, rec) {
   }
   if (laborIns > 0) items.push({ label: '勞保自付額', amount: -laborIns, red: true });
   if (healthIns > 0) items.push({ label: '健保自付額', amount: -healthIns, red: true });
+  if (pension > 0) items.push({ label: '勞退自提', amount: -pension, red: true });
   if (!isPart && unworkedDays > 0) {
     const pd2 = Math.round(42000 / daysInMonth * unworkedDays);
     if (pd2 > 0) items.push({ label: `到職日調整 (${unworkedDays}天)`, amount: -pd2, red: true });
@@ -5617,6 +5638,7 @@ function _buildSlipItems(parsed) {
   const extras = Array.isArray(parsed.extras) ? parsed.extras : [];
   const laborIns = parsed.labor_ins || 0;
   const healthIns = parsed.health_ins || 0;
+  const pension = parsed.pension || 0;
   const items = [];
   if (!isPart) items.push({ label: `月薪${baseNote ? '（'+baseNote+'）' : ''}`, amount: base });
   let otTotal = 0;
@@ -5639,6 +5661,7 @@ function _buildSlipItems(parsed) {
   extras.filter(e => e.amount < 0).forEach(e => items.push({ label: e.name || '其他扣款', amount: e.amount, red: true }));
   if (laborIns > 0) items.push({ label: '勞保自付額', amount: -laborIns, red: true });
   if (healthIns > 0) items.push({ label: '健保自付額', amount: -healthIns, red: true });
+  if (pension > 0) items.push({ label: '勞退自提', amount: -pension, red: true });
   return { items, slipStart: parsed.slip_start || '', slipEnd: parsed.slip_end || '' };
 }
 
@@ -5672,7 +5695,7 @@ async function printAllPhPaySlips() {
       if (Array.isArray(p)) p = { rows: p };
       const isPart = (p.mode || 'full') === 'part';
       const extras = Array.isArray(p.extras) ? p.extras : [];
-      const li = p.labor_ins||0, hi = p.health_ins||0;
+      const li = p.labor_ins||0, hi = p.health_ins||0, pi = p.pension||0;
       const posExtras = extras.filter(e=>e.amount>0).reduce((s,e)=>s+e.amount,0);
       const negExtras = Math.abs(extras.filter(e=>e.amount<0).reduce((s,e)=>s+e.amount,0));
       const [ry, rm] = (rec.month || '').split('-').map(Number);
@@ -5727,6 +5750,7 @@ async function printAllPhPaySlips() {
       cols.push(
         {g:'扣款',h:'勞保',    val:v(li)},
         {g:'',    h:'健保',    val:v(hi)},
+        {g:'',    h:'勞退',    val:v(pi)},
         {g:'',    h:'其他扣款',val:v(otherDeduct)},
       );
 
@@ -5801,6 +5825,7 @@ function _currentPhSalaryPayload() {
                    hourly_rate: _phSalHourlyRate, hourly_ot_rate: _phSalHourlyOtRate,
                    labor_ins: parseInt(($('ph-sal-labor-ins') || {}).value) || 0,
                    health_ins: parseInt(($('ph-sal-health-ins') || {}).value) || 0,
+                   pension: parseInt(($('ph-sal-pension') || {}).value) || 0,
                    reg_rows: _phRegRows,
                    slip_start: _phSlipStart, slip_end: _phSlipEnd,
                    _role: 'pharm' }),
@@ -5877,6 +5902,7 @@ async function loadPhSalRecord(id) {
     if ($('ph-sal-hourly-ot-rate-inp')) $('ph-sal-hourly-ot-rate-inp').value = _phSalHourlyOtRate;
     if ($('ph-sal-labor-ins'))  $('ph-sal-labor-ins').value  = parsed.labor_ins  || 0;
     if ($('ph-sal-health-ins')) $('ph-sal-health-ins').value = parsed.health_ins || 0;
+    if ($('ph-sal-pension'))    $('ph-sal-pension').value    = parsed.pension    || 0;
     _phSlipStart = parsed.slip_start || '';
     _phSlipEnd   = parsed.slip_end   || '';
     const ssv = document.getElementById('ph-slip-start-val');
@@ -6115,7 +6141,8 @@ function recalcSalary() {
     partPay = Math.ceil(partPay);
     const partLaborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
     const partHealthIns = parseInt(($('sal-health-ins') || {}).value) || 0;
-    const partInsDeduct = partLaborIns + partHealthIns;
+    const partPension   = parseInt(($('sal-pension')    || {}).value) || 0;
+    const partInsDeduct = partLaborIns + partHealthIns + partPension;
     const partInsRow = $('sal-ins-row');
     if (partInsRow) partInsRow.style.display = partInsDeduct > 0 ? '' : 'none';
     if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = partInsDeduct > 0 ? `−${fmtNT(partInsDeduct)}` : '—';
@@ -6226,7 +6253,8 @@ function recalcSalary() {
 
   const laborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
   const healthIns = parseInt(($('sal-health-ins') || {}).value) || 0;
-  const insDeduct = laborIns + healthIns;
+  const penAmt    = parseInt(($('sal-pension')    || {}).value) || 0;
+  const insDeduct = laborIns + healthIns + penAmt;
   const insRow = $('sal-ins-row');
   if (insRow) insRow.style.display = insDeduct > 0 ? '' : 'none';
   if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = insDeduct > 0 ? `−${fmtNT(insDeduct)}` : '—';
@@ -6302,6 +6330,7 @@ function printPaySlip() {
     const perf = _bonusCalculated || 0;
     const laborInsAmt    = parseInt(($('sal-labor-ins')    || {}).value) || 0;
     const healthInsAmt   = parseInt(($('sal-health-ins')   || {}).value) || 0;
+    const pensionAmt     = parseInt(($('sal-pension')      || {}).value) || 0;
     const unworkedDaysAmt = parseInt(($('sal-unworked-days') || {}).value) || 0;
     const prorateDeductAmt = unworkedDaysAmt > 0
       ? (parseInt(($('sal-prorate-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
@@ -6320,6 +6349,7 @@ function printPaySlip() {
       ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${laborInsAmt > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${healthInsAmt > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${pensionAmt > 0 ? `<tr style="color:#dc2626"><td>勞退自提</td><td>−NT$ ${pensionAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${prorateDeductAmt > 0 ? `<tr style="color:#dc2626"><td>到職日調整</td><td>−NT$ ${prorateDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
   }
