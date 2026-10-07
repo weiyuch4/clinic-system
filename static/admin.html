@@ -2091,17 +2091,15 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
             <span style="display:flex;align-items:center;gap:5px">
               <input type="number" id="ph-sal-hourly-rate-inp" value="250" min="0" step="1"
                 style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
-                oninput="_phSalHourlyRate=parseInt(this.value)||0;recalcPhSalary()">
+                oninput="_phSalHourlyRate=parseInt(this.value)||0;_phSalHourlyOtRate=Math.ceil(_phSalHourlyRate*1.34);const _otd=$('ph-sal-hourly-ot-rate-disp');if(_otd)_otd.textContent=_phSalHourlyOtRate;recalcPhSalary()">
               元/h
             </span>
           </div>
           <div class="sal-row">
             <span class="sal-label">加班時薪</span>
-            <span style="display:flex;align-items:center;gap:5px">
-              <input type="number" id="ph-sal-hourly-ot-rate-inp" value="335" min="0" step="1"
-                style="width:80px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
-                oninput="_phSalHourlyOtRate=parseInt(this.value)||0;recalcPhSalary()">
-              元/h
+            <span style="display:flex;align-items:center;gap:5px;font-size:13px">
+              <span id="ph-sal-hourly-ot-rate-disp" style="min-width:48px;text-align:right;font-weight:600;color:var(--text)">335</span>
+              元/h<span style="font-size:11px;color:var(--text-2);margin-left:4px">（時薪 × 1.34）</span>
             </span>
           </div>
         </div>
@@ -5733,9 +5731,15 @@ async function printAllPhPaySlips() {
         }
       } else {
         if (isPart) {
+          const _otRate = p.hourly_ot_rate || Math.ceil((p.hourly_rate||250)*1.34);
           let partReg = 0, partOt = 0;
-          (p.rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) { if (r.isOt) partOt += Math.ceil((m/60)*(p.hourly_ot_rate||335)); else partReg += Math.ceil((m/60)*(p.hourly_rate||250)); } });
-          (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) partReg += Math.ceil((m/60)*(p.hourly_rate||250)); });
+          if (p.reg_pay !== undefined || p.ot_pay_only !== undefined) {
+            partReg = p.reg_pay    || 0;
+            partOt  = p.ot_pay_only || 0;
+          } else {
+            (p.rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) { if (r.isOt) partOt += Math.ceil((m/60)*_otRate); else partReg += Math.ceil((m/60)*(p.hourly_rate||250)); } });
+            (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) partReg += Math.ceil((m/60)*(p.hourly_rate||250)); });
+          }
           const otExtra     = extras.filter(e => e.amount > 0 && (e.name||'').trim() === '加班費').reduce((s,e) => s+e.amount, 0);
           const otherExtras = extras.filter(e => e.amount > 0 && (e.name||'').trim() !== '加班費').reduce((s,e) => s+e.amount, 0);
           cols = [
@@ -5843,16 +5847,26 @@ function _currentPhSalaryPayload() {
                  })(),
     total,
     sick_days:   0,
-    ot_entries:  JSON.stringify({ mode: _phSalMode, rows: _phSalOtRows, extras: _phSalExtras,
-                   base: _phSalBase, base_note: _phSalBaseNote,
-                   attendance: _phSalAttendance, ot_rate: _phSalOtRate,
-                   hourly_rate: _phSalHourlyRate, hourly_ot_rate: _phSalHourlyOtRate,
-                   labor_ins: parseInt(($('ph-sal-labor-ins') || {}).value) || 0,
-                   health_ins: parseInt(($('ph-sal-health-ins') || {}).value) || 0,
-                   pension: parseInt(($('ph-sal-pension') || {}).value) || 0,
-                   reg_rows: _phRegRows,
-                   slip_start: _phSlipStart, slip_end: _phSlipEnd,
-                   _role: 'pharm' }),
+    ot_entries:  JSON.stringify((() => {
+                   const obj = { mode: _phSalMode, rows: _phSalOtRows, extras: _phSalExtras,
+                     base: _phSalBase, base_note: _phSalBaseNote,
+                     attendance: _phSalAttendance, ot_rate: _phSalOtRate,
+                     hourly_rate: _phSalHourlyRate, hourly_ot_rate: _phSalHourlyOtRate,
+                     labor_ins: parseInt(($('ph-sal-labor-ins') || {}).value) || 0,
+                     health_ins: parseInt(($('ph-sal-health-ins') || {}).value) || 0,
+                     pension: parseInt(($('ph-sal-pension') || {}).value) || 0,
+                     reg_rows: _phRegRows,
+                     slip_start: _phSlipStart, slip_end: _phSlipEnd,
+                     _role: 'pharm' };
+                   if (isPart) {
+                     let reg = 0, ot = 0;
+                     _phSalOtRows.forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) { if (r.isOt) ot += Math.ceil((m/60)*_phSalHourlyOtRate); else reg += Math.ceil((m/60)*_phSalHourlyRate); }});
+                     _phRegRows.forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) reg += Math.ceil((m/60)*_phSalHourlyRate); });
+                     obj.reg_pay = reg;
+                     obj.ot_pay_only = ot;
+                   }
+                   return obj;
+                 })()),
   };
 }
 
@@ -5918,12 +5932,12 @@ async function loadPhSalRecord(id) {
     _phSalAttendance   = parsed.attendance   !== undefined ? parsed.attendance   : PH_SAL_ATTENDANCE;
     _phSalOtRate       = parsed.ot_rate      !== undefined ? parsed.ot_rate      : PH_SAL_SAT_RATE;
     _phSalHourlyRate   = parsed.hourly_rate  !== undefined ? parsed.hourly_rate  : 250;
-    _phSalHourlyOtRate = parsed.hourly_ot_rate !== undefined ? parsed.hourly_ot_rate : 335;
+    _phSalHourlyOtRate = Math.ceil(_phSalHourlyRate * 1.34);
     if ($('ph-sal-base-inp'))           $('ph-sal-base-inp').value           = _phSalBase;
     if ($('ph-sal-base-note-inp'))      $('ph-sal-base-note-inp').value      = _phSalBaseNote;
     if ($('ph-sal-ot-rate-inp'))        $('ph-sal-ot-rate-inp').value        = _phSalOtRate;
     if ($('ph-sal-hourly-rate-inp'))    $('ph-sal-hourly-rate-inp').value    = _phSalHourlyRate;
-    if ($('ph-sal-hourly-ot-rate-inp')) $('ph-sal-hourly-ot-rate-inp').value = _phSalHourlyOtRate;
+    if ($('ph-sal-hourly-ot-rate-disp')) $('ph-sal-hourly-ot-rate-disp').textContent = _phSalHourlyOtRate;
     if ($('ph-sal-labor-ins'))  $('ph-sal-labor-ins').value  = parsed.labor_ins  || 0;
     if ($('ph-sal-health-ins')) $('ph-sal-health-ins').value = parsed.health_ins || 0;
     if ($('ph-sal-pension'))    $('ph-sal-pension').value    = parsed.pension    || 0;
