@@ -5653,66 +5653,97 @@ async function printAllPhPaySlips() {
       api('/api/nurses').catch(() => []),
       api('/api/pharmacists').catch(() => []),
     ]);
-    const allRecs = [];
+    const nurseRecs = [], pharmRecs = [];
     for (const name of nurseNames) {
       const recs = await api(`/api/admin/salary?nurse=${encodeURIComponent(name)}&month=${encodeURIComponent(month)}`);
-      if (recs && recs.length) allRecs.push({ name, rec: recs[recs.length - 1], type: 'nurse' });
+      if (recs && recs.length) nurseRecs.push({ name, rec: recs[recs.length - 1] });
     }
     for (const name of pharmNames) {
       const recs = await api(`/api/admin/salary?nurse=${encodeURIComponent(name)}&month=${encodeURIComponent(month)}`);
-      if (recs && recs.length) allRecs.push({ name, rec: recs[recs.length - 1], type: 'pharm' });
+      if (recs && recs.length) pharmRecs.push({ name, rec: recs[recs.length - 1] });
     }
-    if (!allRecs.length) { alert(`${monthLabel} 尚無薪資記錄`); return; }
-    const _renderSlipRows = (items) => items.map(it => {
-      if (it.display) return `<tr><td>${it.label}</td><td>${it.display}</td></tr>`;
-      const abs = Math.abs(it.amount).toLocaleString('zh-TW');
-      const prefix = it.amount < 0 ? '−' : '';
-      return `<tr${it.red?' style="color:#dc2626"':''}><td>${it.label}</td><td>${prefix}NT$ ${abs}</td></tr>`;
-    }).join('');
-    const slipsHtml = allRecs.map(({ name, rec, type }, idx) => {
-      let parsed = {};
-      try { parsed = JSON.parse(rec.ot_entries || '{}'); } catch(_) {}
-      if (Array.isArray(parsed)) parsed = { rows: parsed };
-      const { items, slipStart, slipEnd } = type === 'pharm'
-        ? _buildSlipItems(parsed)
-        : _buildNurseSlipItems(parsed, rec);
-      const sp = slipStart || slipEnd;
-      const period = sp ? `<span class="sp">${slipStart||'—'} ～ ${slipEnd||'—'}</span>` : '';
-      const sigLbl = type === 'pharm' ? '藥師簽名' : '護理師簽名';
-      return `<div class="slip${idx > 0 ? ' slip-sep' : ''}">
-  <div class="sh"><span class="st">薪資條</span><span class="sn">${name}</span><span class="sm">${monthLabel}</span>${period}</div>
-  <table><tbody>${_renderSlipRows(items)}</tbody><tfoot><tr class="tr"><td>合計</td><td>NT$ ${(rec.total||0).toLocaleString('zh-TW')}</td></tr></tfoot></table>
-  <div class="sigs"><div class="sig"><div class="sl"></div><div class="slb">主管簽名</div></div><div class="sig"><div class="sl"></div><div class="slb">${sigLbl}</div></div></div>
-</div>`;
-    }).join('');
+    if (!nurseRecs.length && !pharmRecs.length) { alert(`${monthLabel} 尚無薪資記錄`); return; }
+
+    const v = n => (n > 0) ? n.toLocaleString('zh-TW') : '—';
+
+    // ── nurse table ──
+    let nurseHtml = '';
+    if (nurseRecs.length) {
+      const trows = nurseRecs.map(({ name, rec }) => {
+        let p = {};
+        try { p = JSON.parse(rec.ot_entries || '{}'); } catch(_) {}
+        if (Array.isArray(p)) p = { rows: p };
+        const isPart = (p.mode || 'full') === 'part';
+        const extras = Array.isArray(p.extras) ? p.extras : [];
+        const [ry, rm] = (rec.month || '').split('-').map(Number);
+        const dim = (ry && rm) ? new Date(ry, rm, 0).getDate() : 30;
+        const sickDays = rec.sick_days || 0;
+        const sickDeduct = (!isPart && sickDays > 0) ? Math.round(42000 / dim * sickDays * 0.5) : 0;
+        const prorateDeduct = (!isPart && (p.unworked_days||0) > 0) ? Math.round(42000 / dim * p.unworked_days) : 0;
+        const posExtras = extras.filter(e=>e.amount>0).reduce((s,e)=>s+e.amount,0);
+        const negExtras = Math.abs(extras.filter(e=>e.amount<0).reduce((s,e)=>s+e.amount,0));
+        const otherDeduct = sickDeduct + prorateDeduct + negExtras;
+        const li = p.labor_ins||0, hi = p.health_ins||0;
+        if (isPart) {
+          return `<tr><td>${name}（兼）</td><td>—</td><td>—</td><td>—</td><td>—</td><td>${v(rec.ot_pay)}</td><td>—</td><td>${v(rec.performance)}</td><td>${v(posExtras)}</td><td>${v(li)}</td><td>${v(hi)}</td><td>${v(otherDeduct)}</td><td class="tot">${(rec.total||0).toLocaleString('zh-TW')}</td><td class="sig"></td></tr>`;
+        }
+        return `<tr><td>${name}</td><td>${SAL_BASE.toLocaleString('zh-TW')}</td><td>${v(rec.attendance)}</td><td>${SAL_LICENSE.toLocaleString('zh-TW')}</td><td>${v(rec.sat_pay)}</td><td>${v(rec.ot_pay)}</td><td>${v(rec.float_bonus)}</td><td>${v(rec.performance)}</td><td>${v(posExtras)}</td><td>${v(li)}</td><td>${v(hi)}</td><td>${v(otherDeduct)}</td><td class="tot">${(rec.total||0).toLocaleString('zh-TW')}</td><td class="sig"></td></tr>`;
+      }).join('');
+      nurseHtml = `<div class="sec">護理師</div>
+<table><thead>
+<tr class="g"><th rowspan="2">姓名</th><th colspan="8">薪資</th><th colspan="3">扣款</th><th rowspan="2" class="tot">實發薪資</th><th rowspan="2" class="sig">簽名</th></tr>
+<tr class="s"><th>底薪</th><th>全勤獎金</th><th>執照津貼</th><th>周六加班費</th><th>加班費</th><th>浮動獎金</th><th>不定期獎金</th><th>其他獎金</th><th>勞保</th><th>健保</th><th>其他扣款</th></tr>
+</thead><tbody>${trows}</tbody></table>`;
+    }
+
+    // ── pharmacist table ──
+    let pharmHtml = '';
+    if (pharmRecs.length) {
+      const trows = pharmRecs.map(({ name, rec }) => {
+        let p = {};
+        try { p = JSON.parse(rec.ot_entries || '{}'); } catch(_) {}
+        if (Array.isArray(p)) p = { rows: p };
+        const isPart = (p.mode || 'full') === 'part';
+        const base = isPart ? 0 : (p.base !== undefined ? p.base : PH_SAL_BASE);
+        const baseNote = p.base_note || '';
+        const extras = Array.isArray(p.extras) ? p.extras : [];
+        const posExtras = extras.filter(e=>e.amount>0).reduce((s,e)=>s+e.amount,0);
+        const negExtras = Math.abs(extras.filter(e=>e.amount<0).reduce((s,e)=>s+e.amount,0));
+        const li = p.labor_ins||0, hi = p.health_ins||0;
+        const baseTd = isPart ? '—' : `${base.toLocaleString('zh-TW')}${baseNote?`<div class="note">${baseNote}</div>`:''}`;
+        return `<tr><td>${name}${isPart?'（兼）':''}</td><td>${baseTd}</td><td>${v(rec.ot_pay)}</td><td>${v(posExtras)}</td><td>${v(li)}</td><td>${v(hi)}</td><td>${v(negExtras)}</td><td class="tot">${(rec.total||0).toLocaleString('zh-TW')}</td><td class="sig"></td></tr>`;
+      }).join('');
+      pharmHtml = `<div class="sec">藥師</div>
+<table><thead>
+<tr class="g"><th rowspan="2">姓名</th><th colspan="3">薪資</th><th colspan="3">扣款</th><th rowspan="2" class="tot">實發薪資</th><th rowspan="2" class="sig">簽名</th></tr>
+<tr class="s"><th>月薪</th><th>加班費</th><th>其他獎金</th><th>勞保</th><th>健保</th><th>其他扣款</th></tr>
+</thead><tbody>${trows}</tbody></table>`;
+    }
+
     const html = `<!DOCTYPE html><html lang="zh-TW"><head>
-<meta charset="UTF-8">
-<title>薪資條 ${monthLabel}</title>
+<meta charset="UTF-8"><title>薪資條 ${monthLabel}</title>
 <style>
-* { margin:0; padding:0; box-sizing:border-box; }
-body { font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif; color:#111; font-size:12px; }
-.slip { padding:8mm 12mm 6mm; break-inside:avoid; }
-.slip-sep { border-top:1px dashed #bbb; }
-.sh { display:flex; align-items:baseline; gap:10px; border-bottom:1.5px solid #111; padding-bottom:5px; margin-bottom:6px; flex-wrap:wrap; }
-.st { font-size:13px; font-weight:700; letter-spacing:.08em; }
-.sn { font-size:13px; font-weight:700; }
-.sm { font-size:11px; color:#555; }
-.sp { font-size:10px; color:#777; margin-left:auto; }
-table { width:100%; border-collapse:collapse; }
-td { padding:3.5px 0; border-bottom:1px solid #eee; font-size:11.5px; }
-td:last-child { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
-.tr td { padding-top:5px; border-bottom:none; font-size:13px; font-weight:700; border-top:1.5px solid #111; }
-.sigs { display:flex; gap:32px; margin-top:10px; }
-.sig { flex:1; }
-.sl { border-bottom:1px solid #999; height:20px; margin-bottom:3px; }
-.slb { font-size:10px; color:#888; text-align:center; }
-@page { size:A4 portrait; margin:0; }
-@media print { button { display:none; } }
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif;color:#111;font-size:10px;padding:8mm 10mm}
+h1{text-align:center;font-size:14px;font-weight:700;margin-bottom:10px;letter-spacing:.1em}
+.sec{font-size:11px;font-weight:700;margin:12px 0 4px;padding-left:4px;border-left:3px solid #333}
+table{width:100%;border-collapse:collapse;margin-bottom:6px}
+th,td{border:1px solid #aaa;padding:3px 5px;text-align:center;white-space:nowrap;font-size:9.5px}
+th{background:#f0f0f0;font-weight:600}
+th.g{background:#e0e0e0}
+td{font-variant-numeric:tabular-nums}
+td:first-child{text-align:left}
+td.tot{font-weight:700}
+td.sig{min-width:36px}
+.note{font-size:7.5px;color:#666;white-space:normal;text-align:left}
+@page{size:A4 landscape;margin:0}
+@media print{html,body{background:#fff}}
 </style></head><body>
-${slipsHtml}
-<script>window.onload=function(){window.print();};<\/script>
+<h1>薪資條　${monthLabel}</h1>
+${nurseHtml}${pharmHtml}
+<script>window.onload=function(){window.print()};<\/script>
 </body></html>`;
-    const w = window.open('', '_blank', 'width=620,height=900');
+    const w = window.open('', '_blank', 'width=960,height=720');
     if (w) { w.document.write(html); w.document.close(); }
   } catch(e) { alert('列印失敗：' + e.message); }
 }
