@@ -5733,11 +5733,12 @@ async function printAllPhPaySlips() {
         }
       } else {
         if (isPart) {
-          let partGross = 0;
-          (p.rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) partGross += Math.ceil((m/60)*(r.isOt ? (p.hourly_ot_rate||335) : (p.hourly_rate||250))); });
-          (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) partGross += Math.ceil((m/60)*(p.hourly_rate||250)); });
+          let partReg = 0, partOt = 0;
+          (p.rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) { if (r.isOt) partOt += Math.ceil((m/60)*(p.hourly_ot_rate||335)); else partReg += Math.ceil((m/60)*(p.hourly_rate||250)); } });
+          (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) partReg += Math.ceil((m/60)*(p.hourly_rate||250)); });
           cols = [
-            {g:'薪資',h:'工時薪資',val:v(partGross)},
+            {g:'薪資',h:'工時薪資',val:v(partReg)},
+            {g:'',    h:'加班費',   val:v(partOt)},
             {g:'',    h:'其他獎金', val:v(posExtras)},
           ];
         } else {
