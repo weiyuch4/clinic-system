@@ -5733,16 +5733,20 @@ async function printAllPhPaySlips() {
         }
       } else {
         if (isPart) {
+          let partGross = 0;
+          (p.rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) partGross += Math.ceil((m/60)*(r.isOt ? (p.hourly_ot_rate||335) : (p.hourly_rate||250))); });
+          (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) partGross += Math.ceil((m/60)*(p.hourly_rate||250)); });
           cols = [
-            {g:'薪資',h:'工時薪資',val:v(rec.ot_pay||0)},
+            {g:'薪資',h:'工時薪資',val:v(partGross)},
             {g:'',    h:'其他獎金', val:v(posExtras)},
           ];
         } else {
           const base = p.base!==undefined ? p.base : PH_SAL_BASE;
           const note = p.base_note||'';
+          const otPay = (rec.ot_pay||0) + (rec.sat_pay||0);
           cols = [
             {g:'薪資',h:'月薪',  val:`${base.toLocaleString('zh-TW')}${note?`<br><span class="note">${note}</span>`:''}` },
-            {g:'',    h:'加班費',val:v(rec.ot_pay||0)},
+            {g:'',    h:'加班費',val:v(otPay)},
             {g:'',    h:'其他獎金',val:v(posExtras)},
           ];
         }
@@ -5816,7 +5820,15 @@ function _currentPhSalaryPayload() {
     performance: 0,
     sat_pay:     0,
     float_bonus: 0,
-    ot_pay:      isPart ? total : (parseInt(($('ph-sal-ot-total').textContent || '').replace(/,/g, '')) || 0),
+    ot_pay:      (() => {
+                   if (isPart) {
+                     let t = 0;
+                     _phSalOtRows.forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) t += Math.ceil((m/60)*(r.isOt ? _phSalHourlyOtRate : _phSalHourlyRate)); });
+                     _phRegRows.forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) t += Math.ceil((m/60)*_phSalHourlyRate); });
+                     return t;
+                   }
+                   return parseInt(($('ph-sal-ot-total').textContent || '').replace(/,/g, '')) || 0;
+                 })(),
     total,
     sick_days:   0,
     ot_entries:  JSON.stringify({ mode: _phSalMode, rows: _phSalOtRows, extras: _phSalExtras,
