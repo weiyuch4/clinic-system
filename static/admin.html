@@ -2227,6 +2227,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           <span id="ph-sal-editing-badge" style="display:none;font-size:12px;color:var(--blue);font-weight:600">✎ 編輯中</span>
           <button class="btn-sm" onclick="newPhSalaryRecord()" id="ph-sal-new-btn" style="display:none">新增記錄</button>
           <button class="btn-sm" onclick="printPhPaySlip()" id="ph-sal-print-btn">列印薪資條</button>
+          <button class="btn-sm" onclick="printAllPhPaySlips()" id="ph-sal-print-all-btn">列印全月薪資條</button>
           <button class="btn-sm primary" onclick="savePhSalaryRecord()" id="ph-sal-save-btn">儲存薪資記錄</button>
         </div>
       </div>
@@ -5550,6 +5551,106 @@ function printPhPaySlip() {
 
   const w = window.open('', '_blank', 'width=560,height=820');
   if (w) { w.document.write(html); w.document.close(); }
+}
+
+function _buildSlipItems(parsed) {
+  const isPart = (parsed.mode || 'full') === 'part';
+  const base = parsed.base !== undefined ? parsed.base : PH_SAL_BASE;
+  const baseNote = parsed.base_note || '';
+  const otRate = parsed.ot_rate !== undefined ? parsed.ot_rate : PH_SAL_SAT_RATE;
+  const hourlyRate = parsed.hourly_rate !== undefined ? parsed.hourly_rate : 250;
+  const hourlyOtRate = parsed.hourly_ot_rate !== undefined ? parsed.hourly_ot_rate : 335;
+  const rows = parsed.rows || [];
+  const regRows = parsed.reg_rows || [];
+  const extras = Array.isArray(parsed.extras) ? parsed.extras : [];
+  const laborIns = parsed.labor_ins || 0;
+  const healthIns = parsed.health_ins || 0;
+  const items = [];
+  if (!isPart) items.push({ label: `月薪${baseNote ? '（'+baseNote+'）' : ''}`, amount: base });
+  let otTotal = 0;
+  rows.forEach(row => {
+    const mins = calcMinutes(row.start, row.end);
+    if (isPart) {
+      const rate = row.isOt ? hourlyOtRate : hourlyRate;
+      otTotal += Math.ceil((mins / 60) * rate);
+    } else {
+      const info = getDayInfo(row.date);
+      otTotal += calcOvertimePay(mins, info.isSaturday ? '休息日' : '平日', otRate);
+    }
+  });
+  otTotal = Math.ceil(otTotal);
+  if (otTotal > 0) items.push({ label: '加班費', amount: otTotal });
+  let regTotal = 0;
+  regRows.forEach(row => { regTotal += Math.ceil((calcMinutes(row.start, row.end) / 60) * hourlyRate); });
+  if (regTotal > 0) items.push({ label: '上班合計', amount: regTotal });
+  extras.filter(e => e.amount > 0).forEach(e => items.push({ label: e.name || '其他獎金', amount: e.amount }));
+  extras.filter(e => e.amount < 0).forEach(e => items.push({ label: e.name || '其他扣款', amount: e.amount, red: true }));
+  if (laborIns > 0) items.push({ label: '勞保自付額', amount: -laborIns, red: true });
+  if (healthIns > 0) items.push({ label: '健保自付額', amount: -healthIns, red: true });
+  return { items, slipStart: parsed.slip_start || '', slipEnd: parsed.slip_end || '' };
+}
+
+async function printAllPhPaySlips() {
+  const month = phSalMonthStr();
+  const monthLabel = `${_phSalYear} 年 ${ZH_MON[_phSalMon - 1]} 月`;
+  try {
+    const names = await api('/api/pharmacists');
+    if (!names || !names.length) { alert('找不到藥師資料'); return; }
+    const allRecs = [];
+    for (const name of names) {
+      const recs = await api(`/api/admin/salary?nurse=${encodeURIComponent(name)}&month=${encodeURIComponent(month)}`);
+      if (recs && recs.length) allRecs.push({ name, rec: recs[recs.length - 1] });
+    }
+    if (!allRecs.length) { alert(`${monthLabel} 尚無薪資記錄`); return; }
+    const slipsHtml = allRecs.map(({ name, rec }, idx) => {
+      let parsed = {};
+      try { parsed = JSON.parse(rec.ot_entries || '{}'); } catch(_) {}
+      if (Array.isArray(parsed)) parsed = { rows: parsed };
+      const { items, slipStart, slipEnd } = _buildSlipItems(parsed);
+      const total = rec.total || 0;
+      const trows = items.map(it => {
+        const abs = Math.abs(it.amount).toLocaleString('zh-TW');
+        const prefix = it.amount < 0 ? '−' : '';
+        return `<tr${it.red?' style="color:#dc2626"':''}><td>${it.label}</td><td>${prefix}NT$ ${abs}</td></tr>`;
+      }).join('');
+      const period = (slipStart || slipEnd) ? `<span class="sp">${slipStart||'—'} ～ ${slipEnd||'—'}</span>` : '';
+      const cutAbove = idx > 0 ? '<div class="cut">✂ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</div>' : '';
+      return `${cutAbove}<div class="slip">
+  <div class="sh"><span class="st">薪資條</span><span class="sn">${name}</span><span class="sm">${monthLabel}</span>${period}</div>
+  <table><tbody>${trows}</tbody><tfoot><tr class="tr"><td>合計</td><td>NT$ ${total.toLocaleString('zh-TW')}</td></tr></tfoot></table>
+  <div class="sigs"><div class="sig"><div class="sl"></div><div class="slb">主管簽名</div></div><div class="sig"><div class="sl"></div><div class="slb">藥師簽名</div></div></div>
+</div>`;
+    }).join('');
+    const html = `<!DOCTYPE html><html lang="zh-TW"><head>
+<meta charset="UTF-8">
+<title>薪資條 ${monthLabel}</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif; color:#111; font-size:12px; }
+.cut { text-align:center; font-size:9px; color:#bbb; letter-spacing:.15em; padding:3px 0; border-top:1px dashed #ccc; margin:0 8mm; }
+.slip { padding:8mm 12mm 6mm; break-inside:avoid; }
+.sh { display:flex; align-items:baseline; gap:10px; border-bottom:1.5px solid #111; padding-bottom:5px; margin-bottom:6px; flex-wrap:wrap; }
+.st { font-size:13px; font-weight:700; letter-spacing:.08em; }
+.sn { font-size:13px; font-weight:700; }
+.sm { font-size:11px; color:#555; }
+.sp { font-size:10px; color:#777; margin-left:auto; }
+table { width:100%; border-collapse:collapse; }
+td { padding:3.5px 0; border-bottom:1px solid #eee; font-size:11.5px; }
+td:last-child { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
+.tr td { padding-top:5px; border-bottom:none; font-size:13px; font-weight:700; border-top:1.5px solid #111; }
+.sigs { display:flex; gap:32px; margin-top:10px; }
+.sig { flex:1; }
+.sl { border-bottom:1px solid #999; height:20px; margin-bottom:3px; }
+.slb { font-size:10px; color:#888; text-align:center; }
+@page { size:A4 portrait; margin:0; }
+@media print { button { display:none; } }
+</style></head><body>
+${slipsHtml}
+<script>window.onload=function(){window.print();};<\/script>
+</body></html>`;
+    const w = window.open('', '_blank', 'width=620,height=900');
+    if (w) { w.document.write(html); w.document.close(); }
+  } catch(e) { alert('列印失敗：' + e.message); }
 }
 
 function _currentPhSalaryPayload() {
