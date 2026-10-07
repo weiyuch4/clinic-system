@@ -5743,10 +5743,19 @@ async function printAllPhPaySlips() {
         } else {
           const base = p.base!==undefined ? p.base : PH_SAL_BASE;
           const note = p.base_note||'';
-          const otPay = (rec.ot_pay||0) + (rec.sat_pay||0);
+          const otRate = p.ot_rate !== undefined ? p.ot_rate : PH_SAL_SAT_RATE;
+          let fullOtPay = 0;
+          (p.rows||[]).forEach(row => {
+            const mins = calcMinutes(row.start, row.end);
+            if (mins <= 0) return;
+            const info = getDayInfo(row.date);
+            fullOtPay += calcOvertimePay(mins, info.isSaturday ? '休息日' : '平日', otRate);
+          });
+          (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) fullOtPay += Math.ceil((m/60)*(p.hourly_rate||250)); });
+          fullOtPay = Math.ceil(fullOtPay);
           cols = [
             {g:'薪資',h:'月薪',  val:`${base.toLocaleString('zh-TW')}${note?`<br><span class="note">${note}</span>`:''}` },
-            {g:'',    h:'加班費',val:v(otPay)},
+            {g:'',    h:'加班費',val:v(fullOtPay)},
             {g:'',    h:'其他獎金',val:v(posExtras)},
           ];
         }
