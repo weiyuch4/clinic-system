@@ -5736,10 +5736,12 @@ async function printAllPhPaySlips() {
           let partReg = 0, partOt = 0;
           (p.rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) { if (r.isOt) partOt += Math.ceil((m/60)*(p.hourly_ot_rate||335)); else partReg += Math.ceil((m/60)*(p.hourly_rate||250)); } });
           (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) partReg += Math.ceil((m/60)*(p.hourly_rate||250)); });
+          const otExtra     = extras.filter(e => e.amount > 0 && (e.name||'').trim() === '加班費').reduce((s,e) => s+e.amount, 0);
+          const otherExtras = extras.filter(e => e.amount > 0 && (e.name||'').trim() !== '加班費').reduce((s,e) => s+e.amount, 0);
           cols = [
             {g:'薪資',h:'工時薪資',val:v(partReg)},
-            {g:'',    h:'加班費',   val:v(partOt)},
-            {g:'',    h:'其他獎金', val:v(posExtras)},
+            {g:'',    h:'加班費',   val:v(partOt + otExtra)},
+            {g:'',    h:'其他獎金', val:v(otherExtras)},
           ];
         } else {
           const base = p.base!==undefined ? p.base : PH_SAL_BASE;
