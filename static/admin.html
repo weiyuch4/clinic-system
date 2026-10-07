@@ -1736,9 +1736,10 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
   <!-- ── 薪資計算 ── -->
   <section id="salary" class="section">
-  <div style="display:flex;gap:6px;margin-bottom:14px">
+  <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
     <button id="sal-tab-nurse-btn" class="seg-btn active" onclick="switchSalTab('nurse')" style="flex:1;padding:8px 0;font-size:13px;font-weight:600">護理師</button>
     <button id="sal-tab-pharm-btn" class="seg-btn" onclick="switchSalTab('pharm')" style="flex:1;padding:8px 0;font-size:13px;font-weight:600">藥師</button>
+    <button class="btn-sm" onclick="printAllPhPaySlips()" style="white-space:nowrap">列印全月薪資條</button>
   </div>
   <div id="sal-nurse-pane">
     <div class="sal-toolbar">
@@ -2227,7 +2228,6 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           <span id="ph-sal-editing-badge" style="display:none;font-size:12px;color:var(--blue);font-weight:600">✎ 編輯中</span>
           <button class="btn-sm" onclick="newPhSalaryRecord()" id="ph-sal-new-btn" style="display:none">新增記錄</button>
           <button class="btn-sm" onclick="printPhPaySlip()" id="ph-sal-print-btn">列印薪資條</button>
-          <button class="btn-sm" onclick="printAllPhPaySlips()" id="ph-sal-print-all-btn">列印全月薪資條</button>
           <button class="btn-sm primary" onclick="savePhSalaryRecord()" id="ph-sal-save-btn">儲存薪資記錄</button>
         </div>
       </div>
@@ -5553,6 +5553,58 @@ function printPhPaySlip() {
   if (w) { w.document.write(html); w.document.close(); }
 }
 
+function _buildNurseSlipItems(parsed, rec) {
+  const isPart = (parsed.mode || 'full') === 'part';
+  const extras = Array.isArray(parsed.extras) ? parsed.extras : [];
+  const laborIns = parsed.labor_ins || 0;
+  const healthIns = parsed.health_ins || 0;
+  const unworkedDays = parsed.unworked_days || 0;
+  const sickDays = rec.sick_days || 0;
+  const [ry, rm] = (rec.month || '').split('-').map(Number);
+  const daysInMonth = (ry && rm) ? new Date(ry, rm, 0).getDate() : 30;
+  const items = [];
+  if (isPart) {
+    const PART_RATE = 250, PART_OT_RATE = 250 * 1.34;
+    const rows = parsed.rows || [];
+    let partRegular = 0, partOt = 0;
+    const workDays = new Set();
+    rows.forEach(r => {
+      const mins = calcMinutes(r.start, r.end);
+      if (mins <= 0) return;
+      const h = mins / 60;
+      if (r.isOt) partOt += h * PART_OT_RATE; else partRegular += h * PART_RATE;
+      if (r.date) workDays.add(r.date);
+    });
+    partRegular = Math.ceil(partRegular); partOt = Math.ceil(partOt);
+    const pd = workDays.size || rows.length;
+    if (pd > 0) items.push({ label: '工作天數', display: `${pd} 天` });
+    if (partRegular > 0) items.push({ label: '工時薪資', amount: partRegular });
+    if (partOt > 0) items.push({ label: '加班費', amount: partOt });
+    if (rec.performance > 0) items.push({ label: '不定期獎金', amount: rec.performance });
+  } else {
+    items.push({ label: '底薪', amount: SAL_BASE });
+    if (rec.attendance > 0) items.push({ label: '全勤獎金', amount: rec.attendance });
+    items.push({ label: '執照津貼', amount: SAL_LICENSE });
+    if (rec.sat_pay > 0) items.push({ label: '周六加班費', amount: rec.sat_pay });
+    if (rec.float_bonus > 0) items.push({ label: '浮動獎金', amount: rec.float_bonus });
+    if (rec.performance > 0) items.push({ label: '不定期獎金', amount: rec.performance });
+    if (rec.ot_pay > 0) items.push({ label: '加班費', amount: rec.ot_pay });
+  }
+  extras.filter(e => e.amount > 0).forEach(e => items.push({ label: e.name || '其他獎金', amount: e.amount }));
+  extras.filter(e => e.amount < 0).forEach(e => items.push({ label: e.name || '其他扣款', amount: e.amount, red: true }));
+  if (!isPart && sickDays > 0) {
+    const sd = Math.round(42000 / daysInMonth * sickDays * 0.5);
+    if (sd > 0) items.push({ label: `病假扣款 (${sickDays}天)`, amount: -sd, red: true });
+  }
+  if (laborIns > 0) items.push({ label: '勞保自付額', amount: -laborIns, red: true });
+  if (healthIns > 0) items.push({ label: '健保自付額', amount: -healthIns, red: true });
+  if (!isPart && unworkedDays > 0) {
+    const pd2 = Math.round(42000 / daysInMonth * unworkedDays);
+    if (pd2 > 0) items.push({ label: `到職日調整 (${unworkedDays}天)`, amount: -pd2, red: true });
+  }
+  return { items, slipStart: '', slipEnd: '' };
+}
+
 function _buildSlipItems(parsed) {
   const isPart = (parsed.mode || 'full') === 'part';
   const base = parsed.base !== undefined ? parsed.base : PH_SAL_BASE;
@@ -5591,34 +5643,47 @@ function _buildSlipItems(parsed) {
 }
 
 async function printAllPhPaySlips() {
-  const month = phSalMonthStr();
-  const monthLabel = `${_phSalYear} 年 ${ZH_MON[_phSalMon - 1]} 月`;
+  const isNurseTab = $('sal-tab-nurse-btn').classList.contains('active');
+  const month = isNurseTab ? salMonthStr() : phSalMonthStr();
+  const year  = isNurseTab ? _salYear : _phSalYear;
+  const mon   = isNurseTab ? _salMon  : _phSalMon;
+  const monthLabel = `${year} 年 ${ZH_MON[mon - 1]} 月`;
   try {
-    const names = await api('/api/pharmacists');
-    if (!names || !names.length) { alert('找不到藥師資料'); return; }
+    const [nurseNames, pharmNames] = await Promise.all([
+      api('/api/nurses').catch(() => []),
+      api('/api/pharmacists').catch(() => []),
+    ]);
     const allRecs = [];
-    for (const name of names) {
+    for (const name of nurseNames) {
       const recs = await api(`/api/admin/salary?nurse=${encodeURIComponent(name)}&month=${encodeURIComponent(month)}`);
-      if (recs && recs.length) allRecs.push({ name, rec: recs[recs.length - 1] });
+      if (recs && recs.length) allRecs.push({ name, rec: recs[recs.length - 1], type: 'nurse' });
+    }
+    for (const name of pharmNames) {
+      const recs = await api(`/api/admin/salary?nurse=${encodeURIComponent(name)}&month=${encodeURIComponent(month)}`);
+      if (recs && recs.length) allRecs.push({ name, rec: recs[recs.length - 1], type: 'pharm' });
     }
     if (!allRecs.length) { alert(`${monthLabel} 尚無薪資記錄`); return; }
-    const slipsHtml = allRecs.map(({ name, rec }, idx) => {
+    const _renderSlipRows = (items) => items.map(it => {
+      if (it.display) return `<tr><td>${it.label}</td><td>${it.display}</td></tr>`;
+      const abs = Math.abs(it.amount).toLocaleString('zh-TW');
+      const prefix = it.amount < 0 ? '−' : '';
+      return `<tr${it.red?' style="color:#dc2626"':''}><td>${it.label}</td><td>${prefix}NT$ ${abs}</td></tr>`;
+    }).join('');
+    const slipsHtml = allRecs.map(({ name, rec, type }, idx) => {
       let parsed = {};
       try { parsed = JSON.parse(rec.ot_entries || '{}'); } catch(_) {}
       if (Array.isArray(parsed)) parsed = { rows: parsed };
-      const { items, slipStart, slipEnd } = _buildSlipItems(parsed);
-      const total = rec.total || 0;
-      const trows = items.map(it => {
-        const abs = Math.abs(it.amount).toLocaleString('zh-TW');
-        const prefix = it.amount < 0 ? '−' : '';
-        return `<tr${it.red?' style="color:#dc2626"':''}><td>${it.label}</td><td>${prefix}NT$ ${abs}</td></tr>`;
-      }).join('');
-      const period = (slipStart || slipEnd) ? `<span class="sp">${slipStart||'—'} ～ ${slipEnd||'—'}</span>` : '';
-      const cutAbove = idx > 0 ? '<div class="cut">✂ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</div>' : '';
-      return `${cutAbove}<div class="slip">
+      const { items, slipStart, slipEnd } = type === 'pharm'
+        ? _buildSlipItems(parsed)
+        : _buildNurseSlipItems(parsed, rec);
+      const sp = slipStart || slipEnd;
+      const period = sp ? `<span class="sp">${slipStart||'—'} ～ ${slipEnd||'—'}</span>` : '';
+      const sigLbl = type === 'pharm' ? '藥師簽名' : '護理師簽名';
+      const cut = idx > 0 ? '<div class="cut">✂ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</div>' : '';
+      return `${cut}<div class="slip">
   <div class="sh"><span class="st">薪資條</span><span class="sn">${name}</span><span class="sm">${monthLabel}</span>${period}</div>
-  <table><tbody>${trows}</tbody><tfoot><tr class="tr"><td>合計</td><td>NT$ ${total.toLocaleString('zh-TW')}</td></tr></tfoot></table>
-  <div class="sigs"><div class="sig"><div class="sl"></div><div class="slb">主管簽名</div></div><div class="sig"><div class="sl"></div><div class="slb">藥師簽名</div></div></div>
+  <table><tbody>${_renderSlipRows(items)}</tbody><tfoot><tr class="tr"><td>合計</td><td>NT$ ${(rec.total||0).toLocaleString('zh-TW')}</td></tr></tfoot></table>
+  <div class="sigs"><div class="sig"><div class="sl"></div><div class="slb">主管簽名</div></div><div class="sig"><div class="sl"></div><div class="slb">${sigLbl}</div></div></div>
 </div>`;
     }).join('');
     const html = `<!DOCTYPE html><html lang="zh-TW"><head>
