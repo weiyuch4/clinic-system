@@ -5679,8 +5679,7 @@ async function printAllPhPaySlips() {
       const sp = slipStart || slipEnd;
       const period = sp ? `<span class="sp">${slipStart||'—'} ～ ${slipEnd||'—'}</span>` : '';
       const sigLbl = type === 'pharm' ? '藥師簽名' : '護理師簽名';
-      const cut = idx > 0 ? '<div class="cut">✂ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -</div>' : '';
-      return `${cut}<div class="slip">
+      return `<div class="slip${idx > 0 ? ' slip-sep' : ''}">
   <div class="sh"><span class="st">薪資條</span><span class="sn">${name}</span><span class="sm">${monthLabel}</span>${period}</div>
   <table><tbody>${_renderSlipRows(items)}</tbody><tfoot><tr class="tr"><td>合計</td><td>NT$ ${(rec.total||0).toLocaleString('zh-TW')}</td></tr></tfoot></table>
   <div class="sigs"><div class="sig"><div class="sl"></div><div class="slb">主管簽名</div></div><div class="sig"><div class="sl"></div><div class="slb">${sigLbl}</div></div></div>
@@ -5692,8 +5691,8 @@ async function printAllPhPaySlips() {
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
 body { font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif; color:#111; font-size:12px; }
-.cut { text-align:center; font-size:9px; color:#bbb; letter-spacing:.15em; padding:3px 0; border-top:1px dashed #ccc; margin:0 8mm; }
 .slip { padding:8mm 12mm 6mm; break-inside:avoid; }
+.slip-sep { border-top:1px dashed #bbb; }
 .sh { display:flex; align-items:baseline; gap:10px; border-bottom:1.5px solid #111; padding-bottom:5px; margin-bottom:6px; flex-wrap:wrap; }
 .st { font-size:13px; font-weight:700; letter-spacing:.08em; }
 .sn { font-size:13px; font-weight:700; }
