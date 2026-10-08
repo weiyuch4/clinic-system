@@ -1739,7 +1739,11 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center">
     <button id="sal-tab-nurse-btn" class="seg-btn active" onclick="switchSalTab('nurse')" style="flex:1;padding:8px 0;font-size:13px;font-weight:600">護理師</button>
     <button id="sal-tab-pharm-btn" class="seg-btn" onclick="switchSalTab('pharm')" style="flex:1;padding:8px 0;font-size:13px;font-weight:600">藥師</button>
-    <button class="btn-sm" onclick="printAllPhPaySlips()" style="white-space:nowrap">列印全月薪資條</button>
+    <span style="display:flex;align-items:center;gap:5px;flex-shrink:0">
+      <label style="display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;white-space:nowrap;color:var(--text-2)"><input type="checkbox" id="print-all-nurse" checked> 護理師</label>
+      <label style="display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;white-space:nowrap;color:var(--text-2)"><input type="checkbox" id="print-all-pharm" checked> 藥師</label>
+      <button class="btn-sm" onclick="printAllPhPaySlips()" style="white-space:nowrap">列印全月薪資條</button>
+    </span>
   </div>
   <div id="sal-nurse-pane">
     <div class="sal-toolbar">
@@ -5670,9 +5674,12 @@ async function printAllPhPaySlips() {
   const mon   = isNurseTab ? _salMon  : _phSalMon;
   const monthLabel = `${year} 年 ${ZH_MON[mon - 1]} 月`;
   try {
+    const includeNurse = ($('print-all-nurse') || {}).checked !== false;
+    const includePharm = ($('print-all-pharm') || {}).checked !== false;
+    if (!includeNurse && !includePharm) { alert('請至少勾選一種人員類型'); return; }
     const [nurseNames, pharmNames] = await Promise.all([
-      api('/api/nurses').catch(() => []),
-      api('/api/pharmacists').catch(() => []),
+      includeNurse ? api('/api/nurses').catch(() => []) : Promise.resolve([]),
+      includePharm ? api('/api/pharmacists').catch(() => []) : Promise.resolve([]),
     ]);
     const allEntries = [];
     for (const name of nurseNames) {
