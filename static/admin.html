@@ -5793,12 +5793,12 @@ async function printAllPhPaySlips() {
       const tds = cols.map(c => `<td>${c.val}</td>`).join('')
                + `<td class="tot">${(rec.total||0).toLocaleString('zh-TW')}</td><td class="sig"></td>`;
 
-      const sigLbl = type === 'pharm' ? '藥師' : '護理師';
       const sep = idx > 0 ? '<div class="cut"></div>' : '';
-      return `${sep}<div class="slip">
+      const slipHtml = `<div class="slip">
 <div class="sh"><span class="st">薪資條</span><span class="sn">${name}</span><span class="sm">${monthLabel}</span></div>
 <table><thead><tr>${h1}</tr><tr>${h2}</tr></thead><tbody><tr>${tds}</tr></tbody></table>
 </div>`;
+      return `${sep}${slipHtml}<div class="cut"></div>${slipHtml}`;
     }).join('');
 
     const html = `<!DOCTYPE html><html lang="zh-TW"><head>
