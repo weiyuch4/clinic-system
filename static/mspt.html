@@ -626,6 +626,7 @@ document.addEventListener('click', function(ev) {
 
   function renderList(entries, renderFn, id, headerFix) {
     var filtered = entries.filter(match);
+    filtered.sort(function(a,b){ return (b.call_required?1:0)-(a.call_required?1:0); });
     var el = document.getElementById(id);
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件' : '目前沒有記錄') + '</div>';
@@ -640,6 +641,7 @@ document.addEventListener('click', function(ev) {
 
   function renderHintTab(entries, renderFn, rowsId, emptyMsg) {
     var filtered = entries.filter(match);
+    filtered.sort(function(a,b){ return (b.call_required?1:0)-(a.call_required?1:0); });
     var el = document.getElementById(rowsId);
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件' : emptyMsg) + '</div>';

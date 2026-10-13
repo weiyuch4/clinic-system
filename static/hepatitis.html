@@ -349,6 +349,7 @@
 
   function renderList(entries, renderFn, id, extraHeaders) {
     var filtered = entries.filter(match);
+    filtered.sort(function(a,b){ return (b._called?1:0)-(a._called?1:0); });
     var el = document.getElementById(id);
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件的病患' : '目前沒有記錄') + '</div>';
