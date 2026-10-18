@@ -54,6 +54,11 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#11
 .done{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:#6b7280}
 .done-icon{font-size:44px}
 .done-txt{font-size:14px;font-weight:600}
+.btn-line-send{background:#059669;color:#fff;font-weight:700}
+.btn-line-send:hover:not(:disabled){background:#047857}
+.btn-line-send:active:not(:disabled){background:#065f46}
+.btn-invite-line{background:#f8fafc;color:#475569;border:1.5px solid #cbd5e1}
+.btn-invite-line:hover:not(:disabled){background:#f1f5f9;border-color:#94a3b8}
 </style>
 </head>
 <body>
@@ -70,6 +75,8 @@ body{font-family:system-ui,-apple-system,sans-serif;background:#f8fafc;color:#11
 var ALL_TABS = {}, TAB_KEYS = [];
 var tabIdx = 0, idx = 0;
 var TOKEN = '', NURSE = '', MODE = 'prescription';
+var _lineStatus = {}; // chart_number → true (bound) | false (not bound)
+var _lineBindUrl = '';  // clinic bind URL for invite hint
 
 function init() {
   try {
@@ -106,6 +113,56 @@ function init() {
 
   renderTabBar();
   render();
+  if (TAB_KEYS.length === 1) {
+    var modeLabels = { prescription: '慢簽', chronic: '慢簽', mspt: '代謝症候群', hepatitis: 'B/C肝炎', ckd: '慢性腎臟病', lab: '檢驗' };
+    var titleEl = document.getElementById('top-title');
+    if (titleEl && modeLabels[MODE]) titleEl.textContent = '逐一追蹤 — ' + modeLabels[MODE];
+  }
+  // Load LINE binding status asynchronously — does not block render
+  loadLineStatus();
+}
+
+function getChartNum(item) {
+  return item.chart_number || item.nat_id || '';
+}
+
+function lineCategory() {
+  if (MODE === 'prescription' || MODE === 'chronic') return '慢簽';
+  if (MODE === 'mspt') return '代謝症候群';
+  if (MODE === 'hepatitis') return 'B肝';
+  return '慢簽';
+}
+
+function loadLineStatus() {
+  var cns = [];
+  TAB_KEYS.forEach(function(k) {
+    (ALL_TABS[k].items || []).forEach(function(it) {
+      var cn = getChartNum(it);
+      if (cn && cns.indexOf(cn) < 0) cns.push(cn);
+    });
+  });
+  if (!cns.length || !TOKEN) return;
+  // Check is_active first — if LINE is disabled, leave _lineStatus empty so no
+  // LINE tags or buttons render anywhere in the popup.
+  fetch('/line/config')
+    .then(function(r) { return r.ok ? r.json() : null; })
+    .then(function(d) {
+      if (!d || !d.is_active) return; // LINE not enabled — skip all LINE UI
+      if (d.liff_id) _lineBindUrl = 'https://liff.line.me/' + d.liff_id;
+      else _lineBindUrl = location.origin + '/line/bind';
+      var h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN };
+      return fetch('/api/line/bound-status', {
+        method: 'POST', headers: h,
+        body: JSON.stringify({ chart_numbers: cns })
+      })
+      .then(function(r) { return r.ok ? r.json() : null; })
+      .then(function(data) {
+        if (!data) return;
+        _lineStatus = data;
+        render();
+      });
+    })
+    .catch(function() {}); // silently fail — LINE status is optional UI
 }
 
 function renderTabBar() {
@@ -155,7 +212,7 @@ function apiCall(method, url, body, onOk, onErr) {
 }
 
 function notifyParent() {
-  if (window.opener) try { window.opener.postMessage('workflow_refresh', '*'); } catch(e) {}
+  if (window.opener) try { window.opener.postMessage('workflow_refresh', window.location.origin); } catch(e) {}
 }
 
 function advance() {
@@ -196,6 +253,10 @@ function showContactForm() {
       '<button class="btn btn-pri" id="confirm-btn" onclick="doContact()">✓ 確認儲存</button>' +
     '</div>';
   document.getElementById('actions').innerHTML = '';
+  setTimeout(function() {
+    var inp = document.getElementById('contact-note') || document.querySelector('#form-area input, #form-area textarea, #form-area select');
+    if (inp) inp.focus();
+  }, 30);
 }
 
 function showHoldForm() {
@@ -210,6 +271,10 @@ function showHoldForm() {
       '<button class="btn btn-warn" id="confirm-btn" onclick="doHold()">確認暫緩</button>' +
     '</div>';
   document.getElementById('actions').innerHTML = '';
+  setTimeout(function() {
+    var inp = document.getElementById('hold-note') || document.querySelector('#form-area input, #form-area textarea, #form-area select');
+    if (inp) inp.focus();
+  }, 30);
 }
 
 function doContact() {
@@ -326,6 +391,16 @@ function render() {
     if (item.days_overdue > 0) tags += '<span class="tag tag-urgent">' + item.days_overdue + '天逾期</span>';
   }
 
+  // LINE binding badge (shows after loadLineStatus() resolves)
+  var cn = getChartNum(item);
+  if (cn in _lineStatus) {
+    if (_lineStatus[cn]) {
+      tags += '<span class="tag" style="background:#d1fae5;color:#065f46;border:1px solid #6ee7b7">LINE ✓</span>';
+    } else {
+      tags += '<span class="tag" style="background:#E0F2FE;color:#0369A1">LINE 未綁定</span>';
+    }
+  }
+
   var fields = '';
   fields += field('姓名', esc(item.name), item.name, true);
   if (MODE === 'lab') {
@@ -361,17 +436,29 @@ function render() {
   var skip = '<button class="btn btn-sec" onclick="go(1)">跳過 →</button>';
   var tab = item._tab || '';
 
+  var isBound = cn && _lineStatus[cn] === true;
+  var lineBtn = isBound
+    ? '<button class="btn btn-line-send" onclick="doSendLine()">LINE 傳送</button>'
+    : '';
+  // For prescription mode: invite hint button when not bound
+  var inviteBtn = (!isBound && cn in _lineStatus && _lineBindUrl)
+    ? '<button class="btn btn-invite-line" onclick="copyInvite()" title="複製邀請連結">邀請 LINE</button>'
+    : '';
+
   if (MODE === 'lab') {
     act.innerHTML = prev + skip +
       '<button class="btn btn-pri" onclick="doLabNotify()">✓ 已通知</button>';
   } else if (MODE === 'prescription') {
+    // When bound: show LINE 傳送 instead of 未加LINE
+    var noLineOrLine = isBound ? lineBtn : '<button class="btn btn-sec" onclick="doNoLine()">未加LINE</button>';
     act.innerHTML = prev + skip +
       '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
-      '<button class="btn btn-sec" onclick="doNoLine()" style="background:#f0fdf4;color:#15803d;border:1.5px solid #bbf7d0">未加LINE</button>' +
+      noLineOrLine +
       '<button class="btn btn-pri" onclick="doContact()">已聯繫</button>';
   } else if (MODE === 'mspt' && (tab === 'return' || tab === 'inactive')) {
     act.innerHTML = prev + skip +
       '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
+      (lineBtn || inviteBtn) +
       '<button class="btn btn-pri" onclick="showContactForm()">已聯繫</button>';
   } else if (MODE === 'mspt' && tab === 'phone') {
     act.innerHTML = prev + skip +
@@ -380,9 +467,62 @@ function render() {
   } else if (MODE === 'hepatitis' || MODE === 'ckd' || MODE === 'chronic') {
     act.innerHTML = prev + skip +
       '<button class="btn btn-warn" onclick="showHoldForm()">暫緩</button>' +
+      (lineBtn || inviteBtn) +
       '<button class="btn btn-pri" onclick="doContact()">已聯繫</button>';
   } else {
     act.innerHTML = prev + skip;
+  }
+}
+
+function doSendLine() {
+  var items = currentItems();
+  var item = items[idx];
+  var cn = getChartNum(item);
+  var actEl = document.getElementById('actions');
+  actEl.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
+  var h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN };
+  // Step 1: send LINE message
+  fetch('/api/line/push-one', {
+    method: 'POST', headers: h,
+    body: JSON.stringify({ chart_number: cn, category: lineCategory() })
+  })
+  .then(function(r) {
+    return r.ok ? r.json() : r.json().then(function(e){ throw new Error(e.detail || 'LINE 傳送失敗'); });
+  })
+  .then(function() {
+    // Step 2: mark as contacted (same as clicking 已聯繫)
+    return fetch('/api/contacted', {
+      method: 'POST', headers: h,
+      body: JSON.stringify({ entry: item._entry, nurse: NURSE })
+    });
+  })
+  .then(function() { advance(); })
+  .catch(function(e) {
+    actEl.querySelectorAll('button').forEach(function(b){ b.disabled = false; });
+    var errEl = document.createElement('div');
+    errEl.style.cssText = 'color:#dc2626;font-size:12px;padding:4px 12px;flex-basis:100%';
+    errEl.textContent = (e && e.message) || 'LINE 傳送失敗，請稍後再試';
+    actEl.parentNode.insertBefore(errEl, actEl);
+    setTimeout(function(){ errEl.remove(); }, 4000);
+  });
+}
+
+function copyInvite() {
+  var url = _lineBindUrl || (location.origin + '/line/bind');
+  function _confirm() {
+    var btns = document.getElementById('actions') ? document.getElementById('actions').querySelectorAll('button') : [];
+    btns.forEach(function(b) {
+      if (b.textContent === '邀請 LINE') {
+        b.textContent = '✓ 已複製';
+        setTimeout(function() { b.textContent = '邀請 LINE'; }, 1500);
+      }
+    });
+  }
+  if (navigator.clipboard) {
+    navigator.clipboard.writeText(url).then(_confirm).catch(function() { fb(url); _confirm(); });
+  } else {
+    fb(url);
+    _confirm();
   }
 }
 

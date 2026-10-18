@@ -200,6 +200,27 @@ _CREATE_HEP_REINTAKE = """
     )
 """
 
+_CREATE_HEP_MANUAL_RETURNED = """
+    CREATE TABLE IF NOT EXISTS hep_manual_returned (
+        chart_number    TEXT NOT NULL,
+        category        TEXT NOT NULL DEFAULT 'B肝',
+        nurse           TEXT DEFAULT '',
+        added_at        TEXT NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (chart_number, category, clinic_id)
+    )
+"""
+
+_CREATE_CKD_MANUAL_INACTIVE = """
+    CREATE TABLE IF NOT EXISTS ckd_manual_inactive (
+        chart_number    TEXT NOT NULL,
+        nurse           TEXT DEFAULT '',
+        added_at        TEXT NOT NULL,
+        clinic_id       INTEGER NOT NULL DEFAULT 1,
+        PRIMARY KEY (chart_number, clinic_id)
+    )
+"""
+
 _CREATE_LINE_NOTIFICATION_LOG = """
     CREATE TABLE IF NOT EXISTS line_notification_log (
         id           SERIAL PRIMARY KEY,
@@ -721,6 +742,8 @@ def init() -> None:
             cur.execute(_CREATE_MANUAL_PICKUPS)
             cur.execute(_CREATE_HEP_RETURNED_COMPLETED)
             cur.execute(_CREATE_HEP_REINTAKE)
+            cur.execute(_CREATE_HEP_MANUAL_RETURNED)
+            cur.execute(_CREATE_CKD_MANUAL_INACTIVE)
             cur.execute(_CREATE_LINE_NOTIFICATION_LOG)
             cur.execute(_CREATE_LINE_UNLINKED)
             cur.execute(_CREATE_LINE_RECENTLY_SENT)
@@ -1491,11 +1514,79 @@ def get_hep_reintake_chart_numbers(clinic_id: int = 1) -> set[str]:
     return {r["chart_number"] for r in rows}
 
 
+def add_hep_manual_returned(chart_number: str, category: str = 'B肝', nurse: str = '', clinic_id: int = 1) -> None:
+    """Manually move a patient from 待聯絡 to 待登VPN."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO hep_manual_returned (chart_number, category, nurse, added_at, clinic_id) "
+                "VALUES (%s, %s, %s, %s, %s) ON CONFLICT (chart_number, category, clinic_id) DO NOTHING",
+                (chart_number, category, nurse, now, clinic_id),
+            )
+
+
+def remove_hep_manual_returned(chart_number: str, category: str = 'B肝', clinic_id: int = 1) -> None:
+    """Move a manually-added 待登VPN patient back to 待聯絡."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM hep_manual_returned WHERE chart_number=%s AND category=%s AND clinic_id=%s",
+                (chart_number, category, clinic_id),
+            )
+
+
+def get_hep_manual_returned_charts(clinic_id: int = 1) -> set[tuple[str, str]]:
+    """Returns (chart_number, category) pairs for manually-moved 待登VPN patients."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT chart_number, category FROM hep_manual_returned WHERE clinic_id=%s",
+                (clinic_id,),
+            )
+            rows = cur.fetchall()
+    return {(r["chart_number"], r["category"]) for r in rows}
+
+
 def get_ckd_reintake_chart_numbers(clinic_id: int = 1) -> set[str]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 "SELECT chart_number FROM hep_reintake WHERE clinic_id=%s AND category='慢性腎臟病'",
+                (clinic_id,),
+            )
+            rows = cur.fetchall()
+    return {r["chart_number"] for r in rows}
+
+
+def add_ckd_manual_inactive(chart_number: str, nurse: str = '', clinic_id: int = 1) -> None:
+    """Manually move a CKD patient from 待聯絡 to 未複診."""
+    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO ckd_manual_inactive (chart_number, nurse, added_at, clinic_id) "
+                "VALUES (%s, %s, %s, %s) ON CONFLICT (chart_number, clinic_id) DO NOTHING",
+                (chart_number, nurse, now, clinic_id),
+            )
+
+
+def remove_ckd_manual_inactive(chart_number: str, clinic_id: int = 1) -> None:
+    """Move a manually-inactive CKD patient back to 待聯絡."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM ckd_manual_inactive WHERE chart_number=%s AND clinic_id=%s",
+                (chart_number, clinic_id),
+            )
+
+
+def get_ckd_manual_inactive_charts(clinic_id: int = 1) -> set[str]:
+    """Returns chart_numbers for CKD patients manually moved to 未複診."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT chart_number FROM ckd_manual_inactive WHERE clinic_id=%s",
                 (clinic_id,),
             )
             rows = cur.fetchall()

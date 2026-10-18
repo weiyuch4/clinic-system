@@ -2,8 +2,10 @@ import asyncio
 import logging
 import os
 import re as _re
+import requests
 import secrets
 import threading
+import time as _time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import date, timedelta
 
@@ -27,12 +29,13 @@ import db
 import directory
 import lab_report
 import lab_results
+import line_service
 import settings as _settings
 from models import (
     BloodDismissRequest, BloodNotifiedRequest, BloodPhysicalRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
     StickyNoteRequest, DoctorNoteRequest,
     CreateUserRequest, DailyReport,
-    ExcludeRequest, FollowupEntry, HepReintakeRequest, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
+    CkdManualInactiveRequest, ExcludeRequest, FollowupEntry, HepManualReturnedRequest, HepReintakeRequest, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
     ManualOnHoldRequest, ManualPickupRequest,
     MsptCompleteRequest, MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
@@ -68,6 +71,10 @@ if _psd_env:
 _report_cache: dict[int, tuple[date, "DailyReport"]] = {}
 _blood_pending_cache: dict[int, list] = {}
 _blood_physical_cache: dict[int, list] = {}
+_bind_rate: dict = {}  # ip -> [timestamps]
+_pin_failures: dict = {}  # (clinic_id, nurse_name) -> [timestamps]
+_PIN_MAX_ATTEMPTS = 5
+_PIN_LOCKOUT_SECONDS = 900  # 15 minutes
 
 
 def _invalidate_report_cache(clinic_id: int) -> None:
@@ -100,6 +107,7 @@ auth.init()
 contacts.init()
 directory.init()
 lab_report.init()
+line_service.init()
 backup.run()
 if CLOUD_MODE:
     database._blood_status_ready.set()  # no BIO files on cloud — skip warmup
@@ -650,7 +658,12 @@ def update_note(note_id: int, req: StickyNoteRequest, user: auth.CurrentUser = D
 @app.delete("/api/notes/{note_id}")
 def delete_note(note_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
+        note = next((n for n in contacts.get_sticky_notes(user.clinic_id) if n["id"] == note_id), None)
+        if note and note.get("nurse") and note["nurse"] != user.display_name and user.role != "admin":
+            raise HTTPException(status_code=403, detail="只能刪除自己的便利貼")
         contacts.delete_sticky_note(note_id, user.clinic_id)
+    except HTTPException:
+        raise
     except Exception:
         logger.exception("delete_note failed for id=%s", note_id)
         raise HTTPException(status_code=500, detail="刪除便利貼失敗")
@@ -910,8 +923,15 @@ def verify_nurse_pin(body: dict, user: auth.CurrentUser = Depends(auth.get_curre
     pin  = str(body.get("pin",  "")).strip()
     if not name or not pin:
         raise HTTPException(status_code=422, detail="請輸入護理師名稱與 PIN")
+    key = (user.clinic_id, name)
+    now_ts = _time.time()
+    recent = [t for t in _pin_failures.get(key, []) if now_ts - t < _PIN_LOCKOUT_SECONDS]
+    if len(recent) >= _PIN_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="嘗試次數過多，請 15 分鐘後再試")
     if not contacts.verify_nurse_pin(name, pin, user.clinic_id):
+        _pin_failures[key] = recent + [now_ts]
         raise HTTPException(status_code=401, detail="PIN 不正確")
+    _pin_failures.pop(key, None)
     return {"ok": True, "name": name}
 
 
@@ -922,8 +942,15 @@ def change_nurse_pin(body: dict, user: auth.CurrentUser = Depends(auth.get_curre
     new_pin = str(body.get("new_pin", "")).strip()
     if not name or not old_pin or not new_pin:
         raise HTTPException(status_code=422, detail="請填寫所有欄位")
+    key = (user.clinic_id, name)
+    now_ts = _time.time()
+    recent = [t for t in _pin_failures.get(key, []) if now_ts - t < _PIN_LOCKOUT_SECONDS]
+    if len(recent) >= _PIN_MAX_ATTEMPTS:
+        raise HTTPException(status_code=429, detail="嘗試次數過多，請 15 分鐘後再試")
     if not contacts.verify_nurse_pin(name, old_pin, user.clinic_id):
+        _pin_failures[key] = recent + [now_ts]
         raise HTTPException(status_code=401, detail="目前 PIN 不正確")
+    _pin_failures.pop(key, None)
     try:
         contacts.set_nurse_pin(name, new_pin, user.clinic_id)
     except ValueError as e:
@@ -1244,6 +1271,8 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             f_line_recently_sent   = exe.submit(contacts.get_line_recently_sent_map, cid)
             f_hep_returned_keys    = exe.submit(contacts.get_hep_returned_completed_keys, cid)
             f_hep_reintake_charts  = exe.submit(contacts.get_hep_reintake_chart_numbers, cid)
+            f_hep_manual_returned  = exe.submit(contacts.get_hep_manual_returned_charts, cid)
+            f_ckd_manual_inactive  = exe.submit(contacts.get_ckd_manual_inactive_charts, cid)
             f_ckd_reintake_charts  = exe.submit(contacts.get_ckd_reintake_chart_numbers, cid)
             f_manual_overrides     = exe.submit(contacts.get_mspt_manual_overrides, cid)
             f_contacted            = exe.submit(contacts.get_contacted_with_dates, cid)
@@ -1298,6 +1327,8 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
         line_recently_sent_map      = f_line_recently_sent.result()
         hep_returned_completed_keys = f_hep_returned_keys.result()
         hep_reintake_charts         = f_hep_reintake_charts.result()
+        hep_manual_returned_charts  = f_hep_manual_returned.result()
+        ckd_manual_inactive_charts  = f_ckd_manual_inactive.result()
         ckd_reintake_charts         = f_ckd_reintake_charts.result()
         manual_overrides            = f_manual_overrides.result()
         contacted_with_dates        = f_contacted.result()
@@ -1419,9 +1450,35 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
         chronic_charts = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == '慢簽'}
         mspt_charts    = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == '代謝症候群'}
         hep_charts     = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == 'B肝'}
-        chronic_visits = database.get_latest_visit_dates(chronic_charts, '慢簽')
-        mspt_visits    = database.get_latest_visit_dates(mspt_charts, '代謝症候群')
-        hep_visits     = database.get_latest_visit_dates(hep_charts, 'B肝')
+        if CLOUD_MODE:
+            def _cloud_latest_visits(charts: set, category: str) -> dict:
+                if not charts:
+                    return {}
+                import db as _db_mod
+                with _db_mod._conn() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT chart_number, last_visit_date FROM synced_candidates "
+                            "WHERE clinic_id = %s AND category = %s AND chart_number = ANY(%s) "
+                            "AND last_visit_date IS NOT NULL",
+                            (cid, category, list(charts)),
+                        )
+                        return {r["chart_number"]: date.fromisoformat(r["last_visit_date"]) for r in cur.fetchall()}
+            with ThreadPoolExecutor(max_workers=3) as _vexe:
+                f_cv = _vexe.submit(_cloud_latest_visits, chronic_charts, '慢簽')
+                f_mv = _vexe.submit(_cloud_latest_visits, mspt_charts, '代謝症候群')
+                f_hv = _vexe.submit(_cloud_latest_visits, hep_charts, 'B肝')
+            chronic_visits = f_cv.result()
+            mspt_visits    = f_mv.result()
+            hep_visits     = f_hv.result()
+        else:
+            with ThreadPoolExecutor(max_workers=3) as _vexe:
+                f_cv = _vexe.submit(database.get_latest_visit_dates, chronic_charts, '慢簽')
+                f_mv = _vexe.submit(database.get_latest_visit_dates, mspt_charts, '代謝症候群')
+                f_hv = _vexe.submit(database.get_latest_visit_dates, hep_charts, 'B肝')
+            chronic_visits = f_cv.result()
+            mspt_visits    = f_mv.result()
+            hep_visits     = f_hv.result()
 
         def has_returned(entry: FollowupEntry, contacted_at: date) -> bool:
             if entry.category == '慢簽':
@@ -1511,12 +1568,18 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                 [
                     e for e in filter_followups(apply_hep_reintake(report.hep_followups)) + filter_followups(apply_hep_reintake(report.hep_inactive))
                     if not hep_suppressed(e)
+                    and (e.patient.chart_number, e.category) not in hep_manual_returned_charts
                 ],
                 key=lambda e: e.days_overdue,
             ),
             hep_returned=[
                 e for e in report.hep_returned
                 if (e.patient.chart_number, e.last_visit_date.isoformat()) not in hep_returned_completed_keys
+            ] + [
+                e.model_copy(update={"last_visit_date": as_of or date.today(), "manual": True})
+                for e in filter_followups(apply_hep_reintake(report.hep_followups)) + filter_followups(apply_hep_reintake(report.hep_inactive))
+                if (e.patient.chart_number, e.category) in hep_manual_returned_charts
+                and (e.patient.chart_number, (as_of or date.today()).isoformat()) not in hep_returned_completed_keys
             ],
             hep_returned_completed=contacts.get_hep_returned_completed_entries(cid),
             contacted=_enrich_phones(contacted),
@@ -1529,11 +1592,13 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             on_hold=_enrich_phones(contacts.get_on_hold_entries(cid)),
             mspt_manual=contacts.get_mspt_manual_entries(cid),
             ckd_followups=filter_followups(
-                report.ckd_followups +
+                [e for e in report.ckd_followups if e.patient.chart_number not in ckd_manual_inactive_charts] +
                 [e for e in report.ckd_inactive if e.patient.chart_number in ckd_reintake_charts]
             ),
             ckd_inactive=filter_followups(
-                [e for e in report.ckd_inactive if e.patient.chart_number not in ckd_reintake_charts]
+                [e for e in report.ckd_inactive if e.patient.chart_number not in ckd_reintake_charts] +
+                [e.model_copy(update={"manual": True}) for e in report.ckd_followups
+                 if e.patient.chart_number in ckd_manual_inactive_charts]
             ),
         )
         if report_date is None:
@@ -1791,6 +1856,46 @@ def remove_hep_reintake(req: HepReintakeRequest, user: auth.CurrentUser = Depend
         raise HTTPException(status_code=500, detail="撤銷再收案失敗，請稍後再試")
 
 
+@app.post("/api/hep-manual-returned")
+def add_hep_manual_returned(req: HepManualReturnedRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    try:
+        contacts.add_hep_manual_returned(req.chart_number, req.category, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
+    except Exception:
+        logger.exception("add_hep_manual_returned failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="移至待登VPN失敗，請稍後再試")
+
+
+@app.delete("/api/hep-manual-returned")
+def remove_hep_manual_returned(req: HepManualReturnedRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    try:
+        contacts.remove_hep_manual_returned(req.chart_number, req.category, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
+    except Exception:
+        logger.exception("remove_hep_manual_returned failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="移回待聯絡失敗，請稍後再試")
+
+
+@app.post("/api/ckd-manual-inactive")
+def add_ckd_manual_inactive(req: CkdManualInactiveRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    try:
+        contacts.add_ckd_manual_inactive(req.chart_number, req.nurse, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
+    except Exception:
+        logger.exception("add_ckd_manual_inactive failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="移至未複診失敗，請稍後再試")
+
+
+@app.delete("/api/ckd-manual-inactive")
+def remove_ckd_manual_inactive(req: CkdManualInactiveRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
+    try:
+        contacts.remove_ckd_manual_inactive(req.chart_number, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
+    except Exception:
+        logger.exception("remove_ckd_manual_inactive failed for %s", req.chart_number)
+        raise HTTPException(status_code=500, detail="移回待聯絡失敗，請稍後再試")
+
+
 @app.post("/api/manual-pickup")
 def mark_manual_pickup(req: ManualPickupRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
@@ -1833,6 +1938,7 @@ def clear_line_unlinked(chart_number: str, user: auth.CurrentUser = Depends(auth
 _line_batch_state: dict = {
     "running": False, "category": None, "dry_run": False,
     "total": 0, "results": [], "error": None,
+    "direct": 0,  # patients sent via direct LINE API this batch
 }
 _line_batch_task: asyncio.Task | None = None  # kept separate from _line_batch_state — not JSON-serializable
 
@@ -1922,19 +2028,66 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str, c
                 logger.exception("failed to record send date for %s", target["chart_number"])
 
     try:
-        await line_notify.run_batch(
-            [
-                {
-                    "chart_number": t["chart_number"],
-                    "dob": t["entry"].patient.birth_date,
-                    "name": t["entry"].patient.name,
-                    "template": t["template"],
-                }
-                for t in targets
-            ],
-            dry_run=dry_run,
-            on_result=on_result,
+        # ── Phase 2: direct LINE API for bound patients ──────────────────────
+        settings = line_service.get_settings(clinic_id)
+        line_active = (
+            bool(settings.get("is_active"))
+            and bool((settings.get("channel_access_token") or "").strip())
         )
+
+        direct_targets: list[dict] = []
+        alleypin_targets: list[dict] = []
+
+        if line_active:
+            bound_set = {b["chart_number"] for b in line_service.get_all_bindings(clinic_id)}
+            for t in targets:
+                (direct_targets if t["chart_number"] in bound_set else alleypin_targets).append(t)
+        else:
+            alleypin_targets = list(targets)
+
+        _line_batch_state["direct"] = 0
+
+        for t in direct_targets:
+            t["template"] = "直接推播"  # override template label in the activity log
+            if dry_run:
+                result: dict = {"chart_number": t["chart_number"], "status": "sent", "detail": "[測試] 直接推播"}
+            else:
+                push_r = line_service.push_category_message(
+                    t["chart_number"], t["entry"].category, clinic_id, actor=nurse
+                )
+                if push_r.get("status") == 200:
+                    result = {"chart_number": t["chart_number"], "status": "sent", "detail": "直接推播"}
+                    _line_batch_state["direct"] += 1
+                elif push_r.get("status") in (400, 403):
+                    # 400/403 from LINE usually means user blocked the bot or invalid binding
+                    result = {
+                        "chart_number": t["chart_number"],
+                        "status": "line_not_linked",
+                        "detail": "LINE 已封鎖或綁定失效",
+                    }
+                else:
+                    result = {
+                        "chart_number": t["chart_number"],
+                        "status": "error",
+                        "detail": "LINE 傳送失敗（請稍後再試）",
+                    }
+            on_result(result)
+
+        # ── Existing: AlleyPin automation for patients without bindings ──────
+        if alleypin_targets:
+            await line_notify.run_batch(
+                [
+                    {
+                        "chart_number": t["chart_number"],
+                        "dob": t["entry"].patient.birth_date,
+                        "name": t["entry"].patient.name,
+                        "template": t["template"],
+                    }
+                    for t in alleypin_targets
+                ],
+                dry_run=dry_run,
+                on_result=on_result,
+            )
     except Exception as e:
         logger.exception("LINE batch send failed")
         _line_batch_state["error"] = str(e)
@@ -1983,7 +2136,7 @@ async def send_line_notifications(req: SendLineNotificationsRequest, user: auth.
 
     _line_batch_state.update({
         "running": True, "category": req.category, "dry_run": req.dry_run,
-        "total": len(targets), "results": [], "error": None,
+        "total": len(targets), "results": [], "error": None, "direct": 0,
     })
     global _line_batch_task
     _line_batch_task = asyncio.create_task(_run_line_batch_task(targets, req.dry_run, req.nurse, user.clinic_id))
@@ -2117,6 +2270,7 @@ def post_blood_dismiss(req: BloodDismissRequest, user: auth.CurrentUser = Depend
     """Manually remove a patient from the 檢驗追蹤 list for a specific draw date."""
     try:
         database.dismiss_blood_patient(req.nat_id, req.draw_date, req.name, req.reason, user.clinic_id)
+        _invalidate_blood_pending_cache(user.clinic_id)
         return {"ok": True}
     except Exception:
         logger.exception("blood-dismiss failed")
@@ -2447,6 +2601,253 @@ def delete_clinic_contact(contact_id: int, user: auth.CurrentUser = Depends(auth
     except Exception:
         logger.exception("delete_clinic_contact failed for id=%s", contact_id)
         raise HTTPException(status_code=500, detail="刪除失敗")
+
+
+# ── LINE integration ────────────────────────────────────────────────────────────
+
+@app.get("/line/bind")
+def line_bind_page():
+    """Serve the patient-facing LINE binding page (public — no JWT needed)."""
+    return FileResponse("static/line-bind.html")
+
+
+@app.get("/line/config")
+def line_public_config():
+    """Return public LINE config (LIFF ID only) — no secrets exposed."""
+    CLINIC_ID = 1
+    s = line_service.get_settings(CLINIC_ID)
+    return {"liff_id": s.get("liff_id", ""), "is_active": bool(s.get("is_active"))}
+
+
+@app.post("/line/webhook")
+async def line_webhook(request: Request):
+    """Receive LINE platform webhook events (public — LINE sends here)."""
+    CLINIC_ID = 1
+    body_bytes = await request.body()
+    sig = request.headers.get("X-Line-Signature", "")
+    settings = line_service.get_settings(CLINIC_ID)
+    secret = settings.get("channel_secret", "")
+    if not secret:
+        raise HTTPException(status_code=503, detail="Webhook not configured")
+    if not line_service.verify_signature(body_bytes, sig, secret):
+        raise HTTPException(status_code=400, detail="Invalid signature")
+    try:
+        body = await request.json()
+    except Exception:
+        import json as _json
+        body = _json.loads(body_bytes)
+    line_service.process_webhook(body, CLINIC_ID)
+    return {"status": "ok"}
+
+
+@app.post("/line/bind")
+async def line_bind_submit(request: Request):
+    """Bind a patient from the LIFF page (public — patients call this)."""
+    CLINIC_ID = 1
+
+    # Rate limit: 10 attempts per IP per hour
+    client_ip = (
+        request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
+        or (request.client.host if request.client else "unknown")
+    )
+    now_ts = _time.time()
+    recent = [t for t in _bind_rate.get(client_ip, []) if t > now_ts - 3600]
+    if len(recent) >= 10:
+        raise HTTPException(status_code=429, detail="請求過於頻繁，請稍後再試")
+    recent.append(now_ts)
+    if recent:
+        _bind_rate[client_ip] = recent
+    else:
+        _bind_rate.pop(client_ip, None)
+
+    data = await request.json()
+    line_user_id = (data.get("line_user_id") or "").strip()
+    chart_number = (data.get("chart_number") or "").strip().upper()
+    display_name = (data.get("display_name") or "").strip()
+    liff_access_token = (data.get("liff_access_token") or "").strip()
+
+    if not line_user_id or not chart_number:
+        raise HTTPException(status_code=400, detail="缺少必要資訊")
+
+    # Validate chart number format (Taiwan national ID)
+    if not _re.match(r'^[A-Z]\d{9}$', chart_number):
+        raise HTTPException(status_code=400, detail="病歷號碼格式不正確")
+
+    # Verify LIFF access token — confirm caller controls the LINE account
+    if not liff_access_token:
+        raise HTTPException(status_code=400, detail="請透過 LINE 應用程式開啟綁定頁面")
+    try:
+        profile_resp = requests.get(
+            "https://api.line.me/v2/profile",
+            headers={"Authorization": f"Bearer {liff_access_token}"},
+            timeout=5,
+        )
+        if profile_resp.status_code == 200:
+            verified_uid = profile_resp.json().get("userId", "")
+            if verified_uid and verified_uid != line_user_id:
+                raise HTTPException(status_code=403, detail="LINE 身份驗證失敗")
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=503, detail="LINE 服務暫時無法連線，請稍後再試")
+
+    line_service.bind_patient(chart_number, line_user_id, display_name, CLINIC_ID, actor="patient")
+    settings = line_service.get_settings(CLINIC_ID)
+    token = settings.get("channel_access_token", "")
+    if token:
+        line_service._push(token, line_user_id, [{"type": "text", "text": "✅ 綁定成功！您將收到診所的健康提醒訊息。"}])
+    return {"status": "ok"}
+
+
+@app.get("/api/line/settings")
+def get_line_settings(user: auth.CurrentUser = Depends(auth.get_current_user)):
+    s = line_service.get_settings(user.clinic_id)
+    return {
+        "has_token": bool((s.get("channel_access_token") or "").strip()),
+        "has_secret": bool((s.get("channel_secret") or "").strip()),
+        "liff_id": s.get("liff_id", ""),
+        "is_active": bool(s.get("is_active", 0)),
+        "message_templates": line_service.get_message_templates(user.clinic_id),
+    }
+
+
+@app.post("/api/line/settings")
+def save_line_settings(body: dict = Body(...), admin: auth.CurrentUser = Depends(auth.require_admin)):
+    line_service.save_settings(
+        admin.clinic_id,
+        token=body.get("channel_access_token", "").strip(),
+        secret=body.get("channel_secret", "").strip(),
+        liff_id=body.get("liff_id", "").strip(),
+        is_active=bool(body.get("is_active", False)),
+        actor=admin.display_name,
+    )
+    return {"status": "ok"}
+
+
+@app.get("/api/line/stats")
+def get_line_stats(user: auth.CurrentUser = Depends(auth.get_current_user)):
+    count = line_service.get_binding_count(user.clinic_id)
+    return {"bound": count}
+
+
+@app.get("/api/line/bindings")
+def get_line_bindings(user: auth.CurrentUser = Depends(auth.get_current_user)):
+    return line_service.get_all_bindings(user.clinic_id)
+
+
+@app.delete("/api/line/binding/{chart_number}")
+def delete_line_binding(chart_number: str, admin: auth.CurrentUser = Depends(auth.require_admin)):
+    removed = line_service.unbind_patient(chart_number, admin.clinic_id, actor=admin.display_name)
+    if not removed:
+        raise HTTPException(status_code=404, detail="找不到此綁定")
+    return {"status": "ok"}
+
+
+@app.post("/api/line/import")
+async def import_line_bindings(request: Request, admin: auth.CurrentUser = Depends(auth.require_admin)):
+    """Bulk import bindings from a JSON list [{chart_number, line_user_id, display_name}]."""
+    rows = await request.json()
+    if not isinstance(rows, list):
+        raise HTTPException(status_code=400, detail="須為陣列格式")
+    result = line_service.bulk_import_bindings(rows, admin.clinic_id, actor=admin.display_name)
+    return result
+
+
+@app.post("/api/line/broadcast-invite")
+def broadcast_bind_invite(admin: auth.CurrentUser = Depends(auth.require_admin)):
+    """Send binding invitation to all currently bound patients."""
+    result = line_service.broadcast_bind_invite(admin.clinic_id)
+    return result
+
+
+@app.get("/api/line/coverage")
+def get_line_coverage(
+    category: str = Query("慢簽"),
+    user: auth.CurrentUser = Depends(auth.get_current_user),
+) -> dict:
+    """How many of the pending patients for a category have a direct LINE binding."""
+    report_data = get_report(report_date=None, user=user)
+    source = {
+        "慢簽": report_data.chronic_prescriptions,
+        "代謝症候群": report_data.mspt_followups,
+        "B肝": report_data.hep_followups,
+    }.get(category, [])
+    pending_chart_numbers = {e.patient.chart_number for e in source if _pick_line_template(e)}
+    total = len(pending_chart_numbers)
+    if not total:
+        return {"total": 0, "bound": 0, "pct": 0}
+    bound_set = {b["chart_number"] for b in line_service.get_all_bindings(user.clinic_id)}
+    bound = len(pending_chart_numbers & bound_set)
+    return {"total": total, "bound": bound, "pct": round(bound / total * 100) if total else 0}
+
+
+@app.get("/api/line/templates")
+def get_line_templates(user: auth.CurrentUser = Depends(auth.get_current_user)):
+    return line_service.get_message_templates(user.clinic_id)
+
+
+@app.post("/api/line/templates")
+async def save_line_templates(
+    request: Request,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+):
+    templates = await request.json()
+    if not isinstance(templates, dict):
+        raise HTTPException(status_code=400, detail="須為 JSON 物件")
+    line_service.save_message_templates(admin.clinic_id, templates)
+    return {"status": "ok"}
+
+
+@app.post("/api/line/bound-status")
+def get_line_bound_status(
+    body: dict = Body(...),
+    user: auth.CurrentUser = Depends(auth.get_current_user),
+) -> dict:
+    """Batch-check which chart numbers have a LINE binding.
+    Returns {chart_number: bool} for every number in the request list."""
+    chart_numbers = body.get("chart_numbers", [])
+    if not isinstance(chart_numbers, list):
+        raise HTTPException(status_code=400, detail="chart_numbers 須為陣列")
+    bound_set = {b["chart_number"] for b in line_service.get_all_bindings(user.clinic_id)}
+    return {cn: (cn in bound_set) for cn in chart_numbers if cn}
+
+
+@app.post("/api/line/push-one")
+def line_push_one(
+    body: dict = Body(...),
+    user: auth.CurrentUser = Depends(auth.get_current_user),
+) -> dict:
+    """Push the configured category message to a single bound patient."""
+    chart_number = (body.get("chart_number") or "").strip().upper()
+    category = (body.get("category") or "慢簽").strip()
+    if not chart_number:
+        raise HTTPException(status_code=400, detail="chart_number 為必填")
+    settings = line_service.get_settings(user.clinic_id)
+    if not settings.get("is_active"):
+        raise HTTPException(status_code=400, detail="LINE 功能尚未啟用")
+    if not (settings.get("channel_access_token") or "").strip():
+        raise HTTPException(status_code=400, detail="LINE 憑證尚未設定")
+    result = line_service.push_category_message(chart_number, category, user.clinic_id, actor=user.display_name)
+    if result.get("status") == 200:
+        return {"status": "sent"}
+    raw_body = (result.get("body") or "")[:300]
+    logger.warning("LINE push-one failed for %s: status=%s body=%s", chart_number, result.get("status"), raw_body)
+    raise HTTPException(status_code=502, detail="LINE 傳送失敗，請確認綁定是否有效")
+
+
+@app.get("/api/line/audit")
+def get_line_audit_log(
+    limit: int = Query(200, ge=1, le=1000),
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+) -> list[dict]:
+    """Return the LINE audit log for this clinic (newest first)."""
+    return line_service.get_audit_log(admin.clinic_id, limit)
+
+
+@app.get("/api/line/bound-chart-numbers")
+def get_bound_chart_numbers(user: auth.CurrentUser = Depends(auth.get_current_user)):
+    bindings = line_service.get_all_bindings(user.clinic_id)
+    return {"chart_numbers": [b["chart_number"] for b in bindings]}
 
 
 if __name__ == "__main__":

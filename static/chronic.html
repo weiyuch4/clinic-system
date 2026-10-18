@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>慢簽追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=62">
+<link rel="stylesheet" href="/static/_layout.css?v=66">
 </head>
 <body>
 <div class="app">
@@ -130,6 +130,7 @@
   var _pending = [], _contacted = [], _hold = [], _excluded = [];
   var _pendingMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   var _actionChart = null, _excludeEntry = null;
+  var _lineBoundSet = null;
 
   function applyReport(r) {
     _pending   = r.chronic_prescriptions || [];
@@ -154,6 +155,18 @@
     renderAll();
     L.updateBadges(r, null);
     L.updateLastUpdated();
+  }
+
+  function loadLineBadges() {
+    L.apiFetch('/api/line/bound-chart-numbers')
+      .then(function (data) {
+        if (!data) return;
+        var set = {};
+        (data.chart_numbers || []).forEach(function (cn) { set[cn] = true; });
+        _lineBoundSet = set;
+        L.decorateLineBadges(document.body, _lineBoundSet);
+      })
+      .catch(function () {});
   }
 
   function load() {
@@ -245,6 +258,7 @@
     renderList(_contacted, contactedRow, 'list-contacted');
     renderList(_hold,      holdRow,      'list-hold');
     renderExcluded();
+    L.decorateLineBadges(document.body, _lineBoundSet);
   }
 
   document.getElementById('filter-bar').addEventListener('click', function (e) {
@@ -373,7 +387,7 @@
         _entry: e, _mode: 'chronic', _tab: 'pending',
       };
     });
-    if (!items.length) { alert('目前沒有待聯絡的病患'); return; }
+    if (!items.length) { L.showToast('目前沒有待聯絡的病患', 'info'); return; }
     try {
       localStorage.setItem('rx_workflow_tabs', JSON.stringify({ pending: { label: '待聯絡', items: items } }));
       localStorage.setItem('rx_workflow_curtab', 'pending');
@@ -400,6 +414,7 @@
 
   Layout.init({ activePage: 'chronic', onRefresh: load });
   load();
+  loadLineBadges();
 })();
 </script>
 </body>

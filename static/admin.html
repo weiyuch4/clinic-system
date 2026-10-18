@@ -1594,6 +1594,10 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
         使用者管理
       </button>
+      <a href="/static/line.html" style="display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:13.5px;font-weight:500;color:var(--text-2);text-decoration:none;border-radius:8px;transition:background .1s" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+        LINE 管理
+      </a>
 
       <div class="admsb-bot">
         <button class="back-btn" onclick="exitAdminMode()">
@@ -1682,7 +1686,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       <div class="ln-form">
         <div class="ln-field">
           <label>類別</label>
-          <select id="ln-category" class="ln-input">
+          <select id="ln-category" class="ln-input" onchange="loadLineCoverage()">
             <option value="慢簽">慢簽</option>
             <option value="代謝症候群">代謝症候群</option>
             <option value="B肝">B肝</option>
@@ -1695,6 +1699,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <label class="ln-check"><input type="checkbox" id="ln-dryrun" checked> 測試模式（不會真的發送）</label>
         <button class="btn-sm primary" onclick="startLineBatch()">發送</button>
       </div>
+      <div id="ln-coverage" style="margin-top:10px;padding:0 24px;font-size:12.5px;color:var(--text-3)"></div>
       <div class="ln-progress" id="ln-progress-wrap" style="display:none">
         <p class="ln-progress-status" id="ln-status"></p>
         <div class="ln-progress-track"><div class="ln-progress-bar" id="ln-progress-bar"></div></div>
@@ -3638,6 +3643,22 @@ const LN_STATUS_COLOR = {
 
 let _lnPolling = null;
 
+async function loadLineCoverage() {
+  const category = $('ln-category') ? $('ln-category').value : '慢簽';
+  const el = $('ln-coverage');
+  if (!el) return;
+  el.textContent = '載入中…';
+  try {
+    const d = await api(`/api/line/coverage?category=${encodeURIComponent(category)}`);
+    if (!d.total) { el.textContent = '目前無待聯絡病患。'; return; }
+    const pct = d.pct;
+    const color = pct >= 80 ? 'var(--emerald,#059669)' : pct >= 40 ? 'var(--amber,#D97706)' : 'var(--text-3)';
+    el.innerHTML = `待聯絡 <strong>${d.total}</strong> 人，其中 <strong style="color:${color}">${d.bound}</strong> 人（${pct}%）已綁定 LINE，可直接推播，其餘 <strong>${d.total - d.bound}</strong> 人走 AlleyPin 自動化。`;
+  } catch(err) {
+    el.textContent = '';
+  }
+}
+
 async function startLineBatch() {
   const category = $('ln-category').value;
   const limitVal = $('ln-limit').value.trim();
@@ -3679,7 +3700,14 @@ async function _pollLineBatch() {
     const pct = total ? Math.round((done / total) * 100) : 0;
     $('ln-progress-bar').style.width = pct + '%';
 
+    const directCount = state.direct || 0;
+    const alleyCount = done - directCount;
     let label = state.running ? `處理中… ${done}/${total}` : `完成：${done}/${total}`;
+    if (directCount > 0) {
+      label += ` （直接推播 ${directCount} 則`;
+      if (alleyCount > 0) label += `、AlleyPin ${alleyCount} 則`;
+      label += '）';
+    }
     if (state.dry_run) label = `[測試模式] ${label}`;
     if (state.error) label += ` — 發生錯誤：${state.error}`;
     $('ln-status').textContent = label;
@@ -3736,13 +3764,13 @@ function renderLineLog(rows) {
       ? `<span style="color:var(--text-3)">已復原</span>`
       : `<span style="color:${LN_STATUS_COLOR[r.status] || 'var(--text-2)'};font-weight:600">${LN_STATUS_LABEL[r.status] || r.status}</span>`;
     return `<tr>
-      <td class="l">${r.name} <span style="color:var(--text-3);font-size:11px">${r.chart_number}</span></td>
+      <td class="l">${esc(r.name)} <span style="color:var(--text-3);font-size:11px">${esc(r.chart_number)}</span></td>
       <td class="l">${r.category}</td>
-      <td class="l">${r.template}</td>
-      <td class="l">${statusHtml}<div class="ln-detail">${r.detail || ''}</div></td>
+      <td class="l">${esc(r.template)}</td>
+      <td class="l">${statusHtml}<div class="ln-detail">${esc(r.detail || '')}</div></td>
       <td>${r.dry_run ? '測試' : '正式'}</td>
-      <td class="l">${r.sent_at} ${r.sent_time || ''}</td>
-      <td class="l">${r.nurse || ''}</td>
+      <td class="l">${esc(r.sent_at || '')} ${esc(r.sent_time || '')}</td>
+      <td class="l">${esc(r.nurse || '')}</td>
       <td>${canUndo ? `<button class="btn-sm" onclick="undoLineLog(${r.id}, this)">復原</button>` : ''}</td>
     </tr>`;
   }).join('');
@@ -5500,8 +5528,8 @@ function printPhPaySlip() {
       ${regPay  > 0 ? `<tr><td>上班合計</td><td>NT$ ${regPay.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${otMins  > 0 ? `<tr><td>加班時數</td><td>${fmtTime(otMins)}</td></tr>` : ''}
       ${otPay   > 0 ? `<tr><td>加班合計</td><td>NT$ ${otPay.toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
-      ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${esc(e.name||'其他獎金')}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${esc(e.name||'其他扣款')}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${laborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${healthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${(typeof pension !== 'undefined' && pension > 0) ? `<tr style="color:#dc2626"><td>勞退自提</td><td>−NT$ ${pension.toLocaleString('zh-TW')}</td></tr>` : ''}
@@ -5515,8 +5543,8 @@ function printPhPaySlip() {
       <tr><td>月薪${_phSalBaseNote ? '（' + _phSalBaseNote + '）' : ''}</td><td>NT$ ${_phSalBase.toLocaleString('zh-TW')}</td></tr>
       ${parseInt((ot||'').replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
       ${(()=>{ let t=0; _phRegRows.forEach(r=>{const m=calcMinutes(r.start,r.end);t+=Math.round((m/60)*_phSalHourlyRate);}); return t>0?`<tr><td>上班合計</td><td>NT$ ${t.toLocaleString('zh-TW')}</td></tr>`:''; })()}
-      ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
-      ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_phSalExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${esc(e.name||'其他獎金')}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_phSalExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${esc(e.name||'其他扣款')}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${laborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${healthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${(typeof pension !== 'undefined' && pension > 0) ? `<tr style="color:#dc2626"><td>勞退自提</td><td>−NT$ ${pension.toLocaleString('zh-TW')}</td></tr>` : ''}
@@ -6362,8 +6390,8 @@ function printPaySlip() {
       ${partRegular  > 0 ? `<tr><td>工時薪資</td><td>NT$ ${partRegular.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${partOt       > 0 ? `<tr><td>加班費</td><td>NT$ ${partOt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${(_bonusCalculated||0) > 0 ? `<tr><td>不定期獎金</td><td>NT$ ${(_bonusCalculated||0).toLocaleString('zh-TW')}</td></tr>` : ''}
-      ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
-      ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${esc(e.name||'其他獎金')}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${esc(e.name||'其他扣款')}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${partLaborIns  > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${partLaborIns.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${partHealthIns > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${partHealthIns.toLocaleString('zh-TW')}</td></tr>` : ''}
     `;
@@ -6389,8 +6417,8 @@ function printPaySlip() {
       <tr><td>浮動獎金</td><td>${fmt(flt)}</td></tr>
       ${perf > 0 ? `<tr><td>不定期獎金</td><td>NT$ ${perf.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${parseInt(ot.replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
-      ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${e.name||'其他獎金'}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
-      ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${e.name||'其他扣款'}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${esc(e.name||'其他獎金')}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
+      ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${esc(e.name||'其他扣款')}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${laborInsAmt > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${healthInsAmt > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
@@ -6465,7 +6493,7 @@ function load(section) {
   else if (section === 'doctors')   loadDoctors();
   else if (section === 'labreport') loadLabReport();
   else if (section === 'bonus')     {}  // merged into salary tab
-  else if (section === 'linenotify') loadLineLog();
+  else if (section === 'linenotify') { loadLineLog(); loadLineCoverage(); }
   else if (section === 'schedule')   loadSchedule();
   else if (section === 'salary')     initSalaryTab();
   else if (section === 'labcodes')   loadLabCodes();

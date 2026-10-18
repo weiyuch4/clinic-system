@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>慢性腎臟病 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=62">
+<link rel="stylesheet" href="/static/_layout.css?v=66">
 <style>
 .ckd-inactive-banner{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0}
 .ckd-bi{width:32px;height:32px;border-radius:8px;background:#0369A1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -72,11 +72,11 @@
       </div>
       <div class="filter-panel" id="filter-panel" style="display:none">
         <div class="chip-group" id="note-filter-group" style="display:none">
-          <span class="chip-label">備注</span>
+          <span class="chip-label">備註</span>
           <div class="type-chips" id="note-chips">
             <button class="type-chip on" data-note="">全部</button>
-            <button class="type-chip" data-note="has">有備注</button>
-            <button class="type-chip" data-note="none">無備注</button>
+            <button class="type-chip" data-note="has">有備註</button>
+            <button class="type-chip" data-note="none">無備註</button>
           </div>
         </div>
         <div class="chip-group" id="reason-filter-group" style="display:none">
@@ -248,17 +248,20 @@
 
   function pendingRow(e) {
     return L.patientRow({ entry: e, actions: [
-      { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-      { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+      { label: '已聯繫',  cls: 'act-primary', key: 'contact' },
+      { label: '暫緩',    cls: 'act-warn',    key: 'hold' },
+      { label: '移至未複診', cls: 'act-blue', key: 'move-to-inactive' },
     ], more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }]});
   }
   function inactiveRow(e) {
+    var actions = [
+      { label: '已聯繫', cls: 'act-primary', key: 'contact' },
+      { label: '再收案', cls: 'act-warn',    key: 'reintake' },
+    ];
+    if (e.manual) actions.push({ label: '移回待聯絡', cls: '', key: 'move-to-pending' });
     return L.patientRow({ entry: e,
       tags: ['<span class="pbadge b-prog">未複診</span>'],
-      actions: [
-        { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-        { label: '再收案', cls: 'act-warn',    key: 'reintake' },
-      ],
+      actions: actions,
       more: [{ label: '暫緩', key: 'hold', cls: '' }, { label: '排除', key: 'exclude', cls: 'item-danger' }],
     });
   }
@@ -452,12 +455,26 @@
       document.querySelectorAll('#exclude-chips .reason-chip').forEach(function (c) { c.classList.remove('selected'); });
       L.showModal('modal-exclude');
     } else if (action === 'restore') {
-
       var rx = _excludedMap[_actionChart]; if (!rx) return;
       btn.disabled = true;
-      L.apiAction('DELETE', '/api/excluded', { chart_number: rx.patient.chart_number, category: rx.category })
+      var restoreEndpoint = rx.auto ? '/api/auto-excluded' : '/api/excluded';
+      L.apiAction('DELETE', restoreEndpoint, { chart_number: rx.patient.chart_number, category: rx.category })
         .then(function () { L.showToast('已恢復追蹤：' + rx.patient.name); load(); })
         .catch(function (e) { L.showToast('恢復失敗：' + (e.message||''), 'error'); })
+        .finally(function () { btn.disabled = false; });
+    } else if (action === 'move-to-inactive') {
+      var pe = _pendingMap[_actionChart]; if (!pe) return;
+      btn.disabled = true;
+      L.apiAction('POST', '/api/ckd-manual-inactive', { chart_number: pe.patient.chart_number, nurse: L.getNurse() })
+        .then(function () { L.showToast('已移至未複診：' + pe.patient.name); load(); })
+        .catch(function (e) { L.showToast('操作失敗：' + (e.message||''), 'error'); })
+        .finally(function () { btn.disabled = false; });
+    } else if (action === 'move-to-pending') {
+      var ie = _inactiveMap[_actionChart]; if (!ie || !ie.manual) return;
+      btn.disabled = true;
+      L.apiAction('DELETE', '/api/ckd-manual-inactive', { chart_number: ie.patient.chart_number })
+        .then(function () { L.showToast('已移回待聯絡：' + ie.patient.name); load(); })
+        .catch(function (e) { L.showToast('操作失敗：' + (e.message||''), 'error'); })
         .finally(function () { btn.disabled = false; });
     } else if (action === 'reintake') {
       var riEntry = _inactiveMap[_actionChart]; if (!riEntry) return;

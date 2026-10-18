@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>代謝症候群 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=62">
+<link rel="stylesheet" href="/static/_layout.css?v=66">
 <style>
 .sub-banner{border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0;background:#EDE9FE;border:1px solid #DDD6FE}
 .sub-banner-icon{width:30px;height:30px;border-radius:8px;background:#6D28D9;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -102,11 +102,11 @@
           </div>
         </div>
         <div class="chip-group" id="note-filter-group" style="display:none">
-          <span class="chip-label">備注</span>
+          <span class="chip-label">備註</span>
           <div class="type-chips" id="note-chips">
             <button class="type-chip on" data-note="">全部</button>
-            <button class="type-chip" data-note="has">有備注</button>
-            <button class="type-chip" data-note="none">無備注</button>
+            <button class="type-chip" data-note="has">有備註</button>
+            <button class="type-chip" data-note="none">無備註</button>
           </div>
         </div>
         <div class="chip-group" id="reason-filter-group" style="display:none">
@@ -407,6 +407,7 @@ document.addEventListener('click', function(ev) {
   var _tab = 'return', _query = '', _stageFilter = '', _noteFilter = '', _reasonFilter = '';
   var _NOTE_TABS = ['hold', 'excluded'];
   var _return = [], _phone = [], _submittable = [], _submitted = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
+  var _lineBoundSet = null;
   var _activeMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   // entry stashed for modal confirm
   var _modalEntry = null, _excludeEntry = null, _submitEntry = null, _editExclEntry = null;
@@ -495,6 +496,18 @@ document.addEventListener('click', function(ev) {
     renderAll();
     L.updateBadges(r, null);
     L.updateLastUpdated();
+  }
+
+  function loadLineBadges() {
+    L.apiFetch('/api/line/bound-chart-numbers')
+      .then(function (data) {
+        if (!data) return;
+        var set = {};
+        (data.chart_numbers || []).forEach(function (cn) { set[cn] = true; });
+        _lineBoundSet = set;
+        L.decorateLineBadges(document.body, _lineBoundSet);
+      })
+      .catch(function () {});
   }
 
   function load() {
@@ -721,6 +734,7 @@ document.addEventListener('click', function(ev) {
     renderList(_contacted,   contactedRow,   'list-contacted');
     renderList(_hold,        holdRow,        'list-hold');
     renderExcluded();
+    L.decorateLineBadges(document.body, _lineBoundSet);
   }
 
   function _updateCtxFilters(tab) {
@@ -998,7 +1012,7 @@ document.addEventListener('click', function(ev) {
         _submittable = _submittable.filter(function(e) { return e.patient.chart_number !== entry.patient.chart_number; });
         var archived = Object.assign({}, entry, { submitted_at: new Date().toISOString().slice(0, 10) });
         _submitted.unshift(archived);
-        document.getElementById('cnt-submitted').textContent = _submitted.length || '';
+        document.getElementById('cnt-submitted').textContent = _submitted.length;
         _submitEntry = null;
         _refreshBg();
       })
@@ -1112,7 +1126,7 @@ document.addEventListener('click', function(ev) {
       });
       if (items.length) allTabs[def.key] = { label: def.label, items: items };
     });
-    if (!Object.keys(allTabs).length) { alert('目前沒有資料'); return; }
+    if (!Object.keys(allTabs).length) { L.showToast('目前沒有資料', 'info'); return; }
     try {
       localStorage.setItem('rx_workflow_tabs', JSON.stringify(allTabs));
       localStorage.setItem('rx_workflow_curtab', _tab);
@@ -1148,6 +1162,7 @@ document.addEventListener('click', function(ev) {
   _updateCtxFilters(_tab);
   Layout.init({ activePage: 'mspt', onRefresh: load });
   load();
+  loadLineBadges();
 })();
 </script>
 </body>

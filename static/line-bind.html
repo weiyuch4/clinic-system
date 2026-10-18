@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>LINE 身份綁定</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --green:#06C755;--green-dark:#059142;
+  --bg:#f4f6f8;--card:#fff;--text:#1a1a1a;--sub:#555;--muted:#999;
+  --border:#e5e7eb;--radius:14px;--shadow:0 2px 16px rgba(0,0,0,.09);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1117;
+    --card: #1c1e26;
+    --text: #eceae4;
+    --sub: #9ca3af;
+    --muted: #6b7280;
+    --border: #2a2d35;
+    --shadow: 0 2px 16px rgba(0,0,0,.4);
+  }
+}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:-apple-system,'Hiragino Sans','Noto Sans TC',sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  padding:40px 20px 60px;
+}
+
+.logo{margin-bottom:20px;text-align:center}
+.logo-icon{width:64px;height:64px;background:var(--green);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;box-shadow:0 4px 12px rgba(6,199,85,.35)}
+.logo-icon svg{width:36px;height:36px;fill:#fff}
+.logo-title{font-size:18px;font-weight:700;color:var(--text)}
+.logo-sub{font-size:13px;color:var(--muted);margin-top:3px}
+
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px 24px;width:100%;max-width:380px}
+
+.step-label{font-size:11px;font-weight:600;color:var(--green-dark);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.card h2{font-size:17px;font-weight:700;margin-bottom:6px}
+.card p{font-size:13.5px;color:var(--sub);line-height:1.65;margin-bottom:20px}
+
+.profile-row{display:flex;align-items:center;gap:12px;background:#f8fffe;border:1.5px solid #d1fae5;border-radius:10px;padding:12px 14px;margin-bottom:20px}
+.avatar{width:44px;height:44px;border-radius:50%;background:#e5e7eb;flex-shrink:0;object-fit:cover}
+.profile-name{font-weight:600;font-size:15px}
+.profile-id{font-size:11px;color:var(--muted);font-family:monospace;margin-top:2px}
+
+label{display:block;font-size:12.5px;font-weight:600;color:var(--sub);margin-bottom:5px}
+input[type=text]{
+  width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;
+  font-size:16px;font-family:inherit;background:#fff;color:var(--text);outline:none;
+  transition:border-color .15s;letter-spacing:.05em;
+}
+input[type=text]:focus{border-color:var(--green)}
+.input-hint{font-size:12px;color:var(--muted);margin-top:5px;margin-bottom:20px}
+
+.btn{
+  width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:10px;
+  font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;
+}
+.btn:hover:not(:disabled){background:var(--green-dark)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* States */
+.state{display:none;text-align:center}
+.state.active{display:block}
+
+/* Loading */
+.spinner{width:36px;height:36px;border:3.5px solid #e5e7eb;border-top-color:var(--green);border-radius:50%;animation:spin .75s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Success */
+.success-icon{width:70px;height:70px;background:#ECFDF5;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px}
+.success-icon svg{width:36px;height:36px;stroke:#059669;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+
+/* Error */
+.error-icon{width:60px;height:60px;background:#FEF2F2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px}
+.error-msg{font-size:14px;color:#DC2626;margin-bottom:16px;line-height:1.6}
+.retry-btn{background:none;border:1.5px solid var(--border);border-radius:8px;padding:12px 24px;font-size:14px;cursor:pointer;font-family:inherit;color:var(--sub)}
+
+/* Not-in-LINE message */
+.warn-box{background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:20px}
+.warn-box p{font-size:13px;color:#92400E;line-height:1.65;margin:0}
+</style>
+</head>
+<body>
+
+<div class="logo">
+  <div class="logo-icon">
+    <!-- LINE logo shape -->
+    <svg viewBox="0 0 36 36"><path d="M30 15.3C30 9.1 23.8 4 16.1 4S2.2 9.1 2.2 15.3c0 5.6 5 10.3 11.7 11.2.5.1 1.1.3 1.3.7.2.4.1.9.1 1.3l-.2 1.2c-.1.4-.3 1.4 1.2.8 1.5-.7 7.9-4.7 10.8-8 2-2.2 3-4.5 3-7.2z"/></svg>
+  </div>
+  <div class="logo-title">LINE 身份綁定</div>
+  <div class="logo-sub">將您的 LINE 帳號與診所病歷連結</div>
+</div>
+
+<!-- Loading state -->
+<div class="card">
+  <div id="state-loading" class="state active">
+    <div class="spinner"></div>
+    <p style="text-align:center;color:var(--muted);font-size:14px" id="loading-msg">正在確認 LINE 身份…</p>
+  </div>
+
+  <!-- Bind form state -->
+  <div id="state-form" class="state">
+    <div class="step-label">STEP 1 / 2</div>
+    <h2>確認 LINE 身份</h2>
+    <p>已取得您的 LINE 帳號資訊。請輸入您的病歷號碼，完成身份綁定。</p>
+
+    <div class="profile-row" id="profile-row" style="display:none">
+      <img class="avatar" id="profile-avatar" alt="" hidden>
+      <div>
+        <div class="profile-name" id="profile-name"></div>
+        <div class="profile-id" id="profile-id-short"></div>
+      </div>
+    </div>
+
+    <label for="chart-input">病歷號碼（身分證字號）</label>
+    <input id="chart-input" type="text" placeholder="例：A123456789" maxlength="12" autocomplete="off" inputmode="text"
+           oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');document.getElementById('chart-error').style.display='none'">
+    <div class="input-hint">請輸入您的身分證字號（英文大寫 + 數字，共 10 碼）</div>
+    <div id="chart-error" style="font-size:12.5px;color:#DC2626;margin-top:-14px;margin-bottom:14px;display:none"></div>
+
+    <button class="btn" id="bind-btn" onclick="submitBind()">綁定</button>
+  </div>
+
+  <!-- Not in LINE browser state -->
+  <div id="state-not-line" class="state">
+    <h2 style="margin-bottom:10px">請在 LINE 中開啟</h2>
+    <div class="warn-box">
+      <p>此頁面需要透過 <strong>LINE</strong> 開啟，才能取得您的 LINE 帳號身份。</p>
+    </div>
+    <p style="font-size:13.5px;color:var(--sub)">請掃描診所提供的 QR Code，或點擊診所傳送給您的連結，在 LINE 應用程式內開啟此頁面。</p>
+  </div>
+
+  <!-- Success state -->
+  <div id="state-success" class="state" style="text-align:center;padding:10px 0">
+    <div class="success-icon">
+      <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+    </div>
+    <h2 style="margin-bottom:8px">綁定成功！</h2>
+    <p style="color:var(--sub)">您的 LINE 帳號已與病歷號碼 <strong id="success-cn"></strong> 成功連結。<br>日後診所將透過 LINE 傳送健康提醒給您。</p>
+    <button class="btn" style="margin-top:20px"
+      onclick="(typeof liff!=='undefined'&&liff.closeWindow)?liff.closeWindow():window.close()">
+      完成，關閉頁面
+    </button>
+  </div>
+
+  <!-- Error state -->
+  <div id="state-error" class="state" style="text-align:center;padding:10px 0">
+    <div class="error-icon">⚠️</div>
+    <p class="error-msg" id="error-msg">發生錯誤，請稍後再試。</p>
+    <button class="retry-btn" onclick="goToForm()">重試</button>
+  </div>
+</div>
+
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<script>
+var _lineUserId = '';
+var _displayName = '';
+var _liffId = '';
+
+function showState(name) {
+  ['loading','form','not-line','success','error'].forEach(function(s) {
+    document.getElementById('state-' + s).classList.toggle('active', s === name);
+  });
+}
+
+function goToForm() {
+  showState('form');
+}
+
+async function init() {
+  // 1. Fetch LIFF ID from server
+  try {
+    var resp = await fetch('/line/config');
+    var cfg = await resp.json();
+    _liffId = cfg.liff_id || '';
+  } catch(e) {
+    _liffId = '';
+  }
+
+  if (!_liffId) {
+    // No LIFF ID configured yet — still allow manual entry with a warning
+    showState('not-line');
+    return;
+  }
+
+  // 2. Initialize LIFF
+  try {
+    await liff.init({ liffId: _liffId });
+  } catch(e) {
+    showState('not-line');
+    return;
+  }
+
+  // 3. Check if inside LINE browser
+  if (!liff.isInClient()) {
+    // Not inside LINE app — can't get LINE user ID
+    showState('not-line');
+    return;
+  }
+
+  // 4. Get LINE profile
+  if (!liff.isLoggedIn()) {
+    liff.login();
+    return;
+  }
+
+  try {
+    var profile = await liff.getProfile();
+    _lineUserId = profile.userId;
+    _displayName = profile.displayName;
+
+    // Show profile in form
+    document.getElementById('profile-name').textContent = profile.displayName;
+    document.getElementById('profile-id-short').textContent = profile.userId.substring(0, 12) + '…';
+    var avatarEl = document.getElementById('profile-avatar');
+    if (profile.pictureUrl) {
+      avatarEl.src = profile.pictureUrl;
+      avatarEl.removeAttribute('hidden');
+    } else {
+      avatarEl.setAttribute('hidden', '');
+    }
+    document.getElementById('profile-row').style.display = 'flex';
+    showState('form');
+  } catch(e) {
+    document.getElementById('error-msg').textContent = '無法取得 LINE 身份，請重新整理頁面。';
+    showState('error');
+  }
+}
+
+async function submitBind() {
+  var cn = document.getElementById('chart-input').value.trim().toUpperCase();
+  if (!cn) {
+    document.getElementById('chart-input').focus();
+    return;
+  }
+  if (cn.length < 8 || cn.length > 12) {
+    var errEl = document.getElementById('chart-error');
+    errEl.textContent = '病歷號碼格式不正確，請確認輸入（10碼）';
+    errEl.style.display = 'block';
+    document.getElementById('chart-input').focus();
+    return;
+  }
+  if (!_lineUserId) {
+    document.getElementById('error-msg').textContent = '無法取得 LINE 身份，請重新整理頁面後再試。';
+    showState('error');
+    return;
+  }
+
+  var btn = document.getElementById('bind-btn');
+  btn.disabled = true;
+  btn.textContent = '綁定中…';
+
+  try {
+    var resp = await fetch('/line/bind', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chart_number: cn,
+        line_user_id: _lineUserId,
+        display_name: _displayName,
+        liff_access_token: (typeof liff !== 'undefined' && liff.getAccessToken) ? (liff.getAccessToken() || '') : '',
+      }),
+    });
+
+    if (resp.ok) {
+      document.getElementById('success-cn').textContent = cn;
+      showState('success');
+    } else {
+      var err = await resp.json().catch(function(){ return {}; });
+      document.getElementById('error-msg').textContent = err.detail || '綁定失敗，請確認病歷號碼後再試。';
+      showState('error');
+    }
+  } catch(e) {
+    document.getElementById('error-msg').textContent = '網路錯誤，請檢查網路後再試。';
+    showState('error');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '綁定';
+}
+
+// Start
+init().catch(function(e) {
+  document.getElementById('loading-msg').textContent = '初始化失敗，請重新整理頁面。';
+  console.error(e);
+});
+</script>
+</body>
+</html>

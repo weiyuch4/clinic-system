@@ -33,6 +33,7 @@ class FollowupEntry(BaseModel):
     nurse: str = ""                          # who recorded this action (print history only)
     phone: str = ""                          # from PATDB's TEL field (landline)
     mobile: str = ""                         # from VFP6_P TYPE=P1 (手機)
+    manual: bool = False                     # True for manually-moved hep entries (hep_manual_returned)
 
 
 class MsptSubmittableEntry(BaseModel):
@@ -194,6 +195,17 @@ class HepReintakeRequest(BaseModel):
     chart_number: str
     category: str = 'B肝'
     name: str = ''
+    nurse: str = ''
+
+
+class HepManualReturnedRequest(BaseModel):
+    chart_number: str
+    category: str = 'B肝'
+    nurse: str = ''
+
+
+class CkdManualInactiveRequest(BaseModel):
+    chart_number: str
     nurse: str = ''
 
 

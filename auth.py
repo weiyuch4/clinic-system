@@ -314,6 +314,9 @@ def create_refresh_token(user_id: int) -> str:
 def rotate_refresh_token(old_raw: str) -> tuple[str, int]:
     """Validate old token, delete it, issue a new one. Returns (new_raw, user_id)."""
     old_hash = _hash_refresh_token(old_raw)
+    new_raw = secrets.token_hex(32)
+    new_hash = _hash_refresh_token(new_raw)
+    new_expires = (datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_DAYS)).isoformat()
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
@@ -328,18 +331,11 @@ def rotate_refresh_token(old_raw: str) -> tuple[str, int]:
                 cur.execute("DELETE FROM refresh_tokens WHERE id = %s", (row["id"],))
                 raise HTTPException(status_code=401, detail="Session 已過期，請重新登入")
             cur.execute("DELETE FROM refresh_tokens WHERE id = %s", (row["id"],))
-            user_id = row["user_id"]
-
-    new_raw = secrets.token_hex(32)
-    new_hash = _hash_refresh_token(new_raw)
-    new_expires = (datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_DAYS)).isoformat()
-    with _conn() as conn:
-        with conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO refresh_tokens (user_id, token_hash, expires_at) VALUES (%s, %s, %s)",
-                (user_id, new_hash, new_expires)
+                (row["user_id"], new_hash, new_expires)
             )
-    return new_raw, user_id
+    return new_raw, row["user_id"]
 
 
 def delete_refresh_token(raw: str) -> None:
@@ -395,6 +391,14 @@ async def get_current_user(
     )
     import db as _db
     _db.set_clinic_id(user.clinic_id)
+    from db import _conn as _db_conn
+    with _db_conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT is_active FROM users WHERE id = %s AND clinic_id = %s",
+                        (user.user_id, user.clinic_id))
+            row = cur.fetchone()
+            if not row or not row["is_active"]:
+                raise HTTPException(status_code=401, detail="帳號已停用，請聯絡管理員")
     return user
 
 

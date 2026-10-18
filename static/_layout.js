@@ -1167,6 +1167,26 @@
       '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>';
   }
 
+  // Post-render: inject LINE binding badges into patient rows.
+  // boundSet: {chart_number: true} map (null/undefined = no-op, safe to call any time).
+  function decorateLineBadges(containerEl, boundSet) {
+    if (!boundSet) return;
+    (containerEl || document).querySelectorAll('tr[data-chart]').forEach(function (tr) {
+      var cn = tr.dataset.chart;
+      if (!cn) return;
+      var tags = tr.querySelector('.pr-tags');
+      if (!tags) return;
+      var existing = tags.querySelector('.b-line');
+      if (existing) existing.parentNode.removeChild(existing);
+      if (boundSet[cn]) {
+        var span = document.createElement('span');
+        span.className = 'pbadge b-line';
+        span.textContent = 'LINE';
+        tags.appendChild(span);
+      }
+    });
+  }
+
   // ── Section helpers ──────────────────────────────────
   // Render a collapsible section with a header and list of patient cards.
   // opts: { id, title, entries, renderCard, emptyText }
@@ -1580,6 +1600,7 @@
     patientCard:       patientCard,
     patientRow:        patientRow,
     patientTable:      patientTable,
+    decorateLineBadges: decorateLineBadges,
     catChip:           catChip,
     dayBadge:          dayBadge,
     getNurse:          getNurse,

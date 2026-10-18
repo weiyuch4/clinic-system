@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>LINE 管理</title>
+<link rel="stylesheet" href="/static/_layout.css?v=66">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --surface:var(--card);--text-1:var(--text);--text-2:var(--sub);--text-3:var(--muted);
+  --border-mid:#D1D5DB;--shadow-s:var(--shadow);
+  --blue:#2563EB;--blue-bg:#EFF6FF;
+  --green:#059669;--green-bg:#ECFDF5;
+  --amber:#D97706;--red:#DC2626;
+  --radius-s:6px;--radius:10px;
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]){--border-mid:#374558;--blue-bg:rgba(37,99,235,.12);--green-bg:rgba(5,150,105,.12)}
+}
+:root[data-theme=dark]{--border-mid:#374558;--blue-bg:rgba(37,99,235,.12);--green-bg:rgba(5,150,105,.12)}
+
+body{background:var(--bg);color:var(--text-1);font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-serif}
+
+.page-wrap{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+.page-title{font-size:20px;font-weight:700;color:var(--text-1);margin-bottom:4px}
+.page-sub{font-size:13px;color:var(--text-3);margin-bottom:24px}
+
+/* Tabs */
+.tabs{display:flex;gap:4px;border-bottom:1.5px solid var(--border-mid);margin-bottom:24px}
+.tab{padding:8px 16px;font-size:14px;font-weight:500;color:var(--text-2);background:none;border:none;cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;transition:color .15s,border-color .15s}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-panel{display:none}
+.tab-panel.active{display:block}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border-mid);border-radius:var(--radius);padding:20px;margin-bottom:16px;box-shadow:var(--shadow-s)}
+.card-title{font-size:14px;font-weight:600;color:var(--text-1);margin-bottom:14px}
+.card-sub{font-size:12px;color:var(--text-3);margin-bottom:14px;line-height:1.6}
+
+/* Forms */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:4px}
+.field input,.field textarea{width:100%;padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:var(--radius-s);background:var(--bg);color:var(--text-1);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s}
+.field input:focus,.field textarea:focus{border-color:var(--blue)}
+.field textarea{resize:vertical;min-height:60px}
+.field-row{display:flex;gap:10px}
+.field-row .field{flex:1}
+
+/* Buttons */
+.btn{padding:8px 16px;border:none;border-radius:var(--radius-s);font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-secondary{background:var(--surface);color:var(--text-1);border:1.5px solid var(--border-mid)}
+.btn-danger{background:#FEF2F2;color:var(--red);border:1.5px solid #FECACA}
+.btn-green{background:var(--green);color:#fff}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+
+/* Stats bar */
+.stats-bar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.stat-chip{background:var(--surface);border:1px solid var(--border-mid);border-radius:var(--radius);padding:12px 18px;flex:1;min-width:120px}
+.stat-num{font-size:26px;font-weight:700;color:var(--text-1)}
+.stat-label{font-size:12px;color:var(--text-3);margin-top:2px}
+
+/* Status badge */
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600}
+.badge-green{background:var(--green-bg);color:var(--green)}
+.badge-red{background:#FEF2F2;color:var(--red)}
+.badge-blue{background:var(--blue-bg);color:var(--blue)}
+
+/* Table */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--text-3);border-bottom:1.5px solid var(--border-mid);white-space:nowrap}
+td{padding:9px 12px;border-bottom:1px solid var(--border-mid);color:var(--text-1)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--hover)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;left:auto;transform:none;background:#1e293b;color:#f1f5f9;padding:10px 18px;border-radius:8px;font-size:13.5px;box-shadow:0 4px 16px rgba(0,0,0,.18);z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap}
+.toast.show{opacity:1}
+.toast.toast-error{background:#7f1d1d;color:#fecaca}
+.toast.toast-success{background:#14532d;color:#bbf7d0}
+
+/* Upload zone */
+.upload-zone{border:2px dashed var(--border-mid);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:border-color .15s;margin-bottom:14px}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--blue)}
+.upload-zone input[type=file]{display:none}
+.upload-label{font-size:13px;color:var(--text-3)}
+.upload-label strong{color:var(--blue)}
+
+/* Warning */
+.notice{background:#FFFBEB;border:1px solid #FDE68A;border-radius:var(--radius-s);padding:10px 14px;font-size:12.5px;color:#92400E;margin-bottom:14px;line-height:1.6}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .notice{background:rgba(255,251,235,.08);border-color:#78350F;color:#FCD34D}
+}
+:root[data-theme=dark] .notice{background:rgba(255,251,235,.08);border-color:#78350F;color:#FCD34D}
+
+/* Import result */
+.import-result{display:none;background:var(--green-bg);border:1px solid #A7F3D0;border-radius:var(--radius-s);padding:10px 14px;font-size:12.5px;color:var(--green);margin-top:10px}
+</style>
+<script src="/static/_layout.js?v=63"></script>
+<script src="/static/admin-auth.js?v=5"></script>
+</head>
+<body>
+
+<!-- Admin login overlay -->
+<div id="adm-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0D1117;align-items:center;justify-content:center">
+  <div style="background:#161B27;border:1px solid #262F3E;border-radius:14px;padding:40px;width:360px;max-width:90vw">
+    <div style="font-size:22px;font-weight:700;color:#f3f4f6;margin-bottom:6px">LINE 管理</div>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:28px">請以管理員帳號登入</div>
+    <form id="adm-login-form">
+      <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">帳號</label>
+      <input id="adm-u" type="text" autocomplete="username" style="display:block;width:100%;padding:10px 12px;border:1.5px solid #262F3E;border-radius:8px;background:#0D1117;color:#f3f4f6;font-size:14px;font-family:inherit;outline:none;margin-bottom:16px">
+      <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">密碼</label>
+      <input id="adm-p" type="password" autocomplete="current-password" style="display:block;width:100%;padding:10px 12px;border:1.5px solid #262F3E;border-radius:8px;background:#0D1117;color:#f3f4f6;font-size:14px;font-family:inherit;outline:none;margin-bottom:20px">
+      <div id="adm-err" style="display:none;color:#fca5a5;font-size:12.5px;background:#2A0A0F;border-radius:6px;padding:8px 11px;margin-bottom:14px"></div>
+      <button type="submit" style="width:100%;padding:11px;background:#2563EB;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit">登入</button>
+    </form>
+  </div>
+</div>
+
+<div class="app">
+  <div class="main" style="display:flex;flex-direction:column">
+    <div id="topbar"></div>
+    <div class="body-row" style="justify-content:center;padding-top:0">
+      <div class="page-wrap" style="width:100%">
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <div>
+            <div class="page-title">LINE 官方帳號管理</div>
+            <div class="page-sub">設定 LINE OA 憑證、管理病患綁定、及匯入綁定資料</div>
+          </div>
+          <a href="/admin" style="font-size:12px;color:var(--text-3);text-decoration:none">← 返回管理後台</a>
+        </div>
+
+        <div class="tabs" id="tabs">
+          <button class="tab active" data-tab="settings" onclick="switchTab('settings')">設定</button>
+          <button class="tab" data-tab="bindings" onclick="switchTab('bindings')">綁定管理</button>
+          <button class="tab" data-tab="import" onclick="switchTab('import')">匯入綁定</button>
+        </div>
+
+        <!-- ── Tab: 設定 ──────────────────────────────────────────────────── -->
+        <div class="tab-panel active" id="panel-settings">
+          <div class="card">
+            <div class="card-title">LINE Messaging API 憑證</div>
+            <div class="card-sub">
+              從 LINE Developers Console 取得，套用後立即生效。憑證儲存於伺服器，不會顯示在瀏覽器。
+            </div>
+
+            <div class="field">
+              <label>Channel Access Token（長期）</label>
+              <input id="s-token" type="password" placeholder="貼上 Channel Access Token…" autocomplete="off">
+            </div>
+            <div class="field">
+              <label>Channel Secret</label>
+              <input id="s-secret" type="password" placeholder="貼上 Channel Secret…" autocomplete="off">
+            </div>
+            <div class="field">
+              <label>LIFF ID <span style="font-weight:400;color:var(--text-3)">（選填，供病患綁定頁使用）</span></label>
+              <input id="s-liff" type="text" placeholder="例：1234567890-abcdefgh" autocomplete="off">
+            </div>
+
+            <div class="field" style="display:flex;align-items:center;gap:10px">
+              <label style="margin:0;font-weight:500">啟用 LINE 功能</label>
+              <input id="s-active" type="checkbox" style="width:auto">
+            </div>
+
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="saveSettings()">儲存設定</button>
+              <button class="btn btn-secondary" onclick="loadSettings()">重新載入</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">推播訊息範本</div>
+            <div class="card-sub">
+              當病患已綁定 LINE 帳號時，系統會直接傳送以下訊息，不再需要透過 AlleyPin 自動化。<br>
+              若留空，系統將使用預設訊息。
+            </div>
+            <div class="field">
+              <label>慢簽追蹤訊息</label>
+              <textarea id="tmpl-chronic" rows="3" placeholder="（使用預設）"></textarea>
+            </div>
+            <div class="field">
+              <label>代謝症候群追蹤訊息</label>
+              <textarea id="tmpl-mspt" rows="3" placeholder="（使用預設）"></textarea>
+            </div>
+            <div class="field">
+              <label>B型肝炎追蹤訊息</label>
+              <textarea id="tmpl-hep" rows="3" placeholder="（使用預設）"></textarea>
+            </div>
+            <div class="btn-row">
+              <button class="btn btn-primary" onclick="saveTemplates()">儲存訊息範本</button>
+              <button class="btn btn-secondary" onclick="loadTemplates()">重設為預設</button>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">病患綁定連結</div>
+            <div class="card-sub">
+              將此連結製作成 QR Code 或放在診所網站，病患掃描後輸入病歷號碼即可完成綁定。
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+              <input id="bind-url-display" type="text" readonly
+                style="flex:1;padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:var(--radius-s);background:var(--bg);color:var(--text-1);font-size:12px;font-family:monospace"
+                value="">
+              <button class="btn btn-secondary" onclick="copyBindUrl()">複製</button>
+            </div>
+            <div id="liff-url-row" style="display:none">
+              <div style="font-size:12px;color:var(--text-3);margin-bottom:6px">或使用 LIFF 連結（在 LINE 內開啟）：</div>
+              <div style="display:flex;align-items:center;gap:8px">
+                <input id="liff-url-display" type="text" readonly
+                  style="flex:1;padding:8px 10px;border:1.5px solid var(--border-mid);border-radius:var(--radius-s);background:var(--bg);color:var(--text-1);font-size:12px;font-family:monospace"
+                  value="">
+                <button class="btn btn-secondary" onclick="copyLiffUrl()">複製</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ── Tab: 綁定管理 ─────────────────────────────────────────────── -->
+        <div class="tab-panel" id="panel-bindings">
+          <div class="stats-bar">
+            <div class="stat-chip">
+              <div class="stat-num" id="stat-bound">—</div>
+              <div class="stat-label">已綁定病患</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+              <div class="card-title" style="margin-bottom:0">綁定名單</div>
+              <button class="btn btn-secondary" onclick="loadBindings()" style="font-size:12px">重新整理</button>
+            </div>
+
+            <div class="tbl-wrap">
+              <table id="bindings-table">
+                <thead>
+                  <tr>
+                    <th>病歷號碼</th>
+                    <th>LINE 顯示名稱</th>
+                    <th>綁定時間</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="bindings-body">
+                  <tr><td colspan="4" style="color:var(--text-3);text-align:center;padding:20px">載入中…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-title">傳送綁定邀請</div>
+            <div class="card-sub">
+              向所有已綁定的病患傳送訊息，提醒他們確認綁定仍有效。適合在切換系統後驗證用。<br>
+              <strong>注意：</strong>此功能對象是已綁定名單中的病患，尚未綁定的追蹤者需要自行掃描 QR Code 完成綁定。
+            </div>
+            <button class="btn btn-primary" onclick="broadcastInvite()">傳送綁定確認訊息給已綁定病患</button>
+          </div>
+        </div>
+
+        <!-- ── Tab: 匯入綁定 ─────────────────────────────────────────────── -->
+        <div class="tab-panel" id="panel-import">
+          <div class="card">
+            <div class="card-title">從 CSV 匯入綁定資料</div>
+            <div class="notice">
+              此功能僅適用於您已有 <strong>病歷號碼 ↔ LINE User ID</strong> 對應資料的情況（例如從舊系統匯出）。<br>
+              AlleyPin 的匯出檔案<strong>不含</strong> LINE User ID（只有系統內部 ID），無法直接匯入。<br>
+              若要將現有的 LINE 追蹤者綁定到此系統，病患需掃描 QR Code 自行完成綁定。
+            </div>
+            <div class="card-sub">
+              CSV 格式：第一行為標題列，需包含 <code>chart_number</code>（病歷號碼）和 <code>line_user_id</code> 兩個欄位。<br>
+              選填欄位：<code>display_name</code>（LINE 顯示名稱）。
+            </div>
+
+            <div class="upload-zone" id="upload-zone" onclick="document.getElementById('csv-file').click()"
+                 ondragover="event.preventDefault();this.classList.add('drag')"
+                 ondragleave="this.classList.remove('drag')"
+                 ondrop="handleDrop(event)">
+              <input type="file" id="csv-file" accept=".csv,text/csv" onchange="handleFileSelect(event)">
+              <div class="upload-label">
+                點擊或拖曳 CSV 檔案到此處<br>
+                <strong>選擇 CSV 檔案</strong>
+              </div>
+            </div>
+
+            <div id="csv-preview" style="display:none;margin-bottom:14px">
+              <div style="font-size:12px;color:var(--text-2);margin-bottom:6px">預覽（前 5 筆）：</div>
+              <div id="csv-preview-body"></div>
+              <div id="csv-count" style="font-size:12px;color:var(--text-3);margin-top:6px"></div>
+            </div>
+
+            <button class="btn btn-primary" id="import-btn" onclick="importCSV()" disabled>匯入</button>
+
+            <div class="import-result" id="import-result"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+var _csvRows = [];
+
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(function(t) { t.classList.toggle('active', t.dataset.tab === name); });
+  document.querySelectorAll('.tab-panel').forEach(function(p) { p.classList.toggle('active', p.id === 'panel-' + name); });
+  if (name === 'bindings') { loadStats(); loadBindings(); }
+}
+
+function toast(msg, type) {
+  var t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast' + (type ? ' toast-' + type : '') + ' show';
+  setTimeout(function() { t.classList.remove('show'); t.className = 'toast'; }, 2500);
+}
+
+// ── Settings ────────────────────────────────────────────────────────────────
+
+function loadSettings() {
+  fetch('/api/line/settings').then(function(r) { return r.json(); }).then(function(d) {
+    document.getElementById('s-token').value = d.has_token ? '••••••••••••••••' : '';
+    document.getElementById('s-token').dataset.loaded = d.has_token ? '1' : '';
+    document.getElementById('s-secret').value = d.has_secret ? '••••••••' : '';
+    document.getElementById('s-secret').dataset.loaded = d.has_secret ? '1' : '';
+    document.getElementById('s-liff').value = d.liff_id || '';
+    document.getElementById('s-active').checked = !!d.is_active;
+    updateBindUrls(d.liff_id);
+    // Populate message templates from the same settings response
+    var t = d.message_templates || {};
+    document.getElementById('tmpl-chronic').value = t['慢簽'] || '';
+    document.getElementById('tmpl-mspt').value = t['代謝症候群'] || '';
+    document.getElementById('tmpl-hep').value = t['B肝'] || '';
+  }).catch(function() { toast('載入設定失敗', 'error'); });
+}
+
+function loadTemplates() {
+  fetch('/api/line/templates').then(function(r) { return r.json(); }).then(function(d) {
+    document.getElementById('tmpl-chronic').value = d['慢簽'] || '';
+    document.getElementById('tmpl-mspt').value = d['代謝症候群'] || '';
+    document.getElementById('tmpl-hep').value = d['B肝'] || '';
+    toast('已載入預設訊息範本', 'success');
+  }).catch(function() { toast('載入失敗', 'error'); });
+}
+
+function saveTemplates() {
+  var templates = {
+    '慢簽': document.getElementById('tmpl-chronic').value.trim(),
+    '代謝症候群': document.getElementById('tmpl-mspt').value.trim(),
+    'B肝': document.getElementById('tmpl-hep').value.trim(),
+  };
+  fetch('/api/line/templates', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(templates),
+  }).then(function(r) {
+    if (r.ok) { toast('訊息範本已儲存', 'success'); }
+    else { toast('儲存失敗', 'error'); }
+  }).catch(function() { toast('儲存失敗', 'error'); });
+}
+
+function updateBindUrls(liffId) {
+  var base = location.origin + '/line/bind';
+  document.getElementById('bind-url-display').value = base;
+  if (liffId) {
+    document.getElementById('liff-url-display').value = 'https://liff.line.me/' + liffId;
+    document.getElementById('liff-url-row').style.display = 'block';
+  } else {
+    document.getElementById('liff-url-row').style.display = 'none';
+  }
+}
+
+function saveSettings() {
+  var tokenEl = document.getElementById('s-token');
+  var secretEl = document.getElementById('s-secret');
+  // If field shows placeholder dots and hasn't been changed, send empty string to skip update
+  var token = tokenEl.value;
+  var secret = secretEl.value;
+  if (token === '••••••••••••••••' && tokenEl.dataset.loaded) token = '';
+  if (secret === '••••••••' && secretEl.dataset.loaded) secret = '';
+  var body = {
+    channel_access_token: token,
+    channel_secret: secret,
+    liff_id: document.getElementById('s-liff').value.trim(),
+    is_active: document.getElementById('s-active').checked,
+  };
+  fetch('/api/line/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  }).then(function(r) {
+    if (r.ok) { toast('設定已儲存', 'success'); loadSettings(); }
+    else { toast('儲存失敗', 'error'); }
+  });
+}
+
+function copyBindUrl() {
+  var v = document.getElementById('bind-url-display').value;
+  navigator.clipboard.writeText(v).then(function() { toast('已複製', 'success'); }).catch(function() { toast('複製失敗', 'error'); });
+}
+function copyLiffUrl() {
+  var v = document.getElementById('liff-url-display').value;
+  navigator.clipboard.writeText(v).then(function() { toast('已複製', 'success'); }).catch(function() { toast('複製失敗', 'error'); });
+}
+
+// ── Bindings ─────────────────────────────────────────────────────────────────
+
+function loadStats() {
+  fetch('/api/line/stats').then(function(r) { return r.json(); }).then(function(d) {
+    document.getElementById('stat-bound').textContent = d.bound;
+  });
+}
+
+function loadBindings() {
+  var tbody = document.getElementById('bindings-body');
+  tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-3);text-align:center;padding:20px">載入中…</td></tr>';
+  fetch('/api/line/bindings').then(function(r) { return r.json(); }).then(function(rows) {
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-3);text-align:center;padding:24px">尚無綁定資料</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function(r) {
+      return '<tr>' +
+        '<td style="font-weight:600">' + esc(r.chart_number) + '</td>' +
+        '<td>' + esc(r.display_name || '—') + '</td>' +
+        '<td style="color:var(--text-3)">' + esc((r.bound_at || '').substring(0, 10)) + '</td>' +
+        '<td><button class="btn btn-danger" style="padding:4px 10px;font-size:12px" onclick="unbind(' + JSON.stringify(r.chart_number) + ')">解除綁定</button></td>' +
+      '</tr>';
+    }).join('');
+  }).catch(function() { tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-3);text-align:center;padding:20px">載入失敗 — <a href="#" onclick="loadBindings();return false;" style="color:var(--blue)">重試</a></td></tr>'; });
+}
+
+function unbind(chartNumber) {
+  if (!confirm('確定要解除「' + chartNumber + '」的 LINE 綁定？')) return;
+  fetch('/api/line/binding/' + encodeURIComponent(chartNumber), { method: 'DELETE' })
+    .then(function(r) {
+      if (r.ok) { toast('已解除綁定', 'success'); loadBindings(); loadStats(); }
+      else { toast('解除失敗', 'error'); }
+    });
+}
+
+function broadcastInvite() {
+  if (!confirm('確定要傳送綁定確認訊息給所有已綁定病患？')) return;
+  fetch('/api/line/broadcast-invite', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.status === 'error') { toast('傳送失敗：' + d.detail, 'error'); return; }
+      toast('已傳送 ' + (d.sent || 0) + ' 則，失敗 ' + (d.failed || 0) + ' 則', 'success');
+    }).catch(function() { toast('傳送失敗', 'error'); });
+}
+
+// ── CSV Import ────────────────────────────────────────────────────────────────
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function parseCSV(text) {
+  function parseLine(line) {
+    var result = [], cur = '', inQuote = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (inQuote) {
+        if (c === '"' && line[i + 1] === '"') { cur += '"'; i++; }
+        else if (c === '"') { inQuote = false; }
+        else { cur += c; }
+      } else {
+        if (c === '"') { inQuote = true; }
+        else if (c === ',') { result.push(cur); cur = ''; }
+        else { cur += c; }
+      }
+    }
+    result.push(cur);
+    return result;
+  }
+  var lines = text.trim().split(/\r?\n/);
+  if (!lines.length) return [];
+  var header = parseLine(lines[0]).map(function(h) { return h.trim(); });
+  var colCN = header.indexOf('chart_number');
+  var colUID = header.indexOf('line_user_id');
+  var colDN = header.indexOf('display_name');
+  if (colCN < 0 || colUID < 0) return null; // missing required columns
+  var rows = [];
+  for (var i = 1; i < lines.length; i++) {
+    var parts = parseLine(lines[i]).map(function(c) { return c.trim(); });
+    var cn = parts[colCN] || '';
+    var uid = parts[colUID] || '';
+    if (!cn && !uid) continue;
+    rows.push({ chart_number: cn, line_user_id: uid, display_name: colDN >= 0 ? (parts[colDN] || '') : '' });
+  }
+  return rows;
+}
+
+function handleFileSelect(e) {
+  var file = e.target.files[0];
+  if (!file) return;
+  processCSVFile(file);
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag');
+  var file = e.dataTransfer.files[0];
+  if (!file) return;
+  processCSVFile(file);
+}
+
+function processCSVFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(e) {
+    var rows = parseCSV(e.target.result);
+    if (rows === null) {
+      toast('CSV 缺少必要欄位（chart_number 或 line_user_id）', 'error');
+      return;
+    }
+    _csvRows = rows;
+    showCSVPreview(rows);
+    document.getElementById('import-btn').disabled = rows.length === 0;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+function showCSVPreview(rows) {
+  var preview = document.getElementById('csv-preview');
+  var body = document.getElementById('csv-preview-body');
+  var count = document.getElementById('csv-count');
+  preview.style.display = 'block';
+  var sample = rows.slice(0, 5);
+  body.innerHTML = '<table style="font-size:12px;width:100%;border-collapse:collapse">' +
+    '<tr><th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border-mid)">病歷號碼</th>' +
+    '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border-mid)">LINE User ID</th>' +
+    '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border-mid)">顯示名稱</th></tr>' +
+    sample.map(function(r) {
+      return '<tr><td style="padding:4px 8px">' + esc(r.chart_number) + '</td>' +
+             '<td style="padding:4px 8px;font-family:monospace;font-size:11px">' + esc(r.line_user_id.substring(0,20) + (r.line_user_id.length > 20 ? '…' : '')) + '</td>' +
+             '<td style="padding:4px 8px">' + esc(r.display_name) + '</td></tr>';
+    }).join('') + '</table>';
+  count.textContent = '共 ' + rows.length + ' 筆資料';
+}
+
+function importCSV() {
+  if (!_csvRows.length) return;
+  var btn = document.getElementById('import-btn');
+  btn.disabled = true;
+  btn.textContent = '匯入中…';
+  fetch('/api/line/import', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(_csvRows),
+  }).then(function(r) { return r.json(); }).then(function(d) {
+    var resultEl = document.getElementById('import-result');
+    resultEl.style.display = 'block';
+    resultEl.textContent = '匯入完成：成功 ' + d.imported + ' 筆，略過 ' + d.skipped + ' 筆' +
+      (d.errors.length ? '，錯誤 ' + d.errors.length + ' 筆' : '');
+    btn.disabled = false;
+    btn.textContent = '匯入';
+    loadStats();
+  }).catch(function() {
+    toast('匯入失敗', 'error');
+    btn.disabled = false;
+    btn.textContent = '匯入';
+  });
+}
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+
+document.addEventListener('DOMContentLoaded', function() {
+  if (typeof L !== 'undefined') {
+    L.init({ title: 'LINE 管理' });
+  } else {
+    var tb = document.getElementById('topbar');
+    if (tb) tb.innerHTML = '<div style="padding:12px 16px;font-weight:600;font-size:15px;border-bottom:1px solid var(--border-mid)">LINE 管理</div>';
+  }
+  loadSettings();
+});
+</script>
+</body>
+</html>
