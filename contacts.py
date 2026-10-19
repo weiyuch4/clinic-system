@@ -768,6 +768,7 @@ def init() -> None:
             cur.execute(_CREATE_ANNOUNCEMENTS)
             cur.execute(_CREATE_ANNOUNCEMENT_READS)
             cur.execute(_CREATE_CLINIC_SETTINGS)
+            cur.execute("ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'")
             cur.execute(_CREATE_SYNCED_PRESCRIPTIONS)
             cur.execute(_CREATE_SYNCED_DOCTOR_RATES)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
