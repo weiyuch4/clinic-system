@@ -250,19 +250,21 @@
     return L.patientRow({ entry: e, actions: [
       { label: '已聯繫',  cls: 'act-primary', key: 'contact' },
       { label: '暫緩',    cls: 'act-warn',    key: 'hold' },
-      { label: '移至未複診', cls: 'act-blue', key: 'move-to-inactive' },
-    ], more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }]});
+    ], more: [
+      { label: '移至未複診', key: 'move-to-inactive' },
+      { label: '排除', key: 'exclude', cls: 'item-danger' },
+    ]});
   }
   function inactiveRow(e) {
-    var actions = [
-      { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-      { label: '再收案', cls: 'act-warn',    key: 'reintake' },
-    ];
-    if (e.manual) actions.push({ label: '移回待聯絡', cls: '', key: 'move-to-pending' });
+    var more = [{ label: '暫緩', key: 'hold', cls: '' }, { label: '排除', key: 'exclude', cls: 'item-danger' }];
+    if (e.manual) more.push({ label: '移回待聯絡', key: 'move-to-pending' });
     return L.patientRow({ entry: e,
       tags: ['<span class="pbadge b-prog">未複診</span>'],
-      actions: actions,
-      more: [{ label: '暫緩', key: 'hold', cls: '' }, { label: '排除', key: 'exclude', cls: 'item-danger' }],
+      actions: [
+        { label: '已聯繫', cls: 'act-primary', key: 'contact' },
+        { label: '再收案', cls: 'act-warn',    key: 'reintake' },
+      ],
+      more: more,
     });
   }
   function contactedRow(e) {

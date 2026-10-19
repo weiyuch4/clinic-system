@@ -289,16 +289,18 @@
     return L.patientRow({ entry: e, actions: [
       { label: '已聯繫',    cls: 'act-primary', key: 'contact' },
       { label: '暫緩',      cls: 'act-warn',    key: 'hold' },
-      { label: '移至待登VPN', cls: 'act-purple', key: 'move-to-vpn' },
-    ], more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
+    ], more: [
+      { label: '移至待登VPN', key: 'move-to-vpn' },
+      { label: '排除', key: 'exclude', cls: 'item-danger' },
+    ],
     extraCols: ['<td class="pr-date ' + npdCls + '">' + npdStr + '</td>']});
   }
   function returnedRow(e) {
-    var actions = [{ label: '已登錄VPN', cls: 'act-purple', key: 'vpn-done' }];
-    if (e.manual) actions.push({ label: '移回待聯絡', cls: '', key: 'move-to-pending' });
+    var more = e.manual ? [{ label: '移回待聯絡', key: 'move-to-pending' }] : [];
     return L.patientRow({ entry: e,
       tags: ['<span class="pbadge b-sub">待登VPN</span>'],
-      actions: actions,
+      actions: [{ label: '已登錄VPN', cls: 'act-purple', key: 'vpn-done' }],
+      more: more,
     });
   }
   function contactedRow(e) {
@@ -318,9 +320,12 @@
       actions: [
         { label: '已聯繫',      cls: 'act-primary', key: 'contact' },
         { label: '再收案',      cls: 'act-warn',    key: 'reintake' },
-        { label: '移至待登VPN', cls: 'act-purple',  key: 'move-to-vpn' },
       ],
-      more: [{ label: '暫緩', key: 'hold', cls: '' }, { label: '排除', key: 'exclude', cls: 'item-danger' }],
+      more: [
+        { label: '移至待登VPN', key: 'move-to-vpn' },
+        { label: '暫緩', key: 'hold', cls: '' },
+        { label: '排除', key: 'exclude', cls: 'item-danger' },
+      ],
     });
   }
   function renderPending() {
