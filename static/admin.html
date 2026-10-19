@@ -6540,7 +6540,7 @@ async function saveCutoverDate() {
   btn.disabled = true;
   status.textContent = '儲存中…';
   try {
-    await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ prescription_cutover_date: val }) });
+    await api('/api/admin/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prescription_cutover_date: val }) });
     status.textContent = '已儲存。處方追蹤待聯絡清單現在只顯示 ' + val + ' 前就診的病患。';
   } catch(e) {
     status.textContent = '儲存失敗：' + (e.message || e);
@@ -6554,7 +6554,7 @@ async function clearCutoverDate() {
   btn.disabled = true;
   status.textContent = '清除中…';
   try {
-    await api('/api/admin/settings', { method: 'PATCH', body: JSON.stringify({ prescription_cutover_date: null }) });
+    await api('/api/admin/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prescription_cutover_date: null }) });
     input.value = '';
     status.textContent = '已清除。處方追蹤現在顯示所有病患。';
   } catch(e) {
