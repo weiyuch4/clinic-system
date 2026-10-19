@@ -1156,7 +1156,7 @@
       '<col style="width:70px">' +    // 上次回診
       '<col style="width:100px">' +   // 備註
       extraCols +
-      '<col style="width:170px">' +   // 操作
+      '<col style="width:220px">' +   // 操作
       '</colgroup>';
     return '<div class="ptbl-wrap"><table class="p-table">' + colgroup + '<thead><tr>' +
       cols.map(function (c) {
