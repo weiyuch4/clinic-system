@@ -769,12 +769,7 @@ def init() -> None:
             cur.execute(_CREATE_ANNOUNCEMENT_READS)
             cur.execute(_CREATE_CLINIC_SETTINGS)
             cur.execute("ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'")
-            cur.execute("""
-                SELECT 1 FROM information_schema.table_constraints
-                WHERE table_name = 'clinic_settings' AND constraint_type = 'PRIMARY KEY'
-            """)
-            if not cur.fetchone():
-                cur.execute("ALTER TABLE clinic_settings ADD PRIMARY KEY (clinic_id)")
+            cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS clinic_settings_clinic_id_uidx ON clinic_settings (clinic_id)")
             cur.execute(_CREATE_SYNCED_PRESCRIPTIONS)
             cur.execute(_CREATE_SYNCED_DOCTOR_RATES)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
