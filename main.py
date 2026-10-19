@@ -356,7 +356,11 @@ def admin_update_settings(body: dict, admin: auth.CurrentUser = Depends(auth.req
                     raise HTTPException(status_code=400, detail=f"{k} 必須為 YYYY-MM-DD 格式或 null")
         elif not isinstance(v, int) or v < 1:
             raise HTTPException(status_code=400, detail=f"{k} 必須為正整數")
-    return contacts.update_clinic_settings(body, admin.clinic_id)
+    try:
+        return contacts.update_clinic_settings(body, admin.clinic_id)
+    except Exception as exc:
+        logger.exception("update_clinic_settings failed: %s", exc)
+        raise HTTPException(status_code=500, detail=f"設定儲存失敗：{exc}")
 
 
 @app.post("/api/admin/users/{user_id}/reactivate")
