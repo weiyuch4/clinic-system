@@ -3015,6 +3015,7 @@ def get_clinic_settings(clinic_id: int = 1) -> dict:
 
 def update_clinic_settings(updates: dict, clinic_id: int = 1) -> dict:
     """Merge updates into the clinic's stored settings; return the full merged result."""
+    import json as _json
     current = get_clinic_settings(clinic_id)
     merged = {**current, **updates}
     with _conn() as conn:
