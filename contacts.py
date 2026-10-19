@@ -474,7 +474,7 @@ _CREATE_ANNOUNCEMENT_READS = """
 """
 
 _CREATE_CLINIC_SETTINGS = """
-    CREATE TABLE IF NOT EXISTS clinic_settings (
+    CREATE TABLE IF NOT EXISTS clinic_config (
         clinic_id  INTEGER PRIMARY KEY,
         settings   JSONB   NOT NULL DEFAULT '{}'
     )
@@ -768,8 +768,6 @@ def init() -> None:
             cur.execute(_CREATE_ANNOUNCEMENTS)
             cur.execute(_CREATE_ANNOUNCEMENT_READS)
             cur.execute(_CREATE_CLINIC_SETTINGS)
-            cur.execute("ALTER TABLE clinic_settings ADD COLUMN IF NOT EXISTS settings JSONB NOT NULL DEFAULT '{}'")
-            cur.execute("CREATE UNIQUE INDEX IF NOT EXISTS clinic_settings_clinic_id_uidx ON clinic_settings (clinic_id)")
             cur.execute(_CREATE_SYNCED_PRESCRIPTIONS)
             cur.execute(_CREATE_SYNCED_DOCTOR_RATES)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
@@ -3007,7 +3005,7 @@ def get_clinic_settings(clinic_id: int = 1) -> dict:
     try:
         with _conn() as conn:
             with conn.cursor() as cur:
-                cur.execute("SELECT settings FROM clinic_settings WHERE clinic_id = %s", (clinic_id,))
+                cur.execute("SELECT settings FROM clinic_config WHERE clinic_id = %s", (clinic_id,))
                 row = cur.fetchone()
         stored = dict(row["settings"]) if row else {}
     except Exception:
@@ -3023,7 +3021,7 @@ def update_clinic_settings(updates: dict, clinic_id: int = 1) -> dict:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """INSERT INTO clinic_settings (clinic_id, settings)
+                """INSERT INTO clinic_config (clinic_id, settings)
                    VALUES (%s, %s::jsonb)
                    ON CONFLICT (clinic_id) DO UPDATE SET settings = EXCLUDED.settings""",
                 (clinic_id, _json.dumps(merged)),
