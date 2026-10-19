@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>處方追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=62">
+<link rel="stylesheet" href="/static/_layout.css?v=66">
 </head>
 <body>
 <div class="app">
@@ -30,6 +30,9 @@
             <button onclick="Layout.showModal('modal-help')" title="說明" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;padding:0;margin-bottom:1px">?</button>
           </div>
           <p id="page-date">所有處方 — 即將到期與需關懷</p>
+          <div id="cutover-banner" style="display:none;margin-top:6px;padding:6px 10px;background:var(--warn-bg,#fff8e1);border:1px solid #ffe08a;border-radius:6px;font-size:12.5px;color:#7a5c00">
+            ⚠️ 補聯絡模式：僅顯示 <strong id="cutover-date-label"></strong> 前就診的病患。當清單清空後即完成補聯絡。
+          </div>
         </div>
       </div>
 
@@ -170,6 +173,7 @@
   'use strict';
   var L = Layout;
   var _rxData = [];
+  var _cutoverDate = null;
   var _pending = [], _contacted = [], _hold = [], _noLine = [], _care = [];
   var _pendingMap = {}, _contactedMap = {}, _holdMap = {}, _noLineMap = {};
   var _tab = 'pending', _query = '', _typeFilter = '', _urgencyFilter = '';
@@ -595,6 +599,15 @@
     _updatePageDate();
   }
 
+  function _updateCutoverBanner() {
+    var banner = document.getElementById('cutover-banner');
+    if (!_cutoverDate) { banner.style.display = 'none'; return; }
+    var p = _cutoverDate.split('-');
+    var label = (parseInt(p[0]) - 1911) + '/' + p[1] + '/' + p[2];
+    document.getElementById('cutover-date-label').textContent = label;
+    banner.style.display = '';
+  }
+
   // Sync from server without disturbing optimistic state (no-op stale callback)
   function _backgroundSync() {
     L.getReport(null, function(){})
@@ -612,7 +625,7 @@
     try {
       var rxRaw  = sessionStorage.getItem(_RX_CACHE_KEY);
       var rptRaw = sessionStorage.getItem('clinic_rpt_' + L.localDateStr());
-      if (rxRaw)          _rxData = JSON.parse(rxRaw);
+      if (rxRaw) { var rxCached = JSON.parse(rxRaw); _rxData = rxCached.rows || rxCached; }
       if (rxRaw && rptRaw) _buildLists(JSON.parse(rptRaw).data);
     } catch(e) {}
     // Fetch fresh data in background; onUpdate fires when report becomes stale
@@ -620,7 +633,10 @@
       L.apiFetch('/api/report/prescriptions'),
       L.getReport(null, function(r){ _buildLists(r); }),
     ]).then(function(results) {
-      _rxData = results[0];
+      var rxResp = results[0];
+      _rxData = rxResp.rows || rxResp;  // backward compat if shape changes
+      _cutoverDate = rxResp.cutover_date || null;
+      _updateCutoverBanner();
       try { sessionStorage.setItem(_RX_CACHE_KEY, JSON.stringify(_rxData)); } catch(e) {}
       _buildLists(results[1]);
     }).catch(function(e){ L.showError('資料載入失敗 — ' + (e.message || '')); });

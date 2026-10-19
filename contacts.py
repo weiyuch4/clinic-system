@@ -482,9 +482,10 @@ _CREATE_CLINIC_SETTINGS = """
 
 # Defaults used when a clinic has no override stored.
 CLINIC_SETTINGS_DEFAULTS: dict = {
-    "prescription_min_ps_days": 3,   # skip prescriptions shorter than this (blood tests etc.)
-    "prescription_grace_days":  60,  # days after due date before row disappears
-    "auto_exclude_days":        60,  # days after 2nd contact before auto-excluded
+    "prescription_min_ps_days":   3,    # skip prescriptions shorter than this (blood tests etc.)
+    "prescription_grace_days":    60,   # days after due date before row disappears
+    "auto_exclude_days":          60,   # days after 2nd contact before auto-excluded
+    "prescription_cutover_date":  None, # hide post-cutover patients (catch-up mode); ISO date string or null
 }
 
 _CREATE_SYNCED_PRESCRIPTIONS = """

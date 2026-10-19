@@ -346,8 +346,15 @@ def admin_update_settings(body: dict, admin: auth.CurrentUser = Depends(auth.req
     unknown = set(body.keys()) - allowed
     if unknown:
         raise HTTPException(status_code=400, detail=f"不支援的設定項目: {', '.join(unknown)}")
+    _date_keys = {"prescription_cutover_date"}
     for k, v in body.items():
-        if not isinstance(v, int) or v < 1:
+        if k in _date_keys:
+            if v is not None:
+                try:
+                    date.fromisoformat(str(v))
+                except ValueError:
+                    raise HTTPException(status_code=400, detail=f"{k} 必須為 YYYY-MM-DD 格式或 null")
+        elif not isinstance(v, int) or v < 1:
             raise HTTPException(status_code=400, detail=f"{k} 必須為正整數")
     return contacts.update_clinic_settings(body, admin.clinic_id)
 
@@ -1211,12 +1218,14 @@ def sync_status(request: Request) -> dict:
 
 
 @app.get("/api/report/prescriptions")
-def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     as_of = report_date or date.today()
     try:
         if CLOUD_MODE:
             settings = contacts.get_clinic_settings(user.clinic_id)
             grace = settings["prescription_grace_days"]
+            cutover_str = settings.get("prescription_cutover_date")
+            cutover = date.fromisoformat(cutover_str) if cutover_str else None
             rows = contacts.get_synced_prescriptions(user.clinic_id)
             phone_map = contacts.get_candidate_phone_map(user.clinic_id)
             results = []
@@ -1227,6 +1236,10 @@ def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = 
                     continue  # past grace period
                 if _PRESCRIPTION_START_DATE and due < _PRESCRIPTION_START_DATE:
                     continue  # pre-adoption prescriptions hidden for this clinic
+                if cutover and r.get('visit_date'):
+                    visit = date.fromisoformat(r['visit_date'])
+                    if visit >= cutover:
+                        continue  # handled by old method; excluded from catch-up list
                 ph, mob = phone_map.get(r['nat_id'], ('', ''))
                 results.append({
                     **r,
@@ -1234,10 +1247,14 @@ def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = 
                     'phone': ph,
                     'mobile': mob,
                 })
-            return sorted(results, key=lambda e: e['days_until_due'])
+            return {
+                "rows": sorted(results, key=lambda e: e['days_until_due']),
+                "cutover_date": cutover_str,
+            }
         phone_idx = database._get_patdb_phone_index()
-        return [{**r, 'phone': phone_idx.get(r['nat_id'], ''), 'mobile': ''}
+        rows = [{**r, 'phone': phone_idx.get(r['nat_id'], ''), 'mobile': ''}
                 for r in database._query_all_prescriptions(as_of)]
+        return {"rows": rows, "cutover_date": None}
     except Exception as exc:
         logger.exception("get_prescriptions failed: %s", exc)
         raise HTTPException(status_code=500, detail="資料載入失敗，請稍後再試")
