@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>結案風險 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=68">
+<link rel="stylesheet" href="/static/_layout.css?v=69">
 <style>
 .rsk-days{font-size:13px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
 .rsk-hint{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;margin-left:5px;vertical-align:middle}
@@ -135,7 +135,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=68"></script>
+<script src="/static/_layout.js?v=69"></script>
 <script>
 (function () {
   'use strict';
@@ -199,13 +199,15 @@
   }
 
   // ── row builders ─────────────────────────────────────
+  function _sd(d) { var s = String(d||''); return s.length >= 10 ? s.slice(5,10) : (s||'—'); }
+
   function _daysCell(item) {
     var d = item.d;
     if (d < 0) {
-      return '<td class="days days-hi rsk-days">逾 ' + Math.abs(d) + ' 天</td>';
+      return '<td class="days-hi rsk-days">逾 ' + Math.abs(d) + ' 天</td>';
     }
     var cls = d <= 5 ? 'days-hi' : 'days-md';
-    return '<td class="days ' + cls + ' rsk-days">剩 ' + d + ' 天</td>';
+    return '<td class="' + cls + ' rsk-days">剩 ' + d + ' 天</td>';
   }
 
   function _catCell(e) {
@@ -241,12 +243,14 @@
       moreHtml = '<div class="pr-more-wrap"><button class="pr-more-btn" title="更多" aria-label="更多">•••</button>' +
         '<div class="pr-dd"><button class="pr-di" data-action="move-to-vpn">移至待登VPN</button></div></div>';
     }
-    return '<tr data-chart="' + E(e.patient.chart_number) + '" data-type="pending">' +
+    return '<tr class="pr" data-chart="' + E(e.patient.chart_number) + '" data-type="pending">' +
       _daysCell(item) +
-      '<td class="name">' + E(e.patient.name) + '</td>' +
-      '<td style="color:var(--muted);font-size:12px"><span class="pr-copy" data-copy="' + E(e.patient.chart_number) + '">' + E(e.patient.chart_number) + '</span></td>' +
+      '<td class="pr-num"><span class="pr-copy" data-copy="' + E(e.patient.chart_number) + '">' + E(e.patient.chart_number) + '</span></td>' +
+      '<td class="pr-pt"><div class="pr-name"><span class="pr-lab" data-chart="' + E(e.patient.chart_number) + '" data-name="' + E(e.patient.name) + '" title="點擊查看檢驗結果">' + E(e.patient.name) + '</span></div></td>' +
       _catCell(e) +
-      '<td><div style="display:flex;gap:6px;flex-wrap:wrap">' +
+      '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
+      '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
+      '<td class="pr-act"><div class="pr-btns">' +
         primaryBtn +
         '<button class="act-btn act-warn" data-action="hold">暫緩</button>' +
         moreHtml +
@@ -261,12 +265,14 @@
       ? '<button class="act-btn act-purple" data-action="submit">申報</button>'
       : '<button class="act-btn act-purple" data-action="vpn-done">已登錄VPN</button>';
     var catLabel = isMspt ? (e.mspt_stage || e.category) : e.category;
-    return '<tr data-chart="' + E(e.patient.chart_number) + '" data-type="vpn">' +
-      '<td class="days rsk-days" style="color:var(--muted);white-space:nowrap">待登VPN</td>' +
-      '<td class="name">' + E(e.patient.name) + '</td>' +
-      '<td style="color:var(--muted);font-size:12px"><span class="pr-copy" data-copy="' + E(e.patient.chart_number) + '">' + E(e.patient.chart_number) + '</span></td>' +
+    return '<tr class="pr" data-chart="' + E(e.patient.chart_number) + '" data-type="vpn">' +
+      '<td class="rsk-days" style="color:var(--accent);white-space:nowrap">待登VPN</td>' +
+      '<td class="pr-num"><span class="pr-copy" data-copy="' + E(e.patient.chart_number) + '">' + E(e.patient.chart_number) + '</span></td>' +
+      '<td class="pr-pt"><div class="pr-name"><span class="pr-lab" data-chart="' + E(e.patient.chart_number) + '" data-name="' + E(e.patient.name) + '" title="點擊查看檢驗結果">' + E(e.patient.name) + '</span></div></td>' +
       '<td><span class="cat-chip ' + (CAT_CLS[e.category]||'') + '">' + E(catLabel) + '</span></td>' +
-      '<td>' + actionBtn + '</td>' +
+      '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
+      '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
+      '<td class="pr-act"><div class="pr-btns">' + actionBtn + '</div></td>' +
       _linkCell(e) +
     '</tr>';
   }
@@ -274,12 +280,14 @@
   function _contactedRow(e) {
     var when = e.contacted_time || (e.contacted_at ? String(e.contacted_at).slice(5) : '');
     var typeLbl = e._type === 'called' ? '已二通' : '已聯繫';
-    return '<tr data-chart="' + E(e.patient.chart_number) + '" data-type="contacted">' +
-      '<td class="days days-lo rsk-days" style="white-space:nowrap">' + typeLbl + (when ? '<br><span style="font-size:11px;font-weight:400;color:var(--muted)">' + E(when) + '</span>' : '') + '</td>' +
-      '<td class="name">' + E(e.patient.name) + '</td>' +
-      '<td style="color:var(--muted);font-size:12px"><span class="pr-copy" data-copy="' + E(e.patient.chart_number) + '">' + E(e.patient.chart_number) + '</span></td>' +
+    return '<tr class="pr" data-chart="' + E(e.patient.chart_number) + '" data-type="contacted">' +
+      '<td class="days-lo rsk-days" style="white-space:nowrap">' + typeLbl + (when ? '<br><span style="font-size:11px;font-weight:400;color:var(--muted)">' + E(when) + '</span>' : '') + '</td>' +
+      '<td class="pr-num"><span class="pr-copy" data-copy="' + E(e.patient.chart_number) + '">' + E(e.patient.chart_number) + '</span></td>' +
+      '<td class="pr-pt"><div class="pr-name"><span class="pr-lab" data-chart="' + E(e.patient.chart_number) + '" data-name="' + E(e.patient.name) + '" title="點擊查看檢驗結果">' + E(e.patient.name) + '</span></div></td>' +
       _catCell(e) +
-      '<td><button class="act-btn" data-action="undo-contact">撤銷</button></td>' +
+      '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
+      '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
+      '<td class="pr-act"><div class="pr-btns"><button class="act-btn" data-action="undo-contact">撤銷</button></div></td>' +
       _linkCell(e) +
     '</tr>';
   }
@@ -287,21 +295,37 @@
   function _holdRow(e) {
     var note = e.note || '暫緩';
     var noteLbl = note.length > 16 ? note.slice(0,16) + '…' : note;
-    return '<tr data-chart="' + E(e.patient ? e.patient.chart_number : '') + '" data-hold-id="' + E(String(e.hold_id||'')) + '" data-type="hold">' +
-      '<td class="days rsk-days" style="color:var(--muted);white-space:nowrap">暫緩</td>' +
-      '<td class="name">' + E(e.patient ? e.patient.name : (e.manual_name||'?')) + '</td>' +
-      '<td style="color:var(--muted);font-size:12px"><span class="pr-copy" data-copy="' + E(e.patient ? e.patient.chart_number : '') + '">' + E(e.patient ? e.patient.chart_number : '') + '</span></td>' +
+    var chart = e.patient ? e.patient.chart_number : '';
+    var name  = e.patient ? e.patient.name : (e.manual_name||'?');
+    return '<tr class="pr" data-chart="' + E(chart) + '" data-hold-id="' + E(String(e.hold_id||'')) + '" data-type="hold">' +
+      '<td class="rsk-days" style="color:var(--muted);white-space:nowrap">暫緩</td>' +
+      '<td class="pr-num"><span class="pr-copy" data-copy="' + E(chart) + '">' + E(chart) + '</span></td>' +
+      '<td class="pr-pt"><div class="pr-name"><span class="pr-lab" data-chart="' + E(chart) + '" data-name="' + E(name) + '" title="點擊查看檢驗結果">' + E(name) + '</span></div></td>' +
       '<td><span class="cat-chip ' + (CAT_CLS[e.category]||'') + '">' + E(e.category) + '</span>' +
         ' <span class="pbadge b-hold" style="font-size:11px">' + E(noteLbl) + '</span></td>' +
-      '<td><button class="act-btn" data-action="undo-hold">解除暫緩</button></td>' +
+      '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
+      '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
+      '<td class="pr-act"><div class="pr-btns"><button class="act-btn" data-action="undo-hold">解除暫緩</button></div></td>' +
       _linkCell(e) +
     '</tr>';
   }
 
   function _table(rowsHtml, emptyMsg) {
     if (!rowsHtml) return '<div class="rsk-empty">' + (emptyMsg||'目前無資料') + '</div>';
-    return '<div style="overflow-x:auto"><table class="ptable">' +
-      '<thead><tr><th style="width:80px">狀態</th><th>姓名</th><th style="width:110px">身份證</th><th>類別</th><th style="width:160px">動作</th><th style="width:36px"></th></tr></thead>' +
+    return '<div style="overflow-x:auto"><table class="p-table">' +
+      '<colgroup>' +
+      '<col style="width:80px">' +
+      '<col style="width:115px">' +
+      '<col>' +
+      '<col style="width:130px">' +
+      '<col style="width:70px">' +
+      '<col style="width:70px">' +
+      '<col style="width:220px">' +
+      '<col style="width:36px">' +
+      '</colgroup>' +
+      '<thead><tr>' +
+      '<th>狀態</th><th>身份證</th><th>姓名</th><th>類別</th><th>到期日</th><th>上次回診</th><th>動作</th><th></th>' +
+      '</tr></thead>' +
       '<tbody>' + rowsHtml + '</tbody></table></div>';
   }
 
