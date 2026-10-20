@@ -1492,6 +1492,33 @@
       var cp = ev.target.closest('[data-copy]');
       if (cp && !ev.target.closest('[data-action]')) _handleCopy(cp.dataset.copy);
     });
+    _initSearchClear();
+  }
+
+  function _initSearchClear() {
+    document.querySelectorAll('.si').forEach(function(input) {
+      if (input.closest('.si-wrap')) return;
+      var wrap = document.createElement('div');
+      wrap.className = 'si-wrap';
+      input.parentNode.insertBefore(wrap, input);
+      wrap.appendChild(input);
+      var btn = document.createElement('button');
+      btn.className = 'si-clear';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', '清除搜尋');
+      btn.textContent = '×';
+      btn.style.display = input.value ? 'block' : 'none';
+      wrap.appendChild(btn);
+      input.addEventListener('input', function() {
+        btn.style.display = input.value ? 'block' : 'none';
+      });
+      btn.addEventListener('click', function() {
+        input.value = '';
+        btn.style.display = 'none';
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus();
+      });
+    });
   }
 
   // ── Lab results modal ────────────────────────────────

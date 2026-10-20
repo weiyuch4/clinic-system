@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>結案風險 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=69">
+<link rel="stylesheet" href="/static/_layout.css?v=70">
 <style>
 .rsk-days{font-size:13px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
 .rsk-hint{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;margin-left:5px;vertical-align:middle}
@@ -36,6 +36,10 @@
           <h1>結案風險</h1>
           <p>即將達到 NHI 結案天數的追蹤病患，請優先聯繫</p>
         </div>
+      </div>
+
+      <div class="search-row">
+        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
       </div>
 
       <div class="filter-bar" id="filter-bar">
@@ -133,13 +137,14 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=69"></script>
+<script src="/static/_layout.js?v=70"></script>
 <script>
 (function () {
   'use strict';
   var E = Layout.escHtml, D = Layout.localDateStr, L = Layout;
 
   var _tab = 'soon';
+  var _query = (new URLSearchParams(location.search).get('chart') || '').trim();
 
   var CAT_CLS  = { '代謝症候群': 'cat-m', 'B肝': 'cat-h', 'C肝': 'cat-h', '慢性腎臟病': 'cat-k' };
   var CAT_HREF = { '代謝症候群': '/mspt', 'B肝': '/hepatitis', 'C肝': '/hepatitis', '慢性腎臟病': '/ckd' };
@@ -149,6 +154,15 @@
   var _soon = [], _past = [], _vpn = [], _contacted = [], _hold = [];
   var _contactedMap = {}, _holdMap = {};
   var _modalEntry = null;
+
+  // ── filter ───────────────────────────────────────────
+  function _matches(e) {
+    if (!_query) return true;
+    var q = _query.toLowerCase(), p = e.patient || {};
+    return (p.name && p.name.toLowerCase().includes(q)) ||
+           (p.chart_number && String(p.chart_number).toLowerCase().includes(q)) ||
+           (e.manual_name && e.manual_name.toLowerCase().includes(q));
+  }
 
   // ── risk computation ────────────────────────────────
   function _dtc(e) {
@@ -330,22 +344,23 @@
   }
 
   function renderAll() {
-    var soonHtml = _soon.map(_pendingRow).join('');
-    var pastHtml = _past.map(_pendingRow).join('');
-    var contactedHtml = _contacted.map(_contactedRow).join('');
-    var holdHtml = _hold.map(_holdRow).join('');
+    var fSoon      = _soon.filter(function(i) { return _matches(i.e); });
+    var fPast      = _past.filter(function(i) { return _matches(i.e); });
+    var fVpn       = _vpn.filter(_matches);
+    var fContacted = _contacted.filter(_matches);
+    var fHold      = _hold.filter(_matches);
 
-    document.getElementById('cnt-soon').textContent      = _soon.length;
-    document.getElementById('cnt-past').textContent      = _past.length;
-    document.getElementById('cnt-vpn').textContent       = _vpn.length || '';
-    document.getElementById('cnt-contacted').textContent = _contacted.length;
-    document.getElementById('cnt-hold').textContent      = _hold.length;
+    document.getElementById('cnt-soon').textContent      = _query ? fSoon.length      : _soon.length;
+    document.getElementById('cnt-past').textContent      = _query ? fPast.length      : _past.length;
+    document.getElementById('cnt-vpn').textContent       = _query ? (fVpn.length||'') : (_vpn.length||'');
+    document.getElementById('cnt-contacted').textContent = _query ? fContacted.length : _contacted.length;
+    document.getElementById('cnt-hold').textContent      = _query ? fHold.length      : _hold.length;
 
-    document.getElementById('list-soon').innerHTML      = _table(soonHtml||null,      '目前無即將結案的病患');
-    document.getElementById('list-past').innerHTML      = _table(pastHtml||null,      '目前無超過期限的病患');
-    document.getElementById('list-vpn').innerHTML       = _table(_vpn.map(_vpnRow).join('')||null, '目前無待登VPN病患');
-    document.getElementById('list-contacted').innerHTML = _table(contactedHtml||null, '今日尚無已聯繫記錄');
-    document.getElementById('list-hold').innerHTML      = _table(holdHtml||null,      '目前無暫緩中病患');
+    document.getElementById('list-soon').innerHTML      = _table(fSoon.map(_pendingRow).join('')||null,      '目前無即將結案的病患');
+    document.getElementById('list-past').innerHTML      = _table(fPast.map(_pendingRow).join('')||null,      '目前無超過期限的病患');
+    document.getElementById('list-vpn').innerHTML       = _table(fVpn.map(_vpnRow).join('')||null,           '目前無待登VPN病患');
+    document.getElementById('list-contacted').innerHTML = _table(fContacted.map(_contactedRow).join('')||null,'今日尚無已聯繫記錄');
+    document.getElementById('list-hold').innerHTML      = _table(fHold.map(_holdRow).join('')||null,         '目前無暫緩中病患');
 
     _bindCopyClicks();
   }
@@ -592,6 +607,12 @@
       .catch(function(err) { L.showError('資料載入失敗 — ' + (err.message||'請確認伺服器連線')); });
   }
 
+  document.getElementById('search-input').addEventListener('input', function(ev) {
+    _query = ev.target.value.trim();
+    renderAll();
+  });
+
+  if (_query) document.getElementById('search-input').value = _query;
   Layout.init({ activePage: 'risk', onRefresh: load });
   load();
 })();
