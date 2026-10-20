@@ -219,10 +219,10 @@
     return '<td><span class="cat-chip ' + (CAT_CLS[e.category]||'') + '">' + E(cat) + '</span>' + hint + '</td>';
   }
 
-  function _linkCell(e) {
-    return '<td><a href="' + (CAT_HREF[e.category]||'/dashboard') + '?chart=' + E(e.patient.chart_number) + '" class="go-btn" title="前往科別頁面">' +
+  function _linkBtn(e) {
+    return '<a href="' + (CAT_HREF[e.category]||'/dashboard') + '?chart=' + E(e.patient.chart_number) + '" class="go-btn" title="前往科別頁面">' +
       '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">' +
-      '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></td>';
+      '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a>';
   }
 
   function _pendingRow(item) {
@@ -252,8 +252,8 @@
         primaryBtn +
         '<button class="act-btn act-warn" data-action="hold">暫緩</button>' +
         moreHtml +
+        _linkBtn(e) +
       '</div></td>' +
-      _linkCell(e) +
     '</tr>';
   }
 
@@ -270,8 +270,7 @@
       '<td><span class="cat-chip ' + (CAT_CLS[e.category]||'') + '">' + E(catLabel) + '</span></td>' +
       '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
       '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
-      '<td class="pr-act"><div class="pr-btns">' + actionBtn + '</div></td>' +
-      _linkCell(e) +
+      '<td class="pr-act"><div class="pr-btns">' + actionBtn + _linkBtn(e) + '</div></td>' +
     '</tr>';
   }
 
@@ -285,8 +284,7 @@
       _catCell(e) +
       '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
       '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
-      '<td class="pr-act"><div class="pr-btns"><button class="act-btn" data-action="undo-contact">撤銷</button></div></td>' +
-      _linkCell(e) +
+      '<td class="pr-act"><div class="pr-btns"><button class="act-btn" data-action="undo-contact">撤銷</button>' + _linkBtn(e) + '</div></td>' +
     '</tr>';
   }
 
@@ -303,8 +301,7 @@
         ' <span class="pbadge b-hold" style="font-size:11px">' + E(noteLbl) + '</span></td>' +
       '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
       '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
-      '<td class="pr-act"><div class="pr-btns"><button class="act-btn" data-action="undo-hold">解除暫緩</button></div></td>' +
-      _linkCell(e) +
+      '<td class="pr-act"><div class="pr-btns"><button class="act-btn" data-action="undo-hold">解除暫緩</button>' + _linkBtn(e) + '</div></td>' +
     '</tr>';
   }
 
@@ -319,7 +316,6 @@
       '<col style="width:70px">' +
       '<col style="width:70px">' +
       '<col style="width:220px">' +
-      '<col style="width:36px">' +
       '</colgroup>' +
       '<thead><tr>' +
       '<th class="th-sort" data-sort="num">狀態 <span class="sort-icon">⇅</span></th>' +
@@ -329,7 +325,6 @@
       '<th class="th-sort" data-sort="text">到期日 <span class="sort-icon">⇅</span></th>' +
       '<th class="th-sort" data-sort="text">上次回診 <span class="sort-icon">⇅</span></th>' +
       '<th style="text-align:right">動作</th>' +
-      '<th></th>' +
       '</tr></thead>' +
       '<tbody>' + rowsHtml + '</tbody></table></div>';
   }
