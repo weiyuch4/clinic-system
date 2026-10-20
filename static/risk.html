@@ -46,13 +46,11 @@
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
       </div>
 
-      <div class="card" style="padding:0;flex-shrink:0">
-        <div id="list-soon"></div>
-        <div id="list-past"      style="display:none"></div>
-        <div id="list-vpn"       style="display:none"></div>
-        <div id="list-contacted" style="display:none"></div>
-        <div id="list-hold"      style="display:none"></div>
-      </div>
+      <div id="list-soon"></div>
+      <div id="list-past"      style="display:none"></div>
+      <div id="list-vpn"       style="display:none"></div>
+      <div id="list-contacted" style="display:none"></div>
+      <div id="list-hold"      style="display:none"></div>
 
       <div class="rsk-note">
         <strong>結案天數：</strong>代謝症候群 90 天・B/C型肝炎 185 天・慢性腎臟病 180 天。
@@ -311,8 +309,8 @@
   }
 
   function _table(rowsHtml, emptyMsg) {
-    if (!rowsHtml) return '<div class="rsk-empty">' + (emptyMsg||'目前無資料') + '</div>';
-    return '<div style="overflow-x:auto"><table class="p-table">' +
+    if (!rowsHtml) return '<div class="ptbl-wrap"><div class="rsk-empty">' + (emptyMsg||'目前無資料') + '</div></div>';
+    return '<div class="ptbl-wrap"><table class="p-table">' +
       '<colgroup>' +
       '<col style="width:80px">' +
       '<col style="width:115px">' +
