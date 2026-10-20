@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/favicon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="診所追蹤">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>結案風險 — 診所追蹤系統</title>
+<link rel="stylesheet" href="/static/_layout.css?v=68">
+<style>
+.rsk-days{font-size:13px;font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.rsk-hint{display:inline-block;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;margin-left:5px;vertical-align:middle}
+.rh-waive{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.rh-blood{background:#f5f3ff;color:#5b21b6;border:1px solid #ddd6fe}
+.rsk-empty{padding:32px 0;text-align:center;color:var(--muted);font-size:13.5px}
+.rsk-note{font-size:12px;color:var(--muted);margin-top:14px;padding:0 2px;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar"></aside>
+  <div class="main">
+    <div id="topbar"></div>
+    <div class="ct">
+
+      <div class="err-bar" id="error-bar" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="error-msg"></span>
+      </div>
+
+      <div class="ph">
+        <div>
+          <h1>結案風險</h1>
+          <p>即將達到 NHI 結案天數的追蹤病患，請優先聯繫</p>
+        </div>
+      </div>
+
+      <div class="filter-bar" id="filter-bar">
+        <button class="filter-tab on" data-tab="soon">即將結案 <span class="tc-count" id="cnt-soon">…</span></button>
+        <button class="filter-tab" data-tab="past">已超過期限 <span class="tc-count" id="cnt-past">…</span></button>
+        <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
+        <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
+      </div>
+
+      <div class="card" style="padding:0;overflow:hidden">
+        <div id="list-soon"></div>
+        <div id="list-past"      style="display:none"></div>
+        <div id="list-contacted" style="display:none"></div>
+        <div id="list-hold"      style="display:none"></div>
+      </div>
+
+      <div class="rsk-note">
+        <strong>結案天數：</strong>代謝症候群 90 天・B/C型肝炎 185 天・慢性腎臟病 180 天。
+        <span class="rsk-hint rh-waive">免抽血</span> 代謝症候群免血液檢查者提前 5 天提醒；其餘於 15 天前提醒。
+        <br>此頁面僅記錄聯繫動作，若需進行完整流程（如 VPN 登錄、申報等），請前往各科別頁面。
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Contact modal -->
+<div class="modal-overlay" id="modal-contact">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-contact-title">聯絡病患</div>
+    <div class="modal-sub" id="modal-contact-sub"></div>
+    <div class="modal-field">
+      <label class="modal-label">聯絡方式</label>
+      <select class="modal-select" id="modal-contact-type">
+        <option value="contacted">已聯繫（直接通知）</option>
+        <option value="called">已二次確認（電話通話）</option>
+      </select>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">備註（選填）</label>
+      <textarea class="modal-input" id="modal-contact-note" rows="2" placeholder="例：預約回診日期"></textarea>
+    </div>
+    <div class="modal-error" id="contact-error"></div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-contact')">取消</button>
+      <button class="act-btn act-primary" id="btn-contact-confirm">確認送出</button>
+    </div>
+  </div>
+</div>
+
+<!-- Hold modal -->
+<div class="modal-overlay" id="modal-hold">
+  <div class="modal-box">
+    <div class="modal-title">設定暫緩</div>
+    <div class="modal-sub" id="modal-hold-sub"></div>
+    <div class="modal-field">
+      <label class="modal-label">備註</label>
+      <textarea class="modal-input" id="modal-hold-note" rows="2" placeholder="例：出國一個月，10月回來再聯絡"></textarea>
+    </div>
+    <div class="modal-error" id="hold-error"></div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-hold')">取消</button>
+      <button class="act-btn act-warn" id="btn-hold-confirm">設定暫緩</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/_layout.js?v=68"></script>
+<script>
+(function () {
+  'use strict';
+  var E = Layout.escHtml, D = Layout.localDateStr, L = Layout;
+
+  var _tab = 'soon';
+
+  var CAT_CLS  = { '代謝症候群': 'cat-m', 'B肝': 'cat-h', 'C肝': 'cat-h', '慢性腎臟病': 'cat-k' };
+  var CAT_HREF = { '代謝症候群': '/mspt', 'B肝': '/hepatitis', 'C肝': '/hepatitis', '慢性腎臟病': '/ckd' };
+  var CLOSE_DAYS = { '代謝症候群': 90, 'B肝': 185, 'C肝': 185, '慢性腎臟病': 180 };
+  var RISK_CATS = { '代謝症候群': 1, 'B肝': 1, 'C肝': 1, '慢性腎臟病': 1 };
+
+  var _soon = [], _past = [], _contacted = [], _hold = [];
+  var _contactedMap = {}, _holdMap = {};
+  var _modalEntry = null;
+
+  // ── risk computation ────────────────────────────────
+  function _dtc(e) {
+    var cd = CLOSE_DAYS[e.category];
+    return cd != null ? cd - e.days_overdue : null;
+  }
+  function _thr(e) {
+    return (e.category === '代謝症候群' && e.needs_blood_test === false) ? 5 : 15;
+  }
+
+  function _setData(report) {
+    var all = [].concat(report.mspt_followups||[], report.hep_followups||[], report.ckd_followups||[]);
+    var soon = [], past = [];
+    all.forEach(function(e) {
+      var d = _dtc(e);
+      if (d == null) return;
+      if (d < 0) {
+        past.push({ e: e, d: d });
+      } else if (d <= _thr(e)) {
+        soon.push({ e: e, d: d });
+      }
+    });
+    soon.sort(function(a, b) { return a.d - b.d; });
+    past.sort(function(a, b) { return a.d - b.d; });
+    _soon = soon;
+    _past = past;
+
+    _contacted = (report.contacted||[]).filter(function(e) { return RISK_CATS[e.category]; })
+      .map(function(e) { return Object.assign({ _type: 'contacted' }, e); })
+      .concat((report.called||[]).filter(function(e) { return RISK_CATS[e.category]; })
+        .map(function(e) { return Object.assign({ _type: 'called' }, e); }))
+      .sort(function(a, b) {
+        return (String(b.contacted_at||'')+String(b.contacted_time||'')).localeCompare(
+               String(a.contacted_at||'')+String(a.contacted_time||''));
+      });
+    _hold = (report.on_hold||[]).filter(function(e) { return RISK_CATS[e.category]; });
+
+    _contactedMap = {};
+    _contacted.forEach(function(e) { _contactedMap[e.patient.chart_number] = e; });
+    _holdMap = {};
+    _hold.forEach(function(e) { if (e.patient) _holdMap[e.patient.chart_number] = e; });
+
+    renderAll();
+    L.updateBadges(report, null);
+  }
+
+  // ── row builders ─────────────────────────────────────
+  function _daysCell(item) {
+    var d = item.d;
+    if (d < 0) {
+      return '<td class="days days-hi rsk-days">逾 ' + Math.abs(d) + ' 天</td>';
+    }
+    var cls = d <= 5 ? 'days-hi' : 'days-md';
+    return '<td class="days ' + cls + ' rsk-days">剩 ' + d + ' 天</td>';
+  }
+
+  function _catCell(e) {
+    var cat = (e.category === '代謝症候群' && e.mspt_stage) ? e.mspt_stage : e.category;
+    var hint = '';
+    if (e.category === '代謝症候群') {
+      hint = e.needs_blood_test === false
+        ? '<span class="rsk-hint rh-waive">免抽血</span>'
+        : '<span class="rsk-hint rh-blood">需抽血</span>';
+    }
+    return '<td><span class="cat-chip ' + (CAT_CLS[e.category]||'') + '">' + E(cat) + '</span>' + hint + '</td>';
+  }
+
+  function _linkCell(e) {
+    return '<td><a href="' + (CAT_HREF[e.category]||'/dashboard') + '" class="go-btn" title="前往科別頁面">' +
+      '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">' +
+      '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></td>';
+  }
+
+  function _pendingRow(item) {
+    var e = item.e;
+    var isWaive = (e.category === '代謝症候群' && e.needs_blood_test === false);
+    var primaryBtn = isWaive
+      ? '<button class="act-btn act-primary" data-action="phone-complete">完成</button>'
+      : '<button class="act-btn act-primary" data-action="contact">已聯繫</button>';
+    var moreHtml = '';
+    if (e.category === '代謝症候群') {
+      var toggleLabel = isWaive ? '送回需回診' : '送去可電話完成';
+      var toggleAction = isWaive ? 'blood-invalid' : 'waive-blood';
+      moreHtml = '<div class="pr-more-wrap"><button class="pr-more-btn" title="更多" aria-label="更多">•••</button>' +
+        '<div class="pr-dd"><button class="pr-di" data-action="' + toggleAction + '">' + toggleLabel + '</button></div></div>';
+    }
+    return '<tr data-chart="' + E(e.patient.chart_number) + '" data-type="pending">' +
+      _daysCell(item) +
+      '<td class="name">' + E(e.patient.name) + '</td>' +
+      '<td style="color:var(--muted);font-size:12px"><span class="pr-copy" data-copy="' + E(e.patient.chart_number) + '">' + E(e.patient.chart_number) + '</span></td>' +
+      _catCell(e) +
+      '<td><div style="display:flex;gap:6px;flex-wrap:wrap">' +
+        primaryBtn +
+        '<button class="act-btn act-warn" data-action="hold">暫緩</button>' +
+        moreHtml +
+      '</div></td>' +
+      _linkCell(e) +
+    '</tr>';
+  }
+
+  function _contactedRow(e) {
+    var when = e.contacted_time || (e.contacted_at ? String(e.contacted_at).slice(5) : '');
+    var typeLbl = e._type === 'called' ? '已二通' : '已聯繫';
+    return '<tr data-chart="' + E(e.patient.chart_number) + '" data-type="contacted">' +
+      '<td class="days days-lo rsk-days" style="white-space:nowrap">' + typeLbl + (when ? '<br><span style="font-size:11px;font-weight:400;color:var(--muted)">' + E(when) + '</span>' : '') + '</td>' +
+      '<td class="name">' + E(e.patient.name) + '</td>' +
+      '<td style="color:var(--muted);font-size:12px"><span class="pr-copy" data-copy="' + E(e.patient.chart_number) + '">' + E(e.patient.chart_number) + '</span></td>' +
+      _catCell(e) +
+      '<td><button class="act-btn" data-action="undo-contact">撤銷</button></td>' +
+      _linkCell(e) +
+    '</tr>';
+  }
+
+  function _holdRow(e) {
+    var note = e.note || '暫緩';
+    var noteLbl = note.length > 16 ? note.slice(0,16) + '…' : note;
+    return '<tr data-chart="' + E(e.patient ? e.patient.chart_number : '') + '" data-hold-id="' + E(String(e.hold_id||'')) + '" data-type="hold">' +
+      '<td class="days rsk-days" style="color:var(--muted);white-space:nowrap">暫緩</td>' +
+      '<td class="name">' + E(e.patient ? e.patient.name : (e.manual_name||'?')) + '</td>' +
+      '<td style="color:var(--muted);font-size:12px"><span class="pr-copy" data-copy="' + E(e.patient ? e.patient.chart_number : '') + '">' + E(e.patient ? e.patient.chart_number : '') + '</span></td>' +
+      '<td><span class="cat-chip ' + (CAT_CLS[e.category]||'') + '">' + E(e.category) + '</span>' +
+        ' <span class="pbadge b-hold" style="font-size:11px">' + E(noteLbl) + '</span></td>' +
+      '<td><button class="act-btn" data-action="undo-hold">解除暫緩</button></td>' +
+      _linkCell(e) +
+    '</tr>';
+  }
+
+  function _table(rowsHtml, emptyMsg) {
+    if (!rowsHtml) return '<div class="rsk-empty">' + (emptyMsg||'目前無資料') + '</div>';
+    return '<div style="overflow-x:auto"><table class="ptable">' +
+      '<thead><tr><th style="width:80px">狀態</th><th>姓名</th><th style="width:110px">身份證</th><th>類別</th><th style="width:160px">動作</th><th style="width:36px"></th></tr></thead>' +
+      '<tbody>' + rowsHtml + '</tbody></table></div>';
+  }
+
+  function renderAll() {
+    var soonHtml = _soon.map(_pendingRow).join('');
+    var pastHtml = _past.map(_pendingRow).join('');
+    var contactedHtml = _contacted.map(_contactedRow).join('');
+    var holdHtml = _hold.map(_holdRow).join('');
+
+    document.getElementById('cnt-soon').textContent      = _soon.length;
+    document.getElementById('cnt-past').textContent      = _past.length;
+    document.getElementById('cnt-contacted').textContent = _contacted.length;
+    document.getElementById('cnt-hold').textContent      = _hold.length;
+
+    document.getElementById('list-soon').innerHTML      = _table(soonHtml||null,      '目前無即將結案的病患');
+    document.getElementById('list-past').innerHTML      = _table(pastHtml||null,      '目前無超過期限的病患');
+    document.getElementById('list-contacted').innerHTML = _table(contactedHtml||null, '今日尚無已聯繫記錄');
+    document.getElementById('list-hold').innerHTML      = _table(holdHtml||null,      '目前無暫緩中病患');
+
+    _bindCopyClicks();
+  }
+
+  function _bindCopyClicks() {
+    document.querySelectorAll('.pr-copy').forEach(function(el) {
+      el.style.cursor = 'pointer';
+      el.onclick = function() {
+        navigator.clipboard && navigator.clipboard.writeText(el.dataset.copy)
+          .then(function() { L.showToast('已複製：' + el.dataset.copy); });
+      };
+    });
+  }
+
+  // ── tab switching ─────────────────────────────────────
+  function _switchTab(tab) {
+    _tab = tab;
+    document.querySelectorAll('.filter-tab').forEach(function(b) { b.classList.remove('on'); });
+    document.querySelector('[data-tab="' + tab + '"]').classList.add('on');
+    ['soon','past','contacted','hold'].forEach(function(t) {
+      document.getElementById('list-' + t).style.display = t === tab ? '' : 'none';
+    });
+  }
+
+  document.getElementById('filter-bar').addEventListener('click', function(ev) {
+    var btn = ev.target.closest('.filter-tab');
+    if (btn) _switchTab(btn.dataset.tab);
+  });
+
+  // ── action routing ────────────────────────────────────
+  function _entryForChart(chart) {
+    var item = _soon.concat(_past).find(function(i) { return i.e.patient.chart_number === chart; });
+    return item ? item.e : null;
+  }
+
+  document.addEventListener('click', function(ev) {
+    var btn = ev.target.closest('[data-action]');
+    if (!btn) return;
+    var action = btn.dataset.action;
+    var row = btn.closest('tr');
+    if (!row) return;
+    var chart = row.dataset.chart;
+
+    if (action === 'contact') {
+      var entry = _entryForChart(chart); if (!entry) return;
+      _modalEntry = entry;
+      document.getElementById('modal-contact-title').textContent = '聯絡 ' + entry.patient.name;
+      var catStr = entry.category + (entry.mspt_stage ? '・' + entry.mspt_stage : '');
+      document.getElementById('modal-contact-sub').textContent = '身份證 ' + entry.patient.chart_number + '・' + catStr;
+      document.getElementById('modal-contact-type').value = 'contacted';
+      document.getElementById('modal-contact-note').value = '';
+      document.getElementById('contact-error').classList.remove('show');
+      L.showModal('modal-contact');
+
+    } else if (action === 'hold') {
+      var entry2 = _entryForChart(chart); if (!entry2) return;
+      _modalEntry = entry2;
+      document.getElementById('modal-hold-sub').textContent = entry2.patient.name + '・' + entry2.category;
+      document.getElementById('modal-hold-note').value = '';
+      document.getElementById('hold-error').classList.remove('show');
+      L.showModal('modal-hold');
+
+    } else if (action === 'undo-contact') {
+      var ce = _contactedMap[chart]; if (!ce) return;
+      btn.disabled = true;
+      L.apiAction('DELETE', '/api/contacted', { chart_number: ce.patient.chart_number, category: ce.category, due_date: ce.due_date })
+        .then(function() {
+          L.showToast('已撤銷：' + ce.patient.name);
+          _contacted = _contacted.filter(function(x) { return x.patient.chart_number !== chart; });
+          delete _contactedMap[chart];
+          _invalidateCache(); _refreshBg();
+        })
+        .catch(function(e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); btn.disabled = false; });
+
+    } else if (action === 'undo-hold') {
+      var holdId = row.dataset.holdId;
+      var he = _hold.find(function(x) { return String(x.hold_id) === holdId; });
+      if (!he) return;
+      btn.disabled = true;
+      L.apiAction('DELETE', '/api/on-hold', { hold_id: he.hold_id })
+        .then(function() {
+          L.showToast('已解除暫緩：' + (he.patient ? he.patient.name : ''));
+          _hold = _hold.filter(function(x) { return x.hold_id !== he.hold_id; });
+          if (he.patient) delete _holdMap[he.patient.chart_number];
+          _invalidateCache(); _refreshBg();
+        })
+        .catch(function(e) { L.showToast('解除失敗：' + (e.message||''), 'error'); btn.disabled = false; });
+
+    } else if (action === 'phone-complete') {
+      var entry3 = _entryForChart(chart); if (!entry3) return;
+      btn.disabled = true;
+      L.apiAction('POST', '/api/mspt-phone-complete', { entry: entry3, nurse: L.getNurse() })
+        .then(function() {
+          L.showToast('已完成，進入可申報佇列');
+          var ch = entry3.patient.chart_number;
+          _soon = _soon.filter(function(i) { return i.e.patient.chart_number !== ch; });
+          _past = _past.filter(function(i) { return i.e.patient.chart_number !== ch; });
+          _invalidateCache(); _refreshBg();
+        })
+        .catch(function(e) { L.showToast('完成失敗：' + (e.message||''), 'error'); btn.disabled = false; });
+
+    } else if (action === 'waive-blood') {
+      var wbEntry = _entryForChart(chart); if (!wbEntry) return;
+      btn.disabled = true;
+      L.apiAction('POST', '/api/mspt-waive-blood', { entry: wbEntry, nurse: L.getNurse() })
+        .then(function() {
+          L.showToast('已切換為可電話完成');
+          _invalidateCache(); _refreshBg();
+        })
+        .catch(function(e) { L.showToast('操作失敗：' + (e.message||''), 'error'); btn.disabled = false; });
+
+    } else if (action === 'blood-invalid') {
+      var biEntry = _entryForChart(chart); if (!biEntry) return;
+      btn.disabled = true;
+      L.apiAction('POST', '/api/mspt-blood-invalid', { entry: biEntry, nurse: L.getNurse() })
+        .then(function() {
+          L.showToast('已切換為需回診');
+          _invalidateCache(); _refreshBg();
+        })
+        .catch(function(e) { L.showToast('操作失敗：' + (e.message||''), 'error'); btn.disabled = false; });
+    }
+  });
+
+  // ── modal submissions ─────────────────────────────────
+  document.getElementById('btn-contact-confirm').addEventListener('click', function() {
+    var entry = _modalEntry; if (!entry) return;
+    var url = document.getElementById('modal-contact-type').value === 'called' ? '/api/called' : '/api/contacted';
+    var btn = this, errEl = document.getElementById('contact-error');
+    errEl.classList.remove('show'); btn.disabled = true;
+    L.apiAction('POST', url, { entry: entry, nurse: L.getNurse() })
+      .then(function() {
+        L.hideModal('modal-contact'); L.showToast('聯絡記錄已儲存');
+        var chart = entry.patient.chart_number;
+        _soon = _soon.filter(function(i) { return i.e.patient.chart_number !== chart; });
+        _past = _past.filter(function(i) { return i.e.patient.chart_number !== chart; });
+        var isCall = url === '/api/called';
+        var ce = { patient: entry.patient, category: entry.category, due_date: entry.due_date, note: '', _type: isCall ? 'called' : 'contacted' };
+        _contacted.unshift(ce); _contactedMap[chart] = ce;
+        renderAll();
+        if (_tab === 'soon' || _tab === 'past') _switchTab('contacted');
+        _invalidateCache(); _refreshBg();
+      })
+      .catch(function(e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .finally(function() { btn.disabled = false; });
+  });
+
+  document.getElementById('btn-hold-confirm').addEventListener('click', function() {
+    var entry = _modalEntry; if (!entry) return;
+    var note = document.getElementById('modal-hold-note').value.trim() || '暫緩';
+    var btn = this, errEl = document.getElementById('hold-error');
+    errEl.classList.remove('show'); btn.disabled = true;
+    L.apiAction('POST', '/api/on-hold', { entry: entry, note: note, nurse: L.getNurse() })
+      .then(function(res) {
+        L.hideModal('modal-hold'); L.showToast('已設定暫緩');
+        var chart = entry.patient.chart_number;
+        _soon = _soon.filter(function(i) { return i.e.patient.chart_number !== chart; });
+        _past = _past.filter(function(i) { return i.e.patient.chart_number !== chart; });
+        var he = { patient: entry.patient, category: entry.category, note: note, hold_id: res && res.hold_id };
+        _hold.push(he);
+        if (entry.patient) _holdMap[chart] = he;
+        renderAll();
+        if (_tab === 'soon' || _tab === 'past') _switchTab('hold');
+        _invalidateCache(); _refreshBg();
+      })
+      .catch(function(e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .finally(function() { btn.disabled = false; });
+  });
+
+  // ── cache / refresh helpers ───────────────────────────
+  function _invalidateCache() {
+    try { sessionStorage.removeItem('clinic_rpt_' + D()); } catch(e) {}
+  }
+
+  function _refreshBg() {
+    L.getReport(D(), function(fresh) { _setData(fresh); }).then(_setData).catch(function(){});
+  }
+
+  // ── initial load ──────────────────────────────────────
+  function load() {
+    L.hideError();
+    L.getReport(D(), function(fresh) { _setData(fresh); })
+      .then(function(report) { _setData(report); })
+      .catch(function(err) { L.showError('資料載入失敗 — ' + (err.message||'請確認伺服器連線')); });
+  }
+
+  Layout.init({ activePage: 'risk', onRefresh: load });
+  load();
+})();
+</script>
+</body>
+</html>

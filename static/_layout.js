@@ -45,6 +45,7 @@
     notes:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>',
     me:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
     admin:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>',
+    risk:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
   };
 
   // ── Changelog ────────────────────────────────────────
@@ -71,6 +72,7 @@
   // ── Nav structure ────────────────────────────────────
   var MAIN_NAV = [
     { id: 'dashboard', label: '今日總覽',  href: '/dashboard',       badge: false },
+    { id: 'risk',      label: '結案風險',  href: '/risk',            badge: true  },
     { id: 'prescription', label: '處方追蹤', href: '/prescription', badge: true  },
     { id: 'chronic',   label: '慢簽追蹤',  href: '/chronic',     badge: true,  hidden: true },
     { id: 'mspt',      label: '代謝症候群', href: '/mspt',        badge: true  },
@@ -945,6 +947,15 @@
     set('hepatitis', (report.hep_followups  || []).length);
     set('ckd',       (report.ckd_followups  || []).length + (report.ckd_inactive   || []).length);
     if (bloodCount != null) set('lab', bloodCount);
+    var _rcd = { '代謝症候群': 90, 'B肝': 185, 'C肝': 185, '慢性腎臟病': 180 };
+    var _riskAll = [].concat(report.mspt_followups||[], report.hep_followups||[], report.ckd_followups||[]);
+    var _riskN = _riskAll.filter(function(e) {
+      var cd = _rcd[e.category]; if (!cd) return false;
+      var dtc = cd - e.days_overdue;
+      var thr = (e.category === '代謝症候群' && e.needs_blood_test === false) ? 5 : 15;
+      return dtc <= thr;
+    }).length;
+    set('risk', _riskN);
   }
 
   function updateShiftInfo(text) {
