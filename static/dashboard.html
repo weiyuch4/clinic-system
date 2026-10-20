@@ -103,7 +103,7 @@
         <div class="lc">
 
           <!-- chart -->
-          <div class="card" style="flex:1">
+          <div class="card" style="flex:1;display:flex;flex-direction:column">
             <div class="chd">
               <div>
                 <div class="cttl">本週聯繫活動</div>
@@ -117,7 +117,9 @@
                 <div class="leg-line" style="background:#4aa7f7"></div>本週
               </div>
             </div>
-            <svg class="csvg" viewBox="0 0 560 166" preserveAspectRatio="xMidYMid meet" id="chart-svg"></svg>
+            <div style="flex:1;display:flex;align-items:center">
+              <svg class="csvg" viewBox="0 0 560 166" preserveAspectRatio="xMidYMid meet" id="chart-svg"></svg>
+            </div>
           </div>
           <!-- chart hover tooltip (fixed, outside card) -->
           <div id="chart-htip">
@@ -253,6 +255,17 @@
         '<span class="dk-label">'+E(cat)+nurse+time+'</span>'+
       '</div>';
     }).join('');
+    // hide rows that don't fit completely, leaving a clean bottom gap
+    requestAnimationFrame(function() {
+      var avail = el.clientHeight - 10;
+      var rows = el.querySelectorAll('.dk-row');
+      var acc = 0, clipping = false;
+      rows.forEach(function(row) {
+        if (clipping) { row.style.display = 'none'; return; }
+        acc += row.offsetHeight;
+        if (acc > avail) { row.style.display = 'none'; clipping = true; }
+      });
+    });
   }
 
   // ── weekly chart ────────────────────────────────────
