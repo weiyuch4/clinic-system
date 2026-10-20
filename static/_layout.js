@@ -1284,8 +1284,9 @@
     var dir = th.getAttribute('data-dir') === 'asc' ? 'desc' : 'asc';
     var rows = Array.from(tbody.querySelectorAll('tr'));
     rows.sort(function (a, b) {
-      var at = a.cells[colIdx] ? a.cells[colIdx].textContent.trim() : '';
-      var bt = b.cells[colIdx] ? b.cells[colIdx].textContent.trim() : '';
+      var ca = a.cells[colIdx], cb = b.cells[colIdx];
+      var at = ca ? (ca.dataset.val != null ? ca.dataset.val : ca.textContent.trim()) : '';
+      var bt = cb ? (cb.dataset.val != null ? cb.dataset.val : cb.textContent.trim()) : '';
       var cmp = isNum ? (parseFloat(at) || 0) - (parseFloat(bt) || 0)
                       : at.localeCompare(bt, 'zh-TW');
       return dir === 'asc' ? cmp : -cmp;

@@ -46,7 +46,7 @@
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
       </div>
 
-      <div class="card" style="padding:0;overflow:hidden;flex-shrink:0">
+      <div class="card" style="padding:0;flex-shrink:0">
         <div id="list-soon"></div>
         <div id="list-past"      style="display:none"></div>
         <div id="list-vpn"       style="display:none"></div>
@@ -204,10 +204,10 @@
   function _daysCell(item) {
     var d = item.d;
     if (d < 0) {
-      return '<td class="days-hi rsk-days">逾 ' + Math.abs(d) + ' 天</td>';
+      return '<td class="days-hi rsk-days" data-val="' + d + '">逾 ' + Math.abs(d) + ' 天</td>';
     }
     var cls = d <= 5 ? 'days-hi' : 'days-md';
-    return '<td class="' + cls + ' rsk-days">剩 ' + d + ' 天</td>';
+    return '<td class="' + cls + ' rsk-days" data-val="' + d + '">剩 ' + d + ' 天</td>';
   }
 
   function _catCell(e) {
@@ -324,7 +324,14 @@
       '<col style="width:36px">' +
       '</colgroup>' +
       '<thead><tr>' +
-      '<th>狀態</th><th>身份證</th><th>姓名</th><th>類別</th><th>到期日</th><th>上次回診</th><th>動作</th><th></th>' +
+      '<th class="th-sort" data-sort="num">狀態 <span class="sort-icon">⇅</span></th>' +
+      '<th class="th-sort" data-sort="text">身份證 <span class="sort-icon">⇅</span></th>' +
+      '<th class="th-sort" data-sort="text">姓名 <span class="sort-icon">⇅</span></th>' +
+      '<th class="th-sort" data-sort="text">類別 <span class="sort-icon">⇅</span></th>' +
+      '<th class="th-sort" data-sort="text">到期日 <span class="sort-icon">⇅</span></th>' +
+      '<th class="th-sort" data-sort="text">上次回診 <span class="sort-icon">⇅</span></th>' +
+      '<th style="text-align:right">動作</th>' +
+      '<th></th>' +
       '</tr></thead>' +
       '<tbody>' + rowsHtml + '</tbody></table></div>';
   }
