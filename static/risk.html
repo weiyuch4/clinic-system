@@ -41,6 +41,7 @@
       <div class="filter-bar" id="filter-bar">
         <button class="filter-tab on" data-tab="soon">即將結案 <span class="tc-count" id="cnt-soon">…</span></button>
         <button class="filter-tab" data-tab="past">已超過期限 <span class="tc-count" id="cnt-past">…</span></button>
+        <button class="filter-tab" data-tab="vpn">待登VPN <span class="tc-count" id="cnt-vpn">…</span></button>
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
       </div>
@@ -48,6 +49,7 @@
       <div class="card" style="padding:0;overflow:hidden;flex-shrink:0">
         <div id="list-soon"></div>
         <div id="list-past"      style="display:none"></div>
+        <div id="list-vpn"       style="display:none"></div>
         <div id="list-contacted" style="display:none"></div>
         <div id="list-hold"      style="display:none"></div>
       </div>
@@ -85,6 +87,37 @@
   </div>
 </div>
 
+<!-- MSPT submit (申報) modal -->
+<div class="modal-overlay" id="modal-submit">
+  <div class="modal-box">
+    <div class="modal-title">確認待登VPN</div>
+    <div class="modal-sub" id="modal-submit-sub"></div>
+    <div class="modal-field" style="margin-top:4px">
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:14px">
+        <input type="checkbox" id="modal-submit-blood" style="width:16px;height:16px;cursor:pointer">
+        <span>此次使用血液檢驗紀錄</span>
+      </label>
+    </div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-submit')">取消</button>
+      <button class="act-btn act-purple" id="btn-submit-confirm">已登VPN</button>
+    </div>
+  </div>
+</div>
+
+<!-- B/C肝 VPN confirm modal -->
+<div class="modal-overlay" id="modal-hep-vpn">
+  <div class="modal-box">
+    <div class="modal-title" id="modal-hep-vpn-title">確認VPN登錄</div>
+    <div class="modal-sub">確認已在健保署VPN系統完成登錄？此操作不可撤銷。</div>
+    <div class="modal-error" id="hep-vpn-error"></div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-hep-vpn')">取消</button>
+      <button class="act-btn act-purple" id="btn-hep-vpn-confirm">確認已登錄</button>
+    </div>
+  </div>
+</div>
+
 <!-- Hold modal -->
 <div class="modal-overlay" id="modal-hold">
   <div class="modal-box">
@@ -115,7 +148,7 @@
   var CLOSE_DAYS = { '代謝症候群': 90, 'B肝': 185, 'C肝': 185, '慢性腎臟病': 180 };
   var RISK_CATS = { '代謝症候群': 1, 'B肝': 1, 'C肝': 1, '慢性腎臟病': 1 };
 
-  var _soon = [], _past = [], _contacted = [], _hold = [];
+  var _soon = [], _past = [], _vpn = [], _contacted = [], _hold = [];
   var _contactedMap = {}, _holdMap = {};
   var _modalEntry = null;
 
@@ -154,6 +187,7 @@
                String(a.contacted_at||'')+String(a.contacted_time||''));
       });
     _hold = (report.on_hold||[]).filter(function(e) { return RISK_CATS[e.category]; });
+    _vpn  = [].concat(report.mspt_submittable||[], report.hep_returned||[]);
 
     _contactedMap = {};
     _contacted.forEach(function(e) { _contactedMap[e.patient.chart_number] = e; });
@@ -203,6 +237,9 @@
       var toggleAction = isWaive ? 'blood-invalid' : 'waive-blood';
       moreHtml = '<div class="pr-more-wrap"><button class="pr-more-btn" title="更多" aria-label="更多">•••</button>' +
         '<div class="pr-dd"><button class="pr-di" data-action="' + toggleAction + '">' + toggleLabel + '</button></div></div>';
+    } else if (e.category === 'B肝' || e.category === 'C肝') {
+      moreHtml = '<div class="pr-more-wrap"><button class="pr-more-btn" title="更多" aria-label="更多">•••</button>' +
+        '<div class="pr-dd"><button class="pr-di" data-action="move-to-vpn">移至待登VPN</button></div></div>';
     }
     return '<tr data-chart="' + E(e.patient.chart_number) + '" data-type="pending">' +
       _daysCell(item) +
@@ -214,6 +251,22 @@
         '<button class="act-btn act-warn" data-action="hold">暫緩</button>' +
         moreHtml +
       '</div></td>' +
+      _linkCell(e) +
+    '</tr>';
+  }
+
+  function _vpnRow(e) {
+    var isMspt = (e.category === '代謝症候群');
+    var actionBtn = isMspt
+      ? '<button class="act-btn act-purple" data-action="submit">申報</button>'
+      : '<button class="act-btn act-purple" data-action="vpn-done">已登錄VPN</button>';
+    var catLabel = isMspt ? (e.mspt_stage || e.category) : e.category;
+    return '<tr data-chart="' + E(e.patient.chart_number) + '" data-type="vpn">' +
+      '<td class="days rsk-days" style="color:var(--muted);white-space:nowrap">待登VPN</td>' +
+      '<td class="name">' + E(e.patient.name) + '</td>' +
+      '<td style="color:var(--muted);font-size:12px"><span class="pr-copy" data-copy="' + E(e.patient.chart_number) + '">' + E(e.patient.chart_number) + '</span></td>' +
+      '<td><span class="cat-chip ' + (CAT_CLS[e.category]||'') + '">' + E(catLabel) + '</span></td>' +
+      '<td>' + actionBtn + '</td>' +
       _linkCell(e) +
     '</tr>';
   }
@@ -260,11 +313,13 @@
 
     document.getElementById('cnt-soon').textContent      = _soon.length;
     document.getElementById('cnt-past').textContent      = _past.length;
+    document.getElementById('cnt-vpn').textContent       = _vpn.length || '';
     document.getElementById('cnt-contacted').textContent = _contacted.length;
     document.getElementById('cnt-hold').textContent      = _hold.length;
 
     document.getElementById('list-soon').innerHTML      = _table(soonHtml||null,      '目前無即將結案的病患');
     document.getElementById('list-past').innerHTML      = _table(pastHtml||null,      '目前無超過期限的病患');
+    document.getElementById('list-vpn').innerHTML       = _table(_vpn.map(_vpnRow).join('')||null, '目前無待登VPN病患');
     document.getElementById('list-contacted').innerHTML = _table(contactedHtml||null, '今日尚無已聯繫記錄');
     document.getElementById('list-hold').innerHTML      = _table(holdHtml||null,      '目前無暫緩中病患');
 
@@ -286,7 +341,7 @@
     _tab = tab;
     document.querySelectorAll('.filter-tab').forEach(function(b) { b.classList.remove('on'); });
     document.querySelector('[data-tab="' + tab + '"]').classList.add('on');
-    ['soon','past','contacted','hold'].forEach(function(t) {
+    ['soon','past','vpn','contacted','hold'].forEach(function(t) {
       document.getElementById('list-' + t).style.display = t === tab ? '' : 'none';
     });
   }
@@ -387,6 +442,35 @@
           _invalidateCache(); _refreshBg();
         })
         .catch(function(e) { L.showToast('操作失敗：' + (e.message||''), 'error'); btn.disabled = false; });
+
+    } else if (action === 'move-to-vpn') {
+      var mvEntry = _entryForChart(chart); if (!mvEntry) return;
+      btn.disabled = true;
+      L.apiAction('POST', '/api/hep-manual-returned', { chart_number: mvEntry.patient.chart_number, category: mvEntry.category, nurse: L.getNurse() })
+        .then(function() {
+          L.showToast('已移至待登VPN：' + mvEntry.patient.name);
+          var ch = mvEntry.patient.chart_number;
+          _soon = _soon.filter(function(i) { return i.e.patient.chart_number !== ch; });
+          _past = _past.filter(function(i) { return i.e.patient.chart_number !== ch; });
+          _invalidateCache(); _refreshBg();
+        })
+        .catch(function(e) { L.showToast('操作失敗：' + (e.message||''), 'error'); btn.disabled = false; });
+
+    } else if (action === 'submit') {
+      var subE = _vpn.find(function(v) { return v.patient && v.patient.chart_number === chart; });
+      if (!subE) return;
+      _modalEntry = subE;
+      document.getElementById('modal-submit-sub').textContent = subE.patient.name + ' · ' + (subE.mspt_stage || '代謝症候群');
+      document.getElementById('modal-submit-blood').checked = false;
+      L.showModal('modal-submit');
+
+    } else if (action === 'vpn-done') {
+      var vpnE = _vpn.find(function(v) { return v.patient && v.patient.chart_number === chart; });
+      if (!vpnE) return;
+      _modalEntry = vpnE;
+      document.getElementById('modal-hep-vpn-title').textContent = vpnE.patient.name + ' 已登錄VPN';
+      document.getElementById('hep-vpn-error').classList.remove('show');
+      L.showModal('modal-hep-vpn');
     }
   });
 
@@ -429,6 +513,38 @@
         if (entry.patient) _holdMap[chart] = he;
         renderAll();
         if (_tab === 'soon' || _tab === 'past') _switchTab('hold');
+        _invalidateCache(); _refreshBg();
+      })
+      .catch(function(e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
+      .finally(function() { btn.disabled = false; });
+  });
+
+  document.getElementById('btn-submit-confirm').addEventListener('click', function() {
+    var entry = _modalEntry; if (!entry) return;
+    var btn = this;
+    btn.disabled = true;
+    var usedBlood = document.getElementById('modal-submit-blood').checked;
+    var payload = Object.assign({}, entry, { used_blood: usedBlood });
+    L.apiAction('POST', '/api/submitted', payload)
+      .then(function() {
+        L.hideModal('modal-submit'); L.showToast('待登VPN記錄已儲存');
+        var ch = entry.patient.chart_number;
+        _vpn = _vpn.filter(function(v) { return v.patient.chart_number !== ch; });
+        _invalidateCache(); _refreshBg();
+      })
+      .catch(function(e) { L.showToast('申報失敗：' + (e.message||''), 'error'); })
+      .finally(function() { btn.disabled = false; });
+  });
+
+  document.getElementById('btn-hep-vpn-confirm').addEventListener('click', function() {
+    var entry = _modalEntry; if (!entry) return;
+    var btn = this, errEl = document.getElementById('hep-vpn-error');
+    errEl.classList.remove('show'); btn.disabled = true;
+    L.apiAction('POST', '/api/hep-returned-completed', { entry: entry, nurse: L.getNurse() })
+      .then(function() {
+        L.hideModal('modal-hep-vpn'); L.showToast('VPN登錄記錄已儲存');
+        var ch = entry.patient.chart_number;
+        _vpn = _vpn.filter(function(v) { return v.patient.chart_number !== ch; });
         _invalidateCache(); _refreshBg();
       })
       .catch(function(e) { errEl.textContent = e.message || '操作失敗，請再試一次'; errEl.classList.add('show'); })
