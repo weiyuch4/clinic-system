@@ -189,7 +189,7 @@
 (function () {
   'use strict';
   var L = Layout;
-  var _tab = 'pending', _query = '', _noteFilter = '', _reasonFilter = '';
+  var _tab = 'pending', _query = (new URLSearchParams(location.search).get('chart') || '').trim(), _noteFilter = '', _reasonFilter = '';
   var _filterOpen = false;
   var _pending = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
   var _pendingMap = {}, _inactiveMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
@@ -602,6 +602,7 @@
   } catch(ex) {}
   _updateCtxFilters(_tab);
 
+  if (_query) document.getElementById('search-input').value = _query;
   Layout.init({ activePage: 'ckd', onRefresh: load });
   load();
 })();

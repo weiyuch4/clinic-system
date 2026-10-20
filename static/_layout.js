@@ -953,7 +953,7 @@
       var cd = _rcd[e.category]; if (!cd) return false;
       var dtc = cd - e.days_overdue;
       var thr = (e.category === '代謝症候群' && e.needs_blood_test === false) ? 5 : 15;
-      return dtc <= thr;
+      return dtc >= 0 && dtc <= thr;
     }).length;
     set('risk', _riskN);
   }

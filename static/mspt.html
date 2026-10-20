@@ -404,7 +404,7 @@ document.addEventListener('click', function(ev) {
 (function () {
   'use strict';
   var L = Layout;
-  var _tab = 'return', _query = '', _stageFilter = '', _noteFilter = '', _reasonFilter = '';
+  var _tab = 'return', _query = (new URLSearchParams(location.search).get('chart') || '').trim(), _stageFilter = '', _noteFilter = '', _reasonFilter = '';
   var _NOTE_TABS = ['hold', 'excluded'];
   var _return = [], _phone = [], _submittable = [], _submitted = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
   var _lineBoundSet = null;
@@ -1160,6 +1160,7 @@ document.addEventListener('click', function(ev) {
     }
   } catch(ex) {}
   _updateCtxFilters(_tab);
+  if (_query) document.getElementById('search-input').value = _query;
   Layout.init({ activePage: 'mspt', onRefresh: load });
   load();
   loadLineBadges();

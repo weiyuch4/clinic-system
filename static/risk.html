@@ -45,7 +45,7 @@
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
       </div>
 
-      <div class="card" style="padding:0;overflow:hidden">
+      <div class="card" style="padding:0;overflow:hidden;flex-shrink:0">
         <div id="list-soon"></div>
         <div id="list-past"      style="display:none"></div>
         <div id="list-contacted" style="display:none"></div>
@@ -55,7 +55,6 @@
       <div class="rsk-note">
         <strong>結案天數：</strong>代謝症候群 90 天・B/C型肝炎 185 天・慢性腎臟病 180 天。
         <span class="rsk-hint rh-waive">免抽血</span> 代謝症候群免血液檢查者提前 5 天提醒；其餘於 15 天前提醒。
-        <br>此頁面僅記錄聯繫動作，若需進行完整流程（如 VPN 登錄、申報等），請前往各科別頁面。
       </div>
 
     </div>
@@ -187,7 +186,7 @@
   }
 
   function _linkCell(e) {
-    return '<td><a href="' + (CAT_HREF[e.category]||'/dashboard') + '" class="go-btn" title="前往科別頁面">' +
+    return '<td><a href="' + (CAT_HREF[e.category]||'/dashboard') + '?chart=' + E(e.patient.chart_number) + '" class="go-btn" title="前往科別頁面">' +
       '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">' +
       '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></td>';
   }
