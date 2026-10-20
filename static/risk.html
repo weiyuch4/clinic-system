@@ -33,7 +33,10 @@
 
       <div class="ph">
         <div>
-          <h1>結案風險</h1>
+          <div style="display:flex;align-items:center;gap:8px">
+            <h1>結案風險</h1>
+            <button onclick="Layout.showModal('modal-help')" title="說明" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;padding:0;margin-bottom:1px">?</button>
+          </div>
           <p>即將達到 NHI 結案天數的追蹤病患，請優先聯繫</p>
         </div>
       </div>
@@ -137,6 +140,57 @@
   </div>
 </div>
 
+<!-- Help modal -->
+<div class="modal-overlay" id="modal-help">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-title">結案風險 說明</div>
+    <div style="font-size:13.5px;line-height:1.75;color:var(--text);overflow-y:auto;max-height:65vh;padding-right:4px">
+      <p style="margin:0 0 12px;color:var(--muted);font-size:12.5px">此頁顯示即將達到 NHI 結案天數的病患，請優先安排聯繫或回診。</p>
+      <div style="font-weight:600;margin:0 0 6px">📋 結案天數限制</div>
+      <div style="display:grid;gap:6px;margin-bottom:14px">
+        <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
+          <span style="font-weight:600">代謝症候群</span> <span style="color:var(--muted);font-size:12px">90 天</span><br>
+          <span style="color:var(--muted);font-size:12.5px">免血液檢查者提前 5 天提醒，其餘提前 15 天。</span>
+        </div>
+        <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
+          <span style="font-weight:600">B/C型肝炎</span> <span style="color:var(--muted);font-size:12px">185 天</span><br>
+          <span style="color:var(--muted);font-size:12.5px">超過 185 天未完成申報即結案，需重新加入計畫。</span>
+        </div>
+        <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
+          <span style="font-weight:600">慢性腎臟病</span> <span style="color:var(--muted);font-size:12px">180 天</span><br>
+          <span style="color:var(--muted);font-size:12.5px">180 天內需完成回診，提前 15 天提醒。</span>
+        </div>
+      </div>
+      <div style="font-weight:600;margin:0 0 8px">📂 頁籤說明</div>
+      <div style="display:grid;gap:5px">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:72px;font-weight:600;color:var(--danger,#dc2626)">即將結案</span>
+          <span style="color:var(--muted);font-size:12.5px">距結案日剩 15 天以內（代謝免抽血者 5 天），請盡快聯繫。</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:72px;font-weight:600;color:var(--muted)">已超過期限</span>
+          <span style="color:var(--muted);font-size:12.5px">已超過結案天數，需確認是否重新加入計畫。</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:72px;font-weight:600;color:#5b21b6">待登VPN</span>
+          <span style="color:var(--muted);font-size:12.5px">已完成回診或電話確認，等待在健保署VPN系統申報。</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:72px;font-weight:600;color:var(--success,#2e9e5b)">已聯繫</span>
+          <span style="color:var(--muted);font-size:12.5px">今日已完成聯繫，確認病患將回診。</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:72px;font-weight:600;color:var(--muted)">暫緩中</span>
+          <span style="color:var(--muted);font-size:12.5px">暫時不需追蹤（如出國、住院）。可隨時解除暫緩重新追蹤。</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:14px">
+      <button class="act-btn act-primary" onclick="Layout.hideModal('modal-help')">了解了</button>
+    </div>
+  </div>
+</div>
+
 <script src="/static/_layout.js?v=70"></script>
 <script>
 (function () {
@@ -213,6 +267,20 @@
   // ── row builders ─────────────────────────────────────
   function _sd(d) { var s = String(d||''); return s.length >= 10 ? s.slice(5,10) : (s||'—'); }
 
+  function _sinceDays(dateStr) {
+    if (!dateStr || String(dateStr).length < 10) return null;
+    var p = String(dateStr).slice(0,10).split('-');
+    if (p.length !== 3) return null;
+    var d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
+    var t = new Date(); var tn = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    return Math.floor((tn - d) / 86400000);
+  }
+  function _sinceTd(dateStr) {
+    var n = _sinceDays(dateStr);
+    return n == null ? '<td class="pr-date" data-val="9999">—</td>' :
+      '<td class="pr-date" data-val="' + n + '">' + n + '天</td>';
+  }
+
   function _daysCell(item) {
     var d = item.d;
     if (d < 0) {
@@ -262,6 +330,7 @@
       _catCell(e) +
       '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
       '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
+      _sinceTd(e.last_visit_date) +
       '<td class="pr-act"><div class="pr-btns">' +
         primaryBtn +
         '<button class="act-btn act-warn" data-action="hold">暫緩</button>' +
@@ -284,6 +353,7 @@
       '<td><span class="cat-chip ' + (CAT_CLS[e.category]||'') + '">' + E(catLabel) + '</span></td>' +
       '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
       '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
+      _sinceTd(e.last_visit_date) +
       '<td class="pr-act"><div class="pr-btns">' + actionBtn + _linkBtn(e) + '</div></td>' +
     '</tr>';
   }
@@ -298,6 +368,7 @@
       _catCell(e) +
       '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
       '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
+      _sinceTd(e.last_visit_date) +
       '<td class="pr-act"><div class="pr-btns"><button class="act-btn" data-action="undo-contact">撤銷</button>' + _linkBtn(e) + '</div></td>' +
     '</tr>';
   }
@@ -315,6 +386,7 @@
         ' <span class="pbadge b-hold" style="font-size:11px">' + E(noteLbl) + '</span></td>' +
       '<td class="pr-date">' + _sd(e.due_date) + '</td>' +
       '<td class="pr-date">' + _sd(e.last_visit_date) + '</td>' +
+      _sinceTd(e.last_visit_date) +
       '<td class="pr-act"><div class="pr-btns"><button class="act-btn" data-action="undo-hold">解除暫緩</button>' + _linkBtn(e) + '</div></td>' +
     '</tr>';
   }
@@ -329,6 +401,7 @@
       '<col style="width:130px">' +
       '<col style="width:70px">' +
       '<col style="width:70px">' +
+      '<col style="width:65px">' +
       '<col style="width:220px">' +
       '</colgroup>' +
       '<thead><tr>' +
@@ -338,6 +411,7 @@
       '<th class="th-sort" data-sort="text">類別 <span class="sort-icon">⇅</span></th>' +
       '<th class="th-sort" data-sort="text">到期日 <span class="sort-icon">⇅</span></th>' +
       '<th class="th-sort" data-sort="text">上次回診 <span class="sort-icon">⇅</span></th>' +
+      '<th class="th-sort" data-sort="num">距上次 <span class="sort-icon">⇅</span></th>' +
       '<th></th>' +
       '</tr></thead>' +
       '<tbody>' + rowsHtml + '</tbody></table></div>';

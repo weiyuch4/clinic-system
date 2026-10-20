@@ -131,19 +131,19 @@
             <div class="ht-cats" id="ht-cats"></div>
           </div>
 
-          <!-- patient table -->
-          <div class="card">
+          <!-- risk table -->
+          <div class="card" style="flex:1;display:flex;flex-direction:column">
             <div class="chd" style="margin-bottom:10px">
-              <div><div class="cttl">最需聯繫的病患</div><div class="csub">跨科別 · 依逾期天數排序</div></div>
-              <a href="/chronic" id="view-all-btn" class="cab" style="margin-top:2px">查看全部</a>
+              <div><div class="cttl">近期結案風險</div><div class="csub">即將到期 · 依剩餘天數排序</div></div>
+              <a href="/risk" class="cab" style="margin-top:2px">查看全部</a>
             </div>
-            <div style="overflow-x:auto">
+            <div style="overflow-x:auto;flex:1">
               <table class="ptable">
                 <thead>
-                  <tr><th>身份證</th><th>姓名</th><th>類別</th><th>逾期天數</th><th>狀態</th><th></th></tr>
+                  <tr><th>剩餘</th><th>身份證</th><th>姓名</th><th>類別</th><th>到期日</th><th></th></tr>
                 </thead>
                 <tbody id="table-body">
-                  <tr><td><div class="skel" style="width:50px"></div></td><td><div class="skel" style="width:60px"></div></td><td><div class="skel" style="width:90px"></div></td><td><div class="skel" style="width:45px"></div></td><td><div class="skel" style="width:55px"></div></td><td></td></tr>
+                  <tr><td><div class="skel" style="width:45px"></div></td><td><div class="skel" style="width:50px"></div></td><td><div class="skel" style="width:60px"></div></td><td><div class="skel" style="width:90px"></div></td><td><div class="skel" style="width:45px"></div></td><td></td></tr>
                 </tbody>
               </table>
             </div>
@@ -157,6 +157,20 @@
           <div class="card">
             <div class="chd" style="margin-bottom:10px"><div class="cttl">今日待處理</div></div>
             <div class="urg-item">
+              <div class="urg-icon ico-green">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/></svg>
+              </div>
+              <div><div class="urg-name">處方追蹤</div><div class="urg-sub">待聯絡處方病患</div></div>
+              <div class="urg-count" id="urg-rx">—</div>
+            </div>
+            <div class="urg-item">
+              <div class="urg-icon ico-sky">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0369A1" stroke-width="2" stroke-linecap="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0a3 3 0 1 0 6 0m-6 0h6m-6 0H3m12 0h6"/></svg>
+              </div>
+              <div><div class="urg-name">抽血結果待確認</div><div class="urg-sub">檢驗追蹤</div></div>
+              <div class="urg-count" id="urg-blood">—</div>
+            </div>
+            <div class="urg-item">
               <div class="urg-icon ico-purple">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 18 15 15"/></svg>
               </div>
@@ -169,13 +183,6 @@
               </div>
               <div><div class="urg-name">B肝待輸入VPN</div><div class="urg-sub">近期回診未登錄</div></div>
               <div class="urg-count" id="urg-hep">—</div>
-            </div>
-            <div class="urg-item">
-              <div class="urg-icon ico-sky">
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0369A1" stroke-width="2" stroke-linecap="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0a3 3 0 1 0 6 0m-6 0h6m-6 0H3m12 0h6"/></svg>
-              </div>
-              <div><div class="urg-name">抽血結果待確認</div><div class="urg-sub">檢驗追蹤</div></div>
-              <div class="urg-count" id="urg-blood">—</div>
             </div>
           </div>
 
@@ -246,34 +253,41 @@
     return { pending: pending, contacted: contacted, rxCount: rxCount, labCount: labCount };
   }
 
-  // ── patient table ──────────────────────────────────
+  // ── risk table ──────────────────────────────────────
   var CAT_CLS  = {'慢簽':'cat-c','代謝症候群':'cat-m','B肝':'cat-h','C肝':'cat-h','慢性腎臟病':'cat-k','處方':'cat-r','檢驗':'cat-l'};
-  var CAT_HREF = {'慢簽':'/chronic','代謝症候群':'/mspt','B肝':'/hepatitis','C肝':'/hepatitis','慢性腎臟病':'/ckd','處方':'/prescription','檢驗':'/lab'};
-  function renderTable(pending) {
-    var top = pending.slice().sort(function(a,b){
-      var pa = (a._priority != null) ? a._priority : 2;
-      var pb = (b._priority != null) ? b._priority : 2;
-      if (pa !== pb) return pa - pb;
-      return b.days_overdue - a.days_overdue;
-    }).slice(0,8);
-    if (!top.length) {
+  var CAT_HREF_RISK = {'代謝症候群':'/mspt','B肝':'/hepatitis','C肝':'/hepatitis','慢性腎臟病':'/ckd'};
+  var CLOSE_DAYS_DB = {'代謝症候群':90,'B肝':185,'C肝':185,'慢性腎臟病':180};
+  function renderRiskTable(report) {
+    var all = [].concat(report.mspt_followups||[], report.hep_followups||[], report.ckd_followups||[]);
+    var soon = [];
+    all.forEach(function(e) {
+      var cd = CLOSE_DAYS_DB[e.category];
+      if (cd == null) return;
+      var dtc = cd - e.days_overdue;
+      var thr = (e.category === '代謝症候群' && e.needs_blood_test === false) ? 5 : 15;
+      if (dtc >= 0 && dtc <= thr) soon.push({ e: e, dtc: dtc });
+    });
+    soon.sort(function(a, b) { return a.dtc - b.dtc; });
+    if (!soon.length) {
       document.getElementById('table-body').innerHTML =
-        '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">今日無待追蹤病患</td></tr>';
+        '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:20px">目前無即將結案病患</td></tr>';
       return;
     }
-    document.getElementById('table-body').innerHTML = top.map(function(e){
-      var d = e.days_overdue, dc = d>=30?'days-hi':d>=15?'days-md':'days-lo';
-      var cat = (e.category==='代謝症候群'&&e.mspt_stage)?e.mspt_stage:e.category;
-      return '<tr>'+
-        '<td style="color:var(--muted);font-size:12px"><span class="pr-copy" data-copy="'+E(e.patient.chart_number)+'" title="點擊複製身份證">'+E(e.patient.chart_number)+'</span></td>'+
-        '<td class="name">'+E(e.patient.name)+'</td>'+
-        '<td><span class="cat-chip '+(CAT_CLS[e.category]||'cat-c')+'">'+E(cat)+'</span></td>'+
-        '<td class="days '+dc+'">'+d+' 天</td>'+
-        '<td><span class="pbadge b-pend">待聯絡</span></td>'+
-        '<td><a href="'+(CAT_HREF[e.category]||'/chronic')+'" class="go-btn">'+
-          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">'+
-          '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></td>'+
-        '</tr>';
+    var sd = function(d) { var s = String(d||''); return s.length >= 10 ? s.slice(5,10) : (s||'—'); };
+    document.getElementById('table-body').innerHTML = soon.map(function(item) {
+      var e = item.e, dtc = item.dtc;
+      var dCls = dtc <= 5 ? 'days-hi' : 'days-md';
+      var cat = (e.category === '代謝症候群' && e.mspt_stage) ? e.mspt_stage : e.category;
+      return '<tr>' +
+        '<td class="days ' + dCls + '" style="white-space:nowrap;font-weight:700;font-size:13px;font-variant-numeric:tabular-nums">剩 ' + dtc + ' 天</td>' +
+        '<td style="color:var(--muted);font-size:12px"><span class="pr-copy" data-copy="' + E(e.patient.chart_number) + '" title="點擊複製身份證">' + E(e.patient.chart_number) + '</span></td>' +
+        '<td class="name">' + E(e.patient.name) + '</td>' +
+        '<td><span class="cat-chip ' + (CAT_CLS[e.category]||'') + '">' + E(cat) + '</span></td>' +
+        '<td style="color:var(--muted);font-size:12px">' + sd(e.due_date) + '</td>' +
+        '<td><a href="' + (CAT_HREF_RISK[e.category]||'/risk') + '?chart=' + E(e.patient.chart_number) + '" class="go-btn">' +
+          '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">' +
+          '<line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></a></td>' +
+      '</tr>';
     }).join('');
   }
 
@@ -287,10 +301,11 @@
   }
 
   // ── urgent panel ────────────────────────────────────
-  function renderUrgent(report, bloodCount) {
+  function renderUrgent(report, bloodCount, rxPendingCount) {
+    document.getElementById('urg-rx').textContent    = rxPendingCount || 0;
+    document.getElementById('urg-blood').textContent = bloodCount;
     document.getElementById('urg-mspt').textContent  = (report.mspt_submittable||[]).length;
     document.getElementById('urg-hep').textContent   = (report.hep_returned||[]).length;
-    document.getElementById('urg-blood').textContent = bloodCount;
   }
 
   // ── contact log card ────────────────────────────────
@@ -524,14 +539,9 @@
           }
         });
       });
-      var allPending = rxPendingEntries.concat(bloodPendingEntries).concat(s.pending);
-      renderTable(allPending);
-      // update "查看全部" to whichever priority list has patients first
-      var viewAllHref = rxPendingEntries.length ? '/prescription' : (bloodPendingEntries.length ? '/lab' : '/chronic');
-      var viewAllEl = document.getElementById('view-all-btn');
-      if (viewAllEl) viewAllEl.href = viewAllHref;
+      renderRiskTable(report);
       renderGauge(todayContacted, s.pending.length + s.rxCount + s.labCount);
-      renderUrgent(report, bloodCount);
+      renderUrgent(report, bloodCount, rxPendingCount);
       renderContactLog(todayHistory);
       renderChart(week);
       L.updateLastUpdated();

@@ -24,7 +24,18 @@
       </div>
 
       <div class="ph">
-        <div><h1>慢簽追蹤</h1><p id="page-date">慢性病連續處方箋 — 逾期待聯繫</p></div>
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <h1>慢簽追蹤</h1>
+            <button onclick="Layout.showModal('modal-help')" title="說明" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;padding:0;margin-bottom:1px">?</button>
+          </div>
+          <p id="page-date">慢性病連續處方箋 — 逾期待聯繫</p>
+        </div>
+      </div>
+
+      <div class="search-row">
+        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
+        <span class="sr-count" id="result-count"></span>
       </div>
 
       <div class="filter-bar" id="filter-bar">
@@ -36,11 +47,6 @@
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
         </button>
-      </div>
-
-      <div class="search-row">
-        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
-        <span class="sr-count" id="result-count"></span>
       </div>
 
       <div class="list-area" id="list-scroll">
@@ -117,6 +123,45 @@
     <div class="modal-footer">
       <button class="act-btn" onclick="Layout.hideModal('modal-exclude')">取消</button>
       <button class="act-btn act-danger" id="btn-exclude-confirm">確認排除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help modal -->
+<div class="modal-overlay" id="modal-help">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-title">慢簽追蹤 說明</div>
+    <div style="font-size:13.5px;line-height:1.75;color:var(--text);overflow-y:auto;max-height:65vh;padding-right:4px">
+      <p style="margin:0 0 12px;color:var(--muted);font-size:12.5px">慢性病連續處方箋（慢簽）病患若逾期未領藥，需主動聯繫提醒回診補領。</p>
+      <div style="font-weight:600;margin:0 0 6px">📋 追蹤說明</div>
+      <div style="display:grid;gap:6px;margin-bottom:14px">
+        <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
+          <span style="font-weight:600">慢性病連續處方箋</span><br>
+          <span style="color:var(--muted);font-size:12.5px">醫師開立後可分批領藥（每次最多三個月）。到期未領視為逾期，系統自動列出需聯繫的病患。</span>
+        </div>
+      </div>
+      <div style="font-weight:600;margin:0 0 8px">📂 頁籤說明</div>
+      <div style="display:grid;gap:5px">
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:60px;font-weight:600">待聯絡</span>
+          <span style="color:var(--muted);font-size:12.5px">逾期未領藥、尚未聯繫的病患，提醒回診補領。</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:60px;font-weight:600;color:var(--success,#2e9e5b)">已聯繫</span>
+          <span style="color:var(--muted);font-size:12.5px">已聯繫病患，確認將回診補領。</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:60px;font-weight:600;color:var(--muted)">暫緩中</span>
+          <span style="color:var(--muted);font-size:12.5px">暫時不需追蹤（如出國、住院）。可隨時解除暫緩重新追蹤。</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:flex-start">
+          <span style="min-width:60px;font-weight:600;color:var(--muted)">排除名單</span>
+          <span style="color:var(--muted);font-size:12.5px">確認不再追蹤的病患（如已轉院、處方過期）。</span>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer" style="margin-top:14px">
+      <button class="act-btn act-primary" onclick="Layout.hideModal('modal-help')">了解了</button>
     </div>
   </div>
 </div>
