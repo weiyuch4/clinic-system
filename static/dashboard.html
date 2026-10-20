@@ -16,7 +16,7 @@
 .num-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .csvg{width:100%;display:block;overflow:hidden}
 .leg-line{width:20px;height:2.5px;border-radius:2px}
-.tc{display:grid;grid-template-columns:1fr minmax(260px,28%);gap:12px;flex:1;min-height:0}
+.tc{display:grid;grid-template-columns:1fr minmax(260px,28%);gap:12px;flex:1;min-height:0;padding-bottom:12px}
 .lc,.rc{display:flex;flex-direction:column;gap:12px}
 .urg-item{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)}
 .urg-item:last-child{border-bottom:none}
@@ -137,7 +137,7 @@
               <div><div class="cttl">近期結案風險</div><div class="csub">即將到期 · 依剩餘天數排序</div></div>
               <a href="/risk" class="cab" style="margin-top:2px">查看全部</a>
             </div>
-            <div style="overflow-x:auto;flex:1">
+            <div style="overflow-x:auto">
               <table class="ptable">
                 <thead>
                   <tr><th>剩餘</th><th>身份證</th><th>姓名</th><th>類別</th><th>到期日</th><th></th></tr>
@@ -146,6 +146,11 @@
                   <tr><td><div class="skel" style="width:45px"></div></td><td><div class="skel" style="width:50px"></div></td><td><div class="skel" style="width:60px"></div></td><td><div class="skel" style="width:90px"></div></td><td><div class="skel" style="width:45px"></div></td><td></td></tr>
                 </tbody>
               </table>
+            </div>
+            <div style="flex:1;display:flex;align-items:flex-end;padding-top:10px">
+              <div style="font-size:11px;color:var(--muted);line-height:1.7">
+                結案天數：代謝症候群 90 天・B/C型肝炎 185 天・慢性腎臟病 180 天
+              </div>
             </div>
           </div>
 
