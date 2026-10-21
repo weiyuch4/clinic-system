@@ -116,15 +116,8 @@ var _removeId = null;
 // ── API ───────────────────────────────────────────────────────────────────────
 
 function api(method, path, body) {
-  var opts = {
-    method: method,
-    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Layout.getToken()},
-  };
-  if (body !== undefined) opts.body = JSON.stringify(body);
-  return fetch(path, opts).then(function(r) {
-    if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || r.status); });
-    return r.json();
-  });
+  if (method === 'GET') return Layout.apiFetch(path);
+  return Layout.apiAction(method, path, body);
 }
 
 // ── Render ────────────────────────────────────────────────────────────────────
