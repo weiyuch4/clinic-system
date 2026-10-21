@@ -89,6 +89,7 @@
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
         <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
+        <button class="filter-tab" data-tab="upcoming">未到期 <span class="tc-count" id="cnt-upcoming">…</span></button>
         <button class="act-btn" id="btn-workflow" style="margin-left:auto;gap:5px;flex-shrink:0;padding:6px 12px;font-size:13px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
@@ -152,6 +153,13 @@
         <div id="list-contacted" style="display:none"></div>
         <div id="list-hold" style="display:none"></div>
         <div id="list-excluded" style="display:none"></div>
+        <div id="list-upcoming" style="display:none">
+          <div class="tab-hint tab-hint-info">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>這些病患目前已在追蹤中，尚未到下次回診時間，屆時系統會自動出現在待聯絡清單。</span>
+          </div>
+          <div id="list-upcoming-rows"><div class="sec-empty">載入中…</div></div>
+        </div>
       </div>
 
     </div>
@@ -467,7 +475,7 @@ document.addEventListener('click', function(ev) {
   var L = Layout;
   var _tab = 'return', _query = (new URLSearchParams(location.search).get('chart') || '').trim(), _stageFilter = '', _noteFilter = '', _reasonFilter = '';
   var _NOTE_TABS = ['hold', 'excluded'];
-  var _return = [], _phone = [], _submittable = [], _submitted = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
+  var _return = [], _phone = [], _submittable = [], _submitted = [], _inactive = [], _contacted = [], _hold = [], _excluded = [], _upcoming = [];
   var _lineBoundSet = null;
   var _activeMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   // entry stashed for modal confirm
@@ -512,7 +520,7 @@ document.addEventListener('click', function(ev) {
     return false;
   }
 
-  var ALL_TABS = ['return','phone','submittable','submitted','inactive','contacted','hold','excluded'];
+  var ALL_TABS = ['return','phone','submittable','submitted','inactive','contacted','hold','excluded','upcoming'];
 
   function applyReport(r) {
     _completedSet = _buildCompletedSet(r.mspt_completed);
@@ -547,8 +555,10 @@ document.addEventListener('click', function(ev) {
     document.getElementById('cnt-contacted').textContent   = _contacted.length;
     _excluded = (r.excluded || []).filter(function (e) { return e.category === '代謝症候群'; });
     _excludedMap = {}; _excluded.forEach(function (e) { _excludedMap[e.patient.chart_number] = e; });
+    _upcoming = (r.mspt_upcoming || []).slice().sort(function(a,b){ return String(a.due_date||'').localeCompare(String(b.due_date||'')); });
     document.getElementById('cnt-hold').textContent        = _hold.length;
     document.getElementById('cnt-excluded').textContent    = _excluded.length;
+    document.getElementById('cnt-upcoming').textContent    = _upcoming.length || '';
 
     var banner = document.getElementById('sub-banner');
     if (_submittable.length) { banner.style.display = 'flex'; document.getElementById('sub-count').textContent = _submittable.length; }
@@ -678,6 +688,18 @@ document.addEventListener('click', function(ev) {
     ], more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }]});
   }
 
+  function upcomingRow(e) {
+    var daysUntil = e.days_overdue ? Math.abs(e.days_overdue) : 0;
+    var label = daysUntil === 0 ? '今天到期' : '還有 ' + daysUntil + ' 天';
+    return L.patientRow({ entry: e,
+      tags: [
+        '<span class="pbadge b-sub">' + L.escHtml(e.mspt_stage || '') + '</span>',
+        '<span class="pbadge b-hold">' + label + '</span>',
+      ],
+      actions: [],
+    });
+  }
+
   function contactedRow(e) {
     return L.patientRow({ entry: e,
       tags: ['<span class="pbadge b-done">已聯繫</span>'],
@@ -795,6 +817,7 @@ document.addEventListener('click', function(ev) {
     renderList(_contacted,   contactedRow,   'list-contacted');
     renderList(_hold,        holdRow,        'list-hold');
     renderExcluded();
+    renderList(_upcoming, upcomingRow, 'list-upcoming-rows');
     L.decorateLineBadges(document.body, _lineBoundSet);
   }
 

@@ -109,11 +109,13 @@ class DailyReport(BaseModel):
     chronic_prescriptions: list[FollowupEntry]
     mspt_followups: list[FollowupEntry]
     mspt_inactive: list[FollowupEntry] = []   # need 收案 restart but no clinic visit in >1 year
+    mspt_upcoming: list[FollowupEntry] = []   # MSPT patients whose next stage is not yet due
     mspt_submittable: list[MsptSubmittableEntry]
     mspt_waiting: list[MsptWaitingEntry]
     hep_followups: list[FollowupEntry] = []   # B/C hepatitis patients overdue for 161-day follow-up
     hep_inactive: list[FollowupEntry] = []    # 結案/再收案 — internal handoff field; merged into
                                                # hep_followups in main.py before reaching the client
+    hep_upcoming: list[FollowupEntry] = []    # B肝 patients whose next follow-up is not yet due
     hep_returned: list[FollowupEntry] = []    # hepatitis patients who recently visited, pending VPN entry
     # Populated from contacts.db, not IC data
     contacted: list[FollowupEntry] = []
@@ -128,6 +130,7 @@ class DailyReport(BaseModel):
     hep_returned_completed: list[FollowupEntry] = []  # archived 完成B肝 (VPN entered) records
     ckd_followups: list[FollowupEntry] = []
     ckd_inactive: list[FollowupEntry] = []
+    ckd_upcoming: list[FollowupEntry] = []   # CKD patients whose next stage is not yet due
 
 
 class NurseEntryRequest(BaseModel):

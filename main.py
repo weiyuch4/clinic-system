@@ -1093,7 +1093,9 @@ def get_month_schedule(month: str, user: auth.CurrentUser = Depends(auth.get_cur
 
 def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
     from models import Patient
-    chronic, mspt, mspt_inactive, hep, hep_inactive, ckd, ckd_inactive = [], [], [], [], [], [], []
+    chronic, mspt, mspt_inactive, mspt_upcoming = [], [], [], []
+    hep, hep_inactive, hep_upcoming = [], [], []
+    ckd, ckd_inactive, ckd_upcoming = [], [], []
     for c in synced:
         cat = c["category"]
         base_cat = cat.removesuffix("_inactive")
@@ -1119,14 +1121,20 @@ def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
             mspt.append(e)
         elif cat == '代謝症候群_inactive':
             mspt_inactive.append(e)
+        elif cat == '代謝症候群_upcoming':
+            mspt_upcoming.append(e)
         elif cat == 'B肝':
             hep.append(e)
         elif cat == 'B肝_inactive':
             hep_inactive.append(e)
+        elif cat == 'B肝_upcoming':
+            hep_upcoming.append(e)
         elif cat == '慢性腎臟病':
             ckd.append(e)
         elif cat == '慢性腎臟病_inactive':
             ckd_inactive.append(e)
+        elif cat == '慢性腎臟病_upcoming':
+            ckd_upcoming.append(e)
         else:
             logger.warning("_build_cloud_report: unknown category %r — dropped for %s", cat, c.get("chart_number"))
     return DailyReport(
@@ -1134,13 +1142,16 @@ def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
         chronic_prescriptions=chronic,
         mspt_followups=mspt,
         mspt_inactive=mspt_inactive,
+        mspt_upcoming=mspt_upcoming,
         mspt_submittable=[],
         mspt_waiting=[],
         hep_followups=hep,
         hep_inactive=hep_inactive,
+        hep_upcoming=hep_upcoming,
         hep_returned=[],
         ckd_followups=ckd,
         ckd_inactive=ckd_inactive,
+        ckd_upcoming=ckd_upcoming,
     )
 
 
@@ -1691,6 +1702,9 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                 [e.model_copy(update={"manual": True}) for e in report.ckd_followups
                  if e.patient.chart_number in ckd_manual_inactive_charts]
             ),
+            mspt_upcoming=report.mspt_upcoming,
+            hep_upcoming=report.hep_upcoming,
+            ckd_upcoming=report.ckd_upcoming,
         )
         if report_date is None:
             _report_cache[cid] = (date.today(), _result)

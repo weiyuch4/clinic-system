@@ -375,15 +375,15 @@ def get_daily_report(as_of: date) -> DailyReport:
 
         import time as _t
         _t0 = _t.time()
-        mspt_followups, mspt_inactive = _query_mspt_followups(as_of)
+        mspt_followups, mspt_inactive, mspt_upcoming = _query_mspt_followups(as_of)
         print(f"[report] mspt: {_t.time()-_t0:.1f}s", flush=True)
         _t1 = _t.time()
-        ckd_followups,  ckd_inactive  = _query_ckd_followups(as_of)
+        ckd_followups,  ckd_inactive,  ckd_upcoming  = _query_ckd_followups(as_of)
         print(f"[report] ckd: {_t.time()-_t1:.1f}s", flush=True)
         _t2 = _t.time()
         hep_patient_info = _scan_hep_patient_info(as_of)
         print(f"[report] hep_scan: {_t.time()-_t2:.1f}s", flush=True)
-        hep_followups, hep_inactive = _query_hep_followups(as_of, hep_patient_info)
+        hep_followups, hep_inactive, hep_upcoming = _query_hep_followups(as_of, hep_patient_info)
         _t3 = _t.time()
         chronic = _query_chronic_prescriptions(as_of)
         print(f"[report] chronic: {_t.time()-_t3:.1f}s", flush=True)
@@ -393,13 +393,16 @@ def get_daily_report(as_of: date) -> DailyReport:
             chronic_prescriptions=chronic,
             mspt_followups=mspt_followups,
             mspt_inactive=mspt_inactive,
+            mspt_upcoming=mspt_upcoming,
             mspt_submittable=[],
             mspt_waiting=[],
             hep_followups=hep_followups,
             hep_inactive=hep_inactive,
+            hep_upcoming=hep_upcoming,
             hep_returned=hep_ret,
             ckd_followups=ckd_followups,
             ckd_inactive=ckd_inactive,
+            ckd_upcoming=ckd_upcoming,
         )
 
         # Persist the report so the next start skips the slow parse.
@@ -871,8 +874,8 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
 
 # ── MSPT (代謝症候群) query ───────────────────────────────────────────────────
 
-def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
-    """Return (active_followups, inactive_patients).
+def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry], list[FollowupEntry]]:
+    """Return (active_followups, inactive_patients, upcoming_patients).
 
     active_followups: MSPT patients whose next stage is overdue and who still visit the clinic.
     inactive_patients: patients needing 收案 restart but with no clinic visit in the past 6 months
@@ -945,6 +948,7 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
 
     results: list[FollowupEntry] = []
     inactive: list[FollowupEntry] = []
+    upcoming: list[FollowupEntry] = []
 
     for nat_id, history in stage_history.items():
         info = patient_info.get(nat_id)
@@ -966,7 +970,17 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
         due_date     = last_date + timedelta(days=_MSPT_STAGE_GAP)
         days_overdue = (as_of - due_date).days
         if days_overdue < 0:
-            continue  # next stage not yet due
+            upcoming.append(FollowupEntry(
+                patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
+                disease_name='代謝症候群',
+                due_date=due_date,
+                days_overdue=days_overdue,
+                category='代謝症候群',
+                last_visit_date=last_date,
+                last_stage=last_stage,
+                mspt_stage=next_stage,
+            ))
+            continue
 
         entry = FollowupEntry(
             patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
@@ -992,13 +1006,14 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
     return (
         sorted(results, key=lambda e: e.days_overdue, reverse=True),
         sorted(inactive, key=lambda e: e.last_visit_date or date.min),
+        sorted(upcoming, key=lambda e: e.due_date),
     )
 
 
 # ── CKD (慢性腎臟病) tracking ────────────────────────────────────────────────
 
-def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
-    """Return (active_followups, inactive_patients) for CKD tracking.
+def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry], list[FollowupEntry]]:
+    """Return (active_followups, inactive_patients, upcoming_patients) for CKD tracking.
     Stage history is detected from P-file DRUG_NO codes in _CKD_CODE_MAP.
     Inter-stage gap: CKD_FOLLOWUP_DAYS (161 days).
     After _CKD_REOPEN_DAYS overdue → needs 收案 restart.
@@ -1050,6 +1065,7 @@ def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
 
     results: list[FollowupEntry] = []
     inactive: list[FollowupEntry] = []
+    upcoming: list[FollowupEntry] = []
 
     for nat_id, history in stage_history.items():
         info = patient_info.get(nat_id)
@@ -1071,6 +1087,16 @@ def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
         due_date     = last_date + timedelta(days=CKD_FOLLOWUP_DAYS)
         days_overdue = (as_of - due_date).days
         if days_overdue < 0:
+            upcoming.append(FollowupEntry(
+                patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
+                disease_name='慢性腎臟病',
+                due_date=due_date,
+                days_overdue=days_overdue,
+                category='慢性腎臟病',
+                last_visit_date=last_date,
+                last_stage=last_stage,
+                mspt_stage=next_stage,
+            ))
             continue
 
         entry = FollowupEntry(
@@ -1099,6 +1125,7 @@ def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
     return (
         sorted(results,  key=lambda e: e.days_overdue, reverse=True),
         sorted(inactive, key=lambda e: e.last_visit_date or date.min),
+        sorted(upcoming, key=lambda e: e.due_date),
     )
 
 
@@ -1306,8 +1333,8 @@ def _hep_disease_name(hep_type: str) -> str:
     return 'B型肝炎' if hep_type == 'B' else ('C型肝炎' if hep_type == 'C' else 'B/C型肝炎')
 
 
-def _query_hep_followups(as_of: date, patient_info: dict[str, dict]) -> tuple[list[FollowupEntry], list[FollowupEntry]]:
-    """Return (active_overdue, inactive) hepatitis B/C patients.
+def _query_hep_followups(as_of: date, patient_info: dict[str, dict]) -> tuple[list[FollowupEntry], list[FollowupEntry], list[FollowupEntry]]:
+    """Return (active_overdue, inactive, upcoming) hepatitis B/C patients.
 
     active_overdue: patients 161–364 days since last hepatitis visit (overdue for 追蹤).
     inactive: patients 365+ days since last hepatitis visit (結案 or eligible for 再收案).
@@ -1317,6 +1344,7 @@ def _query_hep_followups(as_of: date, patient_info: dict[str, dict]) -> tuple[li
     """
     results: list[FollowupEntry] = []
     inactive: list[FollowupEntry] = []
+    upcoming: list[FollowupEntry] = []
 
     for nat_id, info in patient_info.items():
         if not info['name'] or not info['birth']:
@@ -1326,7 +1354,22 @@ def _query_hep_followups(as_of: date, patient_info: dict[str, dict]) -> tuple[li
         days_since = (as_of - last_visit).days
 
         if days_since < HEP_FOLLOWUP_DAYS:
-            continue  # not yet overdue
+            # Not yet overdue — track in upcoming (skip those in the 待登VPN window)
+            if days_since > HEP_RETURN_WINDOW_DAYS:
+                due_date  = last_visit + timedelta(days=HEP_FOLLOWUP_DAYS)
+                disease   = _hep_disease_name(info['hep_type'])
+                stage     = '收案' if info['first_visit'] == info['last_visit'] else '追蹤'
+                upcoming.append(FollowupEntry(
+                    patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
+                    disease_name=disease,
+                    due_date=due_date,
+                    days_overdue=days_since - HEP_FOLLOWUP_DAYS,  # negative = days until due
+                    category='B肝',
+                    last_visit_date=last_visit,
+                    last_stage=stage,
+                    contact_reason='需抽血+超音波',
+                ))
+            continue
 
         disease = _hep_disease_name(info['hep_type'])
 
@@ -1360,8 +1403,9 @@ def _query_hep_followups(as_of: date, patient_info: dict[str, dict]) -> tuple[li
             results.append(entry)
 
     return (
-        sorted(results, key=lambda e: e.days_overdue, reverse=True),
+        sorted(results,  key=lambda e: e.days_overdue, reverse=True),
         sorted(inactive, key=lambda e: e.last_visit_date or date.min),
+        sorted(upcoming, key=lambda e: e.due_date),
     )
 
 

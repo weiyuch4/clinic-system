@@ -71,6 +71,7 @@
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
               <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
+        <button class="filter-tab" data-tab="upcoming">未到期 <span class="tc-count" id="cnt-upcoming">…</span></button>
         <button class="act-btn" id="btn-workflow" style="margin-left:auto;gap:5px;flex-shrink:0;padding:6px 12px;font-size:13px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
@@ -105,6 +106,13 @@
         <div id="list-contacted" style="display:none"></div>
         <div id="list-hold" style="display:none"></div>
         <div id="list-excluded" style="display:none"></div>
+        <div id="list-upcoming" style="display:none">
+          <div class="tab-hint tab-hint-info">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>這些病患目前已在追蹤中，尚未到下次回診時間，屆時系統會自動出現在待聯絡清單。</span>
+          </div>
+          <div id="list-upcoming-rows"><div class="sec-empty">載入中…</div></div>
+        </div>
       </div>
 
     </div>
@@ -244,7 +252,7 @@
   var L = Layout;
   var _tab = 'pending', _query = (new URLSearchParams(location.search).get('chart') || '').trim(), _noteFilter = '', _reasonFilter = '';
   var _filterOpen = false;
-  var _pending = [], _inactive = [], _contacted = [], _hold = [], _excluded = [];
+  var _pending = [], _inactive = [], _contacted = [], _hold = [], _excluded = [], _upcoming = [];
   var _pendingMap = {}, _inactiveMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   var _actionChart = null, _excludeEntry = null, _reintakeEntry = null;
 
@@ -270,8 +278,10 @@
     document.getElementById('cnt-contacted').textContent = _contacted.length;
     _excluded = (r.excluded || []).filter(function (e) { return e.category === '慢性腎臟病'; });
     _excludedMap = {}; _excluded.forEach(function (e) { _excludedMap[e.patient.chart_number] = e; });
+    _upcoming = (r.ckd_upcoming || []).slice().sort(function(a,b){ return String(a.due_date||'').localeCompare(String(b.due_date||'')); });
     document.getElementById('cnt-hold').textContent      = _hold.length;
     document.getElementById('cnt-excluded').textContent  = _excluded.length;
+    document.getElementById('cnt-upcoming').textContent  = _upcoming.length || '';
     var inactiveBanner = document.getElementById('ckd-inactive-banner');
     if (_inactive.length) { inactiveBanner.style.display = 'flex'; document.getElementById('ckd-inactive-cnt').textContent = _inactive.length; }
     else { inactiveBanner.style.display = 'none'; }
@@ -355,6 +365,18 @@
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
 
+  function upcomingRow(e) {
+    var daysUntil = e.days_overdue ? Math.abs(e.days_overdue) : 0;
+    var label = daysUntil === 0 ? '今天到期' : '還有 ' + daysUntil + ' 天';
+    return L.patientRow({ entry: e,
+      tags: [
+        '<span class="pbadge b-sub">' + L.escHtml(e.mspt_stage || '') + '</span>',
+        '<span class="pbadge b-hold">' + label + '</span>',
+      ],
+      actions: [],
+    });
+  }
+
   function excludedRow(e) {
     var chart  = L.escHtml(e.patient.chart_number);
     var name   = L.escHtml(e.patient.name);
@@ -394,6 +416,7 @@
     renderList(_contacted, contactedRow, 'list-contacted');
     renderList(_hold,      holdRow,      'list-hold');
     renderExcluded();
+    renderList(_upcoming, upcomingRow, 'list-upcoming-rows');
   }
 
   document.getElementById('filter-bar').addEventListener('click', function (e) {

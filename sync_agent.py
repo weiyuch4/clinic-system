@@ -127,10 +127,16 @@ def do_sync() -> None:
         candidates.append(_entry_to_dict(entry, "B肝"))
     for entry in report.hep_inactive:
         candidates.append(_entry_to_dict(entry, "B肝_inactive"))
+    for entry in report.hep_upcoming:
+        candidates.append(_entry_to_dict(entry, "B肝_upcoming"))
+    for entry in report.mspt_upcoming:
+        candidates.append(_entry_to_dict(entry, "代謝症候群_upcoming"))
     for entry in report.ckd_followups:
         candidates.append(_entry_to_dict(entry, "慢性腎臟病"))
     for entry in report.ckd_inactive:
         candidates.append(_entry_to_dict(entry, "慢性腎臟病_inactive"))
+    for entry in report.ckd_upcoming:
+        candidates.append(_entry_to_dict(entry, "慢性腎臟病_upcoming"))
 
     payload = {"clinic_id": 1, "candidates": candidates}
     try:
