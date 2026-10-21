@@ -1254,8 +1254,8 @@ def get_blood_recall(user: auth.CurrentUser = Depends(auth.get_current_user)) ->
 def update_blood_recall(patient_id: int, body: dict = Body(...),
                          user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     status = body.get("status", "")
-    if status not in ("done", "active"):
-        raise HTTPException(status_code=400, detail="status must be 'done' or 'active'")
+    if status not in ("done", "active", "contacted"):
+        raise HTTPException(status_code=400, detail="status must be 'done', 'active', or 'contacted'")
     contacts.update_blood_recall_status(user.clinic_id, patient_id, status)
     return {"ok": True}
 

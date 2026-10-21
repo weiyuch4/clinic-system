@@ -62,15 +62,15 @@
       </div>
 
       <div class="filter-bar" id="filter-bar">
-        <button class="filter-tab on" data-tab="active">待追蹤 <span class="tc-count" id="cnt-active">…</span></button>
-        <button class="filter-tab" data-tab="normal">已正常化 <span class="tc-count" id="cnt-normal">…</span></button>
+        <button class="filter-tab on" data-tab="pending">待追蹤 <span class="tc-count" id="cnt-pending">…</span></button>
+        <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
       </div>
 
-      <div id="list-active"></div>
-      <div id="list-normal" style="display:none"></div>
+      <div id="list-pending"></div>
+      <div id="list-contacted" style="display:none"></div>
 
       <div class="br-note">
-        <strong>追蹤邏輯：</strong>同步代理掃描檢驗報告，若 <span id="note-items">（後台設定中的）</span> 指標出現異常值，病患會加入此追蹤清單。距上次抽血滿 <strong>90 天</strong>時提醒回診複查。結果正常後系統自動標記為「已正常化」，護理師確認後可移除。
+        <strong>追蹤邏輯：</strong>同步代理掃描檢驗報告，若 <span id="note-items">（後台設定中的）</span> 指標出現異常值，病患會加入此追蹤清單。距上次抽血滿 <strong>90 天</strong>時提醒回診複查。最新報告已正常者會顯示「抽血正常」標記。
       </div>
 
     </div>
@@ -97,7 +97,8 @@
     <div style="font-size:13.5px;line-height:1.75;color:var(--text)">
       <p style="margin-bottom:10px">此頁面追蹤的是<strong>血液檢查出現異常指標</strong>的病患，提醒護理師於 90 天後再次聯繫回診複查。</p>
       <p style="margin-bottom:10px"><strong>名單來源：</strong>由同步代理每次同步時掃描所有血液報告，若設定的追蹤指標（如 HDL、GOT 等）出現 ↑ 或 ↓ 標記，即自動加入名單。</p>
-      <p style="margin-bottom:10px"><strong>已正常化：</strong>病患回診後最新報告的追蹤指標皆正常，系統會自動移至此分頁。可繼續觀察或手動移除。</p>
+      <p style="margin-bottom:10px"><strong>抽血正常標記：</strong>病患回診後最新報告的追蹤指標皆正常，系統會在「待追蹤」顯示「抽血正常」標記，護理師確認後可移除。</p>
+      <p style="margin-bottom:10px"><strong>已聯繫：</strong>點擊「已聯繫」後病患移至此分頁。若之後有更新的抽血記錄，系統會自動移回「待追蹤」。</p>
       <p><strong>設定追蹤指標：</strong>請至管理員後台 → 抽血追蹤設定，指定要追蹤的項目名稱與掃描期間。</p>
     </div>
     <div class="modal-footer">
@@ -109,9 +110,8 @@
 <script src="/static/_layout.js?v=71"></script>
 <script>
 var _allPatients = [];
-var _currentTab = 'active';
+var _currentTab = 'pending';
 var _removeId = null;
-var _nurse = Layout.getNurse ? Layout.getNurse() : (localStorage.getItem('nurse') || '');
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
@@ -155,15 +155,22 @@ function _buildRow(p, tabType) {
   var abnormal = p.abnormal_items || [];
   var tagsHtml = abnormal.length ? '<div class="br-items">' + abnormal.map(_tagHtml).join('') + '</div>' : '';
   var statusChip = '';
-  if (tabType === 'normal') {
-    statusChip = '<span class="br-tag br-normal" style="margin-left:6px">正常化</span>';
+  if (p.status === 'normal') {
+    statusChip = '<span class="br-tag br-normal" style="margin-left:6px">抽血正常</span>';
   } else if (p.overdue) {
     statusChip = '<span class="br-tag br-due" style="margin-left:6px">需追蹤</span>';
   }
 
-  var btnHtml = '<button class="act-btn act-danger" style="font-size:12px;padding:5px 10px" onclick="openRemove(' + p.id + ',\'' + escHtml(p.name) + '\')" title="從清單移除">移除</button>';
+  var btns;
+  if (tabType === 'contacted') {
+    btns = '<button class="act-btn" style="font-size:12px;padding:5px 10px" onclick="doUncontact(' + p.id + ')">撤銷</button>' +
+           '<button class="act-btn act-danger" style="font-size:12px;padding:5px 10px" onclick="openRemove(' + p.id + ',\'' + escHtml(p.name) + '\')">移除</button>';
+  } else {
+    btns = '<button class="act-btn act-primary" style="font-size:12px;padding:5px 10px" onclick="doContact(' + p.id + ')">已聯繫</button>' +
+           '<button class="act-btn act-danger" style="font-size:12px;padding:5px 10px" onclick="openRemove(' + p.id + ',\'' + escHtml(p.name) + '\')">移除</button>';
+  }
 
-  return '<div class="dk-row" data-id="' + p.id + '" data-name="' + escHtml(p.name) + '" data-nat="' + escHtml(p.nat_id) + '">' +
+  return '<div class="dk-row" data-id="' + p.id + '">' +
     '<div style="display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0">' +
       '<div style="flex:1;min-width:0">' +
         '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
@@ -173,13 +180,23 @@ function _buildRow(p, tabType) {
         '<div style="font-size:12px;color:var(--sub);margin-top:2px">上次抽血：' + escHtml(p.last_draw_date) + '　' + _daysLabel(p) + '</div>' +
         tagsHtml +
       '</div>' +
-      '<div style="flex-shrink:0">' + btnHtml + '</div>' +
+      '<div style="display:flex;gap:6px;flex-shrink:0">' + btns + '</div>' +
     '</div>' +
   '</div>';
 }
 
 function renderList(tab) {
-  var patients = _allPatients.filter(function(p) { return p.status === tab; });
+  var patients;
+  if (tab === 'pending') {
+    patients = _allPatients.filter(function(p) { return p.status === 'active' || p.status === 'normal'; });
+    // sort: active first, then normal; within each group overdue first
+    patients.sort(function(a, b) {
+      if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
+      return (b.days_since_draw || 0) - (a.days_since_draw || 0);
+    });
+  } else {
+    patients = _allPatients.filter(function(p) { return p.status === 'contacted'; });
+  }
   var q = (document.getElementById('search-input').value || '').trim().toLowerCase();
   if (q) {
     patients = patients.filter(function(p) {
@@ -196,15 +213,16 @@ function renderList(tab) {
 }
 
 function updateCounts() {
-  var active = _allPatients.filter(function(p){ return p.status === 'active'; }).length;
-  var normal = _allPatients.filter(function(p){ return p.status === 'normal'; }).length;
-  document.getElementById('cnt-active').textContent = active;
-  document.getElementById('cnt-normal').textContent = normal;
-  try { localStorage.setItem('badge_blood-recall', active); } catch(e) {}
+  var pending = _allPatients.filter(function(p){ return p.status === 'active' || p.status === 'normal'; }).length;
+  var contacted = _allPatients.filter(function(p){ return p.status === 'contacted'; }).length;
+  var activeOnly = _allPatients.filter(function(p){ return p.status === 'active'; }).length;
+  document.getElementById('cnt-pending').textContent = pending || '';
+  document.getElementById('cnt-contacted').textContent = contacted || '';
+  try { localStorage.setItem('badge_blood-recall', activeOnly); } catch(e) {}
   var badge = document.getElementById('badge-blood-recall');
   if (badge) {
-    badge.textContent = active;
-    badge.className = active ? 'nb' : 'nb zero';
+    badge.textContent = activeOnly;
+    badge.className = activeOnly ? 'nb' : 'nb zero';
   }
 }
 
@@ -213,7 +231,7 @@ function setTab(tab) {
   document.querySelectorAll('.filter-tab').forEach(function(btn) {
     btn.classList.toggle('on', btn.dataset.tab === tab);
   });
-  ['active', 'normal'].forEach(function(t) {
+  ['pending', 'contacted'].forEach(function(t) {
     var el = document.getElementById('list-' + t);
     if (el) el.style.display = (t === tab ? '' : 'none');
   });
@@ -237,6 +255,36 @@ function load() {
   }).catch(function(err) {
     document.getElementById('error-bar').style.display = 'flex';
     document.getElementById('error-msg').textContent = '載入失敗：' + err.message;
+  });
+}
+
+// ── Contact / Uncontact ───────────────────────────────────────────────────────
+
+function doContact(id) {
+  var row = document.querySelector('.dk-row[data-id="' + id + '"]');
+  if (row) row.style.opacity = '.5';
+  api('PATCH', '/api/blood-recall/' + id, {status: 'contacted'}).then(function() {
+    var p = _allPatients.find(function(x){ return x.id === id; });
+    if (p) p.status = 'contacted';
+    updateCounts();
+    renderList(_currentTab);
+  }).catch(function(err) {
+    if (row) row.style.opacity = '';
+    alert('操作失敗：' + err.message);
+  });
+}
+
+function doUncontact(id) {
+  var row = document.querySelector('.dk-row[data-id="' + id + '"]');
+  if (row) row.style.opacity = '.5';
+  api('PATCH', '/api/blood-recall/' + id, {status: 'active'}).then(function() {
+    var p = _allPatients.find(function(x){ return x.id === id; });
+    if (p) p.status = 'active';
+    updateCounts();
+    renderList(_currentTab);
+  }).catch(function(err) {
+    if (row) row.style.opacity = '';
+    alert('操作失敗：' + err.message);
   });
 }
 

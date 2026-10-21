@@ -614,12 +614,18 @@ def upsert_blood_recall_patient(clinic_id: int, nat_id: str, name: str, last_dra
                        last_draw_date = EXCLUDED.last_draw_date,
                        abnormal_items = EXCLUDED.abnormal_items,
                        status         = CASE
-                           -- nurse manually removed: only re-activate on new abnormal draw
+                           -- nurse removed: only re-activate on newer abnormal draw
                            WHEN blood_recall_patients.status = 'done' AND EXCLUDED.status = 'active'
                                 AND EXCLUDED.last_draw_date > blood_recall_patients.last_draw_date
                                THEN 'active'
                            WHEN blood_recall_patients.status = 'done'
                                THEN 'done'
+                           -- nurse contacted: newer draw resets to active/normal; same draw keeps contacted
+                           WHEN blood_recall_patients.status = 'contacted'
+                                AND EXCLUDED.last_draw_date > blood_recall_patients.last_draw_date
+                               THEN EXCLUDED.status
+                           WHEN blood_recall_patients.status = 'contacted'
+                               THEN 'contacted'
                            ELSE EXCLUDED.status
                        END,
                        updated_at     = EXCLUDED.updated_at""",
