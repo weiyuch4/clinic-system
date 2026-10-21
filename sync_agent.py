@@ -267,6 +267,36 @@ def do_sync() -> None:
     except Exception as exc:
         log.error("Lab results sync failed: %s", exc)
 
+    # Blood recall sync — scan all bio records for watched abnormal items
+    try:
+        import lab_results as _lab
+        settings_resp = requests.get(
+            f"{CLOUD_URL}/api/sync/blood-recall-settings",
+            headers={"X-Sync-Token": SYNC_TOKEN},
+            timeout=15,
+        )
+        settings_resp.raise_for_status()
+        br_settings = settings_resp.json()
+        watched = set(br_settings.get("watched_items", []))
+        date_window = int(br_settings.get("date_window_days", 365))
+        if watched:
+            scan_results = _lab.scan_all_for_recall(watched, date_window)
+            if scan_results:
+                for i in range(0, len(scan_results), 100):
+                    chunk = scan_results[i:i + 100]
+                    resp = requests.post(
+                        f"{CLOUD_URL}/api/sync/push-blood-recall",
+                        json={"clinic_id": 1, "patients": chunk},
+                        headers={"X-Sync-Token": SYNC_TOKEN},
+                        timeout=60,
+                    )
+                    resp.raise_for_status()
+            log.info("Blood recall sync: scanned %d patients (watched: %s)", len(scan_results), ", ".join(sorted(watched)))
+        else:
+            log.info("Blood recall: no watched items configured, skipping scan")
+    except Exception as exc:
+        log.error("Blood recall sync failed: %s", exc)
+
 
 # ── File watcher ──────────────────────────────────────────────────────────────
 

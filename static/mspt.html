@@ -662,7 +662,7 @@ document.addEventListener('click', function(ev) {
         days_overdue: 0, last_visit_date: null,
       },
       tags: ['<span class="pbadge b-sub">' + L.escHtml(e.mspt_stage) + '</span>'],
-      actions: [],
+      actions: [{ label: '撤銷', cls: '', key: 'undo-submitted' }],
     });
   }
 
@@ -931,6 +931,20 @@ document.addEventListener('click', function(ev) {
       document.getElementById('modal-vpn-sub').textContent = se.patient.name + ' · ' + (se.mspt_stage || '');
       document.getElementById('modal-vpn-blood').checked = false;
       L.showModal('modal-vpn');
+
+    } else if (action === 'undo-submitted') {
+      var su = _submitted.find(function (e) { return e.patient.chart_number === chart; });
+      if (!su) return;
+      btn.disabled = true;
+      L.apiAction('DELETE', '/api/submitted', { chart_number: su.patient.chart_number, mspt_stage: su.mspt_stage })
+        .then(function () {
+          L.showToast('已撤銷申報記錄');
+          _submitted = _submitted.filter(function(e) { return e.patient.chart_number !== chart; });
+          document.getElementById('cnt-submitted').textContent = _submitted.length || '';
+          _refreshBg();
+        })
+        .catch(function (e) { L.showToast('撤銷失敗：' + (e.message||''), 'error'); })
+        .finally(function () { btn.disabled = false; });
 
     } else if (action === 'undo-phone') {
       var se2 = _submittable.find(function (e) { return e.patient.chart_number === chart; });

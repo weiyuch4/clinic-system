@@ -1,3 +1,4 @@
+import json
 from datetime import date, datetime, timedelta, timezone
 
 _TW = timezone(timedelta(hours=8))
@@ -518,6 +519,125 @@ _CREATE_SYNCED_DOCTOR_RATES = """
     )
 """
 
+_CREATE_BLOOD_RECALL_SETTINGS = """
+    CREATE TABLE IF NOT EXISTS blood_recall_settings (
+        clinic_id        INTEGER PRIMARY KEY,
+        watched_items    TEXT NOT NULL DEFAULT '[]',
+        date_window_days INTEGER NOT NULL DEFAULT 365
+    )
+"""
+
+_CREATE_BLOOD_RECALL_PATIENTS = """
+    CREATE TABLE IF NOT EXISTS blood_recall_patients (
+        id             SERIAL PRIMARY KEY,
+        clinic_id      INTEGER NOT NULL DEFAULT 1,
+        nat_id         TEXT NOT NULL,
+        name           TEXT NOT NULL DEFAULT '',
+        last_draw_date TEXT NOT NULL,
+        abnormal_items TEXT NOT NULL DEFAULT '[]',
+        status         TEXT NOT NULL DEFAULT 'active',
+        added_at       TEXT NOT NULL,
+        updated_at     TEXT NOT NULL,
+        UNIQUE (clinic_id, nat_id)
+    )
+"""
+
+
+def get_blood_recall_settings(clinic_id: int = 1) -> dict:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT watched_items, date_window_days FROM blood_recall_settings WHERE clinic_id = %s",
+                (clinic_id,),
+            )
+            row = cur.fetchone()
+    if row:
+        return {'watched_items': json.loads(row['watched_items']), 'date_window_days': row['date_window_days']}
+    return {'watched_items': [], 'date_window_days': 365}
+
+
+def save_blood_recall_settings(clinic_id: int, watched_items: list, date_window_days: int) -> None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO blood_recall_settings (clinic_id, watched_items, date_window_days)
+                   VALUES (%s, %s, %s)
+                   ON CONFLICT (clinic_id) DO UPDATE SET
+                       watched_items = EXCLUDED.watched_items,
+                       date_window_days = EXCLUDED.date_window_days""",
+                (clinic_id, json.dumps(watched_items, ensure_ascii=False), date_window_days),
+            )
+
+
+def get_blood_recall_patients(clinic_id: int = 1) -> list[dict]:
+    today = date.today()
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT id, nat_id, name, last_draw_date, abnormal_items, status
+                   FROM blood_recall_patients
+                   WHERE clinic_id = %s AND status != 'done'
+                   ORDER BY last_draw_date DESC""",
+                (clinic_id,),
+            )
+            rows = cur.fetchall()
+    result = []
+    for row in rows:
+        draw = date.fromisoformat(row['last_draw_date'])
+        days_since = (today - draw).days
+        result.append({
+            'id': row['id'],
+            'nat_id': row['nat_id'],
+            'name': row['name'],
+            'last_draw_date': row['last_draw_date'],
+            'days_since_draw': days_since,
+            'days_until_due': max(0, 90 - days_since),
+            'overdue': days_since >= 90,
+            'abnormal_items': json.loads(row['abnormal_items']),
+            'status': row['status'],
+        })
+    return result
+
+
+def upsert_blood_recall_patient(clinic_id: int, nat_id: str, name: str, last_draw_date: str,
+                                 abnormal_items: list, has_abnormal: bool) -> None:
+    now = datetime.now(_TW).isoformat(timespec='seconds')
+    new_status = 'active' if has_abnormal else 'normal'
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO blood_recall_patients
+                       (clinic_id, nat_id, name, last_draw_date, abnormal_items, status, added_at, updated_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                   ON CONFLICT (clinic_id, nat_id) DO UPDATE SET
+                       name           = EXCLUDED.name,
+                       last_draw_date = EXCLUDED.last_draw_date,
+                       abnormal_items = EXCLUDED.abnormal_items,
+                       status         = CASE
+                           -- nurse manually removed: only re-activate on new abnormal draw
+                           WHEN blood_recall_patients.status = 'done' AND EXCLUDED.status = 'active'
+                                AND EXCLUDED.last_draw_date > blood_recall_patients.last_draw_date
+                               THEN 'active'
+                           WHEN blood_recall_patients.status = 'done'
+                               THEN 'done'
+                           ELSE EXCLUDED.status
+                       END,
+                       updated_at     = EXCLUDED.updated_at""",
+                (clinic_id, nat_id, name, last_draw_date,
+                 json.dumps(abnormal_items, ensure_ascii=False), new_status, now, now),
+            )
+
+
+def update_blood_recall_status(clinic_id: int, patient_id: int, status: str) -> None:
+    now = datetime.now(_TW).isoformat(timespec='seconds')
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE blood_recall_patients SET status = %s, updated_at = %s
+                   WHERE id = %s AND clinic_id = %s""",
+                (status, now, patient_id, clinic_id),
+            )
+
 
 def get_blood_dismissed(clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
@@ -770,6 +890,8 @@ def init() -> None:
             cur.execute(_CREATE_CLINIC_SETTINGS)
             cur.execute(_CREATE_SYNCED_PRESCRIPTIONS)
             cur.execute(_CREATE_SYNCED_DOCTOR_RATES)
+            cur.execute(_CREATE_BLOOD_RECALL_SETTINGS)
+            cur.execute(_CREATE_BLOOD_RECALL_PATIENTS)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):

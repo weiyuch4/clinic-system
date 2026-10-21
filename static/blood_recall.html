@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/favicon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="診所追蹤">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>抽血追蹤 — 診所追蹤系統</title>
+<link rel="stylesheet" href="/static/_layout.css?v=70">
+<style>
+.br-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;vertical-align:middle}
+.br-tag-up{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.br-tag-dn{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}
+.br-normal{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
+.br-due{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-weight:700}
+.br-days{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.br-days.overdue{color:#dc2626}
+.br-days.near{color:#d97706}
+.br-days.ok{color:var(--sub)}
+.br-items{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
+.br-empty{padding:40px 0;text-align:center;color:var(--muted);font-size:13.5px}
+.br-note{font-size:12px;color:var(--muted);margin-top:14px;padding:0 2px;line-height:1.6}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .br-tag-up{background:rgba(220,38,38,.15);border-color:rgba(220,38,38,.3)}
+  :root:not([data-theme=light]) .br-tag-dn{background:rgba(37,99,235,.15);border-color:rgba(37,99,235,.3)}
+  :root:not([data-theme=light]) .br-normal{background:rgba(21,128,61,.15);border-color:rgba(21,128,61,.3)}
+  :root:not([data-theme=light]) .br-due{background:rgba(194,65,12,.15);border-color:rgba(194,65,12,.3)}
+}
+:root[data-theme=dark] .br-tag-up{background:rgba(220,38,38,.15);border-color:rgba(220,38,38,.3)}
+:root[data-theme=dark] .br-tag-dn{background:rgba(37,99,235,.15);border-color:rgba(37,99,235,.3)}
+:root[data-theme=dark] .br-normal{background:rgba(21,128,61,.15);border-color:rgba(21,128,61,.3)}
+:root[data-theme=dark] .br-due{background:rgba(194,65,12,.15);border-color:rgba(194,65,12,.3)}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar"></aside>
+  <div class="main">
+    <div id="topbar"></div>
+    <div class="ct">
+
+      <div class="err-bar" id="error-bar" style="display:none">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <span id="error-msg"></span>
+      </div>
+
+      <div class="ph">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <h1>抽血追蹤</h1>
+            <button onclick="Layout.showModal('modal-help')" title="說明" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;padding:0;margin-bottom:1px">?</button>
+          </div>
+          <p>異常指標病患回診提醒，抽血後 90 天追蹤</p>
+        </div>
+      </div>
+
+      <div class="search-row">
+        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
+      </div>
+
+      <div class="filter-bar" id="filter-bar">
+        <button class="filter-tab on" data-tab="active">待追蹤 <span class="tc-count" id="cnt-active">…</span></button>
+        <button class="filter-tab" data-tab="normal">已正常化 <span class="tc-count" id="cnt-normal">…</span></button>
+      </div>
+
+      <div id="list-active"></div>
+      <div id="list-normal" style="display:none"></div>
+
+      <div class="br-note">
+        <strong>追蹤邏輯：</strong>同步代理掃描檢驗報告，若 <span id="note-items">（後台設定中的）</span> 指標出現異常值，病患會加入此追蹤清單。距上次抽血滿 <strong>90 天</strong>時提醒回診複查。結果正常後系統自動標記為「已正常化」，護理師確認後可移除。
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Confirm remove modal -->
+<div class="modal-overlay" id="modal-remove">
+  <div class="modal-box">
+    <div class="modal-title">確認移除</div>
+    <div class="modal-sub" id="modal-remove-sub"></div>
+    <div class="modal-error" id="remove-error"></div>
+    <div class="modal-footer">
+      <button class="act-btn" onclick="Layout.hideModal('modal-remove')">取消</button>
+      <button class="act-btn act-danger" id="btn-remove-confirm">移除</button>
+    </div>
+  </div>
+</div>
+
+<!-- Help modal -->
+<div class="modal-overlay" id="modal-help">
+  <div class="modal-box">
+    <div class="modal-title">抽血追蹤 說明</div>
+    <div style="font-size:13.5px;line-height:1.75;color:var(--text)">
+      <p style="margin-bottom:10px">此頁面追蹤的是<strong>血液檢查出現異常指標</strong>的病患，提醒護理師於 90 天後再次聯繫回診複查。</p>
+      <p style="margin-bottom:10px"><strong>名單來源：</strong>由同步代理每次同步時掃描所有血液報告，若設定的追蹤指標（如 HDL、GOT 等）出現 ↑ 或 ↓ 標記，即自動加入名單。</p>
+      <p style="margin-bottom:10px"><strong>已正常化：</strong>病患回診後最新報告的追蹤指標皆正常，系統會自動移至此分頁。可繼續觀察或手動移除。</p>
+      <p><strong>設定追蹤指標：</strong>請至管理員後台 → 抽血追蹤設定，指定要追蹤的項目名稱與掃描期間。</p>
+    </div>
+    <div class="modal-footer">
+      <button class="act-btn act-primary" onclick="Layout.hideModal('modal-help')">了解</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/_layout.js?v=70"></script>
+<script>
+var _allPatients = [];
+var _currentTab = 'active';
+var _removeId = null;
+var _nurse = Layout.getNurse ? Layout.getNurse() : (localStorage.getItem('nurse') || '');
+
+// ── API ───────────────────────────────────────────────────────────────────────
+
+function api(method, path, body) {
+  var opts = {
+    method: method,
+    headers: {'Content-Type': 'application/json', 'Authorization': 'Bearer ' + Layout.getToken()},
+  };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  return fetch(path, opts).then(function(r) {
+    if (!r.ok) return r.json().then(function(e) { throw new Error(e.detail || r.status); });
+    return r.json();
+  });
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+
+function _tagHtml(item) {
+  var cls = item.flag === '+' ? 'br-tag br-tag-up' : 'br-tag br-tag-dn';
+  var arrow = item.flag === '+' ? '↑' : '↓';
+  return '<span class="' + cls + '">' + escHtml(item.label) + ' ' + escHtml(item.value) + ' ' + arrow + '</span>';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function _daysLabel(p) {
+  var d = p.days_since_draw;
+  var cls = p.overdue ? 'br-days overdue' : (d >= 75 ? 'br-days near' : 'br-days ok');
+  var label;
+  if (p.overdue) {
+    label = '已超過 ' + d + ' 天';
+  } else {
+    label = '距離90天：' + p.days_until_due + ' 天';
+  }
+  return '<span class="' + cls + '">' + label + '</span>';
+}
+
+function _buildRow(p, tabType) {
+  var abnormal = p.abnormal_items || [];
+  var tagsHtml = abnormal.length ? '<div class="br-items">' + abnormal.map(_tagHtml).join('') + '</div>' : '';
+  var statusChip = '';
+  if (tabType === 'normal') {
+    statusChip = '<span class="br-tag br-normal" style="margin-left:6px">正常化</span>';
+  } else if (p.overdue) {
+    statusChip = '<span class="br-tag br-due" style="margin-left:6px">需追蹤</span>';
+  }
+
+  var btnHtml = '<button class="act-btn act-danger" style="font-size:12px;padding:5px 10px" onclick="openRemove(' + p.id + ',\'' + escHtml(p.name) + '\')" title="從清單移除">移除</button>';
+
+  return '<div class="dk-row" data-id="' + p.id + '" data-name="' + escHtml(p.name) + '" data-nat="' + escHtml(p.nat_id) + '">' +
+    '<div style="display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0">' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
+          '<span style="font-size:14px;font-weight:700;color:var(--text)">' + escHtml(p.name) + '</span>' +
+          statusChip +
+        '</div>' +
+        '<div style="font-size:12px;color:var(--sub);margin-top:2px">上次抽血：' + escHtml(p.last_draw_date) + '　' + _daysLabel(p) + '</div>' +
+        tagsHtml +
+      '</div>' +
+      '<div style="flex-shrink:0">' + btnHtml + '</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderList(tab) {
+  var patients = _allPatients.filter(function(p) { return p.status === tab; });
+  var q = (document.getElementById('search-input').value || '').trim().toLowerCase();
+  if (q) {
+    patients = patients.filter(function(p) {
+      return p.name.toLowerCase().includes(q) || p.nat_id.toLowerCase().includes(q);
+    });
+  }
+  var el = document.getElementById('list-' + tab);
+  if (!el) return;
+  if (!patients.length) {
+    el.innerHTML = '<div class="br-empty">' + (q ? '找不到符合的病患' : '目前沒有追蹤中的病患') + '</div>';
+    return;
+  }
+  el.innerHTML = patients.map(function(p) { return _buildRow(p, tab); }).join('');
+}
+
+function updateCounts() {
+  var active = _allPatients.filter(function(p){ return p.status === 'active'; }).length;
+  var normal = _allPatients.filter(function(p){ return p.status === 'normal'; }).length;
+  document.getElementById('cnt-active').textContent = active;
+  document.getElementById('cnt-normal').textContent = normal;
+  try { localStorage.setItem('badge_blood-recall', active); } catch(e) {}
+  var badge = document.getElementById('badge-blood-recall');
+  if (badge) {
+    badge.textContent = active;
+    badge.className = active ? 'nb' : 'nb zero';
+  }
+}
+
+function setTab(tab) {
+  _currentTab = tab;
+  document.querySelectorAll('.filter-tab').forEach(function(btn) {
+    btn.classList.toggle('on', btn.dataset.tab === tab);
+  });
+  ['active', 'normal'].forEach(function(t) {
+    var el = document.getElementById('list-' + t);
+    if (el) el.style.display = (t === tab ? '' : 'none');
+  });
+  renderList(tab);
+}
+
+// ── Load ──────────────────────────────────────────────────────────────────────
+
+function load() {
+  api('GET', '/api/blood-recall').then(function(data) {
+    _allPatients = data;
+    updateCounts();
+    renderList(_currentTab);
+    document.getElementById('error-bar').style.display = 'none';
+    // Update note with watched items
+    api('GET', '/api/blood-recall/settings').then(function(s) {
+      var items = (s.watched_items || []);
+      var el = document.getElementById('note-items');
+      if (el) el.textContent = items.length ? items.join('、') : '（尚未設定追蹤指標）';
+    }).catch(function(){});
+  }).catch(function(err) {
+    document.getElementById('error-bar').style.display = 'flex';
+    document.getElementById('error-msg').textContent = '載入失敗：' + err.message;
+  });
+}
+
+// ── Remove modal ──────────────────────────────────────────────────────────────
+
+function openRemove(id, name) {
+  _removeId = id;
+  document.getElementById('modal-remove-sub').textContent = '將「' + name + '」從追蹤清單移除。如果病患再次出現異常值，系統將自動重新加入。';
+  document.getElementById('remove-error').textContent = '';
+  Layout.showModal('modal-remove');
+}
+
+document.getElementById('btn-remove-confirm').addEventListener('click', function() {
+  if (!_removeId) return;
+  var btn = this;
+  btn.disabled = true;
+  api('PATCH', '/api/blood-recall/' + _removeId, {status: 'done'}).then(function() {
+    Layout.hideModal('modal-remove');
+    _allPatients = _allPatients.filter(function(p) { return p.id !== _removeId; });
+    updateCounts();
+    renderList(_currentTab);
+    _removeId = null;
+  }).catch(function(err) {
+    document.getElementById('remove-error').textContent = '移除失敗：' + err.message;
+  }).finally(function() { btn.disabled = false; });
+});
+
+// ── Filter tabs ───────────────────────────────────────────────────────────────
+
+document.getElementById('filter-bar').addEventListener('click', function(e) {
+  var btn = e.target.closest('.filter-tab');
+  if (btn) setTab(btn.dataset.tab);
+});
+
+document.getElementById('search-input').addEventListener('input', function() {
+  renderList(_currentTab);
+});
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+Layout.init({ activePage: 'blood-recall', onRefresh: load });
+load();
+</script>
+</body>
+</html>

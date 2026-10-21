@@ -889,3 +889,106 @@ def get_most_recent_metabolic_panel_date(
         return best.isoformat() if best else None
     except Exception:
         return None
+
+
+def scan_all_for_recall(watched_items: set[str], date_window_days: int) -> list[dict]:
+    """Scan all bio records for patients whose most recent draw has any watched item.
+
+    Returns one entry per patient who has at least one watched item measured in
+    their most recent draw within the date window.  Each entry includes
+    has_abnormal=True when any watched item flag != ''.
+
+    Used by sync_agent to build / update the blood recall list.
+    """
+    from collections import defaultdict
+
+    if not watched_items or not ZZ_DIR:
+        return []
+
+    cutoff_iso = (date.today() - timedelta(days=date_window_days)).isoformat()
+
+    # Build code → nat_id from cached lookups + PAT_HIST
+    code_to_nat: dict[str, str] = {}
+    nat_to_name: dict[str, str] = {}
+    for nid, code in list(_patient_code_cache.items()):
+        if code:
+            code_to_nat[code] = nid
+
+    pat_hist = os.path.join(ZZ_DIR, 'PAT_HIST.DBF')
+    if os.path.isfile(pat_hist):
+        for row in _iter_rows(pat_hist):
+            for fld in ('ID_NEW', 'ID_OLD'):
+                nid = row.get(fld, '').strip()
+                code = row.get('CODE', '').strip()
+                if nid and code:
+                    code_to_nat.setdefault(code, nid)
+
+    # IC files: fill remaining codes + collect patient names
+    if os.path.isdir(IC_DIR):
+        ic_files = sorted(
+            (p for p in _glob.glob(os.path.join(IC_DIR, 'IC?????.DBF'))
+             if os.path.basename(p)[2:-4].isdigit()),
+            reverse=True,
+        )
+        for ic_path in ic_files:
+            for row in _iter_rows(ic_path):
+                nid  = row.get('ID', '').strip()
+                cf   = row.get('CODE_F', '').strip()
+                name = row.get('NAME', '').strip()
+                if nid and len(cf) >= 6 and cf[:6].isdigit():
+                    code_to_nat.setdefault(cf[:6], nid)
+                if nid and name:
+                    nat_to_name.setdefault(nid, name)
+
+    if not code_to_nat:
+        return []
+
+    # {nat_id: {draw_date_iso: [(label, value, flag)]}}
+    patient_draws: dict[str, dict[str, list]] = defaultdict(lambda: defaultdict(list))
+
+    for dbf_name in ('bioc.dbf', 'BIO2C.DBF'):
+        path = os.path.join(ZZ_DIR, dbf_name)
+        if not os.path.isfile(path):
+            continue
+        for row in _cached_rows(path):
+            code = row.get('CODE', '').strip()
+            nat_id = code_to_nat.get(code)
+            if not nat_id:
+                continue
+            disp = _bio_display_date(row)
+            if not disp or disp == '???':
+                continue
+            # Convert YYY/MM/DD to ISO
+            d = _parse_slash_date(disp)
+            if not d or d.isoformat() < cutoff_iso:
+                continue
+            draw_iso = d.isoformat()
+            labels = _bio_labels_for(row.get('DATE', ''))
+            for var, label in labels.items():
+                if label == '__notes__' or label not in watched_items:
+                    continue
+                val = row.get(var, '').strip()
+                if not val:
+                    continue
+                v, flag = _parse_flag(val)
+                patient_draws[nat_id][draw_iso].append((label, v, flag))
+
+    result = []
+    for nat_id, draws in patient_draws.items():
+        if not draws:
+            continue
+        latest_date = max(draws.keys())
+        items_on_latest = draws[latest_date]
+        abnormal = [
+            {'label': lbl, 'value': v, 'flag': f}
+            for lbl, v, f in items_on_latest if f
+        ]
+        result.append({
+            'nat_id': nat_id,
+            'name': nat_to_name.get(nat_id, ''),
+            'last_draw_date': latest_date,
+            'has_abnormal': bool(abnormal),
+            'abnormal_items': abnormal,
+        })
+
+    return result

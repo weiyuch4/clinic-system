@@ -148,7 +148,7 @@ if not contacts.get_nurses():  # first run on this DB — seed from the hardcode
 # still comes from request body fields (Option B shared-session model).
 @app.middleware("http")
 async def require_auth_for_api(request: Request, call_next):
-    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/push-blood-pending", "/api/sync/push-prescriptions", "/api/sync/push-doctor-rates", "/api/sync/status"}
+    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/push-blood-pending", "/api/sync/push-prescriptions", "/api/sync/push-doctor-rates", "/api/sync/status", "/api/sync/push-blood-recall", "/api/sync/blood-recall-settings"}
     if request.url.path.startswith("/api/") and request.url.path not in _sync_exempt:
         token = request.headers.get("Authorization", "")
         if token.startswith("Bearer "):
@@ -1208,6 +1208,76 @@ async def sync_push_blood_pending(request: Request) -> dict:
     contacts.upsert_synced_blood_pending(days, clinic_id)
     _invalidate_blood_pending_cache(clinic_id)
     return {"ok": True, "days": len(days)}
+
+
+@app.get("/api/sync/blood-recall-settings")
+def sync_blood_recall_settings(request: Request) -> dict:
+    token = request.headers.get("X-Sync-Token", "")
+    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    db.set_clinic_id(1)
+    return contacts.get_blood_recall_settings(1)
+
+
+@app.post("/api/sync/push-blood-recall")
+async def sync_push_blood_recall(request: Request) -> dict:
+    token = request.headers.get("X-Sync-Token", "")
+    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    body = await request.json()
+    clinic_id = int(body.get("clinic_id", 1))
+    patients = body.get("patients", [])
+    db.set_clinic_id(clinic_id)
+    for p in patients:
+        nat_id = p.get("nat_id", "").strip()
+        name = p.get("name", "")
+        last_draw_date = p.get("last_draw_date", "")
+        has_abnormal = bool(p.get("has_abnormal", False))
+        abnormal_items = p.get("abnormal_items", [])
+        if not nat_id or not last_draw_date:
+            continue
+        # Only upsert patients with abnormal items; skip if all-normal and not on list
+        if has_abnormal:
+            contacts.upsert_blood_recall_patient(clinic_id, nat_id, name, last_draw_date, abnormal_items, True)
+        else:
+            # Patient had watched items but all-normal on latest draw — update to 'normal' if currently active
+            contacts.upsert_blood_recall_patient(clinic_id, nat_id, name, last_draw_date, abnormal_items, False)
+    return {"ok": True, "processed": len(patients)}
+
+
+@app.get("/api/blood-recall")
+def get_blood_recall(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list:
+    return contacts.get_blood_recall_patients(user.clinic_id)
+
+
+@app.patch("/api/blood-recall/{patient_id}")
+def update_blood_recall(patient_id: int, body: dict = Body(...),
+                         user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    status = body.get("status", "")
+    if status not in ("done", "active"):
+        raise HTTPException(status_code=400, detail="status must be 'done' or 'active'")
+    contacts.update_blood_recall_status(user.clinic_id, patient_id, status)
+    return {"ok": True}
+
+
+@app.get("/api/blood-recall/settings")
+def get_blood_recall_settings(user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    return contacts.get_blood_recall_settings(user.clinic_id)
+
+
+@app.post("/api/blood-recall/settings")
+def save_blood_recall_settings(body: dict = Body(...),
+                                 user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="需要管理員權限")
+    watched_items = body.get("watched_items", [])
+    date_window_days = int(body.get("date_window_days", 365))
+    if not isinstance(watched_items, list):
+        raise HTTPException(status_code=400, detail="watched_items must be a list")
+    if not (30 <= date_window_days <= 730):
+        raise HTTPException(status_code=400, detail="date_window_days must be 30–730")
+    contacts.save_blood_recall_settings(user.clinic_id, watched_items, date_window_days)
+    return {"ok": True}
 
 
 @app.get("/api/sync/status")

@@ -46,6 +46,7 @@
     me:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
     admin:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>',
     risk:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    'blood-recall': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2C6 2 2 9 2 14a10 10 0 0 0 20 0C22 9 18 2 12 2z"/><path d="M12 6v8"/><path d="M8 10h8"/></svg>',
   };
 
   // ── Changelog ────────────────────────────────────────
@@ -78,7 +79,8 @@
     { id: 'mspt',      label: '代謝症候群', href: '/mspt',        badge: true  },
     { id: 'hepatitis', label: 'B/C型肝炎', href: '/hepatitis',   badge: true  },
     { id: 'ckd',       label: '慢性腎臟病', href: '/ckd',         badge: true  },
-    { id: 'lab',       label: '檢驗追蹤',  href: '/lab',         badge: true  },
+    { id: 'lab',          label: '檢驗追蹤',  href: '/lab',          badge: true  },
+    { id: 'blood-recall', label: '抽血追蹤',  href: '/blood-recall', badge: true  },
   ];
   var OTHER_NAV = [
     { id: 'history',   label: '聯繫記錄',  href: '/history',     badge: false },
