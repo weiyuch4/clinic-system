@@ -2467,15 +2467,12 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
         <div>
           <div style="font-size:13.5px;font-weight:600;color:var(--text-1);margin-bottom:4px">追蹤指標</div>
-          <div style="font-size:12.5px;color:var(--text-2);margin-bottom:12px;line-height:1.6">
-            輸入要追蹤的血液檢查項目名稱（與報告中的欄位名稱一致，例如 HDL、S-GOT、Cholesterol）。<br>
-            任一指標出現異常值（↑ 或 ↓），病患即自動加入抽血追蹤清單。
+          <div style="font-size:12.5px;color:var(--text-2);margin-bottom:10px;line-height:1.6">
+            勾選要追蹤的項目。任一指標出現異常值（↑ 或 ↓），病患即自動加入抽血追蹤清單。
           </div>
-          <div id="br-tags" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <input type="text" id="br-tag-input" placeholder="輸入指標名稱後按 Enter 或點新增" style="height:32px;padding:0 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text-1);min-width:200px;flex:1;max-width:300px">
-            <button class="btn-sm primary" onclick="brAddTag()">新增</button>
-          </div>
+          <input type="text" id="br-search" placeholder="搜尋指標…" oninput="brRenderChecklist(this.value)" style="height:30px;padding:0 10px;border:1px solid var(--border);border-radius:6px;font-size:13px;background:var(--surface);color:var(--text-1);width:100%;max-width:260px;margin-bottom:8px;box-sizing:border-box">
+          <div id="br-checklist" style="max-height:240px;overflow-y:auto;border:1px solid var(--border);border-radius:8px;padding:4px 2px;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr))"></div>
+          <div style="font-size:12px;color:var(--text-3);margin-top:6px">已選：<span id="br-selected-count">0</span> 項</div>
         </div>
 
         <div>
@@ -6612,35 +6609,42 @@ async function clearCutoverDate() {
 }
 
 // ── Blood recall settings ─────────────────────────────────────────────────────
-var _brItems = [];
+var _BR_ALL_ITEMS = [
+  'Glucose (AC)', 'HbA1c', 'eAG', 'PC Sugar',
+  'T-Chol (總膽固醇)', 'TG (三酸甘油脂)', 'HDL', 'LDL', 'TC/HDL ratio',
+  'AST (GOT)', 'ALT (GPT)', 'GGT (r-GT)', 'ALK-P (鹼性磷酸酶)',
+  'Bil-T (總膽紅素)', 'Bil-D (直接膽紅素)',
+  'T-Protein (總蛋白)', 'Albumin', 'Globulin (球蛋白)', 'A/G ratio',
+  'BUN', 'Cr (Creatinine, 血)', 'eGFR', 'UA (尿酸)',
+  'Fe (鐵)', 'TIBC', 'Microalbumin (微白蛋白)',
+  'CRP', 'RA', 'IgE', 'VDRL',
+  'TSH', 'T3', 'T4',
+  'HBsAg', 'HBsAb', 'HBeAg', 'HBeAb', 'Anti-HCV', 'HAV-IgG',
+  'AFP', 'CEA', 'CA-125', 'CA-199', 'PSA',
+  'Colon'
+];
+var _brChecked = new Set();
 
-function brRenderTags() {
-  var el = document.getElementById('br-tags');
+function brRenderChecklist(q) {
+  var items = _BR_ALL_ITEMS;
+  if (q) items = items.filter(function(i) { return i.toLowerCase().includes(q.toLowerCase()); });
+  var el = document.getElementById('br-checklist');
   if (!el) return;
-  if (!_brItems.length) { el.innerHTML = '<span style="font-size:12.5px;color:var(--text-3)">尚未新增任何指標</span>'; return; }
-  el.innerHTML = _brItems.map(function(item, i) {
-    return '<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px 3px 12px;border-radius:14px;font-size:12.5px;font-weight:600;background:var(--surface-2,var(--surface));border:1px solid var(--border);color:var(--text-1)">' +
-      item +
-      '<button onclick="brRemoveTag(' + i + ')" title="移除" style="display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;padding:0;line-height:1">×</button>' +
-    '</span>';
+  el.innerHTML = items.map(function(item) {
+    var chk = _brChecked.has(item) ? ' checked' : '';
+    return '<label style="display:flex;align-items:center;gap:7px;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:13px;color:var(--text-1);user-select:none">' +
+      '<input type="checkbox" value="' + item.replace(/"/g,'&quot;') + '"' + chk + ' onchange="brToggle(this)" style="width:14px;height:14px;flex-shrink:0">' +
+      item + '</label>';
   }).join('');
+  var cnt = document.getElementById('br-selected-count');
+  if (cnt) cnt.textContent = _brChecked.size;
 }
 
-function brAddTag() {
-  var input = document.getElementById('br-tag-input');
-  var val = (input.value || '').trim();
-  if (!val) return;
-  if (_brItems.indexOf(val) === -1) {
-    _brItems.push(val);
-    brRenderTags();
-  }
-  input.value = '';
-  input.focus();
-}
-
-function brRemoveTag(i) {
-  _brItems.splice(i, 1);
-  brRenderTags();
+function brToggle(cb) {
+  if (cb.checked) _brChecked.add(cb.value);
+  else _brChecked.delete(cb.value);
+  var cnt = document.getElementById('br-selected-count');
+  if (cnt) cnt.textContent = _brChecked.size;
 }
 
 async function loadBloodRecallSettings() {
@@ -6648,10 +6652,11 @@ async function loadBloodRecallSettings() {
   status.textContent = '載入中…';
   try {
     var s = await api('/api/blood-recall/settings');
-    _brItems = (s.watched_items || []).slice();
+    _brChecked = new Set(s.watched_items || []);
     var win = document.getElementById('br-window');
     if (win) win.value = String(s.date_window_days || 365);
-    brRenderTags();
+    var search = document.getElementById('br-search');
+    brRenderChecklist(search ? search.value : '');
     status.textContent = '';
   } catch(e) {
     status.textContent = '載入失敗：' + (e.message || e);
@@ -6668,7 +6673,7 @@ async function saveBloodRecallSettings() {
     await api('/api/blood-recall/settings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ watched_items: _brItems, date_window_days: parseInt(win.value, 10) })
+      body: JSON.stringify({ watched_items: Array.from(_brChecked), date_window_days: parseInt(win.value, 10) })
     });
     status.textContent = '已儲存。下次同步時（最多 30 分鐘）將以新設定重新掃描。';
   } catch(e) {
@@ -6688,7 +6693,7 @@ function load(section) {
   else if (section === 'labcodes')   loadLabCodes();
   else if (section === 'usersmgmt')  { loadUsers(); loadProfiles(); loadPharmacists(); }
   else if (section === 'clinic-settings') loadClinicSettings();
-  else if (section === 'blood-recall-settings') loadBloodRecallSettings();
+  else if (section === 'blood-recall-settings') { brRenderChecklist(''); loadBloodRecallSettings(); }
 }
 
 function refresh() {
@@ -6715,11 +6720,6 @@ if (_savedAdminTab && $(_savedAdminTab)) {
   const lbl = document.getElementById('adm-sec-label');
   if (activeOpt && lbl) lbl.textContent = activeOpt.dataset.label;
 }
-// Enter key on blood recall tag input
-document.getElementById('br-tag-input').addEventListener('keydown', function(e) {
-  if (e.key === 'Enter') { e.preventDefault(); brAddTag(); }
-});
-
 // ── Lab code settings ─────────────────────────────────────────────────────────
 // ── Lab code settings ─────────────────────────────────────────────────────────
 let _labCatalog = null;         // { chapters: {08:{label,codes:[]}}, names:{code:name} }

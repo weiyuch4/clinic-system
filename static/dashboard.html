@@ -168,6 +168,13 @@
               <div><div class="urg-name">B肝待輸入VPN</div><div class="urg-sub">近期回診未登錄</div></div>
               <div class="urg-count" id="urg-hep">—</div>
             </div>
+            <div class="urg-item">
+              <div class="urg-icon" style="background:#fce7f3">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9d174d" stroke-width="2" stroke-linecap="round"><path d="M12 2C6 2 2 9 2 14a10 10 0 0 0 20 0C22 9 18 2 12 2z"/><path d="M12 6v8"/><path d="M8 10h8"/></svg>
+              </div>
+              <div><div class="urg-name">抽血追蹤</div><div class="urg-sub">異常指標需複查</div></div>
+              <div class="urg-count" id="urg-recall">—</div>
+            </div>
           </div>
 
           <!-- contact log -->
@@ -229,11 +236,12 @@
   var CLOSE_DAYS_DB = {'代謝症候群':90,'B肝':185,'C肝':185,'慢性腎臟病':180};
 
   // ── urgent panel ────────────────────────────────────
-  function renderUrgent(report, bloodCount, rxPendingCount) {
+  function renderUrgent(report, bloodCount, rxPendingCount, brCount) {
     document.getElementById('urg-rx').textContent    = rxPendingCount || 0;
     document.getElementById('urg-blood').textContent = bloodCount;
     document.getElementById('urg-mspt').textContent  = (report.mspt_submittable||[]).length;
     document.getElementById('urg-hep').textContent   = (report.hep_returned||[]).length;
+    document.getElementById('urg-recall').textContent = brCount || 0;
   }
 
   // ── contact log card ────────────────────────────────
@@ -441,9 +449,10 @@
       L.apiFetch('/api/blood-pending').catch(function(){return [];}),
       fetchWeekHistory(),
       L.apiFetch('/api/contacts/history?target_date='+today).catch(function(){return {contacted:[],called:[]};}),
-      L.apiFetch('/api/report/prescriptions').catch(function(){return [];})
+      L.apiFetch('/api/report/prescriptions').catch(function(){return [];}),
+      L.apiFetch('/api/blood-recall').catch(function(){return [];})
     ]).then(function(res){
-      var report=res[0], bloodData=res[1], week=res[2], todayHistory=res[3], rxResp=res[4];
+      var report=res[0], bloodData=res[1], week=res[2], todayHistory=res[3], rxResp=res[4], brData=res[5];
       var rxData = (rxResp && rxResp.rows) ? rxResp.rows : (rxResp || []);
       var bloodCount=0;
       if(Array.isArray(bloodData)) bloodData.forEach(function(day){(day.patients||[]).forEach(function(p){if(p.results_back && !p.notified)bloodCount++;});});
@@ -472,7 +481,8 @@
           }
         });
       });
-      renderUrgent(report, bloodCount, rxPendingCount);
+      var brCount = Array.isArray(brData) ? brData.filter(function(p){ return p.status === 'active'; }).length : 0;
+      renderUrgent(report, bloodCount, rxPendingCount, brCount);
       renderContactLog(todayHistory);
       renderChart(week);
       L.updateLastUpdated();
