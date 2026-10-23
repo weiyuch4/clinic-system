@@ -1098,7 +1098,7 @@ def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
     ckd, ckd_inactive, ckd_upcoming = [], [], []
     for c in synced:
         cat = c["category"]
-        base_cat = cat.removesuffix("_inactive")
+        base_cat = cat.removesuffix("_inactive").removesuffix("_upcoming")
         e = FollowupEntry(
             patient=Patient(
                 chart_number=c["chart_number"],
