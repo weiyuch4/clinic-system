@@ -33,6 +33,10 @@
 :root[data-theme=dark] .br-tag-dn{background:rgba(37,99,235,.15);border-color:rgba(37,99,235,.3)}
 :root[data-theme=dark] .br-normal{background:rgba(21,128,61,.15);border-color:rgba(21,128,61,.3)}
 :root[data-theme=dark] .br-due{background:rgba(194,65,12,.15);border-color:rgba(194,65,12,.3)}
+.p-table th.sortable{cursor:pointer;user-select:none}
+.p-table th.sortable:hover{opacity:.8}
+.sort-arrow{margin-left:4px;opacity:.35;font-size:10px}
+.sort-arrow.on{opacity:1}
 </style>
 </head>
 <body>
@@ -112,6 +116,26 @@
 var _allPatients = [];
 var _currentTab = 'pending';
 var _removeId = null;
+var _sort = { col: 'days', dir: 'desc' };
+
+function sortedRows(arr) {
+  return arr.slice().sort(function(a, b) {
+    var dir = _sort.dir === 'asc' ? 1 : -1;
+    if (_sort.col === 'name') return dir * String(a.name).localeCompare(String(b.name), 'zh-TW');
+    if (_sort.col === 'date') return dir * String(a.last_draw_date || '').localeCompare(String(b.last_draw_date || ''));
+    if (_sort.col === 'days') return dir * ((a.days_since_draw || 0) - (b.days_since_draw || 0));
+    if (_sort.col === 'status') {
+      var sv = function(p) { return p.overdue ? 3 : p.status === 'active' ? 2 : p.status === 'normal' ? 1 : 0; };
+      return dir * (sv(a) - sv(b));
+    }
+    return 0;
+  });
+}
+
+function _sortArrow(col) {
+  if (_sort.col !== col) return '<span class="sort-arrow">↕</span>';
+  return '<span class="sort-arrow on">' + (_sort.dir === 'asc' ? '↑' : '↓') + '</span>';
+}
 
 // ── API ───────────────────────────────────────────────────────────────────────
 
@@ -132,77 +156,95 @@ function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function _daysLabel(p) {
-  var d = p.days_since_draw;
-  var cls = p.overdue ? 'br-days overdue' : (d >= 75 ? 'br-days near' : 'br-days ok');
-  var label;
-  if (p.overdue) {
-    label = '已超過 ' + d + ' 天';
-  } else {
-    label = '距離90天：' + p.days_until_due + ' 天';
-  }
-  return '<span class="' + cls + '">' + label + '</span>';
-}
-
-function _buildRow(p, tabType) {
-  var abnormal = p.abnormal_items || [];
-  var tagsHtml = abnormal.length ? '<div class="br-items">' + abnormal.map(_tagHtml).join('') + '</div>' : '';
-  var statusChip = '';
-  if (p.status === 'normal') {
-    statusChip = '<span class="br-tag br-normal" style="margin-left:6px">抽血正常</span>';
-  } else if (p.overdue) {
-    statusChip = '<span class="br-tag br-due" style="margin-left:6px">需追蹤</span>';
-  }
-
-  var btns;
-  if (tabType === 'contacted') {
-    btns = '<button class="act-btn" style="font-size:12px;padding:5px 10px" onclick="doUncontact(' + p.id + ')">撤銷</button>' +
-           '<button class="act-btn act-danger" style="font-size:12px;padding:5px 10px" onclick="openRemove(' + p.id + ',\'' + escHtml(p.name) + '\')">移除</button>';
-  } else {
-    btns = '<button class="act-btn act-primary" style="font-size:12px;padding:5px 10px" onclick="doContact(' + p.id + ')">已聯繫</button>' +
-           '<button class="act-btn act-danger" style="font-size:12px;padding:5px 10px" onclick="openRemove(' + p.id + ',\'' + escHtml(p.name) + '\')">移除</button>';
-  }
-
-  return '<div class="dk-row" data-id="' + p.id + '">' +
-    '<div style="display:flex;align-items:flex-start;gap:10px;flex:1;min-width:0">' +
-      '<div style="flex:1;min-width:0">' +
-        '<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">' +
-          '<span style="font-size:14px;font-weight:700;color:var(--text)">' + escHtml(p.name) + '</span>' +
-          statusChip +
-        '</div>' +
-        '<div style="font-size:12px;color:var(--sub);margin-top:2px">上次抽血：' + escHtml(p.last_draw_date) + '　' + _daysLabel(p) + '</div>' +
-        tagsHtml +
-      '</div>' +
-      '<div style="display:flex;gap:6px;flex-shrink:0">' + btns + '</div>' +
-    '</div>' +
-  '</div>';
-}
 
 function renderList(tab) {
   var patients;
   if (tab === 'pending') {
     patients = _allPatients.filter(function(p) { return p.status === 'active' || p.status === 'normal'; });
-    // sort: active first, then normal; within each group overdue first
-    patients.sort(function(a, b) {
-      if (a.status !== b.status) return a.status === 'active' ? -1 : 1;
-      return (b.days_since_draw || 0) - (a.days_since_draw || 0);
-    });
   } else {
     patients = _allPatients.filter(function(p) { return p.status === 'contacted'; });
   }
   var q = (document.getElementById('search-input').value || '').trim().toLowerCase();
-  if (q) {
-    patients = patients.filter(function(p) {
-      return p.name.toLowerCase().includes(q) || p.nat_id.toLowerCase().includes(q);
-    });
-  }
+  if (q) patients = patients.filter(function(p) {
+    return p.name.toLowerCase().indexOf(q) !== -1 || p.nat_id.toLowerCase().indexOf(q) !== -1;
+  });
+  patients = sortedRows(patients);
+
   var el = document.getElementById('list-' + tab);
   if (!el) return;
   if (!patients.length) {
     el.innerHTML = '<div class="br-empty">' + (q ? '找不到符合的病患' : '目前沒有追蹤中的病患') + '</div>';
     return;
   }
-  el.innerHTML = patients.map(function(p) { return _buildRow(p, tab); }).join('');
+
+  var tbody = patients.map(function(p) {
+    var abnormal = p.abnormal_items || [];
+    var tagsHtml = abnormal.length
+      ? '<div style="display:flex;flex-wrap:wrap;gap:3px">' + abnormal.map(_tagHtml).join('') + '</div>'
+      : '<span style="color:var(--muted);font-size:11px">—</span>';
+
+    var statusHtml = '';
+    if (p.status === 'normal') statusHtml = '<span class="br-tag br-normal">抽血正常</span>';
+    else if (p.overdue)        statusHtml = '<span class="br-tag br-due">需追蹤</span>';
+
+    var daysCls = p.overdue ? 'br-days overdue' : (p.days_since_draw >= 75 ? 'br-days near' : 'br-days ok');
+    var daysHtml = '<span class="' + daysCls + '">' + (p.overdue ? '已超 ' + p.days_since_draw + ' 天' : p.days_since_draw + ' 天') + '</span>';
+
+    var btns = tab === 'contacted'
+      ? '<button class="act-btn" style="font-size:12px;padding:4px 10px" onclick="doUncontact(' + p.id + ')">撤銷</button>' +
+        '<button class="act-btn act-danger" style="font-size:12px;padding:4px 10px;margin-left:5px" onclick="openRemove(' + p.id + ',\'' + escHtml(p.name) + '\')">移除</button>'
+      : '<button class="act-btn act-primary" style="font-size:12px;padding:4px 10px" onclick="doContact(' + p.id + ')">已聯繫</button>' +
+        '<button class="act-btn act-danger" style="font-size:12px;padding:4px 10px;margin-left:5px" onclick="openRemove(' + p.id + ',\'' + escHtml(p.name) + '\')">移除</button>';
+
+    return '<tr class="pr" data-id="' + p.id + '">' +
+      '<td><span style="font-weight:700">' + escHtml(p.name) + '</span>' +
+        '<div class="pr-copy" data-nat="' + escHtml(p.nat_id) + '" style="font-size:11px;color:var(--muted);margin-top:1px;cursor:pointer" title="點擊複製身份證">' + escHtml(p.nat_id) + '</div></td>' +
+      '<td style="white-space:nowrap;font-size:12.5px;font-variant-numeric:tabular-nums">' + escHtml(p.last_draw_date) + '</td>' +
+      '<td>' + daysHtml + '</td>' +
+      '<td>' + tagsHtml + '</td>' +
+      '<td>' + statusHtml + '</td>' +
+      '<td class="pr-act"><div style="white-space:nowrap">' + btns + '</div></td>' +
+    '</tr>';
+  }).join('');
+
+  el.innerHTML =
+    '<div class="ptbl-wrap">' +
+    '<table class="p-table" style="table-layout:fixed">' +
+      '<colgroup>' +
+        '<col style="width:110px"><col style="width:96px"><col style="width:82px">' +
+        '<col><col style="width:80px"><col style="width:150px">' +
+      '</colgroup>' +
+      '<thead><tr>' +
+        '<th class="sortable" data-col="name">姓名' + _sortArrow('name') + '</th>' +
+        '<th class="sortable" data-col="date">上次抽血' + _sortArrow('date') + '</th>' +
+        '<th class="sortable" data-col="days">天數' + _sortArrow('days') + '</th>' +
+        '<th>異常指標</th>' +
+        '<th class="sortable" data-col="status">狀態' + _sortArrow('status') + '</th>' +
+        '<th>操作</th>' +
+      '</tr></thead>' +
+      '<tbody>' + tbody + '</tbody>' +
+    '</table></div>';
+
+  el.querySelectorAll('th.sortable').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var col = th.dataset.col;
+      if (_sort.col === col) {
+        _sort.dir = _sort.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        _sort.col = col;
+        _sort.dir = (col === 'days' || col === 'status') ? 'desc' : 'asc';
+      }
+      renderList(_currentTab);
+    });
+  });
+
+  el.querySelectorAll('.pr-copy').forEach(function(item) {
+    item.addEventListener('click', function() {
+      var v = item.dataset.nat;
+      if (navigator.clipboard) navigator.clipboard.writeText(v).catch(function(){});
+      Layout.showToast('已複製：' + v);
+    });
+  });
 }
 
 function updateCounts() {
@@ -254,7 +296,7 @@ function load() {
 // ── Contact / Uncontact ───────────────────────────────────────────────────────
 
 function doContact(id) {
-  var row = document.querySelector('.dk-row[data-id="' + id + '"]');
+  var row = document.querySelector('tr[data-id="' + id + '"]');
   if (row) row.style.opacity = '.5';
   api('PATCH', '/api/blood-recall/' + id, {status: 'contacted'}).then(function() {
     var p = _allPatients.find(function(x){ return x.id === id; });
@@ -268,7 +310,7 @@ function doContact(id) {
 }
 
 function doUncontact(id) {
-  var row = document.querySelector('.dk-row[data-id="' + id + '"]');
+  var row = document.querySelector('tr[data-id="' + id + '"]');
   if (row) row.style.opacity = '.5';
   api('PATCH', '/api/blood-recall/' + id, {status: 'active'}).then(function() {
     var p = _allPatients.find(function(x){ return x.id === id; });
