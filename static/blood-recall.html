@@ -12,24 +12,26 @@
 <link rel="stylesheet" href="/static/_layout.css?v=72">
 <style>
 .br-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;vertical-align:middle}
-.br-tag-up{background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.br-tag-up{background:#fef2f2;color:#B91C1C;border:1px solid #fecaca}
 .br-tag-dn{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe}
 .br-normal{background:#f0fdf4;color:#15803d;border:1px solid #bbf7d0}
 .br-due{background:#fff7ed;color:#c2410c;border:1px solid #fed7aa;font-weight:700}
 .br-days{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
-.br-days.overdue{color:#dc2626}
+.br-days.overdue{color:#B91C1C}
 .br-days.near{color:#d97706}
 .br-days.ok{color:var(--sub)}
 .br-items{display:flex;flex-wrap:wrap;gap:4px;margin-top:3px}
 .br-empty{padding:40px 0;text-align:center;color:var(--muted);font-size:13.5px}
 .br-note{font-size:12px;color:var(--muted);margin-top:14px;padding:0 2px;line-height:1.6}
 @media(prefers-color-scheme:dark){
-  :root:not([data-theme=light]) .br-tag-up{background:rgba(220,38,38,.15);border-color:rgba(220,38,38,.3)}
+  :root:not([data-theme=light]) .br-tag-up{background:rgba(220,38,38,.15);color:#F87171;border-color:rgba(220,38,38,.3)}
+  :root:not([data-theme=light]) .br-days.overdue{color:#F87171}
   :root:not([data-theme=light]) .br-tag-dn{background:rgba(37,99,235,.15);border-color:rgba(37,99,235,.3)}
   :root:not([data-theme=light]) .br-normal{background:rgba(21,128,61,.15);border-color:rgba(21,128,61,.3)}
   :root:not([data-theme=light]) .br-due{background:rgba(194,65,12,.15);border-color:rgba(194,65,12,.3)}
 }
-:root[data-theme=dark] .br-tag-up{background:rgba(220,38,38,.15);border-color:rgba(220,38,38,.3)}
+:root[data-theme=dark] .br-tag-up{background:rgba(220,38,38,.15);color:#F87171;border-color:rgba(220,38,38,.3)}
+:root[data-theme=dark] .br-days.overdue{color:#F87171}
 :root[data-theme=dark] .br-tag-dn{background:rgba(37,99,235,.15);border-color:rgba(37,99,235,.3)}
 :root[data-theme=dark] .br-normal{background:rgba(21,128,61,.15);border-color:rgba(21,128,61,.3)}
 :root[data-theme=dark] .br-due{background:rgba(194,65,12,.15);border-color:rgba(194,65,12,.3)}
