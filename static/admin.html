@@ -1571,8 +1571,8 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       <div class="admsb-label">操作</div>
 
       <button class="tab" data-section="linenotify">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        LINE 管理
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6 6l.96-.94a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        LINE 通知
       </button>
       <button class="tab" data-section="labreport">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
@@ -1615,8 +1615,8 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         抽血追蹤
       </button>
       <button class="tab" data-section="line-manage">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        LINE 管理
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        LINE 設定
       </button>
       <div class="admsb-bot">
         <button class="back-btn" onclick="exitAdminMode()">
@@ -2556,32 +2556,31 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         </div>
       </div>
 
-      <div class="card" style="margin-bottom:16px">
-        <div class="card-head"><span class="card-title">推播訊息範本</span></div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
-          當病患已綁定 LINE 帳號時，系統會直接傳送以下訊息，不再需要透過 AlleyPin 自動化。<br>若留空，系統將使用預設訊息。
+      <!-- 訊息範本管理 -->
+      <div style="margin-bottom:16px">
+        <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:12px">
+          <div>
+            <div style="font-size:15px;font-weight:600;color:var(--text-1)">訊息範本管理</div>
+            <div style="font-size:12px;color:var(--sub);margin-top:3px">病患綁定 LINE 後系統自動傳送。可使用 <code style="background:rgba(0,0,0,.07);padding:1px 5px;border-radius:3px;font-size:11px">{患者姓名}</code> 插入姓名，留空套用預設。</div>
+          </div>
+          <button class="btn-sm primary" onclick="lnNewPreset()" style="flex-shrink:0;margin-left:12px">+ 新增範本</button>
         </div>
-        <div class="ln-field">
-          <label>慢簽追蹤訊息</label>
-          <textarea id="ln-tmpl-chronic" rows="3" placeholder="（使用預設）"></textarea>
-        </div>
-        <div class="ln-field">
-          <label>代謝症候群追蹤訊息</label>
-          <textarea id="ln-tmpl-mspt" rows="3" placeholder="（使用預設）"></textarea>
-        </div>
-        <div class="ln-field">
-          <label>B型肝炎追蹤訊息</label>
-          <textarea id="ln-tmpl-hep" rows="3" placeholder="（使用預設）"></textarea>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-          <button class="btn-sm primary" onclick="lnSaveTemplates()">儲存訊息範本</button>
-          <button class="btn-sm" onclick="lnLoadTemplates()">重設為預設</button>
+
+        <div style="display:flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;min-height:420px">
+          <!-- Left: preset list -->
+          <div id="ln-preset-list" style="width:240px;flex-shrink:0;border-right:1.5px solid var(--border);overflow-y:auto;background:var(--sidebar-bg,#F7F7F8)">
+            <div id="ln-preset-list-inner" style="min-height:100%"></div>
+          </div>
+          <!-- Right: editor -->
+          <div id="ln-preset-editor" style="flex:1;overflow-y:auto;background:var(--bg)">
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;min-height:200px;color:var(--muted);font-size:13px">← 選擇左側範本或新增一個</div>
+          </div>
         </div>
       </div>
 
       <div class="card">
         <div class="card-head"><span class="card-title">病患綁定連結</span></div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">將此連結製作成 QR Code 或放在診所網站，病患掃描後輸入病歷號碼即可完成綁定。</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">將此連結製作成 QR Code 或放在診所網站，病患掃描後輸入<strong>身分證字號</strong>即可完成綁定。需透過 LINE 應用程式開啟。</div>
         <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
           <input id="ln-bind-url" type="text" readonly style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:12px;font-family:monospace">
           <button class="btn-sm" onclick="lnCopyBindUrl()">複製</button>
@@ -6876,32 +6875,195 @@ function lnLoadSettings() {
     document.getElementById('ln-s-liff').value = d.liff_id || '';
     document.getElementById('ln-s-active').checked = !!d.is_active;
     lnUpdateBindUrls(d.liff_id);
-    var t = d.message_templates || {};
-    document.getElementById('ln-tmpl-chronic').value = t['慢簽'] || '';
-    document.getElementById('ln-tmpl-mspt').value = t['代謝症候群'] || '';
-    document.getElementById('ln-tmpl-hep').value = t['B肝'] || '';
+    lnLoadPresets(d);
     _lnSettingsLoaded = true;
   }).catch(function() { Layout.showToast('載入LINE設定失敗'); });
 }
 
-function lnLoadTemplates() {
-  fetch('/api/line/templates').then(function(r) { return r.json(); }).then(function(d) {
-    document.getElementById('ln-tmpl-chronic').value = d['慢簽'] || '';
-    document.getElementById('ln-tmpl-mspt').value = d['代謝症候群'] || '';
-    document.getElementById('ln-tmpl-hep').value = d['B肝'] || '';
-    Layout.showToast('已載入預設訊息範本');
-  }).catch(function() { Layout.showToast('載入失敗'); });
+/* ---- preset management ---- */
+var _lnPresets = [];
+var _lnSelectedId = null;
+var _LN_TC = {
+  '慢簽':     {bg:'#EFF6FF',color:'#2563EB',border:'#BFDBFE'},
+  '代謝症候群':{bg:'#F0FDF4',color:'#16A34A',border:'#BBF7D0'},
+  'B肝':      {bg:'#FFF7ED',color:'#EA580C',border:'#FED7AA'},
+  '自訂':     {bg:'#F9FAFB',color:'#6B7280',border:'#E5E7EB'}
+};
+
+function _lnEsc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-function lnSaveTemplates() {
-  var templates = {
-    '慢簽': document.getElementById('ln-tmpl-chronic').value.trim(),
-    '代謝症候群': document.getElementById('ln-tmpl-mspt').value.trim(),
-    'B肝': document.getElementById('ln-tmpl-hep').value.trim(),
-  };
-  fetch('/api/line/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(templates) })
-    .then(function(r) { Layout.showToast(r.ok ? '訊息範本已儲存' : '儲存失敗'); })
-    .catch(function() { Layout.showToast('儲存失敗'); });
+function lnLoadPresets(settingsData) {
+  var d = settingsData;
+  if (d.message_presets && d.message_presets.length) {
+    _lnPresets = d.message_presets;
+  } else {
+    var t = d.message_templates || {};
+    _lnPresets = [
+      {id:'default-chronic', name:'慢性病追蹤', type:'慢簽',    content: t['慢簽'] || ''},
+      {id:'default-mspt',    name:'代謝症候群追蹤', type:'代謝症候群', content: t['代謝症候群'] || ''},
+      {id:'default-hep',     name:'B型肝炎追蹤', type:'B肝',   content: t['B肝'] || ''}
+    ];
+  }
+  lnRenderPresetList();
+  if (_lnPresets.length) lnSelectPreset(_lnPresets[0].id);
+}
+
+function lnRenderPresetList() {
+  var el = document.getElementById('ln-preset-list-inner');
+  if (!el) return;
+  if (!_lnPresets.length) {
+    el.innerHTML = '<div style="padding:24px 14px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.6">尚無範本<br>點擊「+ 新增範本」開始</div>';
+    return;
+  }
+  el.innerHTML = _lnPresets.map(function(p) {
+    var tc = _LN_TC[p.type] || _LN_TC['自訂'];
+    var sel = p.id === _lnSelectedId;
+    var preview = p.content
+      ? p.content.replace(/\{患者姓名\}/g,'患者').substring(0,38) + (p.content.length > 38 ? '…' : '')
+      : '（使用預設訊息）';
+    return '<div onclick="lnSelectPreset(\'' + _lnEsc(p.id) + '\')" style="padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;background:' + (sel ? 'var(--blue-bg,#EFF6FF)' : 'transparent') + ';transition:background .1s">' +
+      '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' +
+        '<span style="font-size:13px;font-weight:600;color:' + (sel ? 'var(--blue,#2563EB)' : 'var(--text-1)') + ';flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _lnEsc(p.name) + '</span>' +
+        '<span style="font-size:10px;padding:1px 6px;border-radius:10px;background:' + tc.bg + ';color:' + tc.color + ';border:1px solid ' + tc.border + ';white-space:nowrap;flex-shrink:0">' + _lnEsc(p.type) + '</span>' +
+      '</div>' +
+      '<div style="font-size:11.5px;color:var(--muted);line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + _lnEsc(preview) + '</div>' +
+    '</div>';
+  }).join('');
+}
+
+function lnSelectPreset(id) {
+  _lnSelectedId = id;
+  lnRenderPresetList();
+  var p = _lnPresets.find(function(x) { return x.id === id; });
+  if (p) lnRenderEditor(p);
+}
+
+function lnRenderEditor(p) {
+  var ed = document.getElementById('ln-preset-editor');
+  if (!ed) return;
+  var typeOptions = ['慢簽','代謝症候群','B肝','自訂'].map(function(t) {
+    return '<option value="' + t + '"' + (t === p.type ? ' selected' : '') + '>' + t + '</option>';
+  }).join('');
+  var previewText = p.content ? _lnEsc(p.content.replace(/\{患者姓名\}/g,'王小明')) : '（使用系統預設訊息）';
+  ed.innerHTML =
+    '<div style="padding:20px 22px">' +
+      '<div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:18px;padding-bottom:16px;border-bottom:1px solid var(--border)">' +
+        '<div style="flex:1">' +
+          '<label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px;letter-spacing:.04em">範本名稱</label>' +
+          '<input id="ln-ed-name" type="text" value="' + _lnEsc(p.name) + '" style="width:100%;padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:13.5px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s" onfocus="this.style.borderColor=\'var(--blue,#2563EB)\'" onblur="this.style.borderColor=\'var(--border)\'">' +
+        '</div>' +
+        '<div>' +
+          '<label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px;letter-spacing:.04em">類型</label>' +
+          '<select id="ln-ed-type" style="padding:7px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:13px;font-family:inherit;outline:none;height:34px">' + typeOptions + '</select>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">' +
+        '<div>' +
+          '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">訊息內容</div>' +
+          '<textarea id="ln-ed-content" rows="8" placeholder="（留空使用預設訊息）" oninput="lnEditorUpdate()" style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-1);font-size:13px;font-family:inherit;outline:none;resize:vertical;line-height:1.6;box-sizing:border-box;transition:border-color .15s" onfocus="this.style.borderColor=\'var(--blue,#2563EB)\'" onblur="this.style.borderColor=\'var(--border)\'">' + _lnEsc(p.content) + '</textarea>' +
+          '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">' +
+            '<button onclick="lnInsertVarEditor()" style="background:rgba(37,99,235,.1);border:1px solid rgba(37,99,235,.25);border-radius:4px;padding:2px 8px;font-size:11.5px;cursor:pointer;color:var(--blue,#2563EB);font-family:inherit">{患者姓名}</button>' +
+            '<span id="ln-ed-count" style="font-size:11px;color:var(--muted)">' + p.content.length + ' 字</span>' +
+          '</div>' +
+        '</div>' +
+        '<div>' +
+          '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">LINE 預覽</div>' +
+          '<div style="background:#86b9e8;border-radius:10px;padding:16px 12px 12px;min-height:160px">' +
+            '<div style="font-size:11px;color:rgba(255,255,255,.7);text-align:center;margin-bottom:10px">今天</div>' +
+            '<div style="display:flex;align-items:flex-start;gap:8px">' +
+              '<div style="width:34px;height:34px;border-radius:50%;background:#06C755;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px">🏥</div>' +
+              '<div style="max-width:calc(100% - 50px)">' +
+                '<div style="font-size:11px;color:#fff;margin-bottom:4px">診所健康提醒</div>' +
+                '<div id="ln-ed-preview" style="background:#fff;border-radius:0 10px 10px 10px;padding:10px 12px;font-size:13px;color:#1a1a1a;line-height:1.6;word-break:break-all;white-space:pre-wrap;box-shadow:0 1px 3px rgba(0,0,0,.15)">' + previewText + '</div>' +
+                '<div style="font-size:10.5px;color:rgba(255,255,255,.6);margin-top:4px">12:00</div>' +
+              '</div>' +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">' +
+        '<button onclick="lnDeleteCurrentPreset()" style="background:none;border:1.5px solid rgba(220,38,38,.3);border-radius:6px;padding:6px 14px;font-size:12.5px;color:rgba(220,38,38,.75);cursor:pointer;font-family:inherit;transition:all .15s" onmouseover="this.style.background=\'rgba(220,38,38,.06)\'" onmouseout="this.style.background=\'none\'">刪除</button>' +
+        '<button onclick="lnSaveCurrentPreset()" class="btn-sm primary" style="font-size:13px;padding:7px 22px">儲存</button>' +
+      '</div>' +
+    '</div>';
+}
+
+function lnEditorUpdate() {
+  var ta = document.getElementById('ln-ed-content');
+  var preview = document.getElementById('ln-ed-preview');
+  var counter = document.getElementById('ln-ed-count');
+  if (!ta || !preview) return;
+  var val = ta.value;
+  preview.textContent = val.trim() ? val.replace(/\{患者姓名\}/g,'王小明') : '（使用系統預設訊息）';
+  if (counter) counter.textContent = val.length + ' 字';
+}
+
+function lnInsertVarEditor() {
+  var el = document.getElementById('ln-ed-content');
+  if (!el) return;
+  var s = el.selectionStart, e = el.selectionEnd;
+  el.value = el.value.substring(0,s) + '{患者姓名}' + el.value.substring(e);
+  el.selectionStart = el.selectionEnd = s + 5;
+  el.focus();
+  lnEditorUpdate();
+}
+
+function lnSaveCurrentPreset() {
+  if (!_lnSelectedId) return;
+  var nameEl = document.getElementById('ln-ed-name');
+  var typeEl = document.getElementById('ln-ed-type');
+  var contentEl = document.getElementById('ln-ed-content');
+  if (!nameEl || !typeEl || !contentEl) return;
+  var name = nameEl.value.trim();
+  if (!name) { Layout.showToast('請輸入範本名稱'); nameEl.focus(); return; }
+  _lnPresets = _lnPresets.map(function(p) {
+    return p.id === _lnSelectedId
+      ? {id:p.id, name:name, type:typeEl.value, content:contentEl.value.trim()}
+      : p;
+  });
+  lnRenderPresetList();
+  lnPersistPresets();
+}
+
+function lnNewPreset() {
+  var id = 'preset-' + Date.now();
+  _lnPresets.push({id:id, name:'新範本', type:'自訂', content:''});
+  _lnSelectedId = id;
+  lnRenderPresetList();
+  lnRenderEditor(_lnPresets[_lnPresets.length - 1]);
+  setTimeout(function() { var n=document.getElementById('ln-ed-name'); if(n){n.select();n.focus();} }, 30);
+}
+
+function lnDeleteCurrentPreset() {
+  if (!_lnSelectedId) return;
+  if (!confirm('確定要刪除這個訊息範本？')) return;
+  _lnPresets = _lnPresets.filter(function(p) { return p.id !== _lnSelectedId; });
+  _lnSelectedId = _lnPresets.length ? _lnPresets[0].id : null;
+  lnRenderPresetList();
+  if (_lnSelectedId) {
+    lnSelectPreset(_lnSelectedId);
+  } else {
+    var ed = document.getElementById('ln-preset-editor');
+    if (ed) ed.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted);font-size:13px">← 選擇範本或點擊「+ 新增範本」</div>';
+  }
+  lnPersistPresets();
+}
+
+function lnPersistPresets() {
+  return fetch('/api/line/settings').then(function(r){return r.json();}).then(function(d) {
+    d.message_presets = _lnPresets;
+    var tmpl = {};
+    ['慢簽','代謝症候群','B肝'].forEach(function(type) {
+      var first = _lnPresets.find(function(p){return p.type===type;});
+      tmpl[type] = first ? first.content : '';
+    });
+    d.message_templates = tmpl;
+    return fetch('/api/line/settings', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+  }).then(function(r) {
+    Layout.showToast(r.ok ? '已儲存' : '儲存失敗');
+  }).catch(function() { Layout.showToast('儲存失敗'); });
 }
 
 function lnUpdateBindUrls(liffId) {
