@@ -1509,17 +1509,21 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .ln-tab.active{color:var(--blue,#2563EB);border-bottom-color:var(--blue,#2563EB)}
 
 /* ── 訊息範本頁 ── */
-.tmpl-frame{display:flex;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;min-height:500px}
-.tmpl-list{width:248px;flex-shrink:0;border-right:1.5px solid var(--border);overflow-y:auto;background:var(--surface)}
-.tmpl-editor{flex:1;overflow-y:auto;background:var(--bg)}
-.tmpl-empty{display:flex;align-items:center;justify-content:center;height:100%;min-height:240px;color:var(--muted);font-size:13px}
-.tmpl-item{padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
-.tmpl-item:hover{background:var(--bg)}
-.tmpl-item.sel{background:var(--blue-bg)}
-.tmpl-item-name{font-size:13px;font-weight:600;color:var(--text-1);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;transition:color .1s}
-.tmpl-item.sel .tmpl-item-name{color:var(--blue,#2563EB)}
-.tmpl-item-row{display:flex;align-items:center;gap:6px;margin-bottom:4px}
-.tmpl-item-preview{font-size:11.5px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* template card gallery */
+.tmpl-cards{display:flex;flex-direction:column;gap:10px}
+.tmpl-card{background:var(--surface);border:1.5px solid var(--border);border-radius:10px;padding:16px 18px;display:flex;align-items:center;gap:14px;transition:border-color .15s,box-shadow .15s}
+.tmpl-card:hover{border-color:var(--blue,#2563EB);box-shadow:0 0 0 3px rgba(37,99,235,.08)}
+.tmpl-card-body{flex:1;min-width:0}
+.tmpl-card-head{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.tmpl-card-name{font-size:14px;font-weight:600;color:var(--text-1)}
+.tmpl-card-preview{font-size:12.5px;color:var(--muted);line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* edit modal */
+.tmpl-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);animation:modal-bd-in .12s ease-out}
+.tmpl-modal{background:var(--surface);border-radius:14px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.3);animation:modal-in .15s cubic-bezier(.16,1,.3,1)}
+.tmpl-modal-head{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;position:sticky;top:0;background:var(--surface);z-index:1}
+.tmpl-modal-title{font-size:16px;font-weight:700;color:var(--text-1);flex:1}
+.tmpl-modal-body{padding:20px 24px}
+.tmpl-modal-foot{padding:14px 24px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;bottom:0;background:var(--surface);z-index:1}
 .ic{background:none;padding:0;border:none;cursor:pointer;font-family:inherit}
 /* type badge tokens — light */
 :root{
@@ -2693,14 +2697,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       <button class="btn-sm primary" onclick="lnNewPreset()" style="flex-shrink:0;white-space:nowrap">+ 新增範本</button>
     </div>
 
-    <div class="tmpl-frame">
-      <div id="ln-preset-list" class="tmpl-list">
-        <div id="ln-preset-list-inner"></div>
-      </div>
-      <div id="ln-preset-editor" class="tmpl-editor">
-        <div class="tmpl-empty">← 選擇左側範本，或點擊「+ 新增範本」</div>
-      </div>
-    </div>
+    <div id="ln-preset-list" class="tmpl-cards"></div>
   </section>
 
 </main>
@@ -6922,7 +6919,6 @@ function lnLoadSettings() {
 
 /* ---- preset management ---- */
 var _lnPresets = [];
-var _lnSelectedId = null;
 var _lnPresetsLoaded = false;
 var _LN_TC = {
   '慢簽':     {bg:'var(--badge-blue-bg)',   color:'var(--badge-blue-c)',   border:'var(--badge-blue-bd)'},
@@ -6956,88 +6952,112 @@ function _lnInitPresets(d) {
   }
   _lnPresetsLoaded = true;
   lnRenderPresetList();
-  if (_lnPresets.length) lnSelectPreset(_lnPresets[0].id);
 }
 
 function lnRenderPresetList() {
-  var el = document.getElementById('ln-preset-list-inner');
+  var el = document.getElementById('ln-preset-list');
   if (!el) return;
   if (!_lnPresets.length) {
-    el.innerHTML = '<div style="padding:28px 16px;text-align:center;color:var(--muted);font-size:12.5px;line-height:1.8">尚無範本<br>點擊「+ 新增範本」開始</div>';
+    el.innerHTML = '<div style="text-align:center;padding:48px 20px;color:var(--muted);font-size:13px;line-height:1.7">尚無訊息範本<br>點擊「+ 新增範本」建立第一個</div>';
     return;
   }
   el.innerHTML = _lnPresets.map(function(p) {
     var tc = _LN_TC[p.type] || _LN_TC['自訂'];
-    var sel = p.id === _lnSelectedId;
     var preview = p.content
-      ? p.content.replace(/\{患者姓名\}/g,'患者').substring(0,40) + (p.content.length > 40 ? '…' : '')
-      : '（使用預設訊息）';
-    return '<div class="tmpl-item' + (sel ? ' sel' : '') + '" onclick="lnSelectPreset(\'' + _lnEsc(p.id) + '\')">' +
-      '<div class="tmpl-item-row">' +
-        '<span class="tmpl-item-name">' + _lnEsc(p.name) + '</span>' +
-        '<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:' + tc.bg + ';color:' + tc.color + ';border:1px solid ' + tc.border + ';white-space:nowrap;flex-shrink:0">' + _lnEsc(p.type) + '</span>' +
+      ? p.content.replace(/\{患者姓名\}/g,'患者')
+      : '（使用系統預設訊息）';
+    return '<div class="tmpl-card">' +
+      '<div class="tmpl-card-body">' +
+        '<div class="tmpl-card-head">' +
+          '<span class="tmpl-card-name">' + _lnEsc(p.name) + '</span>' +
+          '<span style="font-size:10.5px;padding:2px 8px;border-radius:10px;background:' + tc.bg + ';color:' + tc.color + ';border:1px solid ' + tc.border + ';white-space:nowrap;flex-shrink:0">' + _lnEsc(p.type) + '</span>' +
+        '</div>' +
+        '<div class="tmpl-card-preview">' + _lnEsc(preview) + '</div>' +
       '</div>' +
-      '<div class="tmpl-item-preview">' + _lnEsc(preview) + '</div>' +
+      '<button class="btn-sm" onclick="lnOpenEditModal(\'' + _lnEsc(p.id) + '\')" style="flex-shrink:0">編輯</button>' +
     '</div>';
   }).join('');
 }
 
-function lnSelectPreset(id) {
-  _lnSelectedId = id;
-  lnRenderPresetList();
-  var p = _lnPresets.find(function(x) { return x.id === id; });
-  if (p) lnRenderEditor(p);
-}
+function lnOpenEditModal(id) {
+  var isNew = !id;
+  var p = isNew ? {id:'preset-'+Date.now(), name:'', type:'自訂', content:''} : _lnPresets.find(function(x){return x.id===id;});
+  if (!p) return;
 
-function lnRenderEditor(p) {
-  var ed = document.getElementById('ln-preset-editor');
-  if (!ed) return;
   var typeOptions = ['慢簽','代謝症候群','B肝','自訂'].map(function(t) {
-    return '<option value="' + t + '"' + (t === p.type ? ' selected' : '') + '>' + t + '</option>';
+    return '<option value="'+t+'"'+(t===p.type?' selected':'')+'>'+t+'</option>';
   }).join('');
   var previewText = p.content ? _lnEsc(p.content.replace(/\{患者姓名\}/g,'王小明')) : '（使用系統預設訊息）';
-  ed.innerHTML =
-    '<div style="padding:22px 24px">' +
-      '<div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid var(--border)">' +
-        '<div style="flex:1">' +
-          '<label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase">範本名稱</label>' +
-          '<input id="ln-ed-name" class="ln-field-input" type="text" value="' + _lnEsc(p.name) + '">' +
-        '</div>' +
-        '<div>' +
-          '<label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase">類型</label>' +
-          '<select id="ln-ed-type" class="ln-field-input" style="height:36px">' + typeOptions + '</select>' +
-        '</div>' +
+  var sid = _lnEsc(p.id);
+
+  var modal = document.createElement('div');
+  modal.className = 'tmpl-modal-bg';
+  modal.id = 'ln-tmpl-modal';
+  modal.onclick = function(e){ if(e.target===modal) lnCloseModal(); };
+
+  modal.innerHTML =
+    '<div class="tmpl-modal">' +
+      '<div class="tmpl-modal-head">' +
+        '<span class="tmpl-modal-title">'+(isNew?'新增訊息範本':'編輯訊息範本')+'</span>' +
+        '<button onclick="lnCloseModal()" style="background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;line-height:1;padding:2px 6px;border-radius:4px;font-family:inherit" title="關閉">✕</button>' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">' +
-        '<div>' +
-          '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">訊息內容</div>' +
-          '<textarea id="ln-ed-content" class="ln-field-input" rows="8" placeholder="（留空使用預設訊息）" oninput="lnEditorUpdate()" style="resize:vertical;line-height:1.6">' + _lnEsc(p.content) + '</textarea>' +
-          '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">' +
-            '<button onclick="lnInsertVarEditor()" style="background:var(--badge-blue-bg);border:1px solid var(--badge-blue-bd);border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer;color:var(--badge-blue-c);font-family:inherit">{患者姓名}</button>' +
-            '<span id="ln-ed-count" style="font-size:11px;color:var(--muted)">' + p.content.length + ' 字</span>' +
+      '<div class="tmpl-modal-body">' +
+        '<div style="display:flex;gap:12px;margin-bottom:18px">' +
+          '<div style="flex:1">' +
+            '<label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase">範本名稱</label>' +
+            '<input id="ln-ed-name" class="ln-field-input" type="text" value="'+_lnEsc(p.name)+'" placeholder="例：慢性病追蹤提醒">' +
+          '</div>' +
+          '<div>' +
+            '<label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase">類型</label>' +
+            '<select id="ln-ed-type" class="ln-field-input" style="height:36px">'+typeOptions+'</select>' +
           '</div>' +
         '</div>' +
-        '<div>' +
-          '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">LINE 預覽</div>' +
-          '<div style="background:#7EB2D7;border-radius:12px;padding:16px 14px 14px">' +
-            '<div style="font-size:11px;color:rgba(255,255,255,.75);text-align:center;margin-bottom:12px">今天</div>' +
-            '<div style="display:flex;align-items:flex-start;gap:9px">' +
-              '<div style="width:36px;height:36px;border-radius:50%;background:#06C755;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">🏥</div>' +
-              '<div style="max-width:calc(100% - 52px)">' +
-                '<div style="font-size:11px;color:rgba(255,255,255,.85);margin-bottom:5px">診所健康提醒</div>' +
-                '<div id="ln-ed-preview" style="background:#fff;border-radius:2px 12px 12px 12px;padding:10px 13px;font-size:13px;color:#111;line-height:1.65;word-break:break-all;white-space:pre-wrap;box-shadow:0 1px 4px rgba(0,0,0,.18)">' + previewText + '</div>' +
-                '<div style="font-size:10px;color:rgba(255,255,255,.55);margin-top:5px;text-align:right">12:00</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">' +
+          '<div>' +
+            '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">訊息內容</div>' +
+            '<textarea id="ln-ed-content" class="ln-field-input" rows="8" placeholder="（留空使用預設訊息）" oninput="lnEditorUpdate()" style="resize:vertical;line-height:1.6">'+_lnEsc(p.content)+'</textarea>' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">' +
+              '<button onclick="lnInsertVarEditor()" style="background:var(--badge-blue-bg);border:1px solid var(--badge-blue-bd);border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer;color:var(--badge-blue-c);font-family:inherit">{患者姓名}</button>' +
+              '<span id="ln-ed-count" style="font-size:11px;color:var(--muted)">'+p.content.length+' 字</span>' +
+            '</div>' +
+          '</div>' +
+          '<div>' +
+            '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">LINE 預覽</div>' +
+            '<div style="background:#7EB2D7;border-radius:12px;padding:16px 14px 14px">' +
+              '<div style="font-size:11px;color:rgba(255,255,255,.75);text-align:center;margin-bottom:12px">今天</div>' +
+              '<div style="display:flex;align-items:flex-start;gap:9px">' +
+                '<div style="width:36px;height:36px;border-radius:50%;background:#06C755;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">🏥</div>' +
+                '<div style="max-width:calc(100% - 52px)">' +
+                  '<div style="font-size:11px;color:rgba(255,255,255,.85);margin-bottom:5px">診所健康提醒</div>' +
+                  '<div id="ln-ed-preview" style="background:#fff;border-radius:2px 12px 12px 12px;padding:10px 13px;font-size:13px;color:#111;line-height:1.65;word-break:break-all;white-space:pre-wrap;box-shadow:0 1px 4px rgba(0,0,0,.18)">'+previewText+'</div>' +
+                  '<div style="font-size:10px;color:rgba(255,255,255,.55);margin-top:5px;text-align:right">12:00</div>' +
+                '</div>' +
               '</div>' +
             '</div>' +
           '</div>' +
         '</div>' +
       '</div>' +
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:22px;padding-top:18px;border-top:1px solid var(--border)">' +
-        '<button onclick="lnDeleteCurrentPreset()" class="btn-sm" style="color:var(--red,#DC2626);border-color:rgba(220,38,38,.35)">刪除範本</button>' +
-        '<button onclick="lnSaveCurrentPreset()" class="btn-sm primary" style="padding:7px 24px">儲存</button>' +
+      '<div class="tmpl-modal-foot">' +
+        (isNew ? '<span></span>' : '<button onclick="lnDeleteCurrentPreset(\''+sid+'\')" class="btn-sm" style="color:var(--red,#DC2626);border-color:rgba(220,38,38,.35)">刪除範本</button>') +
+        '<div style="display:flex;gap:8px">' +
+          '<button onclick="lnCloseModal()" class="btn-sm">取消</button>' +
+          '<button onclick="lnSaveCurrentPreset(\''+sid+'\','+isNew+')" class="btn-sm primary" style="padding:7px 22px">儲存</button>' +
+        '</div>' +
       '</div>' +
     '</div>';
+
+  document.body.appendChild(modal);
+  document.addEventListener('keydown', _lnModalKey);
+  setTimeout(function(){ var n=document.getElementById('ln-ed-name'); if(n){n.focus();if(isNew)n.select();} }, 40);
 }
+
+function lnCloseModal() {
+  var m = document.getElementById('ln-tmpl-modal');
+  if (m) m.remove();
+  document.removeEventListener('keydown', _lnModalKey);
+}
+
+function _lnModalKey(e) { if (e.key === 'Escape') lnCloseModal(); }
 
 function lnEditorUpdate() {
   var ta = document.getElementById('ln-ed-content');
@@ -7059,44 +7079,32 @@ function lnInsertVarEditor() {
   lnEditorUpdate();
 }
 
-function lnSaveCurrentPreset() {
-  if (!_lnSelectedId) return;
+function lnSaveCurrentPreset(presetId, isNew) {
   var nameEl = document.getElementById('ln-ed-name');
   var typeEl = document.getElementById('ln-ed-type');
   var contentEl = document.getElementById('ln-ed-content');
   if (!nameEl || !typeEl || !contentEl) return;
   var name = nameEl.value.trim();
   if (!name) { Layout.showToast('請輸入範本名稱'); nameEl.focus(); return; }
-  _lnPresets = _lnPresets.map(function(p) {
-    return p.id === _lnSelectedId
-      ? {id:p.id, name:name, type:typeEl.value, content:contentEl.value.trim()}
-      : p;
-  });
+  if (isNew) {
+    _lnPresets.push({id:presetId, name:name, type:typeEl.value, content:contentEl.value.trim()});
+  } else {
+    _lnPresets = _lnPresets.map(function(p) {
+      return p.id===presetId ? {id:p.id, name:name, type:typeEl.value, content:contentEl.value.trim()} : p;
+    });
+  }
+  lnCloseModal();
   lnRenderPresetList();
   lnPersistPresets();
 }
 
-function lnNewPreset() {
-  var id = 'preset-' + Date.now();
-  _lnPresets.push({id:id, name:'新範本', type:'自訂', content:''});
-  _lnSelectedId = id;
-  lnRenderPresetList();
-  lnRenderEditor(_lnPresets[_lnPresets.length - 1]);
-  setTimeout(function() { var n=document.getElementById('ln-ed-name'); if(n){n.select();n.focus();} }, 30);
-}
+function lnNewPreset() { lnOpenEditModal(null); }
 
-function lnDeleteCurrentPreset() {
-  if (!_lnSelectedId) return;
+function lnDeleteCurrentPreset(presetId) {
   if (!confirm('確定要刪除這個訊息範本？')) return;
-  _lnPresets = _lnPresets.filter(function(p) { return p.id !== _lnSelectedId; });
-  _lnSelectedId = _lnPresets.length ? _lnPresets[0].id : null;
+  _lnPresets = _lnPresets.filter(function(p){ return p.id !== presetId; });
+  lnCloseModal();
   lnRenderPresetList();
-  if (_lnSelectedId) {
-    lnSelectPreset(_lnSelectedId);
-  } else {
-    var ed = document.getElementById('ln-preset-editor');
-    if (ed) ed.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px;color:var(--muted);font-size:13px">← 選擇範本或點擊「+ 新增範本」</div>';
-  }
   lnPersistPresets();
 }
 
