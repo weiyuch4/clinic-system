@@ -9,3 +9,5 @@ psycopg2-binary
 python-dotenv>=1.0
 requests>=2.31
 watchdog>=3.0
+apscheduler>=3.10.0
+pytz>=2024.1

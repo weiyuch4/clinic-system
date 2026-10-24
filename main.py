@@ -16,7 +16,7 @@ _env_file = ".env.dev" if os.path.exists(".env.dev") else ".env"
 load_dotenv(_env_file, override=True)
 
 import uvicorn
-from fastapi import Body, Depends, FastAPI, HTTPException, Query, Request, UploadFile, File
+from fastapi import BackgroundTasks, Body, Depends, FastAPI, HTTPException, Query, Request, UploadFile, File
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
@@ -30,6 +30,10 @@ import directory
 import lab_report
 import lab_results
 import line_service
+import broadcast_service
+import ai_agent_service
+import review_service
+import scheduler
 import settings as _settings
 from models import (
     BloodDismissRequest, BloodNotifiedRequest, BloodPhysicalRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
@@ -41,6 +45,11 @@ from models import (
     NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
     RenameUserRequest, ResetPasswordRequest, SalaryRecordRequest, SendLineNotificationsRequest, ShiftEntry, SubmitRequest,
     UnexcludeRequest, UndoLineNotificationRequest, UpdateExclusionReasonRequest,
+    BroadcastCreateRequest,
+    AiAgentSettingsRequest,
+    AiKbUpsertRequest,
+    ReviewSettingsRequest,
+    ReviewSendRequest,
 )
 
 # ── Edit this for your clinic's name ───────────────────────────────────────────
@@ -108,6 +117,22 @@ contacts.init()
 directory.init()
 lab_report.init()
 line_service.init()
+broadcast_service.init()
+ai_agent_service.init()
+review_service.init()
+
+# ── Scheduler ──────────────────────────────────────────────────────────────────
+import atexit
+from apscheduler.triggers.interval import IntervalTrigger as _IntervalTrigger
+scheduler.start()
+scheduler.get().add_job(
+    broadcast_service.tick_scheduled,
+    _IntervalTrigger(minutes=1),
+    id="broadcast_tick",
+    replace_existing=True,
+)
+atexit.register(scheduler.shutdown)
+
 backup.run()
 if CLOUD_MODE:
     database._blood_status_ready.set()  # no BIO files on cloud — skip warmup
@@ -2953,6 +2978,408 @@ def get_line_audit_log(
 def get_bound_chart_numbers(user: auth.CurrentUser = Depends(auth.get_current_user)):
     bindings = line_service.get_all_bindings(user.clinic_id)
     return {"chart_numbers": [b["chart_number"] for b in bindings]}
+
+
+# ── Broadcast page ─────────────────────────────────────────────────────────────
+
+@app.get("/broadcasts")
+def broadcasts_page() -> Response:
+    try:
+        content = open("static/broadcasts.html", "rb").read()
+    except OSError:
+        raise HTTPException(status_code=503, detail="無法載入頁面")
+    return Response(content=content, media_type="text/html",
+                    headers={"Cache-Control": "no-store"})
+
+
+# ── Broadcast API ───────────────────────────────────────────────────────────────
+
+@app.get("/api/broadcasts")
+def api_list_broadcasts(
+    limit: int = Query(100, ge=1, le=500),
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+) -> list[dict]:
+    return broadcast_service.list_broadcasts(admin.clinic_id, limit)
+
+
+@app.post("/api/broadcasts", status_code=201)
+def api_create_broadcast(
+    body: BroadcastCreateRequest,
+    background_tasks: BackgroundTasks,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+) -> dict:
+    name = body.name.strip()
+    content = body.content.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="名稱不可空白")
+    if not content:
+        raise HTTPException(status_code=400, detail="訊息內容不可空白")
+    if len(content) > 5000:
+        raise HTTPException(status_code=400, detail="訊息內容不可超過 5000 字")
+    scheduled_at = body.scheduled_at.strip()
+    broadcast_id = broadcast_service.create_broadcast(
+        clinic_id=admin.clinic_id,
+        name=name,
+        content=content,
+        audience_filter=body.audience_filter,
+        scheduled_at=scheduled_at,
+        created_by=admin.display_name,
+    )
+    if not scheduled_at:
+        # Send now in background
+        background_tasks.add_task(
+            broadcast_service.execute_broadcast, broadcast_id, admin.clinic_id
+        )
+    return {"id": broadcast_id, "scheduled": bool(scheduled_at)}
+
+
+@app.get("/api/broadcasts/{broadcast_id}")
+def api_get_broadcast(
+    broadcast_id: int,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+) -> dict:
+    bc = broadcast_service.get_broadcast(broadcast_id, admin.clinic_id)
+    if not bc:
+        raise HTTPException(status_code=404, detail="找不到此廣播")
+    return bc
+
+
+@app.post("/api/broadcasts/{broadcast_id}/send")
+def api_send_broadcast(
+    broadcast_id: int,
+    background_tasks: BackgroundTasks,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+) -> dict:
+    bc = broadcast_service.get_broadcast(broadcast_id, admin.clinic_id)
+    if not bc:
+        raise HTTPException(status_code=404, detail="找不到此廣播")
+    if bc["status"] not in ("draft", "scheduled"):
+        raise HTTPException(status_code=400, detail="此廣播狀態無法重新發送")
+    background_tasks.add_task(
+        broadcast_service.execute_broadcast, broadcast_id, admin.clinic_id
+    )
+    return {"ok": True}
+
+
+@app.delete("/api/broadcasts/{broadcast_id}")
+def api_cancel_broadcast(
+    broadcast_id: int,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+) -> dict:
+    cancelled = broadcast_service.cancel_broadcast(broadcast_id, admin.clinic_id)
+    if not cancelled:
+        raise HTTPException(status_code=400, detail="此廣播無法取消（已發送或不存在）")
+    return {"ok": True}
+
+
+@app.get("/api/broadcasts/{broadcast_id}/recipients")
+def api_get_recipients(
+    broadcast_id: int,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+) -> list[dict]:
+    bc = broadcast_service.get_broadcast(broadcast_id, admin.clinic_id)
+    if not bc:
+        raise HTTPException(status_code=404, detail="找不到此廣播")
+    return broadcast_service.get_recipients(broadcast_id, admin.clinic_id)
+
+
+# ── AI Agent routes ────────────────────────────────────────────────────────────
+
+@app.get("/ai-agent")
+def ai_agent_page():
+    return FileResponse("static/ai-agent.html")
+
+
+@app.get("/api/ai-agent/settings")
+def ai_get_settings(admin: auth.CurrentUser = Depends(auth.require_admin)):
+    return ai_agent_service.get_settings(admin.clinic_id)
+
+
+@app.post("/api/ai-agent/settings")
+def ai_save_settings(
+    req: AiAgentSettingsRequest,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+):
+    ai_agent_service.save_settings(
+        admin.clinic_id,
+        enabled=req.enabled,
+        provider=req.provider,
+        gemini_api_key=req.gemini_api_key,
+        claude_api_key=req.claude_api_key,
+        model_name=req.model_name,
+        system_prompt=req.system_prompt,
+        schedule_json=req.schedule_json,
+    )
+    return {"status": "ok"}
+
+
+@app.get("/api/ai-agent/kb")
+def ai_list_kb(admin: auth.CurrentUser = Depends(auth.require_admin)):
+    return ai_agent_service.list_kb(admin.clinic_id)
+
+
+@app.post("/api/ai-agent/kb")
+def ai_upsert_kb(
+    req: AiKbUpsertRequest,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+):
+    new_id = ai_agent_service.upsert_kb(
+        admin.clinic_id,
+        title=req.title,
+        content=req.content,
+        category=req.category,
+        is_active=req.is_active,
+        sort_order=req.sort_order,
+        kb_id=req.id,
+    )
+    return {"id": new_id}
+
+
+@app.delete("/api/ai-agent/kb/{kb_id}")
+def ai_delete_kb(
+    kb_id: int,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+):
+    ok = ai_agent_service.delete_kb(kb_id, admin.clinic_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="找不到此知識庫條目")
+    return {"status": "ok"}
+
+
+@app.get("/api/ai-agent/conversations")
+def ai_list_conversations(
+    limit: int = Query(50, ge=1, le=200),
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+):
+    return ai_agent_service.list_conversations(admin.clinic_id, limit)
+
+
+# ── Review Automation routes ───────────────────────────────────────────────────
+
+@app.get("/reviews")
+def reviews_page():
+    return FileResponse("static/reviews.html")
+
+
+@app.get("/api/reviews/settings")
+def reviews_get_settings(admin: auth.CurrentUser = Depends(auth.require_admin)):
+    return review_service.get_settings(admin.clinic_id)
+
+
+@app.post("/api/reviews/settings")
+def reviews_save_settings(
+    req: ReviewSettingsRequest,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+):
+    review_service.save_settings(
+        admin.clinic_id,
+        enabled=req.enabled,
+        google_maps_url=req.google_maps_url,
+        threshold=req.threshold,
+        message_template=req.message_template,
+        base_url=req.base_url,
+    )
+    return {"status": "ok"}
+
+
+@app.post("/api/reviews/send")
+def reviews_send(
+    req: ReviewSendRequest,
+    background_tasks: BackgroundTasks,
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+):
+    """Send review invites to a list of bound patients."""
+    s = review_service.get_settings(admin.clinic_id)
+    if not s.get("enabled"):
+        raise HTTPException(status_code=400, detail="評論自動化尚未啟用")
+    access_token = (line_service.get_settings(admin.clinic_id).get("channel_access_token") or "").strip()
+    if not access_token:
+        raise HTTPException(status_code=400, detail="LINE 憑證尚未設定")
+    base_url = s.get("base_url", "").strip()
+    if not base_url:
+        raise HTTPException(status_code=400, detail="請先設定診所網址 (base_url)")
+
+    results = []
+    for chart in req.chart_numbers[:50]:  # cap at 50 per call
+        with db._conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT line_user_id FROM line_bindings WHERE chart_number=%s AND clinic_id=%s",
+                    (chart, admin.clinic_id),
+                )
+                binding = cur.fetchone()
+        if not binding:
+            results.append({"chart_number": chart, "ok": False, "detail": "未綁定 LINE"})
+            continue
+        result = review_service.send_review_invite(
+            clinic_id=admin.clinic_id,
+            chart_number=chart,
+            line_user_id=binding["line_user_id"],
+            patient_name=chart,
+            access_token=access_token,
+            base_url=base_url,
+            message_template=s.get("message_template", ""),
+        )
+        results.append({"chart_number": chart, **result})
+    return results
+
+
+@app.get("/api/reviews/requests")
+def reviews_list_requests(
+    limit: int = Query(100, ge=1, le=500),
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+):
+    return review_service.list_requests(admin.clinic_id, limit)
+
+
+@app.get("/api/reviews/feedback")
+def reviews_list_feedback(
+    limit: int = Query(100, ge=1, le=500),
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+):
+    return review_service.list_feedback(admin.clinic_id, limit)
+
+
+@app.get("/api/reviews/stats")
+def reviews_stats(admin: auth.CurrentUser = Depends(auth.require_admin)):
+    return review_service.get_stats(admin.clinic_id)
+
+
+# ── Public review pages (no auth — patients access these) ─────────────────────
+
+_REVIEW_PAGE = """<!doctype html><html lang="zh-TW"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>診所評分</title>
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif;background:#F8F9FA;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}
+.card{{background:#fff;border-radius:16px;padding:36px 28px;max-width:400px;width:100%;text-align:center;box-shadow:0 4px 24px rgba(0,0,0,.1)}}
+h1{{font-size:22px;margin-bottom:8px}}
+p{{color:#6B7280;font-size:14px;margin-bottom:28px;line-height:1.6}}
+.stars{{display:flex;justify-content:center;gap:12px;margin-bottom:28px}}
+.star{{font-size:40px;cursor:pointer;color:#D1D5DB;transition:color .15s;border:none;background:none;padding:4px}}
+.star:hover,.star.sel{{color:#F59E0B}}
+.btn{{display:block;width:100%;padding:14px;background:#2563EB;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;margin-top:4px}}
+.btn:disabled{{opacity:.5;pointer-events:none}}
+#msg{{font-size:14px;color:#DC2626;margin-top:12px;min-height:20px}}
+</style></head><body>
+<div class="card">
+  <h1>請為我們評分</h1>
+  <p>感謝您今天的來訪！<br>您的意見幫助我們持續改進。</p>
+  <div class="stars" id="stars">
+    <button class="star" data-v="1" onclick="rate(1)">★</button>
+    <button class="star" data-v="2" onclick="rate(2)">★</button>
+    <button class="star" data-v="3" onclick="rate(3)">★</button>
+    <button class="star" data-v="4" onclick="rate(4)">★</button>
+    <button class="star" data-v="5" onclick="rate(5)">★</button>
+  </div>
+  <button class="btn" id="submit-btn" onclick="submit()" disabled>送出評分</button>
+  <div id="msg"></div>
+</div>
+<script>
+let _sel = 0;
+function rate(v) {{
+  _sel = v;
+  document.querySelectorAll('.star').forEach(s => {{
+    s.classList.toggle('sel', parseInt(s.dataset.v) <= v);
+  }});
+  document.getElementById('submit-btn').disabled = false;
+}}
+async function submit() {{
+  if (!_sel) return;
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.textContent = '送出中…';
+  const r = await fetch('/review/{TOKEN}', {{
+    method:'POST', headers:{{'Content-Type':'application/json'}},
+    body: JSON.stringify({{rating: _sel}})
+  }});
+  const d = await r.json();
+  if (d.action === 'maps' && d.google_maps_url) {{
+    document.querySelector('.card').innerHTML = '<h1 style="margin-bottom:16px">感謝您的評分！</h1><p style="margin-bottom:24px">您的回饋對我們非常重要。<br>如果方便，歡迎在 Google 上留下評論！</p><a href="' + d.google_maps_url + '" target="_blank" style="display:block;padding:14px;background:#2563EB;color:#fff;border-radius:10px;font-weight:700;text-decoration:none;font-size:16px">前往 Google 評論 ★</a>';
+  }} else if (d.action === 'feedback') {{
+    location.href = '/feedback/{TOKEN}';
+  }} else {{
+    document.getElementById('msg').textContent = d.detail || '已送出，感謝您！';
+  }}
+}}
+</script></body></html>"""
+
+_FEEDBACK_PAGE = """<!doctype html><html lang="zh-TW"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>意見回饋</title>
+<style>
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif;background:#F8F9FA;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px}}
+.card{{background:#fff;border-radius:16px;padding:36px 28px;max-width:400px;width:100%;box-shadow:0 4px 24px rgba(0,0,0,.1)}}
+h1{{font-size:20px;margin-bottom:8px}}
+p{{color:#6B7280;font-size:14px;margin-bottom:20px;line-height:1.6}}
+textarea{{width:100%;border:1.5px solid #E5E7EB;border-radius:10px;padding:12px;font-size:14px;font-family:inherit;resize:none;min-height:140px;outline:none}}
+textarea:focus{{border-color:#2563EB}}
+.btn{{display:block;width:100%;padding:14px;background:#2563EB;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;margin-top:14px}}
+.btn:disabled{{opacity:.5;pointer-events:none}}
+</style></head><body>
+<div class="card">
+  <h1>意見回饋</h1>
+  <p>感謝您告訴我們您的感受。<br>您的意見將直接傳送給診所管理人員，幫助我們改善服務。</p>
+  <textarea id="fb" placeholder="請在此輸入您的建議或感受…"></textarea>
+  <button class="btn" id="btn" onclick="submit()">送出意見</button>
+</div>
+<script>
+async function submit() {{
+  const txt = document.getElementById('fb').value.trim();
+  if (!txt) return;
+  const btn = document.getElementById('btn');
+  btn.disabled = true; btn.textContent = '送出中…';
+  const r = await fetch('/feedback/{TOKEN}', {{
+    method:'POST', headers:{{'Content-Type':'application/json'}},
+    body: JSON.stringify({{content: txt}})
+  }});
+  const d = await r.json();
+  document.querySelector('.card').innerHTML = '<h1 style="margin-bottom:12px">感謝您的回饋！</h1><p>您的意見已送達，我們將認真改進，期待下次能帶給您更好的體驗。</p>';
+}}
+</script></body></html>"""
+
+
+@app.get("/review/{token}")
+async def review_page(token: str):
+    req = review_service.get_request_by_token(token)
+    if not req:
+        return Response("無效連結", status_code=404)
+    html = _REVIEW_PAGE.replace("{TOKEN}", token)
+    return Response(html, media_type="text/html")
+
+
+@app.post("/review/{token}")
+async def review_submit(token: str, request: Request):
+    try:
+        body = await request.json()
+        rating = int(body.get("rating", 0))
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid")
+    result = review_service.submit_rating(token, rating)
+    return result
+
+
+@app.get("/feedback/{token}")
+async def feedback_page(token: str):
+    req = review_service.get_request_by_token(token)
+    if not req:
+        return Response("無效連結", status_code=404)
+    html = _FEEDBACK_PAGE.replace("{TOKEN}", token)
+    return Response(html, media_type="text/html")
+
+
+@app.post("/feedback/{token}")
+async def feedback_submit(token: str, request: Request):
+    try:
+        body = await request.json()
+        content = str(body.get("content", "")).strip()
+    except Exception:
+        raise HTTPException(status_code=400, detail="invalid")
+    if not content:
+        raise HTTPException(status_code=400, detail="內容不可為空")
+    ok = review_service.submit_feedback(token, content)
+    return {"ok": ok}
 
 
 if __name__ == "__main__":

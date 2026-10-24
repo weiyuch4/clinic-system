@@ -446,3 +446,30 @@ def process_webhook(body: dict, clinic_id: int = 1) -> None:
                     )
             if chart:
                 log_audit(clinic_id, "webhook_unfollow", chart, "patient", f"line_user_id={user_id[:8]}…")
+
+        elif etype == "message" and token:
+            msg_type = event.get("message", {}).get("type", "")
+            text = event.get("message", {}).get("text", "").strip()
+            reply_token = event.get("replyToken", "")
+            if msg_type == "text" and text and reply_token:
+                # Look up chart_number (may be "" if patient not yet bound)
+                chart = ""
+                with _conn() as conn:
+                    with conn.cursor() as cur:
+                        cur.execute(
+                            "SELECT chart_number FROM line_bindings "
+                            "WHERE line_user_id=%s AND clinic_id=%s",
+                            (user_id, clinic_id),
+                        )
+                        row = cur.fetchone()
+                        if row:
+                            chart = row["chart_number"]
+                # Defer import to avoid circular import at module load time
+                try:
+                    import ai_agent_service as _ai
+                    _ai.handle_message(
+                        clinic_id, user_id, chart, text, reply_token, token
+                    )
+                except Exception as _e:
+                    import logging as _logging
+                    _logging.getLogger(__name__).error("AI handle_message error: %s", _e)

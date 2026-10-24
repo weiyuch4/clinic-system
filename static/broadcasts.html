@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>群發訊息</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* ── Tokens ───────────────────────────────────────────────────────────────── */
+:root {
+  --bg:       #F0EFED;
+  --card:     #FFFFFF;
+  --border:   #E5E7EB;
+  --bm:       #D1D5DB;
+  --t1:       #111827;
+  --t2:       #4B5563;
+  --t3:       #596172;
+  --blue:     #2563EB;
+  --blue-bg:  #EFF6FF;
+  --blue-bd:  #BFDBFE;
+  --r:        10px;
+  --r-s:      6px;
+  --shadow-s: 0 1px 3px rgba(0,0,0,.07),0 0 1px rgba(0,0,0,.04);
+  --font:     system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0D1117; --card: #161B27; --border: #262F3E; --bm: #2E3A4E;
+  --t1: #ECE9E3; --t2: #9CA3AF; --t3: #8896A5;
+  --blue-bg: rgba(37,99,235,.12); --blue-bd: rgba(37,99,235,.3);
+  --shadow-s: 0 1px 4px rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"] {
+  --bg: #0D1117; --card: #161B27; --border: #262F3E; --bm: #2E3A4E;
+  --t1: #ECE9E3; --t2: #9CA3AF; --t3: #8896A5;
+  --blue-bg: rgba(37,99,235,.12); --blue-bd: rgba(37,99,235,.3);
+  --shadow-s: 0 1px 4px rgba(0,0,0,.4);
+}
+
+/* ── Reset ────────────────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* ── Top bar ──────────────────────────────────────────────────────────────── */
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10}
+.topbar-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--t2);text-decoration:none;padding:6px 10px;border-radius:var(--r-s);border:1px solid var(--border);background:var(--bg);cursor:pointer;transition:border-color .12s,color .12s}
+.topbar-back:hover{border-color:var(--blue);color:var(--blue)}
+.topbar-title{font-size:15px;font-weight:700;color:var(--t1)}
+.topbar-sub{font-size:12px;color:var(--t3);margin-left:auto}
+
+/* ── Content ──────────────────────────────────────────────────────────────── */
+.page{max-width:900px;margin:0 auto;padding:24px 16px 48px}
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-s);overflow:hidden;margin-bottom:16px}
+.card-head{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.card-title{font-size:13.5px;font-weight:700;color:var(--t1);flex:1}
+.card-body{padding:16px 24px 20px}
+
+/* ── Form inputs (matches admin.html .ln-field-input) ─────────────────────── */
+.lfi{display:block;width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r-s);background:var(--bg);color:var(--t1);font-size:13px;font-family:var(--font);outline:none;box-sizing:border-box;transition:border-color .15s}
+.lfi:focus{border-color:var(--blue)}
+textarea.lfi{resize:none;min-height:130px;line-height:1.6}
+select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
+
+/* ── Field rows ───────────────────────────────────────────────────────────── */
+.field{margin-bottom:14px}
+.field-label{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px;letter-spacing:.02em}
+.field-hint{font-size:11.5px;color:var(--t3);margin-top:4px}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn-sm{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:1px solid var(--bm);border-radius:var(--r-s);background:var(--card);color:var(--t1);font:600 13px/1 var(--font);cursor:pointer;transition:background .12s,border-color .12s;white-space:nowrap}
+.btn-sm:hover{background:var(--bg);border-color:var(--blue);color:var(--blue)}
+.btn-sm.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-sm.primary:hover{background:#1d4ed8;border-color:#1d4ed8}
+.btn-sm.danger{color:#DC2626;border-color:rgba(220,38,38,.35)}
+.btn-sm.danger:hover{background:rgba(220,38,38,.06);border-color:#DC2626}
+.btn-sm:disabled{opacity:.45;pointer-events:none}
+
+/* ── Send mode toggle ─────────────────────────────────────────────────────── */
+.seg-toggle{display:inline-flex;background:var(--bg);border:1px solid var(--bm);border-radius:var(--r-s);padding:2px;gap:2px}
+.seg-btn{border:none;background:none;padding:6px 14px;font:600 12.5px/1 var(--font);color:var(--t2);border-radius:5px;cursor:pointer;transition:background .12s,color .12s}
+.seg-btn:hover{color:var(--t1)}
+.seg-btn.active{background:var(--card);color:var(--blue);box-shadow:var(--shadow-s)}
+
+/* ── Character count ─────────────────────────────────────────────────────── */
+.char-count{font-size:11px;color:var(--t3);text-align:right;margin-top:3px}
+.char-count.warn{color:#D97706}
+.char-count.over{color:#DC2626}
+
+/* ── Table ────────────────────────────────────────────────────────────────── */
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+thead th{padding:10px 20px;background:var(--bg);border-bottom:1px solid var(--border);color:var(--t2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:left;white-space:nowrap}
+tbody td{padding:12px 20px;border-bottom:1px solid var(--border);color:var(--t1)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:rgba(0,0,0,.02)}
+.empty-row td{text-align:center;color:var(--t3);padding:32px 20px}
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid;white-space:nowrap}
+.badge-gray{background:#F3F4F6;color:#6B7280;border-color:#E5E7EB}
+.badge-blue{background:var(--blue-bg);color:#2563EB;border-color:#BFDBFE}
+.badge-orange{background:#FFF7ED;color:#EA580C;border-color:#FED7AA}
+.badge-green{background:#F0FDF4;color:#16A34A;border-color:#BBF7D0}
+.badge-red{background:#FFF1F2;color:#E11D48;border-color:#FECDD3}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  .badge-gray{background:rgba(107,114,128,.1);color:#9CA3AF;border-color:rgba(107,114,128,.25)}
+  .badge-blue{background:rgba(37,99,235,.15);color:#93C5FD;border-color:rgba(37,99,235,.3)}
+  .badge-orange{background:rgba(234,88,12,.15);color:#FCA172;border-color:rgba(234,88,12,.3)}
+  .badge-green{background:rgba(22,163,74,.15);color:#86EFAC;border-color:rgba(22,163,74,.3)}
+  .badge-red{background:rgba(225,29,72,.15);color:#FDA4AF;border-color:rgba(225,29,72,.3)}
+}}
+:root[data-theme="dark"] {
+  .badge-gray{background:rgba(107,114,128,.1);color:#9CA3AF;border-color:rgba(107,114,128,.25)}
+  .badge-blue{background:rgba(37,99,235,.15);color:#93C5FD;border-color:rgba(37,99,235,.3)}
+  .badge-orange{background:rgba(234,88,12,.15);color:#FCA172;border-color:rgba(234,88,12,.3)}
+  .badge-green{background:rgba(22,163,74,.15);color:#86EFAC;border-color:rgba(22,163,74,.3)}
+  .badge-red{background:rgba(225,29,72,.15);color:#FDA4AF;border-color:rgba(225,29,72,.3)}
+}
+
+/* ── Stats pill ──────────────────────────────────────────────────────────── */
+.stat-pill{font-size:12px;font-variant-numeric:tabular-nums;color:var(--t2)}
+.stat-pill .ok{color:#16A34A;font-weight:600}
+.stat-pill .fail{color:#E11D48;font-weight:600}
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F2937;color:#F9FAFB;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9999;white-space:nowrap}
+#toast.show{opacity:1}
+
+/* ── Spinner ──────────────────────────────────────────────────────────────── */
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <a class="topbar-back" href="/admin">← 主選單</a>
+  <span class="topbar-title">群發訊息</span>
+  <span class="topbar-sub" id="bind-count-label"></span>
+</div>
+
+<div class="page">
+
+  <!-- Compose card -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">新增群發訊息</span>
+    </div>
+    <div class="card-body">
+
+      <div class="field">
+        <label class="field-label" for="bc-name">訊息名稱</label>
+        <input id="bc-name" class="lfi" type="text" placeholder="例：10月慢簽提醒" maxlength="200">
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="bc-audience">發送對象</label>
+        <select id="bc-audience" class="lfi">
+          <option value="all">所有已綁定病患</option>
+        </select>
+        <div class="field-hint">僅傳送給已完成 LINE 綁定的病患</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="bc-content">訊息內容</label>
+        <textarea id="bc-content" class="lfi" placeholder="輸入要傳送的訊息內容…" maxlength="5000" oninput="updateCharCount()"></textarea>
+        <div class="char-count" id="char-count">0 / 5000</div>
+      </div>
+
+      <div class="field">
+        <label class="field-label">發送時間</label>
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <div class="seg-toggle">
+            <button class="seg-btn active" id="mode-now" onclick="setSendMode('now')">立即發送</button>
+            <button class="seg-btn" id="mode-later" onclick="setSendMode('later')">排程發送</button>
+          </div>
+          <input id="bc-schedule" class="lfi" type="datetime-local"
+                 style="display:none;width:auto;min-width:200px;height:36px;padding:6px 10px">
+        </div>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+        <button class="btn-sm primary" id="submit-btn" onclick="submitBroadcast()">
+          <span id="submit-label">發送</span>
+        </button>
+        <button class="btn-sm" onclick="resetForm()">清除</button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- History card -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">發送紀錄</span>
+      <button class="btn-sm" onclick="loadBroadcasts()" style="margin-left:auto">↻ 重新整理</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>名稱</th>
+            <th>狀態</th>
+            <th>已送出 / 失敗</th>
+            <th>發送時間</th>
+            <th>建立者</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="bc-tbody">
+          <tr class="empty-row"><td colspan="6">載入中…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+const _tok = () =>
+  localStorage.getItem('admin_token') || localStorage.getItem('clinic_token') || '';
+
+// Auth guard
+(function() {
+  if (!_tok()) { location.href = '/admin'; }
+})();
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function showToast(msg, dur = 3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), dur);
+}
+
+function api(method, path, body) {
+  return fetch(path, {
+    method,
+    headers: {
+      'Authorization': 'Bearer ' + _tok(),
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(r => r.json().then(d => ({ ok: r.ok, status: r.status, data: d })));
+}
+
+// ── Status badge ──────────────────────────────────────────────────────────────
+
+const STATUS_LABEL = {
+  draft: '草稿', scheduled: '已排程', sending: '發送中',
+  sent: '已發送', partial: '部分發送', failed: '失敗', cancelled: '已取消',
+};
+const STATUS_CLASS = {
+  draft: 'badge-gray', scheduled: 'badge-blue', sending: 'badge-orange',
+  sent: 'badge-green', partial: 'badge-orange', failed: 'badge-red', cancelled: 'badge-gray',
+};
+function statusBadge(s) {
+  return `<span class="badge ${STATUS_CLASS[s] || 'b-gray'}">${STATUS_LABEL[s] || s}</span>`;
+}
+
+// ── Date formatting ───────────────────────────────────────────────────────────
+
+function fmtDt(s) {
+  if (!s) return '—';
+  return s.slice(0, 16).replace('T', ' ');
+}
+
+// ── Broadcast list ────────────────────────────────────────────────────────────
+
+let _broadcasts = [];
+
+async function loadBroadcasts() {
+  const tbody = document.getElementById('bc-tbody');
+  tbody.innerHTML = '<tr class="empty-row"><td colspan="6">載入中…</td></tr>';
+  const r = await api('GET', '/api/broadcasts');
+  if (!r.ok) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">載入失敗</td></tr>';
+    return;
+  }
+  _broadcasts = r.data;
+
+  // Also update bind count label
+  const countR = await api('GET', '/api/line/bound-chart-numbers');
+  if (countR.ok) {
+    const n = countR.data.chart_numbers.length;
+    document.getElementById('bind-count-label').textContent = `${n} 位病患已綁定`;
+  }
+
+  renderBroadcasts();
+}
+
+function renderBroadcasts() {
+  const tbody = document.getElementById('bc-tbody');
+  if (!_broadcasts.length) {
+    tbody.innerHTML = '<tr class="empty-row"><td colspan="6">尚無群發紀錄</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _broadcasts.map(b => {
+    const sentTime = b.sent_at ? fmtDt(b.sent_at) : (b.scheduled_at ? '排程：' + fmtDt(b.scheduled_at) : '—');
+    const stats = b.recipient_count > 0
+      ? `<span class="stat-pill"><span class="ok">${b.sent_count}</span> / <span class="fail">${b.failed_count}</span> （共 ${b.recipient_count}）</span>`
+      : '<span style="color:var(--t3)">—</span>';
+    const canCancel = ['draft', 'scheduled'].includes(b.status);
+    const actions = canCancel
+      ? `<button class="btn-sm danger" onclick="cancelBroadcast(${b.id})">取消</button>`
+      : '';
+    return `<tr>
+      <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${_esc(b.name)}">${_esc(b.name)}</td>
+      <td>${statusBadge(b.status)}</td>
+      <td>${stats}</td>
+      <td style="font-variant-numeric:tabular-nums;white-space:nowrap;font-size:12.5px">${sentTime}</td>
+      <td style="font-size:12.5px;color:var(--t2)">${_esc(b.created_by)}</td>
+      <td>${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+function _esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Send mode toggle ──────────────────────────────────────────────────────────
+
+let _sendMode = 'now';
+
+function setSendMode(mode) {
+  _sendMode = mode;
+  document.getElementById('mode-now').classList.toggle('active', mode === 'now');
+  document.getElementById('mode-later').classList.toggle('active', mode === 'later');
+  const sch = document.getElementById('bc-schedule');
+  sch.style.display = mode === 'later' ? 'inline-block' : 'none';
+  if (mode === 'later' && !sch.value) {
+    // Default to 1 hour from now, rounded to nearest 5 min
+    const d = new Date(Date.now() + 3600000);
+    d.setMinutes(Math.ceil(d.getMinutes() / 5) * 5, 0, 0);
+    sch.value = d.toISOString().slice(0, 16);
+  }
+  document.getElementById('submit-label').textContent = mode === 'later' ? '排程發送' : '立即發送';
+}
+
+// ── Char count ────────────────────────────────────────────────────────────────
+
+function updateCharCount() {
+  const len = document.getElementById('bc-content').value.length;
+  const el = document.getElementById('char-count');
+  el.textContent = `${len} / 5000`;
+  el.className = 'char-count' + (len > 4500 ? (len >= 5000 ? ' over' : ' warn') : '');
+}
+
+// ── Submit ────────────────────────────────────────────────────────────────────
+
+async function submitBroadcast() {
+  const name    = document.getElementById('bc-name').value.trim();
+  const content = document.getElementById('bc-content').value.trim();
+  const audience = document.getElementById('bc-audience').value;
+
+  if (!name)    { showToast('請填寫訊息名稱'); return; }
+  if (!content) { showToast('請填寫訊息內容'); return; }
+
+  let scheduled_at = '';
+  if (_sendMode === 'later') {
+    const val = document.getElementById('bc-schedule').value;
+    if (!val) { showToast('請選擇發送時間'); return; }
+    // Convert datetime-local (YYYY-MM-DDTHH:MM) → "YYYY-MM-DD HH:MM:SS"
+    scheduled_at = val.replace('T', ' ') + ':00';
+    // Validate it's in the future
+    const now = new Date();
+    const chosen = new Date(val);
+    if (chosen <= now) { showToast('排程時間必須晚於現在'); return; }
+  }
+
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span> ' + (_sendMode === 'later' ? '排程中…' : '發送中…');
+
+  const r = await api('POST', '/api/broadcasts', {
+    name, content, audience_filter: audience, scheduled_at,
+  });
+
+  btn.disabled = false;
+  btn.innerHTML = `<span id="submit-label">${_sendMode === 'later' ? '排程發送' : '立即發送'}</span>`;
+
+  if (r.ok) {
+    showToast(_sendMode === 'later' ? '已排程，將於指定時間發送' : '發送中，稍後請重新整理查看結果', 4000);
+    resetForm();
+    setTimeout(loadBroadcasts, 1500);
+  } else {
+    showToast('發送失敗：' + (r.data.detail || '未知錯誤'));
+  }
+}
+
+// ── Cancel ────────────────────────────────────────────────────────────────────
+
+async function cancelBroadcast(id) {
+  if (!confirm('確定要取消這個廣播嗎？')) return;
+  const r = await api('DELETE', '/api/broadcasts/' + id);
+  if (r.ok) {
+    showToast('已取消');
+    loadBroadcasts();
+  } else {
+    showToast('取消失敗：' + (r.data.detail || '未知錯誤'));
+  }
+}
+
+// ── Reset form ────────────────────────────────────────────────────────────────
+
+function resetForm() {
+  document.getElementById('bc-name').value = '';
+  document.getElementById('bc-content').value = '';
+  document.getElementById('bc-schedule').value = '';
+  updateCharCount();
+  setSendMode('now');
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+
+loadBroadcasts();
+
+// Auto-refresh every 30 seconds if any broadcast is in progress
+setInterval(() => {
+  if (_broadcasts.some(b => ['sending', 'scheduled'].includes(b.status))) {
+    loadBroadcasts();
+  }
+}, 30000);
+</script>
+</body>
+</html>

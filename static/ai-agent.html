@@ -1,0 +1,603 @@
+<!doctype html>
+<html lang="zh-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI 自動回覆</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* ── Tokens ───────────────────────────────────────────────────────────────── */
+:root {
+  --bg:       #F0EFED;
+  --card:     #FFFFFF;
+  --border:   #E5E7EB;
+  --bm:       #D1D5DB;
+  --t1:       #111827;
+  --t2:       #4B5563;
+  --t3:       #596172;
+  --blue:     #2563EB;
+  --blue-bg:  #EFF6FF;
+  --blue-bd:  #BFDBFE;
+  --green:    #16A34A;
+  --r:        10px;
+  --r-s:      6px;
+  --shadow-s: 0 1px 3px rgba(0,0,0,.07),0 0 1px rgba(0,0,0,.04);
+  --font:     system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg:#0D1117;--card:#161B27;--border:#262F3E;--bm:#2E3A4E;
+  --t1:#ECE9E3;--t2:#9CA3AF;--t3:#8896A5;
+  --blue-bg:rgba(37,99,235,.12);--blue-bd:rgba(37,99,235,.3);
+  --shadow-s:0 1px 4px rgba(0,0,0,.4);
+}}
+:root[data-theme="dark"] {
+  --bg:#0D1117;--card:#161B27;--border:#262F3E;--bm:#2E3A4E;
+  --t1:#ECE9E3;--t2:#9CA3AF;--t3:#8896A5;
+  --blue-bg:rgba(37,99,235,.12);--blue-bd:rgba(37,99,235,.3);
+  --shadow-s:0 1px 4px rgba(0,0,0,.4);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);color:var(--t1);font-size:14px;line-height:1.5;min-height:100vh}
+
+/* ── Top bar ──────────────────────────────────────────────────────────────── */
+.topbar{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10}
+.topbar-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--t2);text-decoration:none;padding:6px 10px;border-radius:var(--r-s);border:1px solid var(--border);background:var(--bg);cursor:pointer;transition:border-color .12s,color .12s}
+.topbar-back:hover{border-color:var(--blue);color:var(--blue)}
+.topbar-title{font-size:15px;font-weight:700;color:var(--t1)}
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--card);padding:0 24px;position:sticky;top:52px;z-index:9}
+.tab{padding:10px 18px;font:600 13px/1 var(--font);color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none}
+.tab:hover{color:var(--t1)}
+.tab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.tab-panel{display:none}.tab-panel.active{display:block}
+
+/* ── Content ──────────────────────────────────────────────────────────────── */
+.page{max-width:860px;margin:0 auto;padding:24px 16px 48px}
+
+/* ── Card ─────────────────────────────────────────────────────────────────── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-s);overflow:hidden;margin-bottom:16px}
+.card-head{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.card-title{font-size:13.5px;font-weight:700;color:var(--t1);flex:1}
+.card-body{padding:16px 24px 20px}
+
+/* ── Form ─────────────────────────────────────────────────────────────────── */
+.lfi{display:block;width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--r-s);background:var(--bg);color:var(--t1);font-size:13px;font-family:var(--font);outline:none;transition:border-color .15s}
+.lfi:focus{border-color:var(--blue)}
+textarea.lfi{resize:none;line-height:1.6}
+select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
+.field{margin-bottom:14px}
+.field-label{display:block;font-size:12px;font-weight:600;color:var(--t2);margin-bottom:5px;letter-spacing:.02em}
+.field-hint{font-size:11.5px;color:var(--t3);margin-top:4px}
+
+/* ── Toggle switch ────────────────────────────────────────────────────────── */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-label{font-size:13.5px;font-weight:600;color:var(--t1)}
+.toggle-desc{font-size:12px;color:var(--t3);margin-top:2px}
+.toggle{display:inline-flex;align-items:center;cursor:pointer;flex-shrink:0}
+.toggle input{display:none}
+.toggle-track{display:inline-block;width:38px;height:22px;background:var(--bm);border-radius:11px;position:relative;transition:background .2s;cursor:pointer}
+.toggle input:checked+.toggle-track{background:var(--blue)}
+.toggle-track::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.toggle input:checked+.toggle-track::after{transform:translateX(16px)}
+
+/* ── Buttons ──────────────────────────────────────────────────────────────── */
+.btn-sm{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:1px solid var(--bm);border-radius:var(--r-s);background:var(--card);color:var(--t1);font:600 13px/1 var(--font);cursor:pointer;transition:background .12s,border-color .12s;white-space:nowrap}
+.btn-sm:hover{background:var(--bg);border-color:var(--blue);color:var(--blue)}
+.btn-sm.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-sm.primary:hover{background:#1d4ed8;border-color:#1d4ed8}
+.btn-sm.danger{color:#DC2626;border-color:rgba(220,38,38,.35)}
+.btn-sm.danger:hover{background:rgba(220,38,38,.06);border-color:#DC2626}
+.btn-sm:disabled{opacity:.45;pointer-events:none}
+
+/* ── Schedule grid ────────────────────────────────────────────────────────── */
+.schedule-grid{display:grid;gap:8px}
+.sched-row{display:grid;grid-template-columns:60px 1fr;align-items:center;gap:12px}
+.sched-day{font:700 12px/1 var(--font);color:var(--t2);text-transform:uppercase;letter-spacing:.04em}
+.sched-times{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sched-times .lfi{width:110px;height:34px;padding:6px 8px;font-size:12.5px}
+.sched-sep{font-size:12px;color:var(--t3)}
+
+/* ── KB list ──────────────────────────────────────────────────────────────── */
+.kb-item{border:1px solid var(--border);border-radius:var(--r-s);padding:12px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;background:var(--card)}
+.kb-item-body{flex:1;min-width:0}
+.kb-item-title{font-size:13.5px;font-weight:600;color:var(--t1);margin-bottom:2px}
+.kb-item-preview{font-size:12.5px;color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:500px}
+.kb-item-meta{font-size:11.5px;color:var(--t3);margin-top:3px}
+.kb-item-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* ── Conversations ────────────────────────────────────────────────────────── */
+.conv-msg{padding:10px 14px;border-radius:var(--r-s);margin-bottom:8px;font-size:13px;line-height:1.6;max-width:540px}
+.conv-msg.user{background:var(--bg);border:1px solid var(--border)}
+.conv-msg.assistant{background:var(--blue-bg);border:1px solid var(--blue-bd);margin-left:auto}
+.conv-meta{font-size:11px;color:var(--t3);margin-bottom:2px}
+
+/* ── Modal ────────────────────────────────────────────────────────────────── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:24px;width:min(560px,94vw);max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:18px}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+
+/* ── Toast ────────────────────────────────────────────────────────────────── */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1F2937;color:#F9FAFB;padding:10px 20px;border-radius:8px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .2s;z-index:9999;white-space:nowrap}
+#toast.show{opacity:1}
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid}
+.badge-green{background:#F0FDF4;color:#16A34A;border-color:#BBF7D0}
+.badge-gray{background:#F3F4F6;color:#6B7280;border-color:#E5E7EB}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  .badge-green{background:rgba(22,163,74,.15);color:#86EFAC;border-color:rgba(22,163,74,.3)}
+  .badge-gray{background:rgba(107,114,128,.1);color:#9CA3AF;border-color:rgba(107,114,128,.25)}
+}}
+:root[data-theme="dark"] {
+  .badge-green{background:rgba(22,163,74,.15);color:#86EFAC;border-color:rgba(22,163,74,.3)}
+  .badge-gray{background:rgba(107,114,128,.1);color:#9CA3AF;border-color:rgba(107,114,128,.25)}
+}
+
+/* ── Status banner ────────────────────────────────────────────────────────── */
+.status-banner{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:var(--r-s);font-size:13px;margin-bottom:16px;border:1px solid}
+.status-banner.on{background:#F0FDF4;border-color:#BBF7D0;color:#15803D}
+.status-banner.off{background:#F9FAFB;border-color:var(--border);color:var(--t2)}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-banner.on .status-dot{background:#16A34A}
+.status-banner.off .status-dot{background:var(--bm)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a class="topbar-back" href="/admin">← 主選單</a>
+  <span class="topbar-title">AI 自動回覆</span>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('settings')">基本設定</button>
+  <button class="tab" onclick="showTab('kb')">知識庫</button>
+  <button class="tab" onclick="showTab('schedule')">回覆時段</button>
+  <button class="tab" onclick="showTab('conversations')">對話紀錄</button>
+</div>
+
+<div class="page">
+
+  <!-- ── Tab: Settings ───────────────────────────────────────────────────── -->
+  <div id="tab-settings" class="tab-panel active">
+
+    <div id="status-banner" class="status-banner off">
+      <span class="status-dot"></span>
+      <span id="status-text">AI 自動回覆目前已關閉</span>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">啟用設定</span></div>
+      <div class="card-body">
+        <div class="toggle-row">
+          <div>
+            <div class="toggle-label">啟用 AI 自動回覆</div>
+            <div class="toggle-desc">開啟後，病患透過 LINE 傳送的訊息將由 AI 自動回覆</div>
+          </div>
+          <label class="toggle">
+            <input type="checkbox" id="chk-enabled" onchange="toggleEnabled()">
+            <span class="toggle-track"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">AI 服務商</span></div>
+      <div class="card-body">
+        <div class="field">
+          <label class="field-label" for="sel-provider">服務商</label>
+          <select id="sel-provider" class="lfi" style="max-width:280px" onchange="onProviderChange()">
+            <option value="gemini">Google Gemini (建議)</option>
+            <option value="claude">Anthropic Claude</option>
+          </select>
+        </div>
+
+        <div class="field" id="field-gemini-key">
+          <label class="field-label" for="inp-gemini-key">Gemini API Key</label>
+          <input id="inp-gemini-key" class="lfi" type="password" placeholder="已設定 (輸入新值以更新)" autocomplete="off" style="max-width:400px">
+          <div class="field-hint">前往 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color:var(--blue)">Google AI Studio</a> 取得 API Key。建議使用 Gemini 2.0 Flash。</div>
+        </div>
+        <div class="field" id="field-claude-key" style="display:none">
+          <label class="field-label" for="inp-claude-key">Claude API Key</label>
+          <input id="inp-claude-key" class="lfi" type="password" placeholder="已設定 (輸入新值以更新)" autocomplete="off" style="max-width:400px">
+          <div class="field-hint">前往 <a href="https://console.anthropic.com/" target="_blank" rel="noopener" style="color:var(--blue)">Anthropic Console</a> 取得 API Key。建議使用 claude-haiku-4-5。</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="inp-model">模型名稱 <span style="font-weight:400;color:var(--t3)">(選填，留空使用預設)</span></label>
+          <input id="inp-model" class="lfi" type="text" placeholder="gemini-2.0-flash-exp" style="max-width:320px">
+          <div class="field-hint" id="model-hint">Gemini 預設：gemini-2.0-flash-exp</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head"><span class="card-title">系統提示詞</span></div>
+      <div class="card-body">
+        <div class="field">
+          <label class="field-label" for="inp-prompt">AI 角色與行為指示</label>
+          <textarea id="inp-prompt" class="lfi" rows="6" placeholder="描述 AI 的角色、語氣與回覆規則…"></textarea>
+          <div class="field-hint">知識庫的內容會自動附加在系統提示詞之後，無需手動貼入。</div>
+        </div>
+        <button class="btn-sm primary" onclick="saveSettings()">儲存設定</button>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Tab: Knowledge Base ─────────────────────────────────────────────── -->
+  <div id="tab-kb" class="tab-panel">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">知識庫條目</span>
+        <button class="btn-sm primary" onclick="openKbModal()">+ 新增</button>
+      </div>
+      <div class="card-body" style="padding-bottom:8px">
+        <div id="kb-list"><p style="color:var(--t3);font-size:13px">載入中…</p></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Schedule ───────────────────────────────────────────────────── -->
+  <div id="tab-schedule" class="tab-panel">
+    <div class="card">
+      <div class="card-head"><span class="card-title">自動回覆時段</span></div>
+      <div class="card-body">
+        <p style="font-size:13px;color:var(--t2);margin-bottom:16px">設定每天哪些時間段允許 AI 自動回覆。未開啟的日期整天不回覆。留空時段表示全天回覆。</p>
+        <div class="schedule-grid" id="sched-grid"></div>
+        <div style="margin-top:16px">
+          <button class="btn-sm primary" onclick="saveSchedule()">儲存時段</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Tab: Conversations ──────────────────────────────────────────────── -->
+  <div id="tab-conversations" class="tab-panel">
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">最近對話紀錄</span>
+        <button class="btn-sm" onclick="loadConversations()" style="margin-left:auto">↻ 重新整理</button>
+      </div>
+      <div class="card-body">
+        <div id="conv-list"><p style="color:var(--t3);font-size:13px">載入中…</p></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- KB Modal -->
+<div class="modal-bg" id="kb-modal">
+  <div class="modal">
+    <div class="modal-title" id="kb-modal-title">新增知識庫條目</div>
+    <div class="field">
+      <label class="field-label" for="kb-title">標題</label>
+      <input id="kb-title" class="lfi" type="text" placeholder="例：診所門診時間">
+    </div>
+    <div class="field">
+      <label class="field-label" for="kb-category">分類 <span style="font-weight:400;color:var(--t3)">(選填)</span></label>
+      <input id="kb-category" class="lfi" type="text" placeholder="例：基本資訊">
+    </div>
+    <div class="field">
+      <label class="field-label" for="kb-content">內容</label>
+      <textarea id="kb-content" class="lfi" rows="7" placeholder="詳細說明…"></textarea>
+    </div>
+    <div class="field" style="display:flex;align-items:center;gap:10px">
+      <label class="toggle" style="flex-shrink:0">
+        <input type="checkbox" id="kb-active" checked>
+        <span class="toggle-track"></span>
+      </label>
+      <span style="font-size:13px;color:var(--t2)">啟用此條目</span>
+    </div>
+    <input type="hidden" id="kb-edit-id" value="">
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closeKbModal()">取消</button>
+      <button class="btn-sm primary" onclick="saveKb()">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+const _tok = () =>
+  localStorage.getItem('admin_token') || localStorage.getItem('clinic_token') || '';
+
+(function() { if (!_tok()) location.href = '/admin'; })();
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+
+function showToast(msg, dur = 3000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(el._t);
+  el._t = setTimeout(() => el.classList.remove('show'), dur);
+}
+
+function api(method, path, body) {
+  return fetch(path, {
+    method,
+    headers: {
+      'Authorization': 'Bearer ' + _tok(),
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  }).then(r => r.json().then(d => ({ ok: r.ok, status: r.status, data: d })));
+}
+
+function _esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+
+function showTab(name) {
+  document.querySelectorAll('.tab').forEach((el, i) => {
+    const names = ['settings','kb','schedule','conversations'];
+    el.classList.toggle('active', names[i] === name);
+  });
+  document.querySelectorAll('.tab-panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  if (name === 'kb') loadKb();
+  if (name === 'conversations') loadConversations();
+}
+
+// ── Load settings ─────────────────────────────────────────────────────────
+
+let _settings = {};
+
+async function loadSettings() {
+  const r = await api('GET', '/api/ai-agent/settings');
+  if (!r.ok) { showToast('載入設定失敗'); return; }
+  _settings = r.data;
+
+  document.getElementById('chk-enabled').checked = !!r.data.enabled;
+  document.getElementById('sel-provider').value = r.data.provider || 'gemini';
+  document.getElementById('inp-model').value = r.data.model_name || '';
+  document.getElementById('inp-prompt').value = r.data.system_prompt || '';
+
+  onProviderChange();
+  updateStatusBanner(!!r.data.enabled);
+  buildScheduleGrid(r.data.schedule_json || {});
+}
+
+function updateStatusBanner(on) {
+  const b = document.getElementById('status-banner');
+  const t = document.getElementById('status-text');
+  b.className = 'status-banner ' + (on ? 'on' : 'off');
+  t.textContent = on ? 'AI 自動回覆目前已開啟' : 'AI 自動回覆目前已關閉';
+}
+
+function onProviderChange() {
+  const p = document.getElementById('sel-provider').value;
+  document.getElementById('field-gemini-key').style.display = p === 'gemini' ? '' : 'none';
+  document.getElementById('field-claude-key').style.display = p === 'claude' ? '' : 'none';
+  document.getElementById('model-hint').textContent =
+    p === 'gemini' ? 'Gemini 預設：gemini-2.0-flash-exp' : 'Claude 預設：claude-haiku-4-5';
+  document.getElementById('inp-model').placeholder =
+    p === 'gemini' ? 'gemini-2.0-flash-exp' : 'claude-haiku-4-5';
+}
+
+async function toggleEnabled() {
+  const on = document.getElementById('chk-enabled').checked;
+  const r = await api('POST', '/api/ai-agent/settings', { enabled: on });
+  if (r.ok) {
+    updateStatusBanner(on);
+    showToast(on ? 'AI 自動回覆已開啟' : 'AI 自動回覆已關閉');
+  } else {
+    document.getElementById('chk-enabled').checked = !on;
+    showToast('操作失敗');
+  }
+}
+
+async function saveSettings() {
+  const provider = document.getElementById('sel-provider').value;
+  const body = {
+    provider,
+    model_name: document.getElementById('inp-model').value.trim(),
+    system_prompt: document.getElementById('inp-prompt').value.trim(),
+  };
+  const gemKey = document.getElementById('inp-gemini-key').value.trim();
+  const cldKey = document.getElementById('inp-claude-key').value.trim();
+  if (gemKey) body.gemini_api_key = gemKey;
+  if (cldKey) body.claude_api_key = cldKey;
+
+  const r = await api('POST', '/api/ai-agent/settings', body);
+  if (r.ok) {
+    showToast('設定已儲存');
+    // Clear key fields after save
+    document.getElementById('inp-gemini-key').value = '';
+    document.getElementById('inp-claude-key').value = '';
+  } else {
+    showToast('儲存失敗');
+  }
+}
+
+// ── Schedule grid ─────────────────────────────────────────────────────────
+
+const DAYS = [
+  { key: 'mon', label: '週一' }, { key: 'tue', label: '週二' },
+  { key: 'wed', label: '週三' }, { key: 'thu', label: '週四' },
+  { key: 'fri', label: '週五' }, { key: 'sat', label: '週六' },
+  { key: 'sun', label: '週日' },
+];
+
+function buildScheduleGrid(schedule) {
+  const grid = document.getElementById('sched-grid');
+  grid.innerHTML = DAYS.map(d => {
+    const cfg = schedule[d.key] || {};
+    const en = cfg.enabled !== false;
+    const st = cfg.start || '';
+    const ed = cfg.end || '';
+    return `<div class="sched-row">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label class="toggle" style="width:36px;height:20px">
+          <input type="checkbox" id="sched-en-${d.key}" ${en ? 'checked' : ''} onchange="syncSchedRow('${d.key}')">
+          <span class="toggle-track"></span>
+        </label>
+        <span class="sched-day">${d.label}</span>
+      </div>
+      <div class="sched-times" id="sched-times-${d.key}" style="${en ? '' : 'opacity:.4;pointer-events:none'}">
+        <input type="time" id="sched-st-${d.key}" class="lfi" value="${st}">
+        <span class="sched-sep">至</span>
+        <input type="time" id="sched-ed-${d.key}" class="lfi" value="${ed}">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function syncSchedRow(key) {
+  const en = document.getElementById('sched-en-' + key).checked;
+  const times = document.getElementById('sched-times-' + key);
+  times.style.opacity = en ? '' : '.4';
+  times.style.pointerEvents = en ? '' : 'none';
+}
+
+async function saveSchedule() {
+  const schedule = {};
+  DAYS.forEach(d => {
+    schedule[d.key] = {
+      enabled: document.getElementById('sched-en-' + d.key).checked,
+      start: document.getElementById('sched-st-' + d.key).value,
+      end: document.getElementById('sched-ed-' + d.key).value,
+    };
+  });
+  const r = await api('POST', '/api/ai-agent/settings', { schedule_json: schedule });
+  if (r.ok) showToast('時段設定已儲存');
+  else showToast('儲存失敗');
+}
+
+// ── Knowledge Base ─────────────────────────────────────────────────────────
+
+let _kbItems = [];
+
+async function loadKb() {
+  const list = document.getElementById('kb-list');
+  list.innerHTML = '<p style="color:var(--t3);font-size:13px">載入中…</p>';
+  const r = await api('GET', '/api/ai-agent/kb');
+  if (!r.ok) { list.innerHTML = '<p style="color:var(--t3)">載入失敗</p>'; return; }
+  _kbItems = r.data;
+  renderKb();
+}
+
+function renderKb() {
+  const list = document.getElementById('kb-list');
+  if (!_kbItems.length) {
+    list.innerHTML = '<p style="color:var(--t3);font-size:13px">尚無知識庫條目。點擊「+ 新增」開始建立。</p>';
+    return;
+  }
+  list.innerHTML = _kbItems.map(item => `
+    <div class="kb-item">
+      <div class="kb-item-body">
+        <div class="kb-item-title">${_esc(item.title)} ${item.category ? `<span style="font-size:11px;color:var(--t3)">[${_esc(item.category)}]</span>` : ''}</div>
+        <div class="kb-item-preview">${_esc(item.content)}</div>
+        <div class="kb-item-meta">
+          <span class="badge ${item.is_active ? 'badge-green' : 'badge-gray'}">${item.is_active ? '啟用' : '停用'}</span>
+          <span style="margin-left:8px">${_esc(item.updated_at.slice(0,16))}</span>
+        </div>
+      </div>
+      <div class="kb-item-actions">
+        <button class="btn-sm" onclick="editKb(${item.id})">編輯</button>
+        <button class="btn-sm danger" onclick="deleteKb(${item.id})">刪除</button>
+      </div>
+    </div>`).join('');
+}
+
+function openKbModal(item) {
+  document.getElementById('kb-modal-title').textContent = item ? '編輯知識庫條目' : '新增知識庫條目';
+  document.getElementById('kb-title').value = item ? item.title : '';
+  document.getElementById('kb-category').value = item ? item.category : '';
+  document.getElementById('kb-content').value = item ? item.content : '';
+  document.getElementById('kb-active').checked = item ? !!item.is_active : true;
+  document.getElementById('kb-edit-id').value = item ? item.id : '';
+  document.getElementById('kb-modal').classList.add('open');
+}
+
+function closeKbModal() {
+  document.getElementById('kb-modal').classList.remove('open');
+}
+
+function editKb(id) {
+  const item = _kbItems.find(i => i.id === id);
+  if (item) openKbModal(item);
+}
+
+async function deleteKb(id) {
+  if (!confirm('確定要刪除這個知識庫條目嗎？')) return;
+  const r = await api('DELETE', '/api/ai-agent/kb/' + id);
+  if (r.ok) { showToast('已刪除'); loadKb(); }
+  else showToast('刪除失敗');
+}
+
+async function saveKb() {
+  const title = document.getElementById('kb-title').value.trim();
+  const content = document.getElementById('kb-content').value.trim();
+  if (!title) { showToast('請填寫標題'); return; }
+  if (!content) { showToast('請填寫內容'); return; }
+  const editId = document.getElementById('kb-edit-id').value;
+  const body = {
+    title,
+    content,
+    category: document.getElementById('kb-category').value.trim(),
+    is_active: document.getElementById('kb-active').checked,
+  };
+  if (editId) body.id = parseInt(editId);
+  const r = await api('POST', '/api/ai-agent/kb', body);
+  if (r.ok) { showToast('已儲存'); closeKbModal(); loadKb(); }
+  else showToast('儲存失敗：' + (r.data.detail || '未知錯誤'));
+}
+
+// ── Conversations ──────────────────────────────────────────────────────────
+
+async function loadConversations() {
+  const list = document.getElementById('conv-list');
+  list.innerHTML = '<p style="color:var(--t3);font-size:13px">載入中…</p>';
+  const r = await api('GET', '/api/ai-agent/conversations?limit=60');
+  if (!r.ok) { list.innerHTML = '<p style="color:var(--t3)">載入失敗</p>'; return; }
+
+  const rows = r.data;
+  if (!rows.length) {
+    list.innerHTML = '<p style="color:var(--t3);font-size:13px">尚無對話紀錄。</p>';
+    return;
+  }
+
+  // Group by user
+  const byUser = {};
+  rows.forEach(row => {
+    const key = row.line_user_id;
+    if (!byUser[key]) byUser[key] = { chart: row.chart_number, msgs: [] };
+    byUser[key].msgs.unshift(row); // reverse since DB returns newest first
+  });
+
+  list.innerHTML = Object.entries(byUser).map(([uid, info]) => {
+    const label = info.chart ? `病歷 ${_esc(info.chart)}` : `LINE ${uid.slice(0, 8)}…`;
+    const msgs = info.msgs.map(m => `
+      <div class="conv-meta">${m.role === 'user' ? '病患' : 'AI'} · ${_esc(m.created_at.slice(11,16))}</div>
+      <div class="conv-msg ${m.role}">${_esc(m.content)}</div>
+    `).join('');
+    return `<div style="margin-bottom:20px">
+      <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">${label}</div>
+      ${msgs}
+    </div>`;
+  }).join('<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">');
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+
+// Close modal on backdrop click
+document.getElementById('kb-modal').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeKbModal();
+});
+
+loadSettings();
+</script>
+</body>
+</html>

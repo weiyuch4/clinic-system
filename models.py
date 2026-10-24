@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Literal
+from typing import Literal, Optional
 from pydantic import BaseModel
 
 MsptStage = Literal["收案", "追1", "追2", "追3", "年度追蹤"]
@@ -375,3 +375,41 @@ class RenameUserRequest(BaseModel):
 class ChangePasswordRequest(BaseModel):
     old_password: str
     new_password: str
+
+
+class BroadcastCreateRequest(BaseModel):
+    name: str
+    content: str
+    audience_filter: str = "all"
+    scheduled_at: str = ""  # empty = send immediately; "YYYY-MM-DD HH:MM:SS" = schedule
+
+
+class AiAgentSettingsRequest(BaseModel):
+    enabled: Optional[bool] = None
+    provider: Optional[str] = None
+    gemini_api_key: Optional[str] = None
+    claude_api_key: Optional[str] = None
+    model_name: Optional[str] = None
+    system_prompt: Optional[str] = None
+    schedule_json: Optional[dict] = None
+
+
+class AiKbUpsertRequest(BaseModel):
+    title: str
+    content: str
+    category: str = ""
+    is_active: bool = True
+    sort_order: int = 0
+    id: Optional[int] = None  # set when editing existing article
+
+
+class ReviewSettingsRequest(BaseModel):
+    enabled: Optional[bool] = None
+    google_maps_url: Optional[str] = None
+    threshold: Optional[int] = None
+    message_template: Optional[str] = None
+    base_url: Optional[str] = None
+
+
+class ReviewSendRequest(BaseModel):
+    chart_numbers: list[str]  # send to these specific patients
