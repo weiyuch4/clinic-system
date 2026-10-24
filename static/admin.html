@@ -1502,6 +1502,18 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .modal-overlay.show > * { animation:modal-in .22s cubic-bezier(.16,1,.3,1) both; }
 .modal-overlay.closing { display:flex; animation:modal-bd-out .14s ease-in forwards; pointer-events:none; }
 .modal-overlay.closing > * { animation:modal-out .14s ease-in forwards; }
+
+/* ── LINE 管理 section ── */
+.ln-tabs{display:flex;gap:4px;border-bottom:1.5px solid var(--border);margin-bottom:20px}
+.ln-tab{padding:8px 16px;font-size:14px;font-weight:500;color:var(--sub);background:none;border:none;border-bottom:2.5px solid transparent;margin-bottom:-1.5px;cursor:pointer;transition:color .15s,border-color .15s;font-family:inherit}
+.ln-tab.active{color:var(--blue,#2563EB);border-bottom-color:var(--blue,#2563EB)}
+.ln-panel{display:none}
+.ln-panel.active{display:block}
+.ln-field{margin-bottom:14px}
+.ln-field label{display:block;font-size:12px;font-weight:500;color:var(--sub);margin-bottom:4px}
+.ln-field input,.ln-field textarea{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s}
+.ln-field input:focus,.ln-field textarea:focus{border-color:var(--blue,#2563EB)}
+.ln-field textarea{resize:vertical;min-height:60px}
 </style>
 <script src="/static/_layout.js?v=72"></script>
 <script src="/static/admin-auth.js?v=5"></script>
@@ -1602,7 +1614,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2C9 5 5 9 5 14a7 7 0 0 0 14 0C19 9 15 5 12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         抽血追蹤
       </button>
-      <button class="tab" onclick="window.location.href='/static/line.html'">
+      <button class="tab" data-section="line-manage">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
         LINE 管理
       </button>
@@ -2500,6 +2512,154 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
           <strong>注意：</strong>儲存後，下次同步代理執行時（最多 30 分鐘）將自動以新設定重新掃描。無需手動觸發。
         </div>
 
+      </div>
+    </div>
+  </section>
+
+  <!-- ── LINE 管理 ── -->
+  <section id="line-manage" class="section">
+    <div style="margin-bottom:20px">
+      <div style="font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:2px">LINE 官方帳號管理</div>
+      <div style="font-size:13px;color:var(--muted)">設定 LINE OA 憑證、管理病患綁定、及匯入綁定資料</div>
+    </div>
+
+    <div class="ln-tabs">
+      <button class="ln-tab active" data-lntab="settings" onclick="switchLnTab('settings')">設定</button>
+      <button class="ln-tab" data-lntab="bindings" onclick="switchLnTab('bindings')">綁定管理</button>
+      <button class="ln-tab" data-lntab="import" onclick="switchLnTab('import')">匯入綁定</button>
+    </div>
+
+    <!-- 設定 -->
+    <div class="ln-panel active" id="lnp-settings">
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><span class="card-title">LINE Messaging API 憑證</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">從 LINE Developers Console 取得，套用後立即生效。憑證儲存於伺服器，不會顯示在瀏覽器。</div>
+        <div class="ln-field">
+          <label>Channel Access Token（長期）</label>
+          <input id="ln-s-token" type="password" placeholder="貼上 Channel Access Token…" autocomplete="off">
+        </div>
+        <div class="ln-field">
+          <label>Channel Secret</label>
+          <input id="ln-s-secret" type="password" placeholder="貼上 Channel Secret…" autocomplete="off">
+        </div>
+        <div class="ln-field">
+          <label>LIFF ID <span style="font-weight:400;color:var(--muted)">（選填，供病患綁定頁使用）</span></label>
+          <input id="ln-s-liff" type="text" placeholder="例：1234567890-abcdefgh" autocomplete="off">
+        </div>
+        <div class="ln-field" style="display:flex;align-items:center;gap:10px">
+          <label style="margin:0;font-weight:500">啟用 LINE 功能</label>
+          <input id="ln-s-active" type="checkbox" style="width:auto">
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+          <button class="btn-sm primary" onclick="lnSaveSettings()">儲存設定</button>
+          <button class="btn-sm" onclick="lnLoadSettings()">重新載入</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><span class="card-title">推播訊息範本</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+          當病患已綁定 LINE 帳號時，系統會直接傳送以下訊息，不再需要透過 AlleyPin 自動化。<br>若留空，系統將使用預設訊息。
+        </div>
+        <div class="ln-field">
+          <label>慢簽追蹤訊息</label>
+          <textarea id="ln-tmpl-chronic" rows="3" placeholder="（使用預設）"></textarea>
+        </div>
+        <div class="ln-field">
+          <label>代謝症候群追蹤訊息</label>
+          <textarea id="ln-tmpl-mspt" rows="3" placeholder="（使用預設）"></textarea>
+        </div>
+        <div class="ln-field">
+          <label>B型肝炎追蹤訊息</label>
+          <textarea id="ln-tmpl-hep" rows="3" placeholder="（使用預設）"></textarea>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+          <button class="btn-sm primary" onclick="lnSaveTemplates()">儲存訊息範本</button>
+          <button class="btn-sm" onclick="lnLoadTemplates()">重設為預設</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head"><span class="card-title">病患綁定連結</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">將此連結製作成 QR Code 或放在診所網站，病患掃描後輸入病歷號碼即可完成綁定。</div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
+          <input id="ln-bind-url" type="text" readonly style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:12px;font-family:monospace">
+          <button class="btn-sm" onclick="lnCopyBindUrl()">複製</button>
+        </div>
+        <div id="ln-liff-row" style="display:none">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">或使用 LIFF 連結（在 LINE 內開啟）：</div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <input id="ln-liff-url" type="text" readonly style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:12px;font-family:monospace">
+            <button class="btn-sm" onclick="lnCopyLiffUrl()">複製</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 綁定管理 -->
+    <div class="ln-panel" id="lnp-bindings">
+      <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <div class="card" style="flex:1;min-width:120px;padding:14px 18px">
+          <div style="font-size:26px;font-weight:700;color:var(--text-1)" id="ln-stat-bound">—</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px">已綁定病患</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">綁定名單</span>
+          <span class="card-spacer"></span>
+          <button class="btn-sm" onclick="lnLoadBindings()">重新整理</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>病歷號碼</th><th>LINE 顯示名稱</th><th>綁定時間</th><th></th>
+            </tr></thead>
+            <tbody id="ln-bindings-body">
+              <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px">載入中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-head"><span class="card-title">傳送綁定邀請</span></div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+          向所有已綁定的病患傳送訊息，提醒他們確認綁定仍有效。適合在切換系統後驗證用。<br>
+          <strong>注意：</strong>此功能對象是已綁定名單中的病患，尚未綁定的追蹤者需要自行掃描 QR Code 完成綁定。
+        </div>
+        <button class="btn-sm primary" onclick="lnBroadcastInvite()">傳送綁定確認訊息給已綁定病患</button>
+      </div>
+    </div>
+
+    <!-- 匯入綁定 -->
+    <div class="ln-panel" id="lnp-import">
+      <div class="card">
+        <div class="card-head"><span class="card-title">從 CSV 匯入綁定資料</span></div>
+        <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:10px 14px;font-size:12.5px;color:#92400E;margin-bottom:14px;line-height:1.6">
+          此功能僅適用於您已有 <strong>病歷號碼 ↔ LINE User ID</strong> 對應資料的情況（例如從舊系統匯出）。<br>
+          AlleyPin 的匯出檔案<strong>不含</strong> LINE User ID（只有系統內部 ID），無法直接匯入。<br>
+          若要將現有的 LINE 追蹤者綁定到此系統，病患需掃描 QR Code 自行完成綁定。
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+          CSV 格式：第一行為標題列，需包含 <code>chart_number</code>（病歷號碼）和 <code>line_user_id</code> 兩個欄位。<br>
+          選填欄位：<code>display_name</code>（LINE 顯示名稱）。
+        </div>
+        <div class="upload-zone" onclick="document.getElementById('ln-csv-file').click()"
+             ondragover="event.preventDefault();this.classList.add('drag')"
+             ondragleave="this.classList.remove('drag')"
+             ondrop="lnHandleDrop(event)">
+          <input type="file" id="ln-csv-file" accept=".csv,text/csv" onchange="lnHandleFileSelect(event)">
+          <div style="font-size:13px;color:var(--muted)">點擊或拖曳 CSV 檔案到此處<br><strong style="color:var(--blue)">選擇 CSV 檔案</strong></div>
+        </div>
+        <div id="ln-csv-preview" style="display:none;margin-bottom:14px">
+          <div style="font-size:12px;color:var(--sub);margin-bottom:6px">預覽（前 5 筆）：</div>
+          <div id="ln-csv-preview-body"></div>
+          <div id="ln-csv-count" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+        </div>
+        <button class="btn-sm primary" id="ln-import-btn" onclick="lnImportCSV()" disabled>匯入</button>
+        <div id="ln-import-result" style="display:none;background:var(--green-bg,#ECFDF5);border:1px solid #A7F3D0;border-radius:6px;padding:10px 14px;font-size:12.5px;color:#059669;margin-top:10px"></div>
       </div>
     </div>
   </section>
@@ -6695,6 +6855,205 @@ async function saveBloodRecallSettings() {
   } finally { btn.disabled = false; }
 }
 
+// ── LINE 管理 ──────────────────────────────────────────────────────────────────
+var _lnCsvRows = [];
+var _lnSettingsLoaded = false;
+
+function switchLnTab(name) {
+  document.querySelectorAll('.ln-tab').forEach(function(t) { t.classList.toggle('active', t.dataset.lntab === name); });
+  document.querySelectorAll('.ln-panel').forEach(function(p) { p.classList.toggle('active', p.id === 'lnp-' + name); });
+  if (name === 'bindings') { lnLoadStats(); lnLoadBindings(); }
+}
+
+function lnLoadSettings() {
+  fetch('/api/line/settings').then(function(r) { return r.json(); }).then(function(d) {
+    var tokenEl = document.getElementById('ln-s-token');
+    var secretEl = document.getElementById('ln-s-secret');
+    tokenEl.value = d.has_token ? '••••••••••••••••' : '';
+    tokenEl.dataset.loaded = d.has_token ? '1' : '';
+    secretEl.value = d.has_secret ? '••••••••' : '';
+    secretEl.dataset.loaded = d.has_secret ? '1' : '';
+    document.getElementById('ln-s-liff').value = d.liff_id || '';
+    document.getElementById('ln-s-active').checked = !!d.is_active;
+    lnUpdateBindUrls(d.liff_id);
+    var t = d.message_templates || {};
+    document.getElementById('ln-tmpl-chronic').value = t['慢簽'] || '';
+    document.getElementById('ln-tmpl-mspt').value = t['代謝症候群'] || '';
+    document.getElementById('ln-tmpl-hep').value = t['B肝'] || '';
+    _lnSettingsLoaded = true;
+  }).catch(function() { Layout.showToast('載入LINE設定失敗'); });
+}
+
+function lnLoadTemplates() {
+  fetch('/api/line/templates').then(function(r) { return r.json(); }).then(function(d) {
+    document.getElementById('ln-tmpl-chronic').value = d['慢簽'] || '';
+    document.getElementById('ln-tmpl-mspt').value = d['代謝症候群'] || '';
+    document.getElementById('ln-tmpl-hep').value = d['B肝'] || '';
+    Layout.showToast('已載入預設訊息範本');
+  }).catch(function() { Layout.showToast('載入失敗'); });
+}
+
+function lnSaveTemplates() {
+  var templates = {
+    '慢簽': document.getElementById('ln-tmpl-chronic').value.trim(),
+    '代謝症候群': document.getElementById('ln-tmpl-mspt').value.trim(),
+    'B肝': document.getElementById('ln-tmpl-hep').value.trim(),
+  };
+  fetch('/api/line/templates', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(templates) })
+    .then(function(r) { Layout.showToast(r.ok ? '訊息範本已儲存' : '儲存失敗'); })
+    .catch(function() { Layout.showToast('儲存失敗'); });
+}
+
+function lnUpdateBindUrls(liffId) {
+  document.getElementById('ln-bind-url').value = location.origin + '/line/bind';
+  if (liffId) {
+    document.getElementById('ln-liff-url').value = 'https://liff.line.me/' + liffId;
+    document.getElementById('ln-liff-row').style.display = 'block';
+  } else {
+    document.getElementById('ln-liff-row').style.display = 'none';
+  }
+}
+
+function lnSaveSettings() {
+  var tokenEl = document.getElementById('ln-s-token');
+  var secretEl = document.getElementById('ln-s-secret');
+  var token = tokenEl.value;
+  var secret = secretEl.value;
+  if (token === '••••••••••••••••' && tokenEl.dataset.loaded) token = '';
+  if (secret === '••••••••' && secretEl.dataset.loaded) secret = '';
+  fetch('/api/line/settings', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ channel_access_token: token, channel_secret: secret, liff_id: document.getElementById('ln-s-liff').value.trim(), is_active: document.getElementById('ln-s-active').checked }),
+  }).then(function(r) {
+    if (r.ok) { Layout.showToast('設定已儲存'); lnLoadSettings(); }
+    else { Layout.showToast('儲存失敗'); }
+  });
+}
+
+function lnCopyBindUrl() {
+  navigator.clipboard.writeText(document.getElementById('ln-bind-url').value).then(function() { Layout.showToast('已複製'); }).catch(function() { Layout.showToast('複製失敗'); });
+}
+function lnCopyLiffUrl() {
+  navigator.clipboard.writeText(document.getElementById('ln-liff-url').value).then(function() { Layout.showToast('已複製'); }).catch(function() { Layout.showToast('複製失敗'); });
+}
+
+function lnLoadStats() {
+  fetch('/api/line/stats').then(function(r) { return r.json(); }).then(function(d) {
+    document.getElementById('ln-stat-bound').textContent = d.bound;
+  });
+}
+
+function lnLoadBindings() {
+  var tbody = document.getElementById('ln-bindings-body');
+  tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px">載入中…</td></tr>';
+  fetch('/api/line/bindings').then(function(r) { return r.json(); }).then(function(rows) {
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:24px">尚無綁定資料</td></tr>';
+      return;
+    }
+    tbody.innerHTML = rows.map(function(r) {
+      return '<tr>' +
+        '<td style="font-weight:600">' + esc(r.chart_number) + '</td>' +
+        '<td>' + esc(r.display_name || '—') + '</td>' +
+        '<td style="color:var(--muted)">' + esc((r.bound_at || '').substring(0,10)) + '</td>' +
+        '<td><button class="btn-sm" style="border-color:var(--red);color:var(--red);font-size:12px;padding:4px 10px" onclick="lnUnbind(' + JSON.stringify(r.chart_number) + ')">解除綁定</button></td>' +
+      '</tr>';
+    }).join('');
+  }).catch(function() { tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px">載入失敗</td></tr>'; });
+}
+
+function lnUnbind(chartNumber) {
+  if (!confirm('確定要解除「' + chartNumber + '」的 LINE 綁定？')) return;
+  fetch('/api/line/binding/' + encodeURIComponent(chartNumber), { method: 'DELETE' })
+    .then(function(r) {
+      if (r.ok) { Layout.showToast('已解除綁定'); lnLoadBindings(); lnLoadStats(); }
+      else { Layout.showToast('解除失敗'); }
+    });
+}
+
+function lnBroadcastInvite() {
+  if (!confirm('確定要傳送綁定確認訊息給所有已綁定病患？')) return;
+  fetch('/api/line/broadcast-invite', { method: 'POST' })
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      if (d.status === 'error') { Layout.showToast('傳送失敗：' + d.detail); return; }
+      Layout.showToast('已傳送 ' + (d.sent || 0) + ' 則，失敗 ' + (d.failed || 0) + ' 則');
+    }).catch(function() { Layout.showToast('傳送失敗'); });
+}
+
+function lnHandleFileSelect(e) {
+  var file = e.target.files[0];
+  if (file) lnProcessCSVFile(file);
+}
+function lnHandleDrop(e) {
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag');
+  var file = e.dataTransfer.files[0];
+  if (file) lnProcessCSVFile(file);
+}
+function lnProcessCSVFile(file) {
+  var reader = new FileReader();
+  reader.onload = function(ev) {
+    var rows = lnParseCSV(ev.target.result);
+    if (rows === null) { Layout.showToast('CSV 缺少必要欄位（chart_number 或 line_user_id）'); return; }
+    _lnCsvRows = rows;
+    lnShowCSVPreview(rows);
+    document.getElementById('ln-import-btn').disabled = rows.length === 0;
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+function lnParseCSV(text) {
+  function parseLine(line) {
+    var result = [], cur = '', inQ = false;
+    for (var i = 0; i < line.length; i++) {
+      var c = line[i];
+      if (inQ) { if (c === '"' && line[i+1] === '"') { cur += '"'; i++; } else if (c === '"') { inQ = false; } else { cur += c; } }
+      else { if (c === '"') { inQ = true; } else if (c === ',') { result.push(cur); cur = ''; } else { cur += c; } }
+    }
+    result.push(cur); return result;
+  }
+  var lines = text.trim().split(/\r?\n/);
+  if (!lines.length) return [];
+  var hdr = parseLine(lines[0]).map(function(h) { return h.trim(); });
+  var cCN = hdr.indexOf('chart_number'), cUID = hdr.indexOf('line_user_id'), cDN = hdr.indexOf('display_name');
+  if (cCN < 0 || cUID < 0) return null;
+  var rows = [];
+  for (var i = 1; i < lines.length; i++) {
+    var p = parseLine(lines[i]).map(function(c) { return c.trim(); });
+    if (!p[cCN] && !p[cUID]) continue;
+    rows.push({ chart_number: p[cCN] || '', line_user_id: p[cUID] || '', display_name: cDN >= 0 ? (p[cDN] || '') : '' });
+  }
+  return rows;
+}
+function lnShowCSVPreview(rows) {
+  document.getElementById('ln-csv-preview').style.display = 'block';
+  document.getElementById('ln-csv-preview-body').innerHTML =
+    '<table style="font-size:12px;width:100%;border-collapse:collapse">' +
+    '<tr><th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border)">病歷號碼</th>' +
+    '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border)">LINE User ID</th>' +
+    '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid var(--border)">顯示名稱</th></tr>' +
+    rows.slice(0,5).map(function(r) {
+      return '<tr><td style="padding:4px 8px">' + esc(r.chart_number) + '</td>' +
+             '<td style="padding:4px 8px;font-family:monospace;font-size:11px">' + esc(r.line_user_id.substring(0,20) + (r.line_user_id.length > 20 ? '…' : '')) + '</td>' +
+             '<td style="padding:4px 8px">' + esc(r.display_name) + '</td></tr>';
+    }).join('') + '</table>';
+  document.getElementById('ln-csv-count').textContent = '共 ' + rows.length + ' 筆資料';
+}
+function lnImportCSV() {
+  if (!_lnCsvRows.length) return;
+  var btn = document.getElementById('ln-import-btn');
+  btn.disabled = true; btn.textContent = '匯入中…';
+  fetch('/api/line/import', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(_lnCsvRows) })
+    .then(function(r) { return r.json(); }).then(function(d) {
+      var el = document.getElementById('ln-import-result');
+      el.style.display = 'block';
+      el.textContent = '匯入完成：成功 ' + d.imported + ' 筆，略過 ' + d.skipped + ' 筆' + (d.errors && d.errors.length ? '，錯誤 ' + d.errors.length + ' 筆' : '');
+      btn.disabled = false; btn.textContent = '匯入';
+      lnLoadStats();
+    }).catch(function() { Layout.showToast('匯入失敗'); btn.disabled = false; btn.textContent = '匯入'; });
+}
+
 // ── Boot ──────────────────────────────────────────────────────────────────────
 function load(section) {
   if (section === 'nurses')    loadNurses();
@@ -6708,6 +7067,7 @@ function load(section) {
   else if (section === 'usersmgmt')  { loadUsers(); loadProfiles(); loadPharmacists(); }
   else if (section === 'clinic-settings') loadClinicSettings();
   else if (section === 'blood-recall-settings') { brRenderChecklist(''); loadBloodRecallSettings(); }
+  else if (section === 'line-manage') { if (!_lnSettingsLoaded) lnLoadSettings(); }
 }
 
 function refresh() {
