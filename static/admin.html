@@ -2675,11 +2675,13 @@ select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px
 
       <div class="card" style="margin-top:16px">
         <div class="card-head"><span class="card-title">傳送綁定邀請</span></div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
-          向所有已綁定的病患傳送訊息，提醒他們確認綁定仍有效。適合在切換系統後驗證用。<br>
-          <strong>注意：</strong>此功能對象是已綁定名單中的病患，尚未綁定的追蹤者需要自行掃描 QR Code 完成綁定。
+        <div style="padding:16px 24px 20px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+            向所有已綁定的病患傳送訊息，提醒他們確認綁定仍有效。適合在切換系統後驗證用。<br>
+            <strong>注意：</strong>此功能對象是已綁定名單中的病患，尚未綁定的追蹤者需要自行掃描 QR Code 完成綁定。
+          </div>
+          <button class="btn-sm primary" onclick="lnBroadcastInvite()">傳送綁定確認訊息給已綁定病患</button>
         </div>
-        <button class="btn-sm primary" onclick="lnBroadcastInvite()">傳送綁定確認訊息給已綁定病患</button>
       </div>
     </div>
 
@@ -2687,29 +2689,31 @@ select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px
     <div class="ln-panel" id="lnp-import">
       <div class="card">
         <div class="card-head"><span class="card-title">從 CSV 匯入綁定資料</span></div>
-        <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:10px 14px;font-size:12.5px;color:#92400E;margin-bottom:14px;line-height:1.6">
-          此功能僅適用於您已有 <strong>病歷號碼 ↔ LINE User ID</strong> 對應資料的情況（例如從舊系統匯出）。<br>
-          AlleyPin 的匯出檔案<strong>不含</strong> LINE User ID（只有系統內部 ID），無法直接匯入。<br>
-          若要將現有的 LINE 追蹤者綁定到此系統，病患需掃描 QR Code 自行完成綁定。
+        <div style="padding:16px 24px 20px">
+          <div style="background:#FFFBEB;border:1px solid #FDE68A;border-radius:6px;padding:10px 14px;font-size:12.5px;color:#92400E;margin-bottom:14px;line-height:1.6">
+            此功能僅適用於您已有 <strong>病歷號碼 ↔ LINE User ID</strong> 對應資料的情況（例如從舊系統匯出）。<br>
+            AlleyPin 的匯出檔案<strong>不含</strong> LINE User ID（只有系統內部 ID），無法直接匯入。<br>
+            若要將現有的 LINE 追蹤者綁定到此系統，病患需掃描 QR Code 自行完成綁定。
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+            CSV 格式：第一行為標題列，需包含 <code>chart_number</code>（病歷號碼）和 <code>line_user_id</code> 兩個欄位。<br>
+            選填欄位：<code>display_name</code>（LINE 顯示名稱）。
+          </div>
+          <div class="upload-zone" onclick="document.getElementById('ln-csv-file').click()"
+               ondragover="event.preventDefault();this.classList.add('drag')"
+               ondragleave="this.classList.remove('drag')"
+               ondrop="lnHandleDrop(event)">
+            <input type="file" id="ln-csv-file" accept=".csv,text/csv" onchange="lnHandleFileSelect(event)">
+            <div style="font-size:13px;color:var(--muted)">點擊或拖曳 CSV 檔案到此處<br><strong style="color:var(--blue)">選擇 CSV 檔案</strong></div>
+          </div>
+          <div id="ln-csv-preview" style="display:none;margin-bottom:14px">
+            <div style="font-size:12px;color:var(--sub);margin-bottom:6px">預覽（前 5 筆）：</div>
+            <div id="ln-csv-preview-body"></div>
+            <div id="ln-csv-count" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
+          </div>
+          <button class="btn-sm primary" id="ln-import-btn" onclick="lnImportCSV()" disabled>匯入</button>
+          <div id="ln-import-result" style="display:none;background:var(--green-bg,#ECFDF5);border:1px solid #A7F3D0;border-radius:6px;padding:10px 14px;font-size:12.5px;color:#059669;margin-top:10px"></div>
         </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
-          CSV 格式：第一行為標題列，需包含 <code>chart_number</code>（病歷號碼）和 <code>line_user_id</code> 兩個欄位。<br>
-          選填欄位：<code>display_name</code>（LINE 顯示名稱）。
-        </div>
-        <div class="upload-zone" onclick="document.getElementById('ln-csv-file').click()"
-             ondragover="event.preventDefault();this.classList.add('drag')"
-             ondragleave="this.classList.remove('drag')"
-             ondrop="lnHandleDrop(event)">
-          <input type="file" id="ln-csv-file" accept=".csv,text/csv" onchange="lnHandleFileSelect(event)">
-          <div style="font-size:13px;color:var(--muted)">點擊或拖曳 CSV 檔案到此處<br><strong style="color:var(--blue)">選擇 CSV 檔案</strong></div>
-        </div>
-        <div id="ln-csv-preview" style="display:none;margin-bottom:14px">
-          <div style="font-size:12px;color:var(--sub);margin-bottom:6px">預覽（前 5 筆）：</div>
-          <div id="ln-csv-preview-body"></div>
-          <div id="ln-csv-count" style="font-size:12px;color:var(--muted);margin-top:6px"></div>
-        </div>
-        <button class="btn-sm primary" id="ln-import-btn" onclick="lnImportCSV()" disabled>匯入</button>
-        <div id="ln-import-result" style="display:none;background:var(--green-bg,#ECFDF5);border:1px solid #A7F3D0;border-radius:6px;padding:10px 14px;font-size:12.5px;color:#059669;margin-top:10px"></div>
       </div>
     </div>
   </section>
