@@ -1559,7 +1559,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .ln-field textarea{resize:vertical;min-height:60px}
 .ln-field-input{display:block;width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s}
 .ln-field-input:focus{border-color:var(--blue,#2563EB)}
-textarea.ln-field-input{resize:vertical;min-height:60px;line-height:1.6}
+textarea.ln-field-input{resize:none;min-height:140px;line-height:1.6}
 select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
 </style>
 <script src="/static/_layout.js?v=72"></script>
@@ -7027,7 +7027,7 @@ function lnOpenEditModal(id) {
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">' +
           '<div>' +
             '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">訊息內容</div>' +
-            '<textarea id="ln-ed-content" class="ln-field-input" rows="8" placeholder="（留空使用預設訊息）" oninput="lnEditorUpdate()" style="resize:vertical;line-height:1.6">'+_lnEsc(p.content)+'</textarea>' +
+            '<textarea id="ln-ed-content" class="ln-field-input" placeholder="（留空使用預設訊息）" oninput="lnEditorUpdate()">'+_lnEsc(p.content)+'</textarea>' +
             '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">' +
               '<button onclick="lnInsertVarEditor()" style="background:var(--badge-blue-bg);border:1px solid var(--badge-blue-bd);border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer;color:var(--badge-blue-c);font-family:inherit">{患者姓名}</button>' +
               '<span id="ln-ed-count" style="font-size:11px;color:var(--muted)">'+p.content.length+' 字</span>' +
