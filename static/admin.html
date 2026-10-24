@@ -1531,6 +1531,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   --badge-green-bg:#F0FDF4;  --badge-green-c:#16A34A;  --badge-green-bd:#BBF7D0;
   --badge-orange-bg:#FFF7ED; --badge-orange-c:#EA580C; --badge-orange-bd:#FED7AA;
   --badge-gray-bg:#F3F4F6;   --badge-gray-c:#6B7280;   --badge-gray-bd:#E5E7EB;
+  --badge-red-bg:#FFF1F2;    --badge-red-c:#E11D48;    --badge-red-bd:#FECDD3;
   --code-bg:rgba(0,0,0,.06);
 }
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){
@@ -1538,6 +1539,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   --badge-green-bg:rgba(22,163,74,.15);  --badge-green-c:#86EFAC;  --badge-green-bd:rgba(22,163,74,.3);
   --badge-orange-bg:rgba(234,88,12,.15); --badge-orange-c:#FCA172; --badge-orange-bd:rgba(234,88,12,.3);
   --badge-gray-bg:rgba(107,114,128,.1);  --badge-gray-c:#9CA3AF;   --badge-gray-bd:rgba(107,114,128,.25);
+  --badge-red-bg:rgba(225,29,72,.15);    --badge-red-c:#FDA4AF;    --badge-red-bd:rgba(225,29,72,.3);
   --code-bg:rgba(255,255,255,.1);
 }}
 :root[data-theme=dark]{
@@ -1545,6 +1547,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   --badge-green-bg:rgba(22,163,74,.15);  --badge-green-c:#86EFAC;  --badge-green-bd:rgba(22,163,74,.3);
   --badge-orange-bg:rgba(234,88,12,.15); --badge-orange-c:#FCA172; --badge-orange-bd:rgba(234,88,12,.3);
   --badge-gray-bg:rgba(107,114,128,.1);  --badge-gray-c:#9CA3AF;   --badge-gray-bd:rgba(107,114,128,.25);
+  --badge-red-bg:rgba(225,29,72,.15);    --badge-red-c:#FDA4AF;    --badge-red-bd:rgba(225,29,72,.3);
   --code-bg:rgba(255,255,255,.1);
 }
 .ln-panel{display:none}
@@ -1554,8 +1557,10 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .ln-field input,.ln-field textarea{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:13px;font-family:inherit;outline:none;transition:border-color .15s}
 .ln-field input:focus,.ln-field textarea:focus{border-color:var(--blue,#2563EB)}
 .ln-field textarea{resize:vertical;min-height:60px}
-.ln-field-input{width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s}
+.ln-field-input{display:block;width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;transition:border-color .15s}
 .ln-field-input:focus{border-color:var(--blue,#2563EB)}
+textarea.ln-field-input{resize:vertical;min-height:60px;line-height:1.6}
+select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
 </style>
 <script src="/static/_layout.js?v=72"></script>
 <script src="/static/admin-auth.js?v=5"></script>
@@ -6924,6 +6929,7 @@ var _LN_TC = {
   '慢簽':     {bg:'var(--badge-blue-bg)',   color:'var(--badge-blue-c)',   border:'var(--badge-blue-bd)'},
   '代謝症候群':{bg:'var(--badge-green-bg)',  color:'var(--badge-green-c)',  border:'var(--badge-green-bd)'},
   'B肝':      {bg:'var(--badge-orange-bg)', color:'var(--badge-orange-c)', border:'var(--badge-orange-bd)'},
+  '抽血':     {bg:'var(--badge-red-bg)',    color:'var(--badge-red-c)',    border:'var(--badge-red-bd)'},
   '自訂':     {bg:'var(--badge-gray-bg)',   color:'var(--badge-gray-c)',   border:'var(--badge-gray-bd)'}
 };
 
@@ -6981,12 +6987,15 @@ function lnRenderPresetList() {
 
 function lnOpenEditModal(id) {
   var isNew = !id;
-  var p = isNew ? {id:'preset-'+Date.now(), name:'', type:'自訂', content:''} : _lnPresets.find(function(x){return x.id===id;});
+  var p = isNew ? {id:'preset-'+Date.now(), name:'', type:'慢簽', content:''} : _lnPresets.find(function(x){return x.id===id;});
   if (!p) return;
 
-  var typeOptions = ['慢簽','代謝症候群','B肝','自訂'].map(function(t) {
+  var _PRESET_TYPES = ['慢簽','代謝症候群','B肝','抽血'];
+  var isCustomType = _PRESET_TYPES.indexOf(p.type) === -1;
+  var customTypeVal = isCustomType ? p.type : '';
+  var typeOptions = _PRESET_TYPES.map(function(t) {
     return '<option value="'+t+'"'+(t===p.type?' selected':'')+'>'+t+'</option>';
-  }).join('');
+  }).join('') + '<option value="__custom__"'+(isCustomType?' selected':'')+'>自訂類型…</option>';
   var previewText = p.content ? _lnEsc(p.content.replace(/\{患者姓名\}/g,'王小明')) : '（使用系統預設訊息）';
   var sid = _lnEsc(p.id);
 
@@ -7009,7 +7018,10 @@ function lnOpenEditModal(id) {
           '</div>' +
           '<div>' +
             '<label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase">類型</label>' +
-            '<select id="ln-ed-type" class="ln-field-input" style="height:36px">'+typeOptions+'</select>' +
+            '<select id="ln-ed-type" class="ln-field-input" style="height:36px" onchange="lnTypeChanged()">'+typeOptions+'</select>' +
+            '<div id="ln-ed-custom-row" style="margin-top:8px;'+(isCustomType?'':'display:none')+'">' +
+              '<input id="ln-ed-custom-type" class="ln-field-input" type="text" placeholder="輸入自訂類型名稱" value="'+_lnEsc(customTypeVal)+'">' +
+            '</div>' +
           '</div>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">' +
@@ -7079,6 +7091,12 @@ function lnInsertVarEditor() {
   lnEditorUpdate();
 }
 
+function lnTypeChanged() {
+  var sel = document.getElementById('ln-ed-type');
+  var row = document.getElementById('ln-ed-custom-row');
+  if (sel && row) row.style.display = sel.value === '__custom__' ? 'block' : 'none';
+}
+
 function lnSaveCurrentPreset(presetId, isNew) {
   var nameEl = document.getElementById('ln-ed-name');
   var typeEl = document.getElementById('ln-ed-type');
@@ -7086,11 +7104,17 @@ function lnSaveCurrentPreset(presetId, isNew) {
   if (!nameEl || !typeEl || !contentEl) return;
   var name = nameEl.value.trim();
   if (!name) { Layout.showToast('請輸入範本名稱'); nameEl.focus(); return; }
+  var typeVal = typeEl.value;
+  if (typeVal === '__custom__') {
+    var customEl = document.getElementById('ln-ed-custom-type');
+    typeVal = customEl ? customEl.value.trim() : '';
+    if (!typeVal) { Layout.showToast('請輸入自訂類型名稱'); if(customEl) customEl.focus(); return; }
+  }
   if (isNew) {
-    _lnPresets.push({id:presetId, name:name, type:typeEl.value, content:contentEl.value.trim()});
+    _lnPresets.push({id:presetId, name:name, type:typeVal, content:contentEl.value.trim()});
   } else {
     _lnPresets = _lnPresets.map(function(p) {
-      return p.id===presetId ? {id:p.id, name:name, type:typeEl.value, content:contentEl.value.trim()} : p;
+      return p.id===presetId ? {id:p.id, name:name, type:typeVal, content:contentEl.value.trim()} : p;
     });
   }
   lnCloseModal();
