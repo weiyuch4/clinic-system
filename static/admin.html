@@ -137,8 +137,6 @@ main {
 }
 .section { display: none; }
 .section.active { display: block; animation: fadeUp .2s ease both; }
-.iframe-section.active { display: flex; flex-direction: column; padding: 0; margin: -28px -32px -48px; }
-.embed-frame { flex: 1; border: none; width: 100%; min-height: calc(100vh - 56px); display: block; }
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
@@ -1575,6 +1573,106 @@ select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px
 .br-check:hover{border-color:var(--blue,#2563EB)}
 .br-check:checked{background:var(--blue,#2563EB);border-color:var(--blue,#2563EB)}
 .br-check:checked::after{content:'';position:absolute;top:1px;left:5px;width:4px;height:8px;border:2px solid #fff;border-top:none;border-left:none;transform:rotate(45deg)}
+
+/* ── Variable aliases for embedded LINE feature pages ── */
+:root{--t1:var(--text-1);--t2:var(--text-2);--t3:var(--text-3);--bm:var(--border-mid);--r-s:var(--radius-s);--blue-bd:#BFDBFE}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--blue-bd:rgba(37,99,235,.3)}}
+:root[data-theme="dark"]{--blue-bd:rgba(37,99,235,.3)}
+/* ── Shared form inputs ── */
+.lfi{display:block;width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:var(--radius-s);background:var(--bg);color:var(--text-1);font-size:13px;font-family:var(--font);outline:none;box-sizing:border-box;transition:border-color .15s}
+.lfi:focus{border-color:var(--blue)}
+textarea.lfi{resize:none;line-height:1.6}
+select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
+.field{margin-bottom:14px}
+.field-label{display:block;font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:5px;letter-spacing:.02em}
+.field-hint{font-size:11.5px;color:var(--text-3);margin-top:4px}
+.card-body{padding:16px 24px 20px}
+/* ── Badges ── */
+.badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid;white-space:nowrap}
+.badge-gray{background:#F3F4F6;color:#6B7280;border-color:#E5E7EB}
+.badge-blue{background:var(--blue-bg,#EFF6FF);color:#2563EB;border-color:#BFDBFE}
+.badge-orange{background:#FFF7ED;color:#EA580C;border-color:#FED7AA}
+.badge-green{background:#F0FDF4;color:#16A34A;border-color:#BBF7D0}
+.badge-red{background:#FFF1F2;color:#E11D48;border-color:#FECDD3}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){.badge-gray{background:rgba(107,114,128,.1);color:#9CA3AF;border-color:rgba(107,114,128,.25)}.badge-blue{background:rgba(37,99,235,.15);color:#93C5FD;border-color:rgba(37,99,235,.3)}.badge-orange{background:rgba(234,88,12,.15);color:#FCA172;border-color:rgba(234,88,12,.3)}.badge-green{background:rgba(22,163,74,.15);color:#86EFAC;border-color:rgba(22,163,74,.3)}.badge-red{background:rgba(225,29,72,.15);color:#FDA4AF;border-color:rgba(225,29,72,.3)}}}
+:root[data-theme="dark"] .badge-gray{background:rgba(107,114,128,.1);color:#9CA3AF;border-color:rgba(107,114,128,.25)}
+:root[data-theme="dark"] .badge-blue{background:rgba(37,99,235,.15);color:#93C5FD;border-color:rgba(37,99,235,.3)}
+:root[data-theme="dark"] .badge-orange{background:rgba(234,88,12,.15);color:#FCA172;border-color:rgba(234,88,12,.3)}
+:root[data-theme="dark"] .badge-green{background:rgba(22,163,74,.15);color:#86EFAC;border-color:rgba(22,163,74,.3)}
+:root[data-theme="dark"] .badge-red{background:rgba(225,29,72,.15);color:#FDA4AF;border-color:rgba(225,29,72,.3)}
+/* ── Toggle ── */
+.toggle{display:inline-flex;align-items:center;cursor:pointer;flex-shrink:0}
+.toggle input{display:none}
+.toggle-track{display:inline-block;width:38px;height:22px;background:var(--border-mid);border-radius:11px;position:relative;transition:background .2s;cursor:pointer}
+.toggle input:checked+.toggle-track{background:var(--blue)}
+.toggle-track::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.toggle input:checked+.toggle-track::after{transform:translateX(16px)}
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-label{font-size:13.5px;font-weight:600;color:var(--text-1)}
+.toggle-desc{font-size:12px;color:var(--text-3);margin-top:2px}
+/* ── Broadcasts: send mode & misc ── */
+.seg-toggle{display:inline-flex;background:var(--bg);border:1px solid var(--border-mid);border-radius:var(--radius-s);padding:2px;gap:2px}
+.seg-btn{border:none;background:none;padding:6px 14px;font:600 12.5px/1 var(--font);color:var(--text-2);border-radius:5px;cursor:pointer;transition:background .12s,color .12s}
+.seg-btn:hover{color:var(--text-1)}
+.seg-btn.active{background:var(--surface);color:var(--blue);box-shadow:var(--shadow-s)}
+.char-count{font-size:11px;color:var(--text-3);text-align:right;margin-top:3px}
+.char-count.warn{color:#D97706}.char-count.over{color:#DC2626}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ── AI Agent: inner tabs ── */
+.aitabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin:0 0 20px}
+.aitab{padding:10px 18px;font:600 13px/1 var(--font);color:var(--text-2);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;border-radius:0;transition:color .12s,border-color .12s}
+.aitab:hover{color:var(--text-1)}
+.aitab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.aitab-panel{display:none}.aitab-panel.active{display:block}
+/* ── AI Agent: status banner ── */
+.status-banner{display:flex;align-items:center;gap:12px;padding:12px 16px;border-radius:var(--radius-s);font-size:13px;margin-bottom:16px;border:1px solid}
+.status-banner.on{background:#F0FDF4;border-color:#BBF7D0;color:#15803D}
+.status-banner.off{background:var(--bg);border-color:var(--border);color:var(--text-2)}
+.status-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.status-banner.on .status-dot{background:#16A34A}
+.status-banner.off .status-dot{background:var(--border-mid)}
+/* ── AI Agent: schedule grid ── */
+.schedule-grid{display:grid;gap:8px}
+.sched-row{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:12px}
+.sched-day{font:700 12px/1 var(--font);color:var(--text-2)}
+.sched-times{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.sched-times .lfi{width:110px;height:34px;padding:6px 8px;font-size:12.5px}
+.sched-sep{font-size:12px;color:var(--text-3)}
+/* ── AI Agent: knowledge base ── */
+.kb-item{border:1px solid var(--border);border-radius:var(--radius-s);padding:12px 16px;margin-bottom:8px;display:flex;align-items:flex-start;gap:12px;background:var(--surface)}
+.kb-item-body{flex:1;min-width:0}
+.kb-item-title{font-size:13.5px;font-weight:600;color:var(--text-1);margin-bottom:2px}
+.kb-item-preview{font-size:12.5px;color:var(--text-2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:500px}
+.kb-item-meta{font-size:11.5px;color:var(--text-3);margin-top:3px}
+.kb-item-actions{display:flex;gap:6px;flex-shrink:0}
+/* ── AI Agent: conversations ── */
+.conv-msg{padding:10px 14px;border-radius:var(--radius-s);margin-bottom:8px;font-size:13px;line-height:1.6;max-width:540px}
+.conv-msg.user{background:var(--bg);border:1px solid var(--border)}
+.conv-msg.assistant{background:var(--blue-bg,#EFF6FF);border:1px solid var(--blue-bd);margin-left:auto}
+.conv-meta{font-size:11px;color:var(--text-3);margin-bottom:2px}
+/* ── Modal (AI Agent KB) ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:24px;width:min(560px,94vw);max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal-title{font-size:15px;font-weight:700;margin-bottom:18px;color:var(--text-1)}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
+/* ── Reviews: inner tabs ── */
+.rvtabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin:0 0 20px}
+.rvtab{padding:10px 18px;font:600 13px/1 var(--font);color:var(--text-2);cursor:pointer;border-bottom:2.5px solid transparent;margin-bottom:-1px;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none;border-radius:0;transition:color .12s,border-color .12s}
+.rvtab:hover{color:var(--text-1)}
+.rvtab.active{color:var(--blue);border-bottom-color:var(--blue)}
+.rvtab-panel{display:none}.rvtab-panel.active{display:block}
+/* ── Reviews: stats tiles ── */
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
+.stat-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;text-align:center}
+.stat-tile-num{font-size:28px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums;line-height:1}
+.stat-tile-label{font-size:11.5px;color:var(--text-3);margin-top:4px}
+.stars-display{color:#F59E0B;font-size:16px;letter-spacing:1px}
+/* ── Reviews: send panel ── */
+.send-panel{border:1px solid var(--border);border-radius:var(--radius-s);padding:16px;background:var(--bg);margin-bottom:16px}
+.send-panel-title{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
 </style>
 <script src="/static/_layout.js?v=72"></script>
 <script src="/static/admin-auth.js?v=5"></script>
@@ -2746,18 +2844,325 @@ select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px
   </section>
 
   <!-- ── 廣播訊息 ── -->
-  <section id="broadcasts" class="section iframe-section">
-    <iframe id="iframe-broadcasts" class="embed-frame" loading="lazy"></iframe>
+  <section id="broadcasts" class="section">
+
+    <!-- Compose card -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-head">
+        <span class="card-title">新增群發訊息</span>
+        <span style="font-size:12px;color:var(--text-3);margin-left:auto" id="bc-bind-count-label"></span>
+      </div>
+      <div class="card-body">
+        <div class="field">
+          <label class="field-label" for="bc-name">訊息名稱</label>
+          <input id="bc-name" class="lfi" type="text" placeholder="例：10月慢簽提醒" maxlength="200">
+        </div>
+        <div class="field">
+          <label class="field-label" for="bc-audience">發送對象</label>
+          <select id="bc-audience" class="lfi" style="max-width:320px">
+            <option value="all">所有已綁定病患</option>
+          </select>
+          <div class="field-hint">僅傳送給已完成 LINE 綁定的病患</div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="bc-content">訊息內容</label>
+          <textarea id="bc-content" class="lfi" placeholder="輸入要傳送的訊息內容…" maxlength="5000" rows="5" oninput="updateCharCount()"></textarea>
+          <div class="char-count" id="char-count">0 / 5000</div>
+        </div>
+        <div class="field">
+          <label class="field-label">發送時間</label>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div class="seg-toggle">
+              <button class="seg-btn active" id="mode-now" onclick="setSendMode('now')">立即發送</button>
+              <button class="seg-btn" id="mode-later" onclick="setSendMode('later')">排程發送</button>
+            </div>
+            <input id="bc-schedule" class="lfi" type="datetime-local" style="display:none;width:auto;min-width:200px;height:36px;padding:6px 10px">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <button class="btn-sm primary" id="submit-btn" onclick="submitBroadcast()"><span id="submit-label">發送</span></button>
+          <button class="btn-sm" onclick="resetForm()">清除</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- History card -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">發送紀錄</span>
+        <button class="btn-sm" onclick="loadBroadcasts()" style="margin-left:auto">↻ 重新整理</button>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th class="l">名稱</th><th class="l">狀態</th><th class="l">已送出 / 失敗</th><th class="l">發送時間</th><th class="l">建立者</th><th></th>
+          </tr></thead>
+          <tbody id="bc-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">載入中…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
   </section>
 
   <!-- ── AI 自動回覆 ── -->
-  <section id="ai-agent" class="section iframe-section">
-    <iframe id="iframe-ai-agent" class="embed-frame" loading="lazy"></iframe>
+  <section id="ai-agent" class="section">
+
+    <div class="aitabs">
+      <button class="aitab active" onclick="aiShowTab('settings')">基本設定</button>
+      <button class="aitab" onclick="aiShowTab('kb')">知識庫</button>
+      <button class="aitab" onclick="aiShowTab('schedule')">回覆時段</button>
+      <button class="aitab" onclick="aiShowTab('conversations')">對話紀錄</button>
+    </div>
+
+    <!-- Tab: Settings -->
+    <div id="aitab-settings" class="aitab-panel active">
+      <div id="ai-status-banner" class="status-banner off">
+        <span class="status-dot"></span>
+        <span id="ai-status-text">AI 自動回覆目前已關閉</span>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><span class="card-title">啟用設定</span></div>
+        <div class="card-body">
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">啟用 AI 自動回覆</div>
+              <div class="toggle-desc">開啟後，病患透過 LINE 傳送的訊息將由 AI 自動回覆</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="ai-chk-enabled" onchange="aiToggleEnabled()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><span class="card-title">AI 服務商</span></div>
+        <div class="card-body">
+          <div class="field">
+            <label class="field-label" for="ai-sel-provider">服務商</label>
+            <select id="ai-sel-provider" class="lfi" style="max-width:280px" onchange="onProviderChange()">
+              <option value="gemini">Google Gemini (建議)</option>
+              <option value="claude">Anthropic Claude</option>
+            </select>
+          </div>
+          <div class="field" id="ai-field-gemini-key">
+            <label class="field-label" for="ai-inp-gemini-key">Gemini API Key</label>
+            <input id="ai-inp-gemini-key" class="lfi" type="password" placeholder="已設定 (輸入新值以更新)" autocomplete="off" style="max-width:400px">
+            <div class="field-hint">前往 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener" style="color:var(--blue)">Google AI Studio</a> 取得 API Key</div>
+          </div>
+          <div class="field" id="ai-field-claude-key" style="display:none">
+            <label class="field-label" for="ai-inp-claude-key">Claude API Key</label>
+            <input id="ai-inp-claude-key" class="lfi" type="password" placeholder="已設定 (輸入新值以更新)" autocomplete="off" style="max-width:400px">
+            <div class="field-hint">前往 <a href="https://console.anthropic.com/" target="_blank" rel="noopener" style="color:var(--blue)">Anthropic Console</a> 取得 API Key</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="ai-inp-model">模型名稱 <span style="font-weight:400;color:var(--text-3)">(選填，留空使用預設)</span></label>
+            <input id="ai-inp-model" class="lfi" type="text" placeholder="gemini-2.0-flash-exp" style="max-width:320px">
+            <div class="field-hint" id="ai-model-hint">Gemini 預設：gemini-2.0-flash-exp</div>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><span class="card-title">系統提示詞</span></div>
+        <div class="card-body">
+          <div class="field">
+            <label class="field-label" for="ai-inp-prompt">AI 角色與行為指示</label>
+            <textarea id="ai-inp-prompt" class="lfi" rows="6" placeholder="描述 AI 的角色、語氣與回覆規則…"></textarea>
+            <div class="field-hint">知識庫的內容會自動附加在系統提示詞之後，無需手動貼入。</div>
+          </div>
+          <button class="btn-sm primary" onclick="aiSaveSettings()">儲存設定</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Knowledge Base -->
+    <div id="aitab-kb" class="aitab-panel">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">知識庫條目</span>
+          <button class="btn-sm primary" onclick="openKbModal()">+ 新增</button>
+        </div>
+        <div class="card-body" style="padding-bottom:8px">
+          <div id="kb-list"><p style="color:var(--text-3);font-size:13px">載入中…</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Schedule -->
+    <div id="aitab-schedule" class="aitab-panel">
+      <div class="card">
+        <div class="card-head"><span class="card-title">自動回覆時段</span></div>
+        <div class="card-body">
+          <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">設定每天哪些時間段允許 AI 自動回覆。未開啟的日期整天不回覆。留空時段表示全天回覆。</p>
+          <div class="schedule-grid" id="sched-grid"></div>
+          <div style="margin-top:16px"><button class="btn-sm primary" onclick="saveSchedule()">儲存時段</button></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Conversations -->
+    <div id="aitab-conversations" class="aitab-panel">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">最近對話紀錄</span>
+          <button class="btn-sm" onclick="loadConversations()" style="margin-left:auto">↻ 重新整理</button>
+        </div>
+        <div class="card-body">
+          <div id="conv-list"><p style="color:var(--text-3);font-size:13px">載入中…</p></div>
+        </div>
+      </div>
+    </div>
+
   </section>
 
+  <!-- KB Modal (lives outside section so fixed-position works) -->
+  <div class="modal-bg" id="kb-modal">
+    <div class="modal">
+      <div class="modal-title" id="kb-modal-title">新增知識庫條目</div>
+      <div class="field">
+        <label class="field-label" for="kb-title">標題</label>
+        <input id="kb-title" class="lfi" type="text" placeholder="例：診所門診時間">
+      </div>
+      <div class="field">
+        <label class="field-label" for="kb-category">分類 <span style="font-weight:400;color:var(--text-3)">(選填)</span></label>
+        <input id="kb-category" class="lfi" type="text" placeholder="例：基本資訊">
+      </div>
+      <div class="field">
+        <label class="field-label" for="kb-content">內容</label>
+        <textarea id="kb-content" class="lfi" rows="7" placeholder="詳細說明…"></textarea>
+      </div>
+      <div class="field" style="display:flex;align-items:center;gap:10px">
+        <label class="toggle" style="flex-shrink:0">
+          <input type="checkbox" id="kb-active" checked>
+          <span class="toggle-track"></span>
+        </label>
+        <span style="font-size:13px;color:var(--text-2)">啟用此條目</span>
+      </div>
+      <input type="hidden" id="kb-edit-id" value="">
+      <div class="modal-actions">
+        <button class="btn-sm" onclick="closeKbModal()">取消</button>
+        <button class="btn-sm primary" onclick="saveKb()">儲存</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── 評價管理 ── -->
-  <section id="reviews" class="section iframe-section">
-    <iframe id="iframe-reviews" class="embed-frame" loading="lazy"></iframe>
+  <section id="reviews" class="section">
+
+    <div class="rvtabs">
+      <button class="rvtab active" onclick="rvShowTab('settings')">設定</button>
+      <button class="rvtab" onclick="rvShowTab('send')">發送邀請</button>
+      <button class="rvtab" onclick="rvShowTab('history')">發送紀錄</button>
+      <button class="rvtab" onclick="rvShowTab('feedback')">私訊回饋</button>
+    </div>
+
+    <!-- Tab: Settings -->
+    <div id="rvtab-settings" class="rvtab-panel active">
+      <div id="rv-stats-row" class="stats-row" style="display:none">
+        <div class="stat-tile"><div class="stat-tile-num" id="rv-stat-total">—</div><div class="stat-tile-label">已發送</div></div>
+        <div class="stat-tile"><div class="stat-tile-num" id="rv-stat-resp">—</div><div class="stat-tile-label">已回應</div></div>
+        <div class="stat-tile"><div class="stat-tile-num" id="rv-stat-avg">—</div><div class="stat-tile-label">平均評分</div></div>
+        <div class="stat-tile"><div class="stat-tile-num" id="rv-stat-pos" style="color:#16A34A">—</div><div class="stat-tile-label">高評分 (Google)</div></div>
+        <div class="stat-tile"><div class="stat-tile-num" id="rv-stat-neg" style="color:#E11D48">—</div><div class="stat-tile-label">低評分 (私訊)</div></div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><span class="card-title">啟用設定</span></div>
+        <div class="card-body">
+          <div class="toggle-row">
+            <div>
+              <div class="toggle-label">啟用評論自動化</div>
+              <div class="toggle-desc">開啟後可向病患發送評分邀請連結</div>
+            </div>
+            <label class="toggle">
+              <input type="checkbox" id="rv-chk-enabled" onchange="rvToggleEnabled()">
+              <span class="toggle-track"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><span class="card-title">評論設定</span></div>
+        <div class="card-body">
+          <div class="field">
+            <label class="field-label" for="rv-inp-maps-url">Google Maps 評論連結</label>
+            <input id="rv-inp-maps-url" class="lfi" type="url" placeholder="https://maps.app.goo.gl/…">
+            <div class="field-hint">在 Google Maps 搜尋您的診所 → 點擊「取得更多評論」即可取得連結</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="rv-sel-threshold">導向 Google Maps 的最低評分</label>
+            <select id="rv-sel-threshold" class="lfi" style="max-width:200px">
+              <option value="3">3 顆星以上</option>
+              <option value="4" selected>4 顆星以上 (建議)</option>
+              <option value="5">5 顆星</option>
+            </select>
+            <div class="field-hint">低於此評分的病患將進入私訊回饋頁面</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="rv-inp-base-url">診所系統網址</label>
+            <input id="rv-inp-base-url" class="lfi" type="url" placeholder="https://your-clinic.up.railway.app">
+            <div class="field-hint">用於產生評分連結（不要加最後的斜線）</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="rv-inp-template">LINE 訊息範本</label>
+            <textarea id="rv-inp-template" class="lfi" rows="5" placeholder="訊息內容…"></textarea>
+            <div class="field-hint">使用 <code style="background:var(--bg);padding:1px 5px;border-radius:3px">{review_url}</code> 標記插入評分連結位置</div>
+          </div>
+          <button class="btn-sm primary" onclick="rvSaveSettings()">儲存設定</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Send -->
+    <div id="rvtab-send" class="rvtab-panel">
+      <div class="card">
+        <div class="card-head"><span class="card-title">發送評分邀請</span></div>
+        <div class="card-body">
+          <div class="send-panel">
+            <div class="send-panel-title">輸入病歷號碼</div>
+            <textarea id="rv-inp-charts" class="lfi" rows="4" placeholder="每行一個病歷號碼，例如：&#10;A123456789&#10;B234567890"></textarea>
+            <div class="field-hint" style="margin-top:6px">每次最多 50 位病患（需已完成 LINE 綁定）</div>
+          </div>
+          <button class="btn-sm primary" id="rv-send-btn" onclick="sendInvites()">發送邀請</button>
+          <div id="rv-send-results" style="margin-top:14px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: History -->
+    <div id="rvtab-history" class="rvtab-panel">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">發送紀錄</span>
+          <button class="btn-sm" onclick="loadHistory()" style="margin-left:auto">↻ 重新整理</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th class="l">病歷號</th><th class="l">狀態</th><th class="l">評分</th><th class="l">發送時間</th><th class="l">回應時間</th>
+            </tr></thead>
+            <tbody id="rv-history-tbody">
+              <tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:32px">載入中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tab: Feedback -->
+    <div id="rvtab-feedback" class="rvtab-panel">
+      <div class="card">
+        <div class="card-head">
+          <span class="card-title">私訊回饋</span>
+          <button class="btn-sm" onclick="loadFeedback()" style="margin-left:auto">↻ 重新整理</button>
+        </div>
+        <div class="card-body" id="rv-feedback-list">
+          <p style="color:var(--text-3);font-size:13px">載入中…</p>
+        </div>
+      </div>
+    </div>
+
   </section>
 
 </main>
@@ -7367,9 +7772,9 @@ function load(section) {
   else if (section === 'blood-recall-settings') { brRenderChecklist(''); loadBloodRecallSettings(); }
   else if (section === 'line-manage') { if (!_lnSettingsLoaded) lnLoadSettings(); }
   else if (section === 'line-templates') { if (!_lnPresetsLoaded) lnLoadPresets(); }
-  else if (section === 'broadcasts') { const f = $('iframe-broadcasts'); if (!f.src) f.src = '/broadcasts'; }
-  else if (section === 'ai-agent')   { const f = $('iframe-ai-agent');   if (!f.src) f.src = '/ai-agent'; }
-  else if (section === 'reviews')    { const f = $('iframe-reviews');    if (!f.src) f.src = '/reviews'; }
+  else if (section === 'broadcasts') { loadBroadcasts(); }
+  else if (section === 'ai-agent')   { aiLoadSettings(); }
+  else if (section === 'reviews')    { rvLoadSettings(); }
 }
 
 function refresh() {
@@ -7689,6 +8094,479 @@ async function dnDelete(id) {
 document.querySelectorAll('.tab[data-section="doctor-notes"]').forEach(t => {
   t.addEventListener('click', dnLoad);
 });
+
+// ── Shared helpers for embedded LINE feature pages ─────────────────────────────
+function _pgApi(method, path, body) {
+  const token = localStorage.getItem('admin_token') || localStorage.getItem('clinic_token') || '';
+  return fetch(path, {
+    method,
+    credentials: 'include',
+    headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json' },
+    body: body != null ? JSON.stringify(body) : undefined,
+  }).then(r => r.json().then(d => ({ ok: r.ok, status: r.status, data: d })).catch(() => ({ ok: r.ok, status: r.status, data: {} })));
+}
+function _esc(s) { return esc(s); }
+
+// ── Broadcasts ─────────────────────────────────────────────────────────────────
+const BC_STATUS_LABEL = {
+  draft:'草稿', scheduled:'已排程', sending:'發送中',
+  sent:'已發送', partial:'部分發送', failed:'失敗', cancelled:'已取消',
+};
+const BC_STATUS_CLASS = {
+  draft:'badge-gray', scheduled:'badge-blue', sending:'badge-orange',
+  sent:'badge-green', partial:'badge-orange', failed:'badge-red', cancelled:'badge-gray',
+};
+function bcStatusBadge(s) {
+  return `<span class="badge ${BC_STATUS_CLASS[s]||'badge-gray'}">${BC_STATUS_LABEL[s]||s}</span>`;
+}
+function fmtDt(s) { if (!s) return '—'; return s.slice(0,16).replace('T',' '); }
+
+let _broadcasts = [];
+
+async function loadBroadcasts() {
+  const tbody = document.getElementById('bc-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">載入中…</td></tr>';
+  const r = await _pgApi('GET', '/api/broadcasts');
+  if (!r.ok) { tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">載入失敗</td></tr>'; return; }
+  _broadcasts = r.data;
+  const countR = await _pgApi('GET', '/api/line/bound-chart-numbers');
+  if (countR.ok) {
+    const n = (countR.data.chart_numbers||[]).length;
+    const el = document.getElementById('bc-bind-count-label');
+    if (el) el.textContent = `${n} 位病患已綁定`;
+  }
+  renderBroadcasts();
+}
+
+function renderBroadcasts() {
+  const tbody = document.getElementById('bc-tbody');
+  if (!_broadcasts.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--text-3);padding:32px">尚無群發紀錄</td></tr>';
+    return;
+  }
+  tbody.innerHTML = _broadcasts.map(b => {
+    const sentTime = b.sent_at ? fmtDt(b.sent_at) : (b.scheduled_at ? '排程：'+fmtDt(b.scheduled_at) : '—');
+    const stats = b.recipient_count > 0
+      ? `<span style="font-variant-numeric:tabular-nums;font-size:12.5px"><span style="color:#16A34A;font-weight:600">${b.sent_count}</span> / <span style="color:#E11D48;font-weight:600">${b.failed_count}</span>（共 ${b.recipient_count}）</span>`
+      : '<span style="color:var(--text-3)">—</span>';
+    const canCancel = ['draft','scheduled'].includes(b.status);
+    const actions = canCancel ? `<button class="btn-sm" style="color:#DC2626;border-color:rgba(220,38,38,.35)" onclick="cancelBroadcast(${b.id})">取消</button>` : '';
+    return `<tr>
+      <td class="l" style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(b.name)}">${esc(b.name)}</td>
+      <td class="l">${bcStatusBadge(b.status)}</td>
+      <td class="l">${stats}</td>
+      <td class="l" style="font-variant-numeric:tabular-nums;white-space:nowrap;font-size:12.5px">${sentTime}</td>
+      <td class="l" style="font-size:12.5px;color:var(--text-2)">${esc(b.created_by||'')}</td>
+      <td class="l">${actions}</td>
+    </tr>`;
+  }).join('');
+}
+
+let _sendMode = 'now';
+
+function setSendMode(mode) {
+  _sendMode = mode;
+  document.getElementById('mode-now').classList.toggle('active', mode==='now');
+  document.getElementById('mode-later').classList.toggle('active', mode==='later');
+  const sch = document.getElementById('bc-schedule');
+  sch.style.display = mode==='later' ? 'inline-block' : 'none';
+  if (mode==='later' && !sch.value) {
+    const d = new Date(Date.now()+3600000);
+    d.setMinutes(Math.ceil(d.getMinutes()/5)*5,0,0);
+    sch.value = d.toISOString().slice(0,16);
+  }
+  document.getElementById('submit-label').textContent = mode==='later' ? '排程發送' : '立即發送';
+}
+
+function updateCharCount() {
+  const len = document.getElementById('bc-content').value.length;
+  const el = document.getElementById('char-count');
+  el.textContent = `${len} / 5000`;
+  el.className = 'char-count'+(len>4500?(len>=5000?' over':' warn'):'');
+}
+
+async function submitBroadcast() {
+  const name    = document.getElementById('bc-name').value.trim();
+  const content = document.getElementById('bc-content').value.trim();
+  const audience = document.getElementById('bc-audience').value;
+  if (!name)    { Layout.showToast('請填寫訊息名稱'); return; }
+  if (!content) { Layout.showToast('請填寫訊息內容'); return; }
+  let scheduled_at = '';
+  if (_sendMode==='later') {
+    const val = document.getElementById('bc-schedule').value;
+    if (!val) { Layout.showToast('請選擇發送時間'); return; }
+    scheduled_at = val.replace('T',' ')+':00';
+    if (new Date(val)<=new Date()) { Layout.showToast('排程時間必須晚於現在'); return; }
+  }
+  const btn = document.getElementById('submit-btn');
+  btn.disabled = true; btn.innerHTML = (_sendMode==='later'?'排程中…':'發送中…');
+  const r = await _pgApi('POST', '/api/broadcasts', {name, content, audience_filter:audience, scheduled_at});
+  btn.disabled = false; btn.innerHTML = `<span id="submit-label">${_sendMode==='later'?'排程發送':'立即發送'}</span>`;
+  if (r.ok) {
+    Layout.showToast(_sendMode==='later'?'已排程，將於指定時間發送':'發送中，稍後請重新整理查看結果');
+    resetForm(); setTimeout(loadBroadcasts, 1500);
+  } else { Layout.showToast('發送失敗：'+(r.data.detail||'未知錯誤')); }
+}
+
+async function cancelBroadcast(id) {
+  if (!confirm('確定要取消這個廣播嗎？')) return;
+  const r = await _pgApi('DELETE', '/api/broadcasts/'+id);
+  if (r.ok) { Layout.showToast('已取消'); loadBroadcasts(); }
+  else Layout.showToast('取消失敗：'+(r.data.detail||'未知錯誤'));
+}
+
+function resetForm() {
+  document.getElementById('bc-name').value = '';
+  document.getElementById('bc-content').value = '';
+  document.getElementById('bc-schedule').value = '';
+  updateCharCount(); setSendMode('now');
+}
+
+setInterval(() => {
+  if (document.getElementById('broadcasts')?.classList.contains('active') &&
+      _broadcasts.some(b=>['sending','scheduled'].includes(b.status))) loadBroadcasts();
+}, 30000);
+
+// ── AI Agent ──────────────────────────────────────────────────────────────────
+function aiShowTab(name) {
+  const names = ['settings','kb','schedule','conversations'];
+  document.querySelectorAll('.aitab').forEach((el,i) => el.classList.toggle('active', names[i]===name));
+  document.querySelectorAll('.aitab-panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('aitab-'+name).classList.add('active');
+  if (name==='kb') loadKb();
+  if (name==='conversations') loadConversations();
+}
+
+let _aiSettings = {};
+
+async function aiLoadSettings() {
+  const r = await _pgApi('GET', '/api/ai-agent/settings');
+  if (!r.ok) { Layout.showToast('載入設定失敗'); return; }
+  _aiSettings = r.data;
+  document.getElementById('ai-chk-enabled').checked = !!r.data.enabled;
+  document.getElementById('ai-sel-provider').value = r.data.provider||'gemini';
+  document.getElementById('ai-inp-model').value = r.data.model_name||'';
+  document.getElementById('ai-inp-prompt').value = r.data.system_prompt||'';
+  onProviderChange();
+  aiUpdateStatusBanner(!!r.data.enabled);
+  buildScheduleGrid(r.data.schedule_json||{});
+}
+
+function aiUpdateStatusBanner(on) {
+  const b = document.getElementById('ai-status-banner');
+  const t = document.getElementById('ai-status-text');
+  if (!b||!t) return;
+  b.className = 'status-banner '+(on?'on':'off');
+  t.textContent = on?'AI 自動回覆目前已開啟':'AI 自動回覆目前已關閉';
+}
+
+function onProviderChange() {
+  const p = document.getElementById('ai-sel-provider').value;
+  document.getElementById('ai-field-gemini-key').style.display = p==='gemini'?'':'none';
+  document.getElementById('ai-field-claude-key').style.display = p==='claude'?'':'none';
+  document.getElementById('ai-model-hint').textContent =
+    p==='gemini'?'Gemini 預設：gemini-2.0-flash-exp':'Claude 預設：claude-haiku-4-5';
+  document.getElementById('ai-inp-model').placeholder =
+    p==='gemini'?'gemini-2.0-flash-exp':'claude-haiku-4-5';
+}
+
+async function aiToggleEnabled() {
+  const on = document.getElementById('ai-chk-enabled').checked;
+  const r = await _pgApi('POST', '/api/ai-agent/settings', {enabled:on});
+  if (r.ok) { aiUpdateStatusBanner(on); Layout.showToast(on?'AI 自動回覆已開啟':'AI 自動回覆已關閉'); }
+  else { document.getElementById('ai-chk-enabled').checked = !on; Layout.showToast('操作失敗'); }
+}
+
+async function aiSaveSettings() {
+  const provider = document.getElementById('ai-sel-provider').value;
+  const body = {
+    provider,
+    model_name: document.getElementById('ai-inp-model').value.trim(),
+    system_prompt: document.getElementById('ai-inp-prompt').value.trim(),
+  };
+  const gemKey = document.getElementById('ai-inp-gemini-key').value.trim();
+  const cldKey = document.getElementById('ai-inp-claude-key').value.trim();
+  if (gemKey) body.gemini_api_key = gemKey;
+  if (cldKey) body.claude_api_key = cldKey;
+  const r = await _pgApi('POST', '/api/ai-agent/settings', body);
+  if (r.ok) {
+    Layout.showToast('設定已儲存');
+    document.getElementById('ai-inp-gemini-key').value = '';
+    document.getElementById('ai-inp-claude-key').value = '';
+  } else { Layout.showToast('儲存失敗'); }
+}
+
+const AI_DAYS = [
+  {key:'mon',label:'週一'},{key:'tue',label:'週二'},{key:'wed',label:'週三'},
+  {key:'thu',label:'週四'},{key:'fri',label:'週五'},{key:'sat',label:'週六'},{key:'sun',label:'週日'},
+];
+
+function buildScheduleGrid(schedule) {
+  const grid = document.getElementById('sched-grid');
+  if (!grid) return;
+  grid.innerHTML = AI_DAYS.map(d => {
+    const cfg = schedule[d.key]||{};
+    const en = cfg.enabled!==false;
+    const st = cfg.start||''; const ed = cfg.end||'';
+    return `<div class="sched-row">
+      <div style="display:flex;align-items:center;gap:8px">
+        <label class="toggle" style="width:38px;height:22px">
+          <input type="checkbox" id="sched-en-${d.key}" ${en?'checked':''} onchange="syncSchedRow('${d.key}')">
+          <span class="toggle-track"></span>
+        </label>
+        <span class="sched-day">${d.label}</span>
+      </div>
+      <div class="sched-times" id="sched-times-${d.key}" style="${en?'':'opacity:.4;pointer-events:none'}">
+        <input type="time" id="sched-st-${d.key}" class="lfi" value="${st}">
+        <span class="sched-sep">至</span>
+        <input type="time" id="sched-ed-${d.key}" class="lfi" value="${ed}">
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function syncSchedRow(key) {
+  const en = document.getElementById('sched-en-'+key).checked;
+  const times = document.getElementById('sched-times-'+key);
+  times.style.opacity = en?'':'.4'; times.style.pointerEvents = en?'':'none';
+}
+
+async function saveSchedule() {
+  const schedule = {};
+  AI_DAYS.forEach(d => {
+    schedule[d.key] = {
+      enabled: document.getElementById('sched-en-'+d.key).checked,
+      start: document.getElementById('sched-st-'+d.key).value,
+      end: document.getElementById('sched-ed-'+d.key).value,
+    };
+  });
+  const r = await _pgApi('POST', '/api/ai-agent/settings', {schedule_json:schedule});
+  if (r.ok) Layout.showToast('時段設定已儲存');
+  else Layout.showToast('儲存失敗');
+}
+
+let _aiKbItems = [];
+
+async function loadKb() {
+  const list = document.getElementById('kb-list');
+  if (!list) return;
+  list.innerHTML = '<p style="color:var(--text-3);font-size:13px">載入中…</p>';
+  const r = await _pgApi('GET', '/api/ai-agent/kb');
+  if (!r.ok) { list.innerHTML = '<p style="color:var(--text-3)">載入失敗</p>'; return; }
+  _aiKbItems = r.data;
+  renderKb();
+}
+
+function renderKb() {
+  const list = document.getElementById('kb-list');
+  if (!_aiKbItems.length) {
+    list.innerHTML = '<p style="color:var(--text-3);font-size:13px">尚無知識庫條目。點擊「+ 新增」開始建立。</p>';
+    return;
+  }
+  list.innerHTML = _aiKbItems.map(item => `
+    <div class="kb-item">
+      <div class="kb-item-body">
+        <div class="kb-item-title">${esc(item.title)} ${item.category?`<span style="font-size:11px;color:var(--text-3)">[${esc(item.category)}]</span>`:''}
+        </div>
+        <div class="kb-item-preview">${esc(item.content)}</div>
+        <div class="kb-item-meta">
+          <span class="badge ${item.is_active?'badge-green':'badge-gray'}">${item.is_active?'啟用':'停用'}</span>
+          <span style="margin-left:8px">${esc((item.updated_at||'').slice(0,16))}</span>
+        </div>
+      </div>
+      <div class="kb-item-actions">
+        <button class="btn-sm" onclick="editKb(${item.id})">編輯</button>
+        <button class="btn-sm" style="color:#DC2626;border-color:rgba(220,38,38,.35)" onclick="deleteKb(${item.id})">刪除</button>
+      </div>
+    </div>`).join('');
+}
+
+function openKbModal(item) {
+  document.getElementById('kb-modal-title').textContent = item?'編輯知識庫條目':'新增知識庫條目';
+  document.getElementById('kb-title').value = item?item.title:'';
+  document.getElementById('kb-category').value = item?item.category:'';
+  document.getElementById('kb-content').value = item?item.content:'';
+  document.getElementById('kb-active').checked = item?!!item.is_active:true;
+  document.getElementById('kb-edit-id').value = item?item.id:'';
+  document.getElementById('kb-modal').classList.add('open');
+}
+
+function closeKbModal() { document.getElementById('kb-modal').classList.remove('open'); }
+
+function editKb(id) { const item = _aiKbItems.find(i=>i.id===id); if (item) openKbModal(item); }
+
+async function deleteKb(id) {
+  if (!confirm('確定要刪除這個知識庫條目嗎？')) return;
+  const r = await _pgApi('DELETE', '/api/ai-agent/kb/'+id);
+  if (r.ok) { Layout.showToast('已刪除'); loadKb(); }
+  else Layout.showToast('刪除失敗');
+}
+
+async function saveKb() {
+  const title = document.getElementById('kb-title').value.trim();
+  const content = document.getElementById('kb-content').value.trim();
+  if (!title) { Layout.showToast('請填寫標題'); return; }
+  if (!content) { Layout.showToast('請填寫內容'); return; }
+  const editId = document.getElementById('kb-edit-id').value;
+  const body = {
+    title, content,
+    category: document.getElementById('kb-category').value.trim(),
+    is_active: document.getElementById('kb-active').checked,
+  };
+  if (editId) body.id = parseInt(editId);
+  const r = await _pgApi('POST', '/api/ai-agent/kb', body);
+  if (r.ok) { Layout.showToast('已儲存'); closeKbModal(); loadKb(); }
+  else Layout.showToast('儲存失敗：'+(r.data.detail||'未知錯誤'));
+}
+
+async function loadConversations() {
+  const list = document.getElementById('conv-list');
+  if (!list) return;
+  list.innerHTML = '<p style="color:var(--text-3);font-size:13px">載入中…</p>';
+  const r = await _pgApi('GET', '/api/ai-agent/conversations?limit=60');
+  if (!r.ok) { list.innerHTML = '<p style="color:var(--text-3)">載入失敗</p>'; return; }
+  const rows = r.data;
+  if (!rows.length) { list.innerHTML = '<p style="color:var(--text-3);font-size:13px">尚無對話紀錄。</p>'; return; }
+  const byUser = {};
+  rows.forEach(row => {
+    const key = row.line_user_id;
+    if (!byUser[key]) byUser[key] = {chart:row.chart_number, msgs:[]};
+    byUser[key].msgs.unshift(row);
+  });
+  list.innerHTML = Object.entries(byUser).map(([uid,info]) => {
+    const label = info.chart?`病歷 ${esc(info.chart)}`:`LINE ${uid.slice(0,8)}…`;
+    const msgs = info.msgs.map(m => `
+      <div class="conv-meta">${m.role==='user'?'病患':'AI'} · ${esc((m.created_at||'').slice(11,16))}</div>
+      <div class="conv-msg ${m.role}">${esc(m.content)}</div>`).join('');
+    return `<div style="margin-bottom:20px"><div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:8px">${label}</div>${msgs}</div>`;
+  }).join('<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">');
+}
+
+document.getElementById('kb-modal').addEventListener('click', e => { if (e.target===e.currentTarget) closeKbModal(); });
+
+// ── Reviews ───────────────────────────────────────────────────────────────────
+function rvShowTab(name) {
+  const names = ['settings','send','history','feedback'];
+  document.querySelectorAll('.rvtab').forEach((el,i) => el.classList.toggle('active', names[i]===name));
+  document.querySelectorAll('.rvtab-panel').forEach(el => el.classList.remove('active'));
+  document.getElementById('rvtab-'+name).classList.add('active');
+  if (name==='history') loadHistory();
+  if (name==='feedback') loadFeedback();
+}
+
+async function rvLoadSettings() {
+  const r = await _pgApi('GET', '/api/reviews/settings');
+  if (!r.ok) return;
+  const s = r.data;
+  document.getElementById('rv-chk-enabled').checked = !!s.enabled;
+  document.getElementById('rv-inp-maps-url').value = s.google_maps_url||'';
+  document.getElementById('rv-sel-threshold').value = String(s.threshold||4);
+  document.getElementById('rv-inp-base-url').value = s.base_url||'';
+  document.getElementById('rv-inp-template').value = s.message_template||'';
+  rvLoadStats();
+}
+
+async function rvLoadStats() {
+  const r = await _pgApi('GET', '/api/reviews/stats');
+  if (!r.ok) return;
+  const s = r.data;
+  if (parseInt(s.total)>0) {
+    document.getElementById('rv-stats-row').style.display='';
+    document.getElementById('rv-stat-total').textContent = s.total||0;
+    document.getElementById('rv-stat-resp').textContent = s.responded||0;
+    document.getElementById('rv-stat-avg').textContent = s.avg_rating||'—';
+    document.getElementById('rv-stat-pos').textContent = s.positive||0;
+    document.getElementById('rv-stat-neg').textContent = s.negative||0;
+  }
+}
+
+async function rvToggleEnabled() {
+  const on = document.getElementById('rv-chk-enabled').checked;
+  const r = await _pgApi('POST', '/api/reviews/settings', {enabled:on});
+  if (r.ok) Layout.showToast(on?'評論自動化已開啟':'評論自動化已關閉');
+  else { document.getElementById('rv-chk-enabled').checked = !on; Layout.showToast('操作失敗'); }
+}
+
+async function rvSaveSettings() {
+  const body = {
+    google_maps_url: document.getElementById('rv-inp-maps-url').value.trim(),
+    threshold: parseInt(document.getElementById('rv-sel-threshold').value),
+    base_url: document.getElementById('rv-inp-base-url').value.trim(),
+    message_template: document.getElementById('rv-inp-template').value.trim(),
+  };
+  const r = await _pgApi('POST', '/api/reviews/settings', body);
+  if (r.ok) Layout.showToast('設定已儲存');
+  else Layout.showToast('儲存失敗');
+}
+
+async function sendInvites() {
+  const raw = document.getElementById('rv-inp-charts').value;
+  const charts = raw.split('\n').map(s=>s.trim()).filter(Boolean);
+  if (!charts.length) { Layout.showToast('請輸入至少一個病歷號碼'); return; }
+  const btn = document.getElementById('rv-send-btn');
+  btn.disabled=true; btn.textContent='發送中…';
+  const r = await _pgApi('POST', '/api/reviews/send', {chart_numbers:charts});
+  btn.disabled=false; btn.textContent='發送邀請';
+  if (!r.ok) { Layout.showToast('發送失敗：'+(r.data.detail||'未知錯誤')); return; }
+  const results = r.data;
+  const ok = results.filter(x=>x.ok).length, fail = results.filter(x=>!x.ok).length;
+  Layout.showToast(`成功 ${ok} 位，失敗 ${fail} 位`);
+  document.getElementById('rv-send-results').innerHTML = results.map(x => `
+    <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:13px">
+      <span class="badge ${x.ok?'badge-green':'badge-red'}">${x.ok?'成功':'失敗'}</span>
+      <span>${esc(x.chart_number)}</span>
+      ${!x.ok?`<span style="color:var(--text-3);font-size:12px">${esc(x.detail||'')}</span>`:''}
+    </div>`).join('');
+}
+
+const RV_STATUS_LABEL = {
+  sent:'等待回應', responded:'已評分', feedback_submitted:'已回饋', failed:'發送失敗',
+};
+const RV_STATUS_CLASS = {
+  sent:'badge-gray', responded:'badge-green', feedback_submitted:'badge-orange', failed:'badge-red',
+};
+
+function starsHtml(rating) {
+  if (!rating) return '<span style="color:var(--text-3)">—</span>';
+  return '<span class="stars-display">'+'★'.repeat(rating)+'☆'.repeat(5-rating)+'</span>';
+}
+
+async function loadHistory() {
+  const tbody = document.getElementById('rv-history-tbody');
+  if (!tbody) return;
+  tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:32px">載入中…</td></tr>';
+  const r = await _pgApi('GET', '/api/reviews/requests?limit=200');
+  if (!r.ok) { tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:32px">載入失敗</td></tr>'; return; }
+  const rows = r.data;
+  if (!rows.length) { tbody.innerHTML='<tr><td colspan="5" style="text-align:center;color:var(--text-3);padding:32px">尚無紀錄</td></tr>'; return; }
+  tbody.innerHTML = rows.map(row => `<tr>
+    <td class="l" style="font-variant-numeric:tabular-nums">${esc(row.chart_number)}</td>
+    <td class="l"><span class="badge ${RV_STATUS_CLASS[row.status]||'badge-gray'}">${RV_STATUS_LABEL[row.status]||row.status}</span></td>
+    <td class="l">${starsHtml(row.rating)}</td>
+    <td class="l" style="font-size:12.5px;white-space:nowrap">${esc((row.sent_at||'').slice(0,16))}</td>
+    <td class="l" style="font-size:12.5px;white-space:nowrap;color:var(--text-2)">${esc((row.responded_at||'').slice(0,16))||'—'}</td>
+  </tr>`).join('');
+}
+
+async function loadFeedback() {
+  const div = document.getElementById('rv-feedback-list');
+  if (!div) return;
+  div.innerHTML='<p style="color:var(--text-3);font-size:13px">載入中…</p>';
+  const r = await _pgApi('GET', '/api/reviews/feedback?limit=100');
+  if (!r.ok) { div.innerHTML='<p style="color:var(--text-3)">載入失敗</p>'; return; }
+  const rows = r.data;
+  if (!rows.length) { div.innerHTML='<p style="color:var(--text-3);font-size:13px">尚無私訊回饋。</p>'; return; }
+  div.innerHTML = rows.map(row => `
+    <div style="border:1px solid var(--border);border-radius:var(--radius-s);padding:14px 16px;margin-bottom:10px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:600">${esc(row.chart_number)}</span>
+        <span class="stars-display" style="font-size:14px">${'★'.repeat(row.rating||0)}${'☆'.repeat(5-(row.rating||0))}</span>
+        <span style="font-size:11.5px;color:var(--text-3);margin-left:auto">${esc((row.submitted_at||'').slice(0,16))}</span>
+      </div>
+      <div style="font-size:13.5px;color:var(--text-1);line-height:1.6;white-space:pre-wrap">${esc(row.content)}</div>
+    </div>`).join('');
+}
 </script>
 <!-- salary picker dropdowns -->
 <div id="sal-dp-drop" class="sal-pk-drop" style="display:none"><div class="sal-cal-in" id="sal-cal-in"></div></div>
