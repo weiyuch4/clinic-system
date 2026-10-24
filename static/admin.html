@@ -1599,7 +1599,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         系統設定
       </button>
       <button class="tab" data-section="blood-recall-settings">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2C6 2 2 9 2 14a10 10 0 0 0 20 0C22 9 18 2 12 2z"/><path d="M12 6v8"/><path d="M8 10h8"/></svg>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2C9 5 5 9 5 14a7 7 0 0 0 14 0C19 9 15 5 12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
         抽血追蹤
       </button>
       <a href="/static/line.html" style="display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:13.5px;font-weight:500;color:var(--text-2);text-decoration:none;border-radius:8px;transition:background .1s" onmouseover="this.style.background='var(--hover)'" onmouseout="this.style.background=''">
@@ -1666,6 +1666,10 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
         <button class="mp-btn next-month">&#8594;</button>
       </div>
     </div>
+    <div id="doctor-recency-warn" style="display:none;margin-bottom:14px;padding:10px 14px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:8px;font-size:13px;color:var(--text-2);line-height:1.5">
+      ⚠️ 此月份尚未滿90天，後續IC檔案還未到齊，回診率會顯示 <strong>0%</strong> 屬正常現象。<br>
+      建議點「←」切換到 <strong>3個月前或更早</strong> 的月份，才能看到完整的回診率數據。
+    </div>
     <div class="kpi-row" id="doctor-kpis"></div>
     <div class="card">
       <div class="card-head">
@@ -1677,7 +1681,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
       <div class="tbl-wrap" id="doctors-body"></div>
       <div class="foot-note">
         統計方式：計算該月每位患者最後一次就診日，90天內回診本診所（不限同一醫師）即計入。
-        近期月份因後續IC檔案尚未到齊，回診率可能偏低屬正常現象。
+        近期月份的回診率須等後續IC檔案到齊才會完整，請查看3個月前以上的月份。
       </div>
     </div>
   </section>
@@ -2770,7 +2774,16 @@ function renderNurses(stats) {
 }
 
 // ── Doctors ───────────────────────────────────────────────────────────────────
+function _isRecentMonth(m) {
+  // Returns true if m is within 2 months of today (90-day window not yet closed)
+  const [y, mo] = m.split('-').map(Number);
+  const sel = new Date(y, mo - 1, 1);
+  const cutoff = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+  return sel >= cutoff;
+}
+
 async function loadDoctors() {
+  $('doctor-recency-warn').style.display = _isRecentMonth(month) ? '' : 'none';
   $('doctor-kpis').innerHTML = shimKPI(3);
   $('doctors-body').innerHTML = shimTable(4, 4);
   $('doctor-meta').textContent = '';
