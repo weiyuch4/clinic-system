@@ -137,6 +137,8 @@ main {
 }
 .section { display: none; }
 .section.active { display: block; animation: fadeUp .2s ease both; }
+.iframe-section.active { display: flex; flex-direction: column; padding: 0; margin: -28px -32px -48px; }
+.embed-frame { flex: 1; border: none; width: 100%; min-height: calc(100vh - 56px); display: block; }
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: none; }
@@ -1653,6 +1655,18 @@ select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
         LINE 設定
       </button>
+      <button class="tab" data-section="broadcasts">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l.95-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+        廣播訊息
+      </button>
+      <button class="tab" data-section="ai-agent">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="12" y1="16" x2="12" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
+        AI 自動回覆
+      </button>
+      <button class="tab" data-section="reviews">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        評價管理
+      </button>
 
       <div class="admsb-divider"></div>
       <div class="admsb-label">設定</div>
@@ -2729,6 +2743,21 @@ select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px
     </div>
 
     <div id="ln-preset-list" class="tmpl-cards"></div>
+  </section>
+
+  <!-- ── 廣播訊息 ── -->
+  <section id="broadcasts" class="section iframe-section">
+    <iframe id="iframe-broadcasts" class="embed-frame" loading="lazy"></iframe>
+  </section>
+
+  <!-- ── AI 自動回覆 ── -->
+  <section id="ai-agent" class="section iframe-section">
+    <iframe id="iframe-ai-agent" class="embed-frame" loading="lazy"></iframe>
+  </section>
+
+  <!-- ── 評價管理 ── -->
+  <section id="reviews" class="section iframe-section">
+    <iframe id="iframe-reviews" class="embed-frame" loading="lazy"></iframe>
   </section>
 
 </main>
@@ -7338,6 +7367,9 @@ function load(section) {
   else if (section === 'blood-recall-settings') { brRenderChecklist(''); loadBloodRecallSettings(); }
   else if (section === 'line-manage') { if (!_lnSettingsLoaded) lnLoadSettings(); }
   else if (section === 'line-templates') { if (!_lnPresetsLoaded) lnLoadPresets(); }
+  else if (section === 'broadcasts') { const f = $('iframe-broadcasts'); if (!f.src) f.src = '/broadcasts'; }
+  else if (section === 'ai-agent')   { const f = $('iframe-ai-agent');   if (!f.src) f.src = '/ai-agent'; }
+  else if (section === 'reviews')    { const f = $('iframe-reviews');    if (!f.src) f.src = '/reviews'; }
 }
 
 function refresh() {
