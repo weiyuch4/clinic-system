@@ -1356,6 +1356,9 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
     text-align: left;
     border: none;
     border-bottom: 1px solid var(--bg);
+    border-radius: 0;
+    -webkit-appearance: none;
+    appearance: none;
     background: transparent;
     font: 500 14px/1.2 var(--font);
     color: var(--text-1);
@@ -5319,13 +5322,23 @@ $('sched-time-popover').addEventListener('touchend', () => {
   if (!_stpDragging) return;
   _stpDragging = false;
   const pop = $('sched-time-popover');
-  pop.style.transition = '';
   if (_stpDragCur > 80) {
-    pop.style.transform = '';
-    pop.classList.remove('show');
-    document.getElementById('sched-time-backdrop')?.classList.remove('show');
+    // slide down to dismiss
+    pop.style.transition = 'transform .25s cubic-bezier(.4,0,1,1)';
+    pop.style.transform = 'translateY(110%)';
+    const bd = document.getElementById('sched-time-backdrop');
+    if (bd) { bd.style.transition = 'opacity .25s ease'; bd.style.opacity = '0'; }
+    setTimeout(() => {
+      pop.style.transition = '';
+      pop.style.transform = '';
+      pop.classList.remove('show');
+      if (bd) { bd.style.transition = ''; bd.style.opacity = ''; bd.classList.remove('show'); }
+    }, 260);
   } else {
+    // spring back
+    pop.style.transition = 'transform .3s cubic-bezier(.32,.72,0,1)';
     pop.style.transform = '';
+    setTimeout(() => { pop.style.transition = ''; }, 320);
   }
 });
 
