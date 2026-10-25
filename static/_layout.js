@@ -292,11 +292,15 @@
 
   function _syncThemeColor() {
     var color = _isDark() ? '#000000' : '#FFFFFF';
+    // Update existing metas in-place — iOS reads attribute changes more reliably
+    // than remove/recreate. Keep the media-query ones; update all to current color.
     var metas = document.querySelectorAll('meta[name="theme-color"]');
-    metas.forEach(function(m) { m.parentNode.removeChild(m); });
-    var m = document.createElement('meta');
-    m.name = 'theme-color'; m.content = color;
-    document.head.appendChild(m);
+    metas.forEach(function(m) { m.setAttribute('content', color); });
+    if (!metas.length) {
+      var m = document.createElement('meta');
+      m.name = 'theme-color'; m.content = color;
+      document.head.appendChild(m);
+    }
   }
 
   function _applyTheme(t) {
