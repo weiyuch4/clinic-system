@@ -341,6 +341,8 @@
       backdrop = document.createElement('div');
       backdrop.className = 'nurse-sheet-bd';
       document.body.appendChild(backdrop);
+      // The fixed .tb is its own stacking context; the sheet must live on body to sit above the nav and backdrop
+      document.body.appendChild(dd);
     }
 
     function closeDd() {
