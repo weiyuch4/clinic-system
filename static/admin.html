@@ -911,7 +911,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 }
 .sched-time-popover.show { display: block; }
 .sched-time-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 299; }
-.sched-time-backdrop.show { display: block; }
+.sched-time-backdrop.show { display: block; animation: modal-bd-in .25s ease-out both; }
 .stp-label {
   font-size: 10.5px;
   font-weight: 700;
@@ -1270,7 +1270,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 
 /* ── Mobile layout ───────────────────────────────────────────────────────── */
 .mob-adm-nav { display: none; }
-@keyframes secMenu-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+@keyframes stp-sheet-in { from { transform: translateY(100%); } to { transform: translateY(0); } }
 
 @media (max-width: 767px) {
   /* ── Hide desktop sidebar ───────────────────────────────────────────── */
@@ -1329,27 +1329,33 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   }
   .adm-sec-menu-backdrop.open { display: block; }
   .adm-sec-menu {
-    display: none;
     position: absolute;
     left: 14px;
     right: 14px;
-    top: calc(100% + 4px);
+    top: calc(100% + 6px);
     background: var(--surface);
-    border: 1px solid var(--border);
     border-radius: 14px;
-    box-shadow: 0 12px 36px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.1);
+    box-shadow: 0 8px 28px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.08);
     z-index: 500;
     overflow: hidden;
-    animation: secMenu-in .15s ease;
+    opacity: 0;
+    transform: translateY(-8px) scale(.97);
+    transform-origin: top center;
+    pointer-events: none;
+    transition: opacity .2s ease, transform .2s ease;
   }
-  .adm-sec-menu.open { display: block; }
+  .adm-sec-menu.open {
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
   .adm-sec-opt {
     display: block;
     width: 100%;
-    padding: 14px 18px;
+    padding: 13px 18px;
     text-align: left;
     border: none;
-    border-bottom: 1px solid var(--border);
+    border-bottom: 1px solid var(--bg);
     background: transparent;
     font: 500 14px/1.2 var(--font);
     color: var(--text-1);
@@ -1391,7 +1397,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
     flex-direction: column;
     box-shadow: 0 -6px 32px rgba(0,0,0,.18);
   }
-  .sched-time-popover.show { display: flex !important; }
+  .sched-time-popover.show { display: flex !important; animation: stp-sheet-in .32s cubic-bezier(.32,.72,0,1) both; }
   /* Sheet subcomponents */
   .stp-sheet-handle {
     width: 40px; height: 4px; background: var(--border-mid);
@@ -1415,7 +1421,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   }
   .stp-sheet-footer {
     flex-shrink: 0; padding: 14px 20px;
-    padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 14px);
+    padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px) + 14px);
     border-top: 1px solid var(--border);
     background: var(--surface);
     display: flex; gap: 12px;
@@ -5288,6 +5294,38 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.sched-time-popover') && !e.target.closest('.sched-time-btn')) {
     $('sched-time-popover').classList.remove('show');
     document.getElementById('sched-time-backdrop')?.classList.remove('show');
+  }
+});
+
+// Drag-to-dismiss the time picker bottom sheet (touch on handle/header only)
+let _stpTouchY0 = 0, _stpDragCur = 0, _stpDragging = false;
+$('sched-time-popover').addEventListener('touchstart', (e) => {
+  if (e.target.closest('.stp-sheet-body')) return; // let body scroll normally
+  _stpTouchY0 = e.touches[0].clientY;
+  _stpDragCur = 0;
+  _stpDragging = true;
+}, { passive: true });
+$('sched-time-popover').addEventListener('touchmove', (e) => {
+  if (!_stpDragging) return;
+  _stpDragCur = e.touches[0].clientY - _stpTouchY0;
+  if (_stpDragCur > 0) {
+    e.preventDefault();
+    const pop = $('sched-time-popover');
+    pop.style.transition = 'none';
+    pop.style.transform = `translateY(${_stpDragCur}px)`;
+  }
+}, { passive: false });
+$('sched-time-popover').addEventListener('touchend', () => {
+  if (!_stpDragging) return;
+  _stpDragging = false;
+  const pop = $('sched-time-popover');
+  pop.style.transition = '';
+  if (_stpDragCur > 80) {
+    pop.style.transform = '';
+    pop.classList.remove('show');
+    document.getElementById('sched-time-backdrop')?.classList.remove('show');
+  } else {
+    pop.style.transform = '';
   }
 });
 
