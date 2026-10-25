@@ -1400,7 +1400,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
     flex-direction: column;
     box-shadow: 0 -6px 32px rgba(0,0,0,.18);
   }
-  .sched-time-popover.show { display: flex !important; animation: stp-sheet-in .32s cubic-bezier(.32,.72,0,1) both; }
+  .sched-time-popover.show { display: flex !important; }
   /* Sheet subcomponents */
   .stp-sheet-handle {
     width: 40px; height: 4px; background: var(--border-mid);
@@ -5053,11 +5053,19 @@ function openTimePopover(btn) {
   renderTimePopover();
 
   const pop = $('sched-time-popover');
-  pop.classList.add('show');
   if (_isMob()) {
+    pop.style.transition = 'none';
+    pop.style.transform = 'translateY(100%)';
+    pop.classList.add('show');
     document.getElementById('sched-time-backdrop').classList.add('show');
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      pop.style.transition = 'transform .32s cubic-bezier(.32,.72,0,1)';
+      pop.style.transform = '';
+      setTimeout(() => { pop.style.transition = ''; }, 360);
+    }));
     return;
   }
+  pop.classList.add('show');
   const r = btn.getBoundingClientRect();
   const popRect = pop.getBoundingClientRect();
   let left = Math.min(r.left, window.innerWidth - popRect.width - 12);
@@ -5323,7 +5331,6 @@ $('sched-time-popover').addEventListener('touchend', () => {
   _stpDragging = false;
   const pop = $('sched-time-popover');
   if (_stpDragCur > 80) {
-    // slide down to dismiss
     pop.style.transition = 'transform .25s cubic-bezier(.4,0,1,1)';
     pop.style.transform = 'translateY(110%)';
     const bd = document.getElementById('sched-time-backdrop');
@@ -5335,7 +5342,6 @@ $('sched-time-popover').addEventListener('touchend', () => {
       if (bd) { bd.style.transition = ''; bd.style.opacity = ''; bd.classList.remove('show'); }
     }, 260);
   } else {
-    // spring back
     pop.style.transition = 'transform .3s cubic-bezier(.32,.72,0,1)';
     pop.style.transform = '';
     setTimeout(() => { pop.style.transition = ''; }, 320);
