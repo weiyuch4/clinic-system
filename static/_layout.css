@@ -563,11 +563,35 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   /* ── hide desktop chrome ──────────────────────────── */
   .sb{display:none!important}
   .mob-nav{display:block;bottom:calc(8px + env(safe-area-inset-bottom,0px));left:16px;right:16px;border-top:none;border:1px solid var(--border);border-radius:40px;padding-bottom:0;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.22);touch-action:manipulation}
-  /* Frosted glass — mostly opaque so icons stay legible over busy content */
-  .mob-nav{background:rgba(255,255,255,.78);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:0 4px 24px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.7)}
-  :root[data-theme=dark] .mob-nav{background:rgba(22,27,39,.78);border-color:rgba(255,255,255,.08);box-shadow:0 4px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+  /* Liquid-glass look: thin tint + blur/saturate + four-edge rim + diagonal sheen + lift.
+     Refraction (SVG displacement) is Chromium-only, so Safari gets this layered version. */
+  .mob-nav{
+    --g-tint:rgba(255,255,255,.5);--g-rim:rgba(255,255,255,.65);
+    --g-hi:rgba(255,255,255,.9);--g-lo:rgba(0,0,0,.06);--g-side:rgba(255,255,255,.35);
+    --g-lift:0 8px 32px rgba(0,0,0,.14),0 1px 3px rgba(0,0,0,.08);
+    --g-sheen:linear-gradient(135deg,rgba(255,255,255,.6) 0%,rgba(255,255,255,.08) 28%,transparent 58%);
+    --g-filter:blur(14px) saturate(180%) brightness(1.05);
+    background:var(--g-tint);border:1px solid var(--g-rim);
+    -webkit-backdrop-filter:var(--g-filter);backdrop-filter:var(--g-filter);
+    box-shadow:inset 0 1px 1px var(--g-hi),inset 0 -1px 1px var(--g-lo),inset 1px 0 1px var(--g-side),inset -1px 0 1px var(--g-side),var(--g-lift)}
+  .mob-nav::after{content:'';position:absolute;inset:0;border-radius:inherit;background:var(--g-sheen);pointer-events:none;z-index:-1}
+  :root[data-theme=dark] .mob-nav{
+    --g-tint:rgba(22,27,39,.55);--g-rim:rgba(255,255,255,.14);
+    --g-hi:rgba(255,255,255,.22);--g-lo:rgba(0,0,0,.3);--g-side:rgba(255,255,255,.08);
+    --g-lift:0 8px 32px rgba(0,0,0,.45);
+    --g-sheen:linear-gradient(135deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.03) 28%,transparent 58%);
+    --g-filter:blur(14px) saturate(180%)}
   @media(prefers-color-scheme:dark){
-    :root:not([data-theme=light]) .mob-nav{background:rgba(22,27,39,.78);border-color:rgba(255,255,255,.08);box-shadow:0 4px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+    :root:not([data-theme=light]) .mob-nav{
+      --g-tint:rgba(22,27,39,.55);--g-rim:rgba(255,255,255,.14);
+      --g-hi:rgba(255,255,255,.22);--g-lo:rgba(0,0,0,.3);--g-side:rgba(255,255,255,.08);
+      --g-lift:0 8px 32px rgba(0,0,0,.45);
+      --g-sheen:linear-gradient(135deg,rgba(255,255,255,.14) 0%,rgba(255,255,255,.03) 28%,transparent 58%);
+      --g-filter:blur(14px) saturate(180%)}
+  }
+  @media(prefers-reduced-transparency:reduce){
+    .mob-nav{--g-tint:var(--card);-webkit-backdrop-filter:none;backdrop-filter:none}
+    .mob-nav::after{display:none}
   }
   .srch{display:none!important}
   .lu{display:none!important}
