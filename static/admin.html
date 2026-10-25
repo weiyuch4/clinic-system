@@ -1470,8 +1470,8 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   }
   #ann-body, #dn-content { min-height: 88px; }
 
-  /* ── back-to-top: keep above any safe-area ───────────────────────────── */
-  #back-to-top { bottom: calc(env(safe-area-inset-bottom, 0px) + 20px); right: 16px; }
+  /* ── back-to-top: hidden on mobile ───────────────────────────────────── */
+  #back-to-top { display: none !important; }
 
   /* ── ct padding: restore bottom clearance for fixed nav ─────────────── */
   #admin-ct { padding-bottom: calc(68px + env(safe-area-inset-bottom, 0px)) !important; }
