@@ -637,6 +637,14 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 }
 :root[data-theme=dark] .srch-dd{box-shadow:0 6px 20px rgba(0,0,0,.35)}
 
+/* ── mobile dark topbar: pure black to match iOS system dark status bar ── */
+@media(max-width:767px) and (prefers-color-scheme:dark){
+  :root:not([data-theme=light]) .tb{background:#000;border-bottom-color:transparent}
+}
+@media(max-width:767px){
+  :root[data-theme=dark] .tb{background:#000;border-bottom-color:transparent}
+}
+
 /* ── tablet breakpoint (narrow desktop with sidebar) ───── */
 @media(min-width:768px) and (max-width:960px){
   /* 4-stat-card grid → 2×2 */

@@ -291,7 +291,7 @@
   }
 
   function _syncThemeColor() {
-    var color = _isDark() ? '#161B27' : '#FFFFFF';
+    var color = _isDark() ? '#000000' : '#FFFFFF';
     var metas = document.querySelectorAll('meta[name="theme-color"]');
     metas.forEach(function(m) { m.parentNode.removeChild(m); });
     var m = document.createElement('meta');
