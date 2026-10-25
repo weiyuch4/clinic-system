@@ -638,6 +638,50 @@
       }).join('') +
     '</div>';
     document.body.appendChild(nav);
+    _initNavSlide(nav);
+  }
+
+  // ── Nav highlight slide transition ───────────────────
+  function _initNavSlide(nav) {
+    var items = Array.prototype.slice.call(nav.querySelectorAll('.mn-item'));
+    var count = items.length;
+    var activeIdx = -1;
+    items.forEach(function(item, i) { if (item.classList.contains('on')) activeIdx = i; });
+
+    // Store index before navigating
+    items.forEach(function(item) {
+      if (item.tagName !== 'A') return;
+      item.addEventListener('click', function() {
+        if (activeIdx >= 0) {
+          sessionStorage.setItem('_nfrom', String(activeIdx));
+          sessionStorage.setItem('_ncount', String(count));
+        }
+      });
+    });
+
+    // Animate highlight from previous position to current
+    var fromStr = sessionStorage.getItem('_nfrom');
+    var countStr = sessionStorage.getItem('_ncount');
+    sessionStorage.removeItem('_nfrom');
+    sessionStorage.removeItem('_ncount');
+    if (fromStr === null || activeIdx < 0) return;
+    var from = parseInt(fromStr, 10);
+    if (from === activeIdx || parseInt(countStr, 10) !== count) return;
+    var ic = items[activeIdx] && items[activeIdx].querySelector('.mn-ic');
+    if (!ic) return;
+    var navW = nav.offsetWidth;
+    if (!navW) return;
+    var offset = ((from - activeIdx) / count) * navW;
+    ic.style.transition = 'none';
+    ic.style.transform = 'translateX(' + offset + 'px)';
+    void ic.offsetWidth;
+    ic.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
+    ic.style.transform = 'translateX(0)';
+    ic.addEventListener('transitionend', function fn() {
+      ic.removeEventListener('transitionend', fn);
+      ic.style.transition = '';
+      ic.style.transform = '';
+    });
   }
 
   // ── Admin mobile account menu ────────────────────────
