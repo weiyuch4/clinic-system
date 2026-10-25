@@ -290,11 +290,21 @@
       (!_theme && window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches);
   }
 
+  function _syncThemeColor() {
+    var color = _isDark() ? '#161B27' : '#FFFFFF';
+    var metas = document.querySelectorAll('meta[name="theme-color"]');
+    metas.forEach(function(m) { m.parentNode.removeChild(m); });
+    var m = document.createElement('meta');
+    m.name = 'theme-color'; m.content = color;
+    document.head.appendChild(m);
+  }
+
   function _applyTheme(t) {
     _theme = t;
     var root = document.documentElement;
     if (t) { root.setAttribute('data-theme', t); localStorage.setItem('theme', t); }
     else   { root.removeAttribute('data-theme');  localStorage.removeItem('theme'); }
+    _syncThemeColor();
     _updateThemeBtn();
   }
 
@@ -1471,6 +1481,7 @@
     }
 
     _initPWA();
+    _syncThemeColor();
     _initChangelog();
 
     if (_isMobile) {
