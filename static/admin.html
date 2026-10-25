@@ -7772,9 +7772,10 @@ function load(section) {
   else if (section === 'blood-recall-settings') { brRenderChecklist(''); loadBloodRecallSettings(); }
   else if (section === 'line-manage') { if (!_lnSettingsLoaded) lnLoadSettings(); }
   else if (section === 'line-templates') { if (!_lnPresetsLoaded) lnLoadPresets(); }
-  else if (section === 'broadcasts') { loadBroadcasts(); }
-  else if (section === 'ai-agent')   { aiLoadSettings(); }
-  else if (section === 'reviews')    { rvLoadSettings(); }
+  else if (section === 'broadcasts') { loadBroadcasts(); _bcStartPoll(); }
+  else if (section === 'ai-agent')   { _bcStopPoll(); aiLoadSettings(); }
+  else if (section === 'reviews')    { _bcStopPoll(); rvLoadSettings(); }
+  else { _bcStopPoll(); }
 }
 
 function refresh() {
@@ -8137,6 +8138,8 @@ async function loadBroadcasts() {
     if (el) el.textContent = `${n} 位病患已綁定`;
   }
   renderBroadcasts();
+  if (_broadcasts.some(b => ['sending','scheduled'].includes(b.status))) _bcStartPoll();
+  else _bcStopPoll();
 }
 
 function renderBroadcasts() {
@@ -8223,10 +8226,17 @@ function resetForm() {
   updateCharCount(); setSendMode('now');
 }
 
-setInterval(() => {
-  if (document.getElementById('broadcasts')?.classList.contains('active') &&
-      _broadcasts.some(b=>['sending','scheduled'].includes(b.status))) loadBroadcasts();
-}, 30000);
+let _bcPollTimer = null;
+function _bcStartPoll() {
+  if (_bcPollTimer) return;
+  _bcPollTimer = setInterval(() => {
+    if (_broadcasts.some(b => ['sending','scheduled'].includes(b.status))) loadBroadcasts();
+    else _bcStopPoll();
+  }, 30000);
+}
+function _bcStopPoll() {
+  if (_bcPollTimer) { clearInterval(_bcPollTimer); _bcPollTimer = null; }
+}
 
 // ── AI Agent ──────────────────────────────────────────────────────────────────
 function aiShowTab(name) {
