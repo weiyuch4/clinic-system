@@ -563,6 +563,12 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   /* ── hide desktop chrome ──────────────────────────── */
   .sb{display:none!important}
   .mob-nav{display:block;bottom:calc(8px + env(safe-area-inset-bottom,0px));left:16px;right:16px;border-top:none;border:1px solid var(--border);border-radius:40px;padding-bottom:0;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.22);touch-action:manipulation}
+  /* Frosted glass — mostly opaque so icons stay legible over busy content */
+  .mob-nav{background:rgba(255,255,255,.78);-webkit-backdrop-filter:blur(20px) saturate(180%);backdrop-filter:blur(20px) saturate(180%);box-shadow:0 4px 24px rgba(0,0,0,.22),inset 0 1px 0 rgba(255,255,255,.7)}
+  :root[data-theme=dark] .mob-nav{background:rgba(22,27,39,.78);border-color:rgba(255,255,255,.08);box-shadow:0 4px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+  @media(prefers-color-scheme:dark){
+    :root:not([data-theme=light]) .mob-nav{background:rgba(22,27,39,.78);border-color:rgba(255,255,255,.08);box-shadow:0 4px 24px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.08)}
+  }
   .srch{display:none!important}
   .lu{display:none!important}
 
