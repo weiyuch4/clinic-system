@@ -9,7 +9,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>管理員後台</title>
-<link rel="stylesheet" href="/static/_layout.css?v=74">
+<link rel="stylesheet" href="/static/_layout.css?v=75">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
@@ -1742,7 +1742,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
 .send-panel{border:1px solid var(--border);border-radius:var(--radius-s);padding:16px;background:var(--bg);margin-bottom:16px}
 .send-panel-title{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
 </style>
-<script src="/static/_layout.js?v=73"></script>
+<script src="/static/_layout.js?v=74"></script>
 <script src="/static/admin-auth.js?v=5"></script>
 </head>
 <body>
@@ -3280,8 +3280,9 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
 
 Layout.init({ activePage: 'admin' });
 
-// ── Admin topbar (replaces standard nurse topbar) ─────────────────────────────
+// ── Admin topbar (replaces standard nurse topbar, desktop only) ───────────────
 (function() {
+  if (window.matchMedia && window.matchMedia('(max-width:767px)').matches) return;
   var _MOON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>';
   var _SUN  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><line x1="12" y1="2" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="6.34" y2="6.34"/><line x1="17.66" y1="17.66" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22" y2="12"/><line x1="6.34" y1="17.66" x2="4.93" y2="19.07"/><line x1="19.07" y1="4.93" x2="17.66" y2="6.34"/></svg>';
   function _dark() { var t = document.documentElement.getAttribute('data-theme'); return t === 'dark' || (!t && window.matchMedia && window.matchMedia('(prefers-color-scheme:dark)').matches); }

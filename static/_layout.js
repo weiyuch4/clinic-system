@@ -685,7 +685,7 @@
   // ── Topbar ───────────────────────────────────────────
   var _MOB_TITLES = {
     schedule: '排班表', 'nurse-ot': '加班紀錄', notes: '備忘錄',
-    'change-password': '我的設定', login: '登入',
+    'change-password': '我的設定', login: '登入', admin: '管理員後台',
   };
 
   // ── Announcement bell ────────────────────────────────

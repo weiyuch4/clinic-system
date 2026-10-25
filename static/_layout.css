@@ -564,10 +564,13 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 
   /* ── topbar ───────────────────────────────────────── */
   .tb{height:calc(60px + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 14px 0;position:relative}
-  .tb-title{display:block;position:static;transform:none;left:auto;flex:1;max-width:none;text-align:left}
+  .tb-title{display:block;position:static;transform:none;left:auto;flex:1;max-width:none;text-align:left;font-size:18px;align-self:center}
   .ib{width:44px;height:44px}
   #btn-theme,#btn-logout{display:none!important}
   #btn-refresh{display:none!important}
+  /* Theme button in bottom sheet: left-aligned, icon constrained */
+  #adm-acct-theme,#nurse-dd-theme{justify-content:flex-start!important}
+  #adm-acct-theme svg,#nurse-dd-theme svg{width:20px!important;height:20px!important;flex-shrink:0}
   /* Collapse nurse-wrap to 0×0 instead of display:none so the fixed-position
      nurse-dd child can still render (display:none hides fixed children too) */
   .nurse-wrap{position:fixed!important;width:0!important;height:0!important;overflow:visible!important;pointer-events:none!important;z-index:500!important}
