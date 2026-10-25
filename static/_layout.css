@@ -555,7 +555,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 @media(max-width:767px){
   /* ── hide desktop chrome ──────────────────────────── */
   .sb{display:none!important}
-  .mob-nav{display:block;bottom:calc(8px + env(safe-area-inset-bottom,0px));left:16px;right:16px;border-top:none;border:1px solid var(--border);border-radius:40px;padding-bottom:0;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.22)}
+  .mob-nav{display:block;bottom:calc(8px + env(safe-area-inset-bottom,0px));left:16px;right:16px;border-top:none;border:1px solid var(--border);border-radius:40px;padding-bottom:0;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.22);touch-action:manipulation}
   .srch{display:none!important}
   .lu{display:none!important}
 
