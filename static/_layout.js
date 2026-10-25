@@ -299,11 +299,15 @@
   }
 
   function _updateThemeBtn() {
-    var btn = document.getElementById('btn-theme');
-    if (!btn) return;
     var dark = _isDark();
-    btn.innerHTML = dark ? ICONS.sun : ICONS.moon;
-    btn.title = dark ? '切換淺色模式' : '切換深色模式';
+    var icon = dark ? ICONS.sun : ICONS.moon;
+    var label = dark ? '切換淺色模式' : '切換深色模式';
+    var btn = document.getElementById('btn-theme');
+    if (btn) { btn.innerHTML = icon; btn.title = label; }
+    ['adm-acct-theme', 'nurse-dd-theme'].forEach(function (id) {
+      var b = document.getElementById(id);
+      if (b) b.innerHTML = icon + '<span style="margin-left:10px;vertical-align:middle">' + label + '</span>';
+    });
   }
 
   var CHECK_SVG = '<svg class="nurse-chk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="20 6 9 17 4 12"/></svg>';
@@ -641,8 +645,11 @@
     dd.innerHTML =
       '<div class="nurse-dd-hd">帳號</div>' +
       '<div class="nurse-dd-sep"></div>' +
+      '<button class="nurse-change-pin" id="adm-acct-theme" type="button"></button>' +
+      '<div class="nurse-dd-sep"></div>' +
       '<button class="nurse-logout" id="adm-acct-logout" type="button">登出</button>';
     document.body.appendChild(dd);
+    _updateThemeBtn();
 
     function closeMenu() {
       dd.classList.remove('open');
@@ -651,6 +658,14 @@
     }
     backdrop.addEventListener('click', closeMenu);
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeMenu(); });
+
+    var acctThemeBtn = document.getElementById('adm-acct-theme');
+    if (acctThemeBtn) {
+      acctThemeBtn.addEventListener('click', function () {
+        _applyTheme(_isDark() ? 'light' : 'dark');
+        closeMenu();
+      });
+    }
 
     var logoutBtn = document.getElementById('adm-acct-logout');
     if (logoutBtn) {
@@ -820,6 +835,8 @@
               '<button class="nurse-change-pin" id="nurse-change-pin" type="button" style="display:none">更改我的 PIN</button>' +
               '<button class="nurse-clear" id="nurse-clear" type="button">清除選擇</button>' +
               '<div class="nurse-dd-sep"></div>' +
+              '<button class="nurse-change-pin" id="nurse-dd-theme" type="button"></button>' +
+              '<div class="nurse-dd-sep"></div>' +
               '<button class="nurse-logout" id="nurse-logout" type="button">登出</button>' +
             '</div>' +
           '</div>'
@@ -830,6 +847,8 @@
     if (btn && _onRefresh) btn.addEventListener('click', _onRefresh);
     var themeBtn = document.getElementById('btn-theme');
     if (themeBtn) themeBtn.addEventListener('click', function () { _applyTheme(_isDark() ? 'light' : 'dark'); });
+    var nurseDdTheme = document.getElementById('nurse-dd-theme');
+    if (nurseDdTheme) nurseDdTheme.addEventListener('click', function () { _applyTheme(_isDark() ? 'light' : 'dark'); });
     _updateThemeBtn();
 
     // ── Announcements bell ───────────────────────────────
