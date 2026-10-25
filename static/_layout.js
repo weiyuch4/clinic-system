@@ -644,6 +644,7 @@
   // ── Nav highlight slide transition ───────────────────
   function _initNavSlide(nav) {
     var items = Array.prototype.slice.call(nav.querySelectorAll('.mn-item'));
+    var count = items.length;
     var activeIdx = -1;
     items.forEach(function(item, i) { if (item.classList.contains('on')) activeIdx = i; });
     if (activeIdx < 0) return;
@@ -651,7 +652,6 @@
     var mnItems = nav.querySelector('.mn-items');
     if (!mnItems) return;
 
-    // Absolutely-positioned pill — only the background moves, not the icons
     var pill = document.createElement('div');
     pill.className = 'mn-slide-pill';
     mnItems.insertBefore(pill, mnItems.firstChild);
@@ -665,28 +665,42 @@
       return { left: ir.left - nr.left, width: ir.width };
     }
 
-    // Place pill at active item immediately (no animation)
-    var init = pillPos(activeIdx);
-    if (init) {
-      pill.style.transition = 'none';
-      pill.style.left = init.left + 'px';
-      pill.style.width = init.width + 'px';
+    // On new page: slide pill from previous tab's position during fade-in
+    var fromStr = sessionStorage.getItem('_nfrom');
+    var countStr = sessionStorage.getItem('_ncount');
+    sessionStorage.removeItem('_nfrom');
+    sessionStorage.removeItem('_ncount');
+    var fromIdx = (fromStr !== null && parseInt(countStr, 10) === count) ? parseInt(fromStr, 10) : -1;
+
+    if (fromIdx >= 0 && fromIdx !== activeIdx) {
+      var pFrom = pillPos(fromIdx);
+      var pTo   = pillPos(activeIdx);
+      if (pFrom && pTo) {
+        pill.style.transition = 'none';
+        pill.style.left  = pFrom.left  + 'px';
+        pill.style.width = pFrom.width + 'px';
+        void pill.offsetWidth;
+        pill.style.transition = 'left .2s cubic-bezier(.4,0,.2,1),width .2s cubic-bezier(.4,0,.2,1)';
+        pill.style.left  = pTo.left  + 'px';
+        pill.style.width = pTo.width + 'px';
+      }
+    } else {
+      var init = pillPos(activeIdx);
+      if (init) {
+        pill.style.transition = 'none';
+        pill.style.left  = init.left  + 'px';
+        pill.style.width = init.width + 'px';
+      }
     }
 
-    // On tap: animate pill to destination, then navigate
+    // On tap: store origin and navigate immediately
     items.forEach(function(item, i) {
       if (item.tagName !== 'A') return;
       item.addEventListener('click', function(e) {
         e.preventDefault();
-        var href = item.getAttribute('href');
-        var dest = pillPos(i);
-        if (dest) {
-          void pill.offsetWidth;
-          pill.style.transition = 'left .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1)';
-          pill.style.left = dest.left + 'px';
-          pill.style.width = dest.width + 'px';
-        }
-        requestAnimationFrame(function() { window.location.href = href; });
+        sessionStorage.setItem('_nfrom',  String(activeIdx));
+        sessionStorage.setItem('_ncount', String(count));
+        window.location.href = item.getAttribute('href');
       });
     });
   }

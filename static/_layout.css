@@ -38,7 +38,8 @@
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 a,button,label{touch-action:manipulation}
 html,body{height:100%;overflow:hidden;overscroll-behavior:none;font-size:14px}
-body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+@keyframes _page-in{from{opacity:0}}
+body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-serif;background:var(--bg);color:var(--text);line-height:1.5;animation:_page-in .15s ease both}
 
 /* â”€â”€ app shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .app{display:flex;height:100%}
