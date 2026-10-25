@@ -570,7 +570,9 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .ct{padding:16px 16px calc(74px + env(safe-area-inset-bottom,0px)) 16px;font-size:15px}
 
   /* ── topbar ───────────────────────────────────────── */
-  .tb{height:calc(60px + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 14px 0;position:relative}
+  /* iOS 26 tints the status bar from a fixed element at the top edge; without one it draws a blur */
+  .tb{height:calc(60px + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 14px 0;position:fixed;top:0;left:0;right:0;z-index:200}
+  .main{padding-top:calc(60px + env(safe-area-inset-top,0px))}
   .tb-title{display:block;position:static;transform:none;left:auto;flex:1;max-width:none;text-align:left;font-size:18px;align-self:center}
   .ib{width:44px;height:44px}
   #btn-theme,#btn-logout{display:none!important}
@@ -594,8 +596,8 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .nurse-clear,.nurse-change-pin,.nurse-logout{font-size:14px!important;padding:12px 20px!important}
   .nurse-dd.open{transform:translateY(0);pointer-events:auto!important}
   /* Backdrop */
-  .nurse-sheet-bd{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:499;opacity:0;transition:opacity .25s;pointer-events:none}
-  .nurse-sheet-bd.show{opacity:1;pointer-events:auto}
+  .nurse-sheet-bd{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:499;opacity:0;visibility:hidden;transition:opacity .25s,visibility .25s;pointer-events:none}
+  .nurse-sheet-bd.show{opacity:1;visibility:visible;pointer-events:auto}
   /* Hide FAB while sheet is open */
   .nurse-sheet-open .notes-fab{display:none!important}
 
