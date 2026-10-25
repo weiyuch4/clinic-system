@@ -686,7 +686,7 @@
           pill.style.left = dest.left + 'px';
           pill.style.width = dest.width + 'px';
         }
-        setTimeout(function() { window.location.href = href; }, 180);
+        requestAnimationFrame(function() { window.location.href = href; });
       });
     });
   }
