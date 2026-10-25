@@ -639,7 +639,9 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .note-footer{font-size:13px}
 
   /* ── bottom nav item height ───────────────────────── */
-  .mn-item{padding:3px 4px}
+  /* Highlight fills its slot with an equal 3px inset, so the gap stays even for 4 or 5 items */
+  .mn-item{padding:3px}
+  .mn-ic{align-self:stretch;padding:12px 0}
 
   /* ── toast/undo — lift above bottom nav ───────────── */
   .toast,.undo-toast{bottom:calc(74px + env(safe-area-inset-bottom,0px) + 10px)}
