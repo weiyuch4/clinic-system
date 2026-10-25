@@ -861,6 +861,12 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 .sched-time-btn:hover { border-color: var(--blue); background: var(--blue-bg); }
 .sched-time-btn.is-empty { color: var(--text-3); font-weight: 400; border-style: dashed; }
 .sched-time-btn.has-clean { background: #FFFBEB; border-color: var(--amber); color: #92400E; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme=light]) .sched-time-btn.has-clean,
+  :root:not([data-theme=light]) .mob-sched-btn.has-clean { background: rgba(217,119,6,.15); border-color: var(--amber); color: #FCD34D; }
+}
+:root[data-theme=dark] .sched-time-btn.has-clean,
+:root[data-theme=dark] .mob-sched-btn.has-clean { background: rgba(217,119,6,.15); border-color: var(--amber); color: #FCD34D; }
 .sched-legend {
   display: flex; align-items: center; gap: 6px;
   font-size: 11.5px; color: var(--text-2); font-weight: 600;
@@ -1312,32 +1318,39 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
   .adm-sec-btn.open { border-color: var(--blue); }
   .adm-sec-btn svg { flex-shrink: 0; color: var(--text-3); transition: transform .2s; }
   .adm-sec-btn.open svg { transform: rotate(180deg); }
+  .adm-sec-menu-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 490;
+    background: rgba(0,0,0,.25);
+  }
+  .adm-sec-menu-backdrop.open { display: block; }
   .adm-sec-menu {
     display: none;
     position: absolute;
     left: 14px;
     right: 14px;
-    top: 100%;
-    margin-top: 2px;
+    top: calc(100% + 4px);
     background: var(--surface);
     border: 1px solid var(--border);
-    border-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0,0,0,.14);
+    border-radius: 14px;
+    box-shadow: 0 12px 36px rgba(0,0,0,.22), 0 2px 8px rgba(0,0,0,.1);
     z-index: 500;
     overflow: hidden;
-    animation: secMenu-in .12s ease;
+    animation: secMenu-in .15s ease;
   }
   .adm-sec-menu.open { display: block; }
   .adm-sec-opt {
     display: block;
     width: 100%;
-    padding: 13px 16px;
+    padding: 14px 18px;
     text-align: left;
     border: none;
     border-bottom: 1px solid var(--border);
     background: transparent;
     font: 500 14px/1.2 var(--font);
-    color: var(--text-2);
+    color: var(--text-1);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
     transition: background .1s, color .1s;
@@ -1372,7 +1385,7 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
     border-top: 1.5px solid var(--border);
     max-height: 80vh;
     overflow-y: auto;
-    padding: 20px 20px calc(env(safe-area-inset-bottom, 0px) + 20px);
+    padding: 20px 20px calc(68px + env(safe-area-inset-bottom, 0px) + 20px);
   }
   /* Bigger chips & buttons inside the bottom sheet */
   .stp-chip { min-height: 40px; padding: 8px 14px; font-size: 13px; }
@@ -1701,6 +1714,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
     <div class="body-row">
     <div class="mob-adm-nav">
       <div class="adm-sec-picker">
+        <div class="adm-sec-menu-backdrop" id="adm-sec-backdrop"></div>
         <button class="adm-sec-btn" id="adm-sec-btn" type="button">
           <span id="adm-sec-label">護理師統計</span>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M4 6l4 4 4-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -3313,8 +3327,10 @@ document.querySelectorAll('.tab').forEach(btn => {
     // Close mobile dropdown
     const menu = document.getElementById('adm-sec-menu');
     const sbtn = document.getElementById('adm-sec-btn');
+    const backdrop = document.getElementById('adm-sec-backdrop');
     if (menu) menu.classList.remove('open');
     if (sbtn) sbtn.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('open');
     activeSection = sec;
     $(activeSection).classList.add('active');
     localStorage.setItem('admin_tab', activeSection);
@@ -3329,16 +3345,21 @@ document.querySelectorAll('.tab').forEach(btn => {
 (function() {
   var sbtn = document.getElementById('adm-sec-btn');
   var menu = document.getElementById('adm-sec-menu');
+  var backdrop = document.getElementById('adm-sec-backdrop');
   if (!sbtn || !menu) return;
+  function closeMenu() {
+    menu.classList.remove('open');
+    sbtn.classList.remove('open');
+    if (backdrop) backdrop.classList.remove('open');
+  }
   sbtn.addEventListener('click', function(e) {
     e.stopPropagation();
     var open = menu.classList.toggle('open');
     sbtn.classList.toggle('open', open);
+    if (backdrop) backdrop.classList.toggle('open', open);
   });
-  document.addEventListener('click', function() {
-    menu.classList.remove('open');
-    sbtn.classList.remove('open');
-  });
+  if (backdrop) backdrop.addEventListener('click', closeMenu);
+  document.addEventListener('click', closeMenu);
   menu.addEventListener('click', function(e) { e.stopPropagation(); });
 })();
 
