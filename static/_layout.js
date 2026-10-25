@@ -644,43 +644,50 @@
   // ── Nav highlight slide transition ───────────────────
   function _initNavSlide(nav) {
     var items = Array.prototype.slice.call(nav.querySelectorAll('.mn-item'));
-    var count = items.length;
     var activeIdx = -1;
     items.forEach(function(item, i) { if (item.classList.contains('on')) activeIdx = i; });
+    if (activeIdx < 0) return;
 
-    // Store index before navigating
-    items.forEach(function(item) {
+    var mnItems = nav.querySelector('.mn-items');
+    if (!mnItems) return;
+
+    // Absolutely-positioned pill — only the background moves, not the icons
+    var pill = document.createElement('div');
+    pill.className = 'mn-slide-pill';
+    mnItems.insertBefore(pill, mnItems.firstChild);
+    nav.classList.add('has-pill');
+
+    function pillPos(idx) {
+      var ic = items[idx] && items[idx].querySelector('.mn-ic');
+      if (!ic) return null;
+      var nr = mnItems.getBoundingClientRect();
+      var ir = ic.getBoundingClientRect();
+      return { left: ir.left - nr.left, width: ir.width };
+    }
+
+    // Place pill at active item immediately (no animation)
+    var init = pillPos(activeIdx);
+    if (init) {
+      pill.style.transition = 'none';
+      pill.style.left = init.left + 'px';
+      pill.style.width = init.width + 'px';
+    }
+
+    // On tap: animate pill to destination, then navigate
+    items.forEach(function(item, i) {
       if (item.tagName !== 'A') return;
-      item.addEventListener('click', function() {
-        if (activeIdx >= 0) {
-          sessionStorage.setItem('_nfrom', String(activeIdx));
-          sessionStorage.setItem('_ncount', String(count));
+      item.addEventListener('click', function(e) {
+        e.preventDefault();
+        var href = item.getAttribute('href');
+        var dest = pillPos(i);
+        if (dest) {
+          void pill.offsetWidth;
+          pill.style.transition = 'left .22s cubic-bezier(.4,0,.2,1),width .22s cubic-bezier(.4,0,.2,1)';
+          pill.style.left = dest.left + 'px';
+          pill.style.width = dest.width + 'px';
         }
+        setTimeout(function() { window.location.href = href; }, 180);
       });
-    });
-
-    // Animate highlight from previous position to current
-    var fromStr = sessionStorage.getItem('_nfrom');
-    var countStr = sessionStorage.getItem('_ncount');
-    sessionStorage.removeItem('_nfrom');
-    sessionStorage.removeItem('_ncount');
-    if (fromStr === null || activeIdx < 0) return;
-    var from = parseInt(fromStr, 10);
-    if (from === activeIdx || parseInt(countStr, 10) !== count) return;
-    var ic = items[activeIdx] && items[activeIdx].querySelector('.mn-ic');
-    if (!ic) return;
-    var navW = nav.offsetWidth;
-    if (!navW) return;
-    var offset = ((from - activeIdx) / count) * navW;
-    ic.style.transition = 'none';
-    ic.style.transform = 'translateX(' + offset + 'px)';
-    void ic.offsetWidth;
-    ic.style.transition = 'transform 0.28s cubic-bezier(0.4,0,0.2,1)';
-    ic.style.transform = 'translateX(0)';
-    ic.addEventListener('transitionend', function fn() {
-      ic.removeEventListener('transitionend', fn);
-      ic.style.transition = '';
-      ic.style.transform = '';
     });
   }
 
