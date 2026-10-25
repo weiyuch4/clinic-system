@@ -563,7 +563,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
   .ct{padding:16px 16px calc(68px + env(safe-area-inset-bottom,0px)) 16px;font-size:15px}
 
   /* ── topbar ───────────────────────────────────────── */
-  .tb{height:54px;padding:0 14px;position:relative;justify-content:flex-end}
+  .tb{height:calc(54px + env(safe-area-inset-top,0px));padding:env(safe-area-inset-top,0px) 14px 0;position:relative;justify-content:flex-end}
   .tb-title{display:block;max-width:calc(100% - 140px)}
   .ib{width:44px;height:44px}
   #btn-refresh{display:none!important}
