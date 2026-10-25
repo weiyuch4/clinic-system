@@ -216,15 +216,21 @@ input[type="password"]:focus {
   var t = localStorage.getItem('theme') || '';
   if (t) document.documentElement.setAttribute('data-theme', t);
 
+  // Phones land on the schedule; the dashboard is desktop-only
+  function nextUrl() {
+    var nx = new URLSearchParams(location.search).get('next') || '/';
+    if (!nx.startsWith('/') || nx.startsWith('//')) nx = '/';
+    if (window.innerWidth < 768 && (nx === '/' || nx.indexOf('/dashboard') === 0)) nx = '/schedule';
+    return nx;
+  }
+
   // Already logged in → skip to destination
   var stored = localStorage.getItem('clinic_token');
   if (stored) {
     try {
       var pl = JSON.parse(atob(stored.split('.')[1]));
       if (pl.exp * 1000 > Date.now()) {
-        var nx = new URLSearchParams(location.search).get('next') || '/';
-        if (!nx.startsWith('/') || nx.startsWith('//')) nx = '/';
-        location.href = nx;
+        location.href = nextUrl();
         return;
       }
     } catch (e) {}
@@ -260,8 +266,7 @@ input[type="password"]:focus {
       .then(function (res) {
         if (!res.ok) throw new Error(res.d.detail || '登入失敗，請再試一次');
         localStorage.setItem('clinic_token', res.d.access_token);
-        var nx = new URLSearchParams(location.search).get('next') || '/';
-        if (!nx.startsWith('/') || nx.startsWith('//')) nx = '/';
+        var nx = nextUrl();
         if (res.d.must_change_password) {
           location.href = '/change-password?next=' + encodeURIComponent(nx);
         } else {

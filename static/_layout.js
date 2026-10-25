@@ -1546,7 +1546,8 @@
 
     // Mobile: redirect restricted pages before rendering anything
     // Admin bypasses the whitelist — they can access any page they navigate to
-    if (_isMobile && _role !== 'admin' && !MOBILE_ALLOWED[_activePage]) {
+    // Dashboard isn't in the mobile nav, so it redirects for admin too
+    if (_isMobile && (_activePage === 'dashboard' || (_role !== 'admin' && !MOBILE_ALLOWED[_activePage]))) {
       window.location.replace('/schedule');
       return;
     }
