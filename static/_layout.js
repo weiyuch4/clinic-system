@@ -1452,7 +1452,7 @@
   function _initPWA() {
     // Inject manifest link
     var mLink = document.createElement('link');
-    mLink.rel = 'manifest'; mLink.href = '/static/manifest.json';
+    mLink.rel = 'manifest'; mLink.href = '/static/manifest.json?v=2';
     document.head.appendChild(mLink);
     // iOS standalone support
     var iosCap = document.createElement('meta');
