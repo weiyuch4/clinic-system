@@ -10,6 +10,7 @@ import base64
 import hashlib
 import hmac
 import json
+import time
 from datetime import datetime, timedelta, timezone
 
 import requests
@@ -472,6 +473,25 @@ def get_bot_info(token: str) -> dict | None:
     }
 
 
+_basic_id_cache: dict[str, tuple[float, str]] = {}  # token -> (fetched_at, basic_id)
+
+
+def get_basic_id(token: str) -> str:
+    """The account's LINE ID (e.g. '@123abcd') for add-friend links. Cached for an hour because the
+    public bind page asks for it on every open."""
+    token = token.strip()
+    if not token:
+        return ""
+    hit = _basic_id_cache.get(token)
+    if hit and hit[0] > time.time() - 3600:
+        return hit[1]
+    bot = get_bot_info(token)
+    if bot is None:
+        return hit[1] if hit else ""
+    _basic_id_cache[token] = (time.time(), bot["basic_id"])
+    return bot["basic_id"]
+
+
 def get_webhook_info(token: str) -> dict | None:
     try:
         r = requests.get(f"{_LINE_API}/channel/webhook/endpoint",
@@ -525,7 +545,8 @@ def create_liff_app(login_channel_id: str, login_channel_secret: str, endpoint_u
                 "view": {"type": "full", "url": endpoint_url},
                 "description": "病患綁定",
                 "scope": ["openid", "profile"],
-                "botPrompt": "normal",
+                # aggressive: a separate full-screen "add friend" step after consent (normal is only a checkbox)
+                "botPrompt": "aggressive",
             },
             timeout=10,
         )
@@ -704,11 +725,22 @@ def process_webhook(body: dict, clinic_id: int = 1) -> None:
             continue
 
         if etype == "follow" and token and event.get("replyToken"):
-            # New follower — reply (free) with the binding invite
-            msg = "歡迎加入！請點擊以下連結，輸入身分證字號與生日完成綁定，以便接收診所的回診與健康提醒。"
-            messages: list[dict] = [{"type": "text", "text": msg}]
-            if liff_id:
-                messages.append({"type": "text", "text": f"https://liff.line.me/{liff_id}"})
+            # New follower — reply (free) with the binding invite, unless they already bound
+            # (e.g. bound from the link first, then added the account from the bind page's prompt)
+            with _conn() as conn:
+                with conn.cursor() as cur:
+                    cur.execute(
+                        "SELECT 1 FROM line_bindings WHERE line_user_id = %s AND clinic_id = %s",
+                        (user_id, clinic_id),
+                    )
+                    already_bound = cur.fetchone() is not None
+            if already_bound:
+                messages: list[dict] = [{"type": "text", "text": "歡迎加入！您已完成綁定，之後將透過此帳號收到診所的回診與健康提醒。"}]
+            else:
+                msg = "歡迎加入！請點擊以下連結，輸入身分證字號與生日完成綁定，以便接收診所的回診與健康提醒。"
+                messages = [{"type": "text", "text": msg}]
+                if liff_id:
+                    messages.append({"type": "text", "text": f"https://liff.line.me/{liff_id}"})
             _reply(token, event["replyToken"], messages)
 
         elif etype == "unfollow":

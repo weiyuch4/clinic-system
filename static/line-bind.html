@@ -79,6 +79,17 @@ input[type=text]:focus,input[type=date]:focus{border-color:var(--green)}
 .error-msg{font-size:14px;color:#DC2626;margin-bottom:16px;line-height:1.6}
 .retry-btn{background:none;border:1.5px solid var(--border);border-radius:8px;padding:12px 24px;font-size:14px;cursor:pointer;font-family:inherit;color:var(--sub)}
 
+/* Not yet a friend of the account — reminders can't reach them */
+.friend-box{background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:16px;margin-top:20px;text-align:center}
+.friend-box p{font-size:13.5px;color:#92400E;line-height:1.65;margin:0 0 12px}
+.friend-box .btn{display:block;text-decoration:none}
+.friend-ok{font-size:13.5px;color:#059669;font-weight:600;margin-top:16px}
+@media (prefers-color-scheme: dark) {
+  .friend-box{background:#2a2410;border-color:#5c4a12}
+  .friend-box p{color:#fcd34d}
+  .friend-ok{color:#34d399}
+}
+
 /* Not-in-LINE message */
 .warn-box{background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;padding:14px 16px;text-align:left;margin-bottom:20px}
 .warn-box p{font-size:13px;color:#92400E;line-height:1.65;margin:0}
@@ -146,7 +157,12 @@ input[type=text]:focus,input[type=date]:focus{border-color:var(--green)}
     </div>
     <h2 style="margin-bottom:8px">綁定成功！</h2>
     <p style="color:var(--sub)">您的 LINE 帳號已與病歷號碼 <strong id="success-cn"></strong> 成功連結。<br>日後診所將透過 LINE 傳送健康提醒給您。</p>
-    <button class="btn" style="margin-top:20px"
+    <div class="friend-box" id="friend-box" hidden>
+      <p><strong>還差一步！</strong>請加入診所的官方帳號好友，<br>才能收到回診與領藥提醒。</p>
+      <a class="btn" id="friend-link" href="#">加入好友</a>
+    </div>
+    <div class="friend-ok" id="friend-ok" hidden>✓ 已加入官方帳號好友</div>
+    <button class="btn" id="close-btn" style="margin-top:20px"
       onclick="(typeof liff!=='undefined'&&liff.closeWindow)?liff.closeWindow():window.close()">
       完成，關閉頁面
     </button>
@@ -164,6 +180,7 @@ input[type=text]:focus,input[type=date]:focus{border-color:var(--green)}
 <script>
 var _lineUserId = '';
 var _liffId = '';
+var _basicId = '';
 // /line/{clinic}/bind → /line/{clinic}; the original un-scoped /line/bind → /line
 var _m = location.pathname.match(/^\/line\/([^\/]+)\/bind/);
 var _apiBase = _m ? '/line/' + encodeURIComponent(decodeURIComponent(_m[1])) : '/line';
@@ -185,6 +202,7 @@ async function init() {
     var resp = await fetch(_apiBase + '/config');
     var cfg = await resp.json();
     _liffId = cfg.liff_id || '';
+    _basicId = cfg.basic_id || '';
   } catch(e) {
     _liffId = '';
   }
@@ -279,6 +297,7 @@ async function submitBind() {
     if (resp.ok) {
       document.getElementById('success-cn').textContent = cn;
       showState('success');
+      checkFriendship();
     } else {
       var err = await resp.json().catch(function(){ return {}; });
       document.getElementById('error-msg').textContent = err.detail || '綁定失敗，請確認病歷號碼後再試。';
@@ -291,6 +310,28 @@ async function submitBind() {
 
   btn.disabled = false;
   btn.textContent = '綁定';
+}
+
+// Reminders are push messages, which only reach friends of the account. If the patient switched off
+// "add friend" on LINE's consent screen, offer the add-friend page and re-check when they return.
+var _friendCheckArmed = false;
+
+async function checkFriendship() {
+  if (!_basicId) return;
+  var f;
+  try {
+    f = await liff.getFriendship();
+  } catch(e) {
+    return;  // Login channel not linked to the account — we can't tell, so don't nag
+  }
+  document.getElementById('friend-box').hidden = f.friendFlag;
+  document.getElementById('friend-ok').hidden = !f.friendFlag;
+  if (f.friendFlag || _friendCheckArmed) return;
+  _friendCheckArmed = true;
+  document.getElementById('friend-link').href = 'https://line.me/R/ti/p/' + encodeURIComponent(_basicId);
+  document.addEventListener('visibilitychange', function() {
+    if (document.visibilityState === 'visible') checkFriendship();
+  });
 }
 
 // Start

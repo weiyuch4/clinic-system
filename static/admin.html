@@ -8240,7 +8240,7 @@ function wzSubmitLogin() {
     _wzBusy(false); _wzError(e.message);
     document.getElementById('wz-liff-fallback').innerHTML =
       '<div class="wz-note" style="margin-top:4px">也可以手動建立：在 LINE Login channel 點「<b>LIFF</b>」分頁 →「Add」，依序設定：' +
-      '<br>Size：<b>Full</b>　Endpoint URL：貼上下方網址　Scopes：勾選 <b>openid</b> 與 <b>profile</b>　Add friend option：<b>On (Normal)</b>' +
+      '<br>Size：<b>Full</b>　Endpoint URL：貼上下方網址　Scopes：勾選 <b>openid</b> 與 <b>profile</b>　Add friend option：<b>On (Aggressive)</b>' +
       '<br>建立後把 <b>LIFF ID</b> 貼在下方。</div>' +
       _wzCopyRow('wz-endpoint', (_wz.status || {}).bind_endpoint_url || '') +
       '<div class="ln-field"><label>LIFF ID</label><input id="wz-liff-id" type="text" autocomplete="off" placeholder="例：2001234567-abcdefgh"></div>' +

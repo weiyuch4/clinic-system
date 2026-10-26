@@ -2763,9 +2763,13 @@ def line_bind_page(slug: str):
 
 @app.get("/line/{slug}/config")
 def line_public_config(slug: str):
-    """Public LINE config (LIFF ID only) — no secrets exposed."""
+    """Public LINE config (LIFF ID + the account's add-friend ID) — no secrets exposed."""
     s = line_service.get_settings(_clinic_from_slug(slug))
-    return {"liff_id": s.get("liff_id", ""), "is_active": bool(s.get("is_active"))}
+    return {
+        "liff_id": s.get("liff_id", ""),
+        "is_active": bool(s.get("is_active")),
+        "basic_id": line_service.get_basic_id(s.get("channel_access_token") or ""),
+    }
 
 
 @app.post("/line/{slug}/webhook")
