@@ -1632,6 +1632,37 @@ tbody tr:hover td { background: rgba(0,0,0,.025); }
 textarea.ln-field-input{resize:none;min-height:140px;line-height:1.6}
 select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B7280' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;cursor:pointer}
 .ln-toggle{display:inline-flex;align-items:center;cursor:pointer;flex-shrink:0}
+/* LINE setup wizard — one question per screen */
+.wz{padding:20px 24px 22px}
+.wz-progress{display:flex;gap:4px;margin-bottom:18px}
+.wz-progress span{flex:1;height:4px;border-radius:2px;background:var(--border)}
+.wz-progress span.done{background:var(--blue,#2563EB)}
+.wz-step-label{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
+.wz-q{font-size:16px;font-weight:700;color:var(--text-1);margin-bottom:6px;text-wrap:balance}
+.wz-help{font-size:13px;color:var(--sub);line-height:1.65;margin-bottom:16px;max-width:64ch}
+.wz-opts{display:flex;flex-direction:column;gap:8px}
+.wz-opt{display:block;text-align:left;width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--card);cursor:pointer;font-family:inherit;transition:border-color .12s,background .12s}
+.wz-opt:hover,.wz-opt:focus-visible{border-color:var(--blue,#2563EB);outline:none}
+.wz-opt-t{font-size:14px;font-weight:600;color:var(--text-1)}
+.wz-opt-d{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.5}
+.wz-list{margin:0 0 16px 20px;font-size:13px;color:var(--text-1);line-height:1.85;max-width:66ch}
+.wz-list b{font-weight:600}
+.wz-copy{display:flex;gap:8px;align-items:center;margin:4px 0 14px}
+.wz-copy input{flex:1;min-width:0;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:12px;font-family:ui-monospace,monospace}
+.wz-note{font-size:12.5px;line-height:1.6;padding:10px 12px;border-radius:8px;border:1px solid var(--badge-orange-bd);background:var(--badge-orange-bg);color:var(--badge-orange-c);margin-bottom:14px}
+.wz-ok{font-size:12.5px;line-height:1.6;padding:10px 12px;border-radius:8px;border:1px solid var(--badge-green-bd);background:var(--badge-green-bg);color:var(--badge-green-c);margin-bottom:14px}
+.wz-err{font-size:12.5px;color:var(--red,#DC2626);margin:-6px 0 12px;min-height:0}
+.wz-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:6px}
+.wz-actions .wz-back{margin-right:auto}
+.wz-bot{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:14px}
+.wz-bot img{width:44px;height:44px;border-radius:50%;object-fit:cover;background:var(--border)}
+.wz-bot-name{font-size:14px;font-weight:700;color:var(--text-1)}
+.wz-bot-id{font-size:12px;color:var(--muted)}
+.wz-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--text-1);margin-bottom:14px;cursor:pointer}
+.ln-adv summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--sub);padding:12px 0;list-style:none}
+.ln-adv summary::-webkit-details-marker{display:none}
+.ln-adv summary::before{content:'▸ ';}
+.ln-adv[open] summary::before{content:'▾ ';}
 .ln-toggle input{display:none}
 .ln-toggle-track{display:inline-block;width:38px;height:22px;background:var(--border);border-radius:11px;position:relative;transition:background .2s}
 .ln-toggle input:checked+.ln-toggle-track{background:var(--blue,#2563EB)}
@@ -2778,9 +2809,20 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
     <!-- 設定 -->
     <div class="ln-panel active" id="lnp-settings">
       <div class="card" style="margin-bottom:16px">
+        <div class="card-head"><span class="card-title">LINE 設定精靈</span></div>
+        <div class="wz" id="wz" aria-live="polite"></div>
+      </div>
+
+      <details class="ln-adv" id="ln-adv">
+      <summary>進階：手動設定</summary>
+      <div class="card" style="margin-bottom:16px">
         <div class="card-head"><span class="card-title">LINE Messaging API 憑證</span></div>
         <div style="padding:16px 24px 20px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">從 LINE Developers Console 取得，套用後立即生效。憑證儲存於伺服器，不會顯示在瀏覽器。</div>
+          <div class="ln-field">
+            <label>Webhook URL（貼到 Messaging API channel）</label>
+            <div class="wz-copy" style="margin:0"><input id="ln-webhook-url" type="text" readonly><button class="btn-sm" type="button" onclick="lnCopy('ln-webhook-url')">複製</button></div>
+          </div>
           <div class="ln-field">
             <label>Channel Access Token（長期）</label>
             <input id="ln-s-token" type="password" placeholder="貼上 Channel Access Token…" autocomplete="off">
@@ -2789,9 +2831,13 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
             <label>Channel Secret</label>
             <input id="ln-s-secret" type="password" placeholder="貼上 Channel Secret…" autocomplete="off">
           </div>
+          <div class="ln-field">
+            <label>LINE Login Channel ID <span style="font-weight:400;color:var(--muted)">（病患綁定時用來驗證身份）</span></label>
+            <input id="ln-s-login-id" type="text" inputmode="numeric" placeholder="例：2001234567" autocomplete="off">
+          </div>
           <div class="ln-field" style="margin-bottom:0">
-            <label>LIFF ID <span style="font-weight:400;color:var(--muted)">（選填，供病患綁定頁使用）</span></label>
-            <input id="ln-s-liff" type="text" placeholder="例：1234567890-abcdefgh" autocomplete="off">
+            <label>LIFF ID <span style="font-weight:400;color:var(--muted)">（病患綁定頁，必填）</span></label>
+            <input id="ln-s-liff" type="text" placeholder="例：2001234567-abcdefgh" autocomplete="off">
           </div>
           <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 0;margin-top:14px;border-top:1px solid var(--border);border-bottom:1px solid var(--border)">
             <div>
@@ -2813,20 +2859,16 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
       <div class="card">
         <div class="card-head"><span class="card-title">病患綁定連結</span></div>
         <div style="padding:16px 24px 20px">
-          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">將此連結製作成 QR Code 或放在診所網站，病患掃描後輸入<strong>身分證字號</strong>即可完成綁定。需透過 LINE 應用程式開啟。</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px">
-            <input id="ln-bind-url" type="text" readonly style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:12px;font-family:monospace">
-            <button class="btn-sm" onclick="lnCopyBindUrl()">複製</button>
-          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.6">將綁定連結製作成 QR Code、放在圖文選單或診所網站。病患在 LINE 內開啟後輸入<strong>身分證字號與生日</strong>即可完成綁定。</div>
           <div id="ln-liff-row" style="display:none">
-            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">或使用 LIFF 連結（在 LINE 內開啟）：</div>
-            <div style="display:flex;align-items:center;gap:8px">
-              <input id="ln-liff-url" type="text" readonly style="flex:1;padding:8px 10px;border:1.5px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text-1);font-size:12px;font-family:monospace">
-              <button class="btn-sm" onclick="lnCopyLiffUrl()">複製</button>
-            </div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:6px">綁定連結（給病患）：</div>
+            <div class="wz-copy"><input id="ln-liff-url" type="text" readonly><button class="btn-sm" type="button" onclick="lnCopy('ln-liff-url')">複製</button></div>
           </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">LIFF Endpoint URL（建立 LIFF app 時填入）：</div>
+          <div class="wz-copy" style="margin-bottom:0"><input id="ln-bind-url" type="text" readonly><button class="btn-sm" type="button" onclick="lnCopy('ln-bind-url')">複製</button></div>
         </div>
       </div>
+      </details>
     </div>
 
     <!-- 綁定管理 -->
@@ -2860,10 +2902,10 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
         <div class="card-head"><span class="card-title">傳送綁定邀請</span></div>
         <div style="padding:16px 24px 20px">
           <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
-            向所有已綁定的病患傳送訊息，提醒他們確認綁定仍有效。適合在切換系統後驗證用。<br>
-            <strong>注意：</strong>此功能對象是已綁定名單中的病患，尚未綁定的追蹤者需要自行掃描 QR Code 完成綁定。
+            傳送綁定連結給官方帳號的<strong>所有好友</strong>，包含在串接前就已加入、還沒綁定的病患。<br>
+            <strong>注意：</strong>每位好友計 1 則，會用掉本月訊息額度。已綁定的病患也會收到（訊息中會註明可忽略）。
           </div>
-          <button class="btn-sm primary" onclick="lnBroadcastInvite()">傳送綁定確認訊息給已綁定病患</button>
+          <button class="btn-sm primary" onclick="lnBroadcastInvite()">傳送綁定邀請給所有好友</button>
         </div>
       </div>
     </div>
@@ -7557,8 +7599,10 @@ function lnLoadSettings() {
     secretEl.value = d.has_secret ? '••••••••' : '';
     secretEl.dataset.loaded = d.has_secret ? '1' : '';
     document.getElementById('ln-s-liff').value = d.liff_id || '';
+    document.getElementById('ln-s-login-id').value = d.login_channel_id || '';
     document.getElementById('ln-s-active').checked = !!d.is_active;
-    lnUpdateBindUrls(d.liff_id);
+    document.getElementById('ln-webhook-url').value = d.webhook_url || '';
+    lnUpdateBindUrls(d);
     lnLoadPresets(d);
     _lnSettingsLoaded = true;
   }).catch(function() { Layout.showToast('載入LINE設定失敗'); });
@@ -7789,14 +7833,20 @@ function lnPersistPresets() {
   }).catch(function() { Layout.showToast('儲存失敗'); });
 }
 
-function lnUpdateBindUrls(liffId) {
-  document.getElementById('ln-bind-url').value = location.origin + '/line/bind';
-  if (liffId) {
-    document.getElementById('ln-liff-url').value = 'https://liff.line.me/' + liffId;
+function lnUpdateBindUrls(d) {
+  document.getElementById('ln-bind-url').value = d.bind_endpoint_url || '';
+  if (d.liff_id) {
+    document.getElementById('ln-liff-url').value = 'https://liff.line.me/' + d.liff_id;
     document.getElementById('ln-liff-row').style.display = 'block';
   } else {
     document.getElementById('ln-liff-row').style.display = 'none';
   }
+}
+
+function lnCopy(id) {
+  navigator.clipboard.writeText(document.getElementById(id).value)
+    .then(function() { Layout.showToast('已複製'); })
+    .catch(function() { Layout.showToast('複製失敗'); });
 }
 
 function lnSaveSettings() {
@@ -7809,18 +7859,16 @@ function lnSaveSettings() {
   fetch('/api/line/settings', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ channel_access_token: token, channel_secret: secret, liff_id: document.getElementById('ln-s-liff').value.trim(), is_active: document.getElementById('ln-s-active').checked }),
+    body: JSON.stringify({
+      channel_access_token: token, channel_secret: secret,
+      liff_id: document.getElementById('ln-s-liff').value.trim(),
+      login_channel_id: document.getElementById('ln-s-login-id').value.trim(),
+      is_active: document.getElementById('ln-s-active').checked,
+    }),
   }).then(function(r) {
     if (r.ok) { Layout.showToast('設定已儲存'); lnLoadSettings(); }
     else { Layout.showToast('儲存失敗'); }
   });
-}
-
-function lnCopyBindUrl() {
-  navigator.clipboard.writeText(document.getElementById('ln-bind-url').value).then(function() { Layout.showToast('已複製'); }).catch(function() { Layout.showToast('複製失敗'); });
-}
-function lnCopyLiffUrl() {
-  navigator.clipboard.writeText(document.getElementById('ln-liff-url').value).then(function() { Layout.showToast('已複製'); }).catch(function() { Layout.showToast('複製失敗'); });
 }
 
 function lnLoadStats() {
@@ -7857,14 +7905,286 @@ function lnUnbind(chartNumber) {
     });
 }
 
-function lnBroadcastInvite() {
-  if (!confirm('確定要傳送綁定確認訊息給所有已綁定病患？')) return;
+function lnBroadcastInvite(after) {
+  if (!confirm('確定要傳送綁定邀請給官方帳號的所有好友？每位好友計 1 則訊息額度。')) return;
   fetch('/api/line/broadcast-invite', { method: 'POST' })
     .then(function(r) { return r.json(); })
     .then(function(d) {
       if (d.status === 'error') { Layout.showToast('傳送失敗：' + d.detail); return; }
-      Layout.showToast('已傳送 ' + (d.sent || 0) + ' 則，失敗 ' + (d.failed || 0) + ' 則');
+      Layout.showToast('已傳送綁定邀請給所有好友');
+      if (after) after();
     }).catch(function() { Layout.showToast('傳送失敗'); });
+}
+
+/* ---- LINE setup wizard ----
+   Paths: new = create account → enable API → keys → login channel → publish → OA settings → done
+          own = same, minus creating the account
+          vendor → choose: separate reminder account (follows 'new') or manual reminders */
+var _wz = { mode: '', path: [], i: 0, status: null };
+var _WZ_PATHS = {
+  'new':    ['mode', 'create', 'enable', 'keys', 'login', 'publish', 'oa', 'done'],
+  'own':    ['mode', 'enable', 'keys', 'login', 'publish', 'oa', 'done'],
+  'vendor': ['mode', 'vendor', 'create', 'enable', 'keys', 'login', 'publish', 'oa', 'done'],
+};
+
+function wzStart() {
+  fetch('/api/line/setup/status').then(function(r) { return r.json(); }).then(function(s) {
+    _wz.status = s;
+    _wz.mode = s.line_mode || '';
+    if (s.is_active && s.liff_id && s.webhook_ok) { wzRender('summary'); return; }
+    _wz.path = _WZ_PATHS[_wz.mode] || ['mode'];
+    // Resume at the first step whose result isn't there yet
+    var resume = 'mode';
+    if (_wz.mode) resume = !s.bot ? (_wz.mode === 'own' ? 'enable' : (_wz.mode === 'vendor' ? 'vendor' : 'create'))
+                         : !s.webhook_ok ? 'keys' : !s.liff_id ? 'login' : 'publish';
+    _wz.i = Math.max(0, _wz.path.indexOf(resume));
+    wzRender();
+  }).catch(function() {
+    document.getElementById('wz').innerHTML = '<div class="wz-err">載入設定狀態失敗，請重新整理頁面。</div>';
+  });
+}
+
+function wzGo(delta) { _wz.i = Math.min(Math.max(_wz.i + delta, 0), _wz.path.length - 1); wzRender(); }
+
+function wzSetMode(mode) {
+  fetch('/api/line/setup/mode', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ line_mode: mode }) })
+    .then(function(r) {
+      if (!r.ok) throw new Error();
+      _wz.mode = mode; _wz.path = _WZ_PATHS[mode]; _wz.i = 1; wzRender();
+    }).catch(function() { Layout.showToast('儲存失敗'); });
+}
+
+function _wzCopyRow(id, value) {
+  return '<div class="wz-copy"><input id="' + id + '" type="text" readonly value="' + esc(value) + '">' +
+         '<button class="btn-sm" type="button" onclick="lnCopy(\'' + id + '\')">複製</button></div>';
+}
+
+function _wzNav(nextLabel, nextAction) {
+  return '<div class="wz-actions">' +
+    (_wz.i > 0 ? '<button class="btn-sm wz-back" type="button" onclick="wzGo(-1)">上一步</button>' : '') +
+    (nextLabel ? '<button class="btn-sm primary" type="button" id="wz-next" onclick="' + nextAction + '">' + nextLabel + '</button>' : '') +
+  '</div>';
+}
+
+function wzRender(override) {
+  var el = document.getElementById('wz');
+  var s = _wz.status || {};
+  var step = override || _wz.path[_wz.i];
+  var total = _wz.path.length;
+  var head = step === 'summary' ? '' :
+    '<div class="wz-progress">' + _wz.path.map(function(_, k) { return '<span class="' + (k <= _wz.i ? 'done' : '') + '"></span>'; }).join('') + '</div>' +
+    (_wz.i > 0 ? '<div class="wz-step-label">步驟 ' + _wz.i + ' / ' + (total - 1) + '</div>' : '');
+  var h = '';
+
+  if (step === 'mode') {
+    h = '<div class="wz-q">你們診所目前的 LINE 狀況是？</div>' +
+      '<div class="wz-help">依照你的回答，接下來會一步一步帶你完成設定，大約需要 10–15 分鐘。</div>' +
+      '<div class="wz-opts">' +
+        '<button class="wz-opt" type="button" onclick="wzSetMode(\'new\')"><div class="wz-opt-t">還沒有 LINE 官方帳號</div><div class="wz-opt-d">我們會帶你從申請帳號開始。</div></button>' +
+        '<button class="wz-opt" type="button" onclick="wzSetMode(\'own\')"><div class="wz-opt-t">已經有自己的官方帳號</div><div class="wz-opt-d">帳號由診所自己管理，沒有交給其他廠商串接。原有好友都會保留。</div></button>' +
+        '<button class="wz-opt" type="button" onclick="wzSetMode(\'vendor\')"><div class="wz-opt-t">官方帳號由廠商串接（例如 AlleyPin）</div><div class="wz-opt-d">廠商已經在使用這個帳號的訊息功能。</div></button>' +
+      '</div>';
+  }
+
+  else if (step === 'vendor') {
+    h = '<div class="wz-q">要怎麼搭配目前的廠商？</div>' +
+      '<div class="wz-help">LINE 規定一個官方帳號只能串接一套系統。如果我們接上你們現有的帳號，廠商的掛號、叫號等功能會停止運作，所以不建議這樣做。</div>' +
+      '<div class="wz-opts">' +
+        '<button class="wz-opt" type="button" onclick="wzGo(1)"><div class="wz-opt-t">另外開一個「回診提醒」專用帳號（建議）</div><div class="wz-opt-d">廠商的帳號照常使用。病患需要另外加入新帳號並綁定一次，可以在櫃台用 QR Code 邀請。</div></button>' +
+        '<button class="wz-opt" type="button" onclick="wzRender(\'manual\')"><div class="wz-opt-t">先不串接 LINE</div><div class="wz-opt-d">系統照常列出需要聯絡的病患，由護理師在廠商系統手動傳送提醒。之後隨時可以回來設定。</div></button>' +
+      '</div>' + _wzNav('', '');
+  }
+
+  else if (step === 'manual') {
+    h = '<div class="wz-q">好的，先使用手動提醒</div>' +
+      '<div class="wz-help">追蹤清單會照常顯示需要聯絡的病患。之後想改用 LINE 自動提醒，回到這裡重新選擇即可。</div>' +
+      '<div class="wz-actions"><button class="btn-sm" type="button" onclick="wzRender()">返回</button></div>';
+  }
+
+  else if (step === 'create') {
+    h = '<div class="wz-q">' + (_wz.mode === 'vendor' ? '申請一個新的「回診提醒」官方帳號' : '申請 LINE 官方帳號') + '</div>' +
+      '<ol class="wz-list">' +
+        '<li>開啟 <a href="https://tw.linebiz.com/account/" target="_blank" rel="noopener">LINE 官方帳號申請頁</a>，點「免費開設帳號」。</li>' +
+        '<li>用診所的 LINE 帳號或 Email 登入，填寫帳號名稱（例如「○○診所 回診提醒」）、業種選「醫療／醫院」。</li>' +
+        '<li>完成後會進入 <b>LINE 官方帳號管理後台</b>，請保持這個頁面開著。</li>' +
+      '</ol>' +
+      '<div class="wz-note">建議申請「認證帳號」（藍色盾牌），病患比較願意加入，也能在 LINE 內被搜尋到。審核需要幾天，不影響後續設定。</div>' +
+      _wzNav('已建立，下一步', 'wzGo(1)');
+  }
+
+  else if (step === 'enable') {
+    h = '<div class="wz-q">開啟 Messaging API</div>' +
+      '<div class="wz-help">這一步讓我們的系統可以代表診所傳送 LINE 訊息。</div>' +
+      '<ol class="wz-list">' +
+        '<li>在 <a href="https://manager.line.biz/" target="_blank" rel="noopener">LINE 官方帳號管理後台</a> 右上角點「<b>設定</b>」。</li>' +
+        '<li>左側選「<b>Messaging API</b>」，點「<b>啟用 Messaging API</b>」。</li>' +
+        '<li>選擇「建立新的服務提供者（Provider）」，名稱填診所名稱，然後同意條款。</li>' +
+      '</ol>' +
+      '<div class="wz-note">服務提供者一旦選定就<b>無法更改</b>，請使用診所自己的名稱，不要選其他廠商的。' +
+        (_wz.mode === 'own' ? '<br>如果這一頁顯示「已啟用」，而且服務提供者不是你們建立的，代表帳號已經由廠商串接，請按「上一步」改選廠商選項。' : '') + '</div>' +
+      _wzNav('已啟用，下一步', 'wzGo(1)');
+  }
+
+  else if (step === 'keys') {
+    h = '<div class="wz-q">貼上 Messaging API 的兩組金鑰</div>' +
+      '<ol class="wz-list">' +
+        '<li>開啟 <a href="https://developers.line.biz/console/" target="_blank" rel="noopener">LINE Developers</a>，用同一個 LINE 帳號登入，點進剛建立的服務提供者，再點官方帳號的 channel。</li>' +
+        '<li>「<b>Basic settings</b>」分頁最下方複製 <b>Channel secret</b>。</li>' +
+        '<li>「<b>Messaging API</b>」分頁最下方的 <b>Channel access token</b> 點「Issue」，再複製。</li>' +
+      '</ol>' +
+      '<div class="ln-field"><label>Channel secret</label><input id="wz-secret" type="password" autocomplete="off" placeholder="32 個字元"></div>' +
+      '<div class="ln-field"><label>Channel access token</label><input id="wz-token" type="password" autocomplete="off" placeholder="很長的一串字元"></div>' +
+      '<div class="wz-err" id="wz-err"></div>' +
+      '<div id="wz-keys-result"></div>' +
+      _wzNav('驗證並連接', 'wzSubmitKeys()');
+  }
+
+  else if (step === 'login') {
+    h = '<div class="wz-q">建立病患綁定頁</div>' +
+      '<div class="wz-help">病患會用這個頁面把自己的 LINE 和病歷連結起來。需要在同一個服務提供者底下多建立一個「LINE Login」channel。</div>' +
+      '<ol class="wz-list">' +
+        '<li>在 LINE Developers 回到<b>同一個服務提供者</b>，點「Create a new channel」→「<b>LINE Login</b>」。</li>' +
+        '<li>Channel name 填診所名稱（不能包含「LINE」字樣），App types 勾選「<b>Web app</b>」，其餘照預設，建立。</li>' +
+        '<li>在新 channel 的「Basic settings」：複製 <b>Channel ID</b> 與 <b>Channel secret</b>，貼在下方。</li>' +
+        '<li>同一頁往下找「<b>Linked LINE Official Account</b>」，選擇你們的官方帳號並儲存。</li>' +
+      '</ol>' +
+      '<div class="ln-field"><label>LINE Login Channel ID</label><input id="wz-login-id" type="text" inputmode="numeric" autocomplete="off" placeholder="10 位數字" value="' + esc(s.login_channel_id || '') + '"></div>' +
+      '<div class="ln-field"><label>LINE Login Channel secret <span style="font-weight:400;color:var(--muted)">（只用來建立綁定頁，不會儲存）</span></label><input id="wz-login-secret" type="password" autocomplete="off"></div>' +
+      '<div class="wz-err" id="wz-err"></div>' +
+      '<div id="wz-liff-fallback"></div>' +
+      _wzNav('自動建立綁定頁', 'wzSubmitLogin()');
+  }
+
+  else if (step === 'publish') {
+    h = '<div class="wz-q">把 LINE Login channel 設為「公開」</div>' +
+      '<div class="wz-help">新建立的 channel 預設是「開發中」，只有管理員能開啟綁定頁，病患會看到錯誤。</div>' +
+      '<ol class="wz-list">' +
+        '<li>在 LINE Login channel 頁面最上方，點頁面名稱旁的「<b>Developing</b>」。</li>' +
+        '<li>點「<b>Publish</b>」並確認，狀態會變成「Published」。</li>' +
+      '</ol>' +
+      '<label class="wz-check"><input type="checkbox" id="wz-pub" class="br-check" onchange="document.getElementById(\'wz-next\').disabled=!this.checked"> 狀態已經顯示「Published」</label>' +
+      _wzNav('下一步', 'wzGo(1)');
+  }
+
+  else if (step === 'oa') {
+    h = '<div class="wz-q">調整官方帳號的回應設定</div>' +
+      '<div class="wz-help">避免病患加入好友時收到兩則歡迎訊息，或收到 LINE 的制式自動回覆。</div>' +
+      '<ol class="wz-list">' +
+        '<li>回到 <a href="https://manager.line.biz/" target="_blank" rel="noopener">LINE 官方帳號管理後台</a> →「設定」→「<b>回應設定</b>」。</li>' +
+        '<li><b>Webhook</b>：開啟。</li>' +
+        '<li><b>加入好友的歡迎訊息</b>：關閉（我們的系統會自動傳送綁定邀請）。</li>' +
+        '<li><b>自動回應訊息</b>：關閉。聊天功能可以保持開啟，護理師仍能手動回覆病患。</li>' +
+      '</ol>' +
+      '<label class="wz-check"><input type="checkbox" id="wz-oa" class="br-check" onchange="document.getElementById(\'wz-next\').disabled=!this.checked"> 已完成以上設定</label>' +
+      _wzNav('完成設定', 'wzActivate()');
+  }
+
+  else if (step === 'done' || step === 'summary') {
+    var liffUrl = s.liff_id ? 'https://liff.line.me/' + s.liff_id : '';
+    var friends = (s.friend_count === null || s.friend_count === undefined) ? null : s.friend_count;
+    h = (step === 'done' ? '<div class="wz-ok">設定完成！LINE 提醒已啟用。</div>' : '') +
+      (s.bot ? '<div class="wz-bot">' + (s.bot.picture_url ? '<img src="' + esc(s.bot.picture_url) + '" alt="">' : '') +
+        '<div><div class="wz-bot-name">' + esc(s.bot.display_name) + '</div><div class="wz-bot-id">' + esc(s.bot.basic_id) +
+        ' · 已綁定 ' + (s.bound_count || 0) + ' 位' + (friends !== null ? ' / 好友 ' + friends + ' 位' : '') + '</div></div></div>' : '') +
+      '<div class="wz-q" style="font-size:14px">邀請病患綁定</div>' +
+      '<ol class="wz-list">' +
+        '<li><b>櫃台 QR Code</b>：把下面的綁定連結做成 QR Code 放在櫃台，病患用 LINE 掃描即可。</li>' +
+        '<li><b>圖文選單</b>：在官方帳號管理後台 →「圖文選單」新增一個「綁定」按鈕，動作選「連結」，貼上綁定連結。病患隨時都能點。</li>' +
+        (_wz.mode === 'own' ? '<li><b>通知現有好友</b>：在串接前就加入的好友不會自動收到邀請，可以一次傳送給所有好友（每位計 1 則訊息額度）。</li>' : '') +
+      '</ol>' +
+      (liffUrl ? _wzCopyRow('wz-liff-url', liffUrl) : '') +
+      '<div class="wz-actions">' +
+        (_wz.mode === 'own' ? '<button class="btn-sm primary" type="button" onclick="lnBroadcastInvite()">傳送綁定邀請給所有好友</button>' : '') +
+        '<button class="btn-sm" type="button" style="margin-left:auto" onclick="wzRestart()">重新設定</button>' +
+      '</div>';
+  }
+
+  el.innerHTML = head + h;
+  var next = document.getElementById('wz-next');
+  if (next && (step === 'publish' || step === 'oa')) next.disabled = true;
+}
+
+function wzRestart() {
+  if (!confirm('重新設定會從第一題開始，目前的連線在完成前仍會保留。要繼續嗎？')) return;
+  _wz.path = ['mode']; _wz.i = 0; wzRender();
+}
+
+function _wzBusy(on, label) {
+  var b = document.getElementById('wz-next');
+  if (!b) return;
+  if (on) { b.dataset.label = b.textContent; b.textContent = label; b.disabled = true; }
+  else { b.textContent = b.dataset.label || b.textContent; b.disabled = false; }
+}
+
+function _wzError(msg) { var e = document.getElementById('wz-err'); if (e) e.textContent = msg || ''; }
+
+function _wzPost(url, body) {
+  return fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+    .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.detail || '發生錯誤，請再試一次'); return d; }); });
+}
+
+function wzSubmitKeys() {
+  var secret = document.getElementById('wz-secret').value.trim();
+  var token = document.getElementById('wz-token').value.trim();
+  if (!secret || !token) { _wzError('請貼上兩組金鑰'); return; }
+  _wzError(''); _wzBusy(true, '驗證中…');
+  _wzPost('/api/line/setup/messaging', { channel_secret: secret, channel_access_token: token }).then(function(d) {
+    _wzBusy(false);
+    var bot = d.bot || {};
+    var box = '<div class="wz-bot">' + (bot.picture_url ? '<img src="' + esc(bot.picture_url) + '" alt="">' : '') +
+      '<div><div class="wz-bot-name">' + esc(bot.display_name || '') + '</div><div class="wz-bot-id">' + esc(bot.basic_id || '') + '</div></div></div>';
+    if (d.test_ok && d.webhook_active) {
+      box += '<div class="wz-ok">已連接這個官方帳號，Webhook 測試成功。如果帳號名稱不對，請回到上一步確認。</div>';
+      document.getElementById('wz-keys-result').innerHTML = box;
+      var b = document.getElementById('wz-next'); b.textContent = '是這個帳號，下一步'; b.setAttribute('onclick', 'wzRefreshThen(1)');
+    } else if (d.test_ok && !d.webhook_active) {
+      box += '<div class="wz-note">金鑰正確。還差一步：在 LINE Developers 的「Messaging API」分頁找到 Webhook settings，把「<b>Use webhook</b>」打開，然後按「重新檢查」。</div>';
+      document.getElementById('wz-keys-result').innerHTML = box;
+      var b2 = document.getElementById('wz-next'); b2.textContent = '重新檢查'; b2.setAttribute('onclick', 'wzSubmitKeys()');
+    } else {
+      box += '<div class="wz-note">Channel access token 正確，但 Webhook 測試失敗（' + esc(d.test_reason || '未知原因') + '）。最常見的原因是 <b>Channel secret 複製錯誤</b>，請重新複製後再試一次。</div>';
+      document.getElementById('wz-keys-result').innerHTML = box;
+    }
+  }).catch(function(e) { _wzBusy(false); _wzError(e.message); });
+}
+
+function wzSubmitLogin() {
+  var id = document.getElementById('wz-login-id').value.trim();
+  var secret = document.getElementById('wz-login-secret').value.trim();
+  if (!/^\d+$/.test(id) || !secret) { _wzError('請貼上 Channel ID（數字）與 Channel secret'); return; }
+  _wzError(''); _wzBusy(true, '建立中…');
+  _wzPost('/api/line/setup/liff', { login_channel_id: id, login_channel_secret: secret }).then(function() {
+    _wzBusy(false); wzRefreshThen(1);
+  }).catch(function(e) {
+    _wzBusy(false); _wzError(e.message);
+    document.getElementById('wz-liff-fallback').innerHTML =
+      '<div class="wz-note" style="margin-top:4px">也可以手動建立：在 LINE Login channel 點「<b>LIFF</b>」分頁 →「Add」，依序設定：' +
+      '<br>Size：<b>Full</b>　Endpoint URL：貼上下方網址　Scopes：勾選 <b>openid</b> 與 <b>profile</b>　Add friend option：<b>On (Normal)</b>' +
+      '<br>建立後把 <b>LIFF ID</b> 貼在下方。</div>' +
+      _wzCopyRow('wz-endpoint', (_wz.status || {}).bind_endpoint_url || '') +
+      '<div class="ln-field"><label>LIFF ID</label><input id="wz-liff-id" type="text" autocomplete="off" placeholder="例：2001234567-abcdefgh"></div>' +
+      '<div class="wz-actions" style="margin-bottom:12px"><button class="btn-sm" type="button" onclick="wzSubmitLiffManual()">儲存 LIFF ID</button></div>';
+  });
+}
+
+function wzSubmitLiffManual() {
+  var id = document.getElementById('wz-login-id').value.trim();
+  var liff = document.getElementById('wz-liff-id').value.trim();
+  _wzPost('/api/line/setup/liff-manual', { login_channel_id: id, liff_id: liff })
+    .then(function() { wzRefreshThen(1); })
+    .catch(function(e) { _wzError(e.message); });
+}
+
+function wzActivate() {
+  _wzBusy(true, '啟用中…');
+  _wzPost('/api/line/setup/activate', {}).then(function() { wzRefreshThen(1); lnLoadSettings(); })
+    .catch(function(e) { _wzBusy(false); Layout.showToast(e.message); });
+}
+
+function wzRefreshThen(delta) {
+  fetch('/api/line/setup/status').then(function(r) { return r.json(); }).then(function(s) {
+    _wz.status = s; wzGo(delta);
+  });
 }
 
 function lnHandleFileSelect(e) {
@@ -7952,7 +8272,7 @@ function load(section) {
   else if (section === 'usersmgmt')  { loadUsers(); loadProfiles(); loadPharmacists(); }
   else if (section === 'clinic-settings') loadClinicSettings();
   else if (section === 'blood-recall-settings') { brRenderChecklist(''); loadBloodRecallSettings(); }
-  else if (section === 'line-manage') { if (!_lnSettingsLoaded) lnLoadSettings(); }
+  else if (section === 'line-manage') { if (!_lnSettingsLoaded) { lnLoadSettings(); wzStart(); } }
   else if (section === 'line-templates') { if (!_lnPresetsLoaded) lnLoadPresets(); }
   else if (section === 'broadcasts') { loadBroadcasts(); _bcStartPoll(); }
   else if (section === 'ai-agent')   { _bcStopPoll(); aiLoadSettings(); }

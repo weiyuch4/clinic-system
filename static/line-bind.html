@@ -47,12 +47,12 @@ body{
 .profile-id{font-size:11px;color:var(--muted);font-family:monospace;margin-top:2px}
 
 label{display:block;font-size:12.5px;font-weight:600;color:var(--sub);margin-bottom:5px}
-input[type=text]{
+input[type=text],input[type=date]{
   width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;
-  font-size:16px;font-family:inherit;background:#fff;color:var(--text);outline:none;
-  transition:border-color .15s;letter-spacing:.05em;
+  font-size:16px;font-family:inherit;background:var(--card);color:var(--text);outline:none;
+  transition:border-color .15s;letter-spacing:.05em;min-height:48px;-webkit-appearance:none;appearance:none;
 }
-input[type=text]:focus{border-color:var(--green)}
+input[type=text]:focus,input[type=date]:focus{border-color:var(--green)}
 .input-hint{font-size:12px;color:var(--muted);margin-top:5px;margin-bottom:20px}
 
 .btn{
@@ -106,7 +106,7 @@ input[type=text]:focus{border-color:var(--green)}
   <div id="state-form" class="state">
     <div class="step-label">STEP 1 / 2</div>
     <h2>確認 LINE 身份</h2>
-    <p>已取得您的 LINE 帳號資訊。請輸入您的病歷號碼，完成身份綁定。</p>
+    <p>已取得您的 LINE 帳號資訊。請輸入身分證字號與生日，確認是您本人後即完成綁定。</p>
 
     <div class="profile-row" id="profile-row" style="display:none">
       <img class="avatar" id="profile-avatar" alt="" hidden>
@@ -116,10 +116,15 @@ input[type=text]:focus{border-color:var(--green)}
       </div>
     </div>
 
-    <label for="chart-input">病歷號碼（身分證字號）</label>
-    <input id="chart-input" type="text" placeholder="例：A123456789" maxlength="12" autocomplete="off" inputmode="text"
+    <label for="chart-input">身分證字號</label>
+    <input id="chart-input" type="text" placeholder="例：A123456789" maxlength="10" autocomplete="off" inputmode="text"
            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'');document.getElementById('chart-error').style.display='none'">
-    <div class="input-hint">請輸入您的身分證字號（英文大寫 + 數字，共 10 碼）</div>
+    <div class="input-hint">英文字母 + 9 位數字，共 10 碼</div>
+
+    <label for="birth-input">生日</label>
+    <input id="birth-input" type="date" min="1900-01-01"
+           oninput="document.getElementById('chart-error').style.display='none'">
+    <div class="input-hint">用來確認是您本人，不會另外儲存</div>
     <div id="chart-error" style="font-size:12.5px;color:#DC2626;margin-top:-14px;margin-bottom:14px;display:none"></div>
 
     <button class="btn" id="bind-btn" onclick="submitBind()">綁定</button>
@@ -158,8 +163,11 @@ input[type=text]:focus{border-color:var(--green)}
 <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
 <script>
 var _lineUserId = '';
-var _displayName = '';
 var _liffId = '';
+// /line/{clinic}/bind → /line/{clinic}; the original un-scoped /line/bind → /line
+var _m = location.pathname.match(/^\/line\/([^\/]+)\/bind/);
+var _apiBase = _m ? '/line/' + encodeURIComponent(decodeURIComponent(_m[1])) : '/line';
+document.getElementById('birth-input').max = new Date().toISOString().slice(0, 10);
 
 function showState(name) {
   ['loading','form','not-line','success','error'].forEach(function(s) {
@@ -174,7 +182,7 @@ function goToForm() {
 async function init() {
   // 1. Fetch LIFF ID from server
   try {
-    var resp = await fetch('/line/config');
+    var resp = await fetch(_apiBase + '/config');
     var cfg = await resp.json();
     _liffId = cfg.liff_id || '';
   } catch(e) {
@@ -211,7 +219,6 @@ async function init() {
   try {
     var profile = await liff.getProfile();
     _lineUserId = profile.userId;
-    _displayName = profile.displayName;
 
     // Show profile in form
     document.getElementById('profile-name').textContent = profile.displayName;
@@ -233,15 +240,18 @@ async function init() {
 
 async function submitBind() {
   var cn = document.getElementById('chart-input').value.trim().toUpperCase();
-  if (!cn) {
+  var bd = document.getElementById('birth-input').value;
+  var errEl = document.getElementById('chart-error');
+  if (!/^[A-Z]\d{9}$/.test(cn)) {
+    errEl.textContent = '身分證字號格式不正確，請確認輸入（10 碼）';
+    errEl.style.display = 'block';
     document.getElementById('chart-input').focus();
     return;
   }
-  if (cn.length < 8 || cn.length > 12) {
-    var errEl = document.getElementById('chart-error');
-    errEl.textContent = '病歷號碼格式不正確，請確認輸入（10碼）';
+  if (!bd) {
+    errEl.textContent = '請選擇您的生日';
     errEl.style.display = 'block';
-    document.getElementById('chart-input').focus();
+    document.getElementById('birth-input').focus();
     return;
   }
   if (!_lineUserId) {
@@ -255,14 +265,14 @@ async function submitBind() {
   btn.textContent = '綁定中…';
 
   try {
-    var resp = await fetch('/line/bind', {
+    // Identity is proven by the LIFF access token; the server reads the LINE profile itself
+    var resp = await fetch(_apiBase + '/bind', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         chart_number: cn,
-        line_user_id: _lineUserId,
-        display_name: _displayName,
-        liff_access_token: (typeof liff !== 'undefined' && liff.getAccessToken) ? (liff.getAccessToken() || '') : '',
+        birth_date: bd,
+        liff_access_token: liff.getAccessToken() || '',
       }),
     });
 

@@ -73,6 +73,34 @@ def init() -> None:
                 "ALTER TABLE line_settings ADD COLUMN IF NOT EXISTS "
                 "message_templates TEXT NOT NULL DEFAULT '{}'"
             )
+            # LINE Login channel ID — the LIFF access token's client_id must match it
+            cur.execute(
+                "ALTER TABLE line_settings ADD COLUMN IF NOT EXISTS "
+                "login_channel_id TEXT NOT NULL DEFAULT ''"
+            )
+            # Setup situation chosen in the wizard: '' (not set) | 'new' | 'own' | 'vendor'
+            cur.execute(
+                "ALTER TABLE line_settings ADD COLUMN IF NOT EXISTS "
+                "line_mode TEXT NOT NULL DEFAULT ''"
+            )
+
+
+# ── Clinic lookup (public LINE URLs carry the clinic slug) ────────────────────
+
+def clinic_id_for_slug(slug: str) -> int | None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM clinics WHERE slug = %s", (slug,))
+            row = cur.fetchone()
+    return row["id"] if row else None
+
+
+def slug_for_clinic(clinic_id: int) -> str:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT slug FROM clinics WHERE id = %s", (clinic_id,))
+            row = cur.fetchone()
+    return row["slug"] if row else ""
 
 
 # ── Audit log ─────────────────────────────────────────────────────────────────
@@ -116,7 +144,8 @@ def get_settings(clinic_id: int = 1) -> dict:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT channel_access_token, channel_secret, liff_id, is_active, message_templates "
+                "SELECT channel_access_token, channel_secret, liff_id, is_active, message_templates, "
+                "login_channel_id, line_mode "
                 "FROM line_settings WHERE clinic_id = %s",
                 (clinic_id,),
             )
@@ -125,8 +154,20 @@ def get_settings(clinic_id: int = 1) -> dict:
         return dict(row)
     return {
         "channel_access_token": "", "channel_secret": "", "liff_id": "",
-        "is_active": 0, "message_templates": "{}",
+        "is_active": 0, "message_templates": "{}", "login_channel_id": "", "line_mode": "",
     }
+
+
+def set_line_mode(clinic_id: int, mode: str, actor: str = "system") -> None:
+    now = datetime.now(_TW).strftime("%Y-%m-%d %H:%M:%S")
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """INSERT INTO line_settings (clinic_id, line_mode, updated_at) VALUES (%s, %s, %s)
+                   ON CONFLICT (clinic_id) DO UPDATE SET line_mode = EXCLUDED.line_mode, updated_at = EXCLUDED.updated_at""",
+                (clinic_id, mode, now),
+            )
+    log_audit(clinic_id, "settings_change", "", actor, f"line_mode={mode}")
 
 
 def get_message_templates(clinic_id: int = 1) -> dict[str, str]:
@@ -162,28 +203,39 @@ def save_settings(
     secret: str,
     liff_id: str,
     is_active: bool,
+    login_channel_id: str = "",
+    line_mode: str = "",
     actor: str = "system",
 ) -> None:
+    """Empty token/secret/login_channel_id/line_mode keep the stored value."""
     now = datetime.now(_TW).strftime("%Y-%m-%d %H:%M:%S")
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO line_settings
-                       (clinic_id, channel_access_token, channel_secret, liff_id, is_active, updated_at)
-                   VALUES (%s, %s, %s, %s, %s, %s)
+                       (clinic_id, channel_access_token, channel_secret, liff_id, is_active,
+                        login_channel_id, line_mode, updated_at)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (clinic_id) DO UPDATE SET
                        channel_access_token = CASE WHEN EXCLUDED.channel_access_token != '' THEN EXCLUDED.channel_access_token ELSE line_settings.channel_access_token END,
                        channel_secret       = CASE WHEN EXCLUDED.channel_secret != '' THEN EXCLUDED.channel_secret ELSE line_settings.channel_secret END,
+                       login_channel_id     = CASE WHEN EXCLUDED.login_channel_id != '' THEN EXCLUDED.login_channel_id ELSE line_settings.login_channel_id END,
+                       line_mode            = CASE WHEN EXCLUDED.line_mode != '' THEN EXCLUDED.line_mode ELSE line_settings.line_mode END,
                        liff_id              = EXCLUDED.liff_id,
                        is_active            = EXCLUDED.is_active,
                        updated_at           = EXCLUDED.updated_at""",
-                (clinic_id, token, secret, liff_id, 1 if is_active else 0, now),
+                (clinic_id, token, secret, liff_id, 1 if is_active else 0,
+                 login_channel_id, line_mode, now),
             )
     changed = []
     if token:
         changed.append("token")
     if secret:
         changed.append("secret")
+    if login_channel_id:
+        changed.append("login_channel_id")
+    if line_mode:
+        changed.append(f"line_mode={line_mode}")
     if liff_id is not None:
         changed.append("liff_id")
     changed.append(f"is_active={'1' if is_active else '0'}")
@@ -219,6 +271,11 @@ def bind_patient(
     now = datetime.now(_TW).strftime("%Y-%m-%d %H:%M:%S")
     with _conn() as conn:
         with conn.cursor() as cur:
+            # One LINE account maps to one chart: rebinding moves it instead of violating UNIQUE(line_user_id)
+            cur.execute(
+                "DELETE FROM line_bindings WHERE line_user_id = %s AND clinic_id = %s AND chart_number != %s",
+                (line_user_id, clinic_id, chart_number),
+            )
             cur.execute(
                 """INSERT INTO line_bindings
                        (chart_number, line_user_id, display_name, bound_at, clinic_id)
@@ -230,6 +287,18 @@ def bind_patient(
                 (chart_number, line_user_id, display_name, now, clinic_id),
             )
     log_audit(clinic_id, "bind", chart_number, actor, f"display_name={display_name}")
+
+
+def patient_matches(chart_number: str, birth_date: str, clinic_id: int) -> bool:
+    """True if the clinic's synced records contain this national ID with this birth date (YYYY-MM-DD)."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT 1 FROM synced_candidates "
+                "WHERE clinic_id = %s AND chart_number = %s AND birth_date = %s LIMIT 1",
+                (clinic_id, chart_number, birth_date),
+            )
+            return cur.fetchone() is not None
 
 
 def unbind_patient(chart_number: str, clinic_id: int = 1, actor: str = "system") -> bool:
@@ -327,6 +396,129 @@ def _push(token: str, user_id: str, messages: list[dict]) -> dict:
         return {"status": 0, "body": str(e)}
 
 
+def _reply(token: str, reply_token: str, messages: list[dict]) -> dict:
+    """Reply messages are free (don't count toward the monthly quota); reply tokens are single-use."""
+    try:
+        resp = requests.post(
+            f"{_LINE_API}/message/reply",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={"replyToken": reply_token, "messages": messages},
+            timeout=10,
+        )
+        return {"status": resp.status_code, "body": resp.text}
+    except Exception as e:
+        return {"status": 0, "body": str(e)}
+
+
+def get_bot_info(token: str) -> dict | None:
+    """Account name/picture for the token's channel; None if the token is invalid."""
+    try:
+        r = requests.get(f"{_LINE_API}/info", headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    except requests.RequestException:
+        return None
+    if r.status_code != 200:
+        return None
+    d = r.json()
+    return {
+        "display_name": d.get("displayName", ""),
+        "picture_url": d.get("pictureUrl", ""),
+        "basic_id": d.get("basicId", ""),
+        "chat_mode": d.get("chatMode", ""),
+    }
+
+
+def get_webhook_info(token: str) -> dict | None:
+    try:
+        r = requests.get(f"{_LINE_API}/channel/webhook/endpoint",
+                         headers={"Authorization": f"Bearer {token}"}, timeout=10)
+    except requests.RequestException:
+        return None
+    return r.json() if r.status_code == 200 else None
+
+
+def setup_webhook(token: str, webhook_url: str) -> dict:
+    """Point the channel's webhook at webhook_url and send LINE's test event to it.
+    Returns {webhook_set, test_ok, test_reason, webhook_active}."""
+    auth_h = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    out = {"webhook_set": False, "test_ok": False, "test_reason": "", "webhook_active": False}
+    try:
+        r = requests.put(f"{_LINE_API}/channel/webhook/endpoint", headers=auth_h,
+                         json={"endpoint": webhook_url}, timeout=10)
+        out["webhook_set"] = r.status_code == 200
+        if not out["webhook_set"]:
+            out["test_reason"] = f"SET_FAILED_{r.status_code}"
+            return out
+        t = requests.post(f"{_LINE_API}/channel/webhook/test", headers=auth_h,
+                          json={"endpoint": webhook_url}, timeout=20)
+        if t.status_code == 200:
+            td = t.json()
+            out["test_ok"] = bool(td.get("success"))
+            out["test_reason"] = f"{td.get('reason', '')} {td.get('detail', '')}".strip()
+    except requests.RequestException as e:
+        out["test_reason"] = f"CONNECTION_ERROR {e}"
+    info = get_webhook_info(token)
+    out["webhook_active"] = bool(info and info.get("active"))
+    return out
+
+
+def create_liff_app(login_channel_id: str, login_channel_secret: str, endpoint_url: str) -> dict:
+    """Create the binding LIFF app in a LINE Login channel. Returns {liff_id} or {error}."""
+    try:
+        tok = requests.post(
+            "https://api.line.me/v2/oauth/accessToken",
+            data={"grant_type": "client_credentials", "client_id": login_channel_id,
+                  "client_secret": login_channel_secret},
+            timeout=10,
+        )
+        if tok.status_code != 200:
+            return {"error": "LINE Login 的 Channel ID 或 Channel secret 不正確"}
+        access = tok.json().get("access_token", "")
+        r = requests.post(
+            "https://api.line.me/liff/v1/apps",
+            headers={"Authorization": f"Bearer {access}", "Content-Type": "application/json"},
+            json={
+                "view": {"type": "full", "url": endpoint_url},
+                "description": "病患綁定",
+                "scope": ["openid", "profile"],
+                "botPrompt": "normal",
+            },
+            timeout=10,
+        )
+    except requests.RequestException:
+        return {"error": "無法連線到 LINE，請稍後再試"}
+    if r.status_code != 200:
+        return {"error": f"LINE 無法建立綁定頁（{r.status_code}），請改用手動設定"}
+    liff_id = r.json().get("liffId", "")
+    return {"liff_id": liff_id} if liff_id else {"error": "LINE 未回傳 LIFF ID，請改用手動設定"}
+
+
+def verify_liff_token(access_token: str, login_channel_id: str) -> dict | None:
+    """Verify a LIFF access token server-side and return {userId, displayName}, or None.
+    Per LINE docs: never trust a userId sent by the page — check the token was issued
+    for our LINE Login channel, then read the profile with it."""
+    if not access_token or not login_channel_id:
+        return None
+    v = requests.get(
+        "https://api.line.me/oauth2/v2.1/verify",
+        params={"access_token": access_token}, timeout=5,
+    )
+    if v.status_code != 200:
+        return None
+    info = v.json()
+    if str(info.get("client_id", "")) != str(login_channel_id) or int(info.get("expires_in", 0)) <= 0:
+        return None
+    p = requests.get(
+        "https://api.line.me/v2/profile",
+        headers={"Authorization": f"Bearer {access_token}"}, timeout=5,
+    )
+    if p.status_code != 200:
+        return None
+    prof = p.json()
+    if not prof.get("userId"):
+        return None
+    return {"userId": prof["userId"], "displayName": prof.get("displayName", "")}
+
+
 def push_text(chart_number: str, text: str, clinic_id: int = 1) -> dict:
     """Push a plain-text message to a bound patient."""
     settings = get_settings(clinic_id)
@@ -370,30 +562,57 @@ def push_category_message(
     return result
 
 
+def get_friend_count(clinic_id: int = 1) -> int | None:
+    """Current number of friends (LINE insight; available for the previous day). None if unavailable."""
+    token = (get_settings(clinic_id).get("channel_access_token") or "").strip()
+    if not token:
+        return None
+    day = (datetime.now(_TW) - timedelta(days=1)).strftime("%Y%m%d")
+    try:
+        r = requests.get(
+            f"{_LINE_API}/insight/followers", params={"date": day},
+            headers={"Authorization": f"Bearer {token}"}, timeout=10,
+        )
+        d = r.json() if r.status_code == 200 else {}
+        if d.get("status") != "ready":
+            return None
+        return int(d.get("followers", 0)) - int(d.get("blocks", 0))
+    except (requests.RequestException, ValueError):
+        return None
+
+
 def broadcast_bind_invite(clinic_id: int = 1) -> dict:
-    """Send binding invitation to ALL existing LINE followers (from line_bindings).
-    Also sends to any user who followed but hasn't bound yet — but we only know
-    about users who have already sent us a message, not silent followers."""
+    """Broadcast the binding invitation to every friend of the account (incl. friends who
+    added it before the Messaging API was enabled and never triggered a follow event).
+    Counts toward the monthly message quota once per friend."""
     settings = get_settings(clinic_id)
     token = settings.get("channel_access_token", "")
     liff_id = settings.get("liff_id", "")
     if not token:
         return {"status": "error", "detail": "LINE尚未設定憑證"}
-    bind_url = f"https://liff.line.me/{liff_id}" if liff_id else ""
+    if not liff_id:
+        return {"status": "error", "detail": "尚未設定病患綁定頁（LIFF ID）"}
     msg_text = (
-        "您好！請點擊以下連結，輸入您的病歷號碼，完成LINE身份綁定，"
-        "以便接收診所健康提醒訊息。\n\n"
-        + (bind_url if bind_url else "（請聯絡診所取得綁定連結）")
+        "您好！請點擊以下連結，輸入身分證字號與生日完成 LINE 綁定，"
+        "日後即可透過 LINE 接收診所的回診與健康提醒。\n\n"
+        f"https://liff.line.me/{liff_id}\n\n"
+        "（已綁定者請忽略此訊息）"
     )
-    bindings = get_all_bindings(clinic_id)
-    sent = failed = 0
-    for b in bindings:
-        r = _push(token, b["line_user_id"], [{"type": "text", "text": msg_text}])
-        if r["status"] == 200:
-            sent += 1
-        else:
-            failed += 1
-    return {"sent": sent, "failed": failed}
+    try:
+        resp = requests.post(
+            f"{_LINE_API}/message/broadcast",
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            json={"messages": [{"type": "text", "text": msg_text}]},
+            timeout=15,
+        )
+    except requests.RequestException as e:
+        return {"status": "error", "detail": f"LINE 連線失敗：{e}"}
+    if resp.status_code == 429:
+        return {"status": "error", "detail": "已超過本月訊息則數上限"}
+    if resp.status_code != 200:
+        return {"status": "error", "detail": f"LINE 回應 {resp.status_code}"}
+    log_audit(clinic_id, "broadcast_invite", "", "admin", "")
+    return {"status": "ok"}
 
 
 # ── Webhook ───────────────────────────────────────────────────────────────────
@@ -405,29 +624,44 @@ def verify_signature(body_bytes: bytes, signature: str, channel_secret: str) -> 
     return hmac.compare_digest(base64.b64encode(expected).decode(), signature)
 
 
+_seen_event_ids: dict[str, float] = {}
+
+
+def _is_duplicate(event_id: str) -> bool:
+    """LINE may redeliver events; drop ones already handled in the last hour (per process)."""
+    if not event_id:
+        return False
+    now = datetime.now().timestamp()
+    if len(_seen_event_ids) > 5000:
+        for k in [k for k, t in _seen_event_ids.items() if t < now - 3600]:
+            _seen_event_ids.pop(k, None)
+    if event_id in _seen_event_ids:
+        return True
+    _seen_event_ids[event_id] = now
+    return False
+
+
 def process_webhook(body: dict, clinic_id: int = 1) -> None:
-    """Handle LINE webhook events (follow, unfollow, message)."""
+    """Handle LINE webhook events (follow, unfollow, message). Run off the request path."""
     settings = get_settings(clinic_id)
     token = settings.get("channel_access_token", "")
     liff_id = settings.get("liff_id", "")
 
     for event in body.get("events", []):
+        if _is_duplicate(event.get("webhookEventId", "")):
+            continue
         etype = event.get("type")
         user_id = event.get("source", {}).get("userId", "")
         if not user_id:
             continue
 
-        if etype == "follow" and token:
-            # New follower — send binding invite
-            bind_url = f"https://liff.line.me/{liff_id}" if liff_id else ""
-            msg = (
-                "歡迎加入！請點擊以下連結，輸入您的病歷號碼，完成身份綁定，"
-                "以便接收診所健康提醒。"
-            )
+        if etype == "follow" and token and event.get("replyToken"):
+            # New follower — reply (free) with the binding invite
+            msg = "歡迎加入！請點擊以下連結，輸入身分證字號與生日完成綁定，以便接收診所的回診與健康提醒。"
             messages: list[dict] = [{"type": "text", "text": msg}]
-            if bind_url:
-                messages.append({"type": "text", "text": bind_url})
-            _push(token, user_id, messages)
+            if liff_id:
+                messages.append({"type": "text", "text": f"https://liff.line.me/{liff_id}"})
+            _reply(token, event["replyToken"], messages)
 
         elif etype == "unfollow":
             # Patient unfollowed — remove binding

@@ -2735,123 +2735,271 @@ def delete_clinic_contact(contact_id: int, user: auth.CurrentUser = Depends(auth
 
 # ── LINE integration ────────────────────────────────────────────────────────────
 
-@app.get("/line/bind")
-def line_bind_page():
-    """Serve the patient-facing LINE binding page (public — no JWT needed)."""
+def _clinic_from_slug(slug: str) -> int:
+    cid = line_service.clinic_id_for_slug(slug)
+    if cid is None:
+        raise HTTPException(status_code=404, detail="找不到此診所")
+    return cid
+
+
+def _rate_limited(store: dict, key: str, limit: int, window: int = 3600) -> bool:
+    """Record one attempt for key; True if the key already hit the limit within the window."""
+    now_ts = _time.time()
+    recent = [t for t in store.get(key, []) if t > now_ts - window]
+    if len(recent) >= limit:
+        store[key] = recent
+        return True
+    recent.append(now_ts)
+    store[key] = recent
+    return False
+
+
+_bind_fail_by_chart: dict = {}  # chart_number -> [timestamps of failed birth-date checks]
+
+
+@app.get("/line/{slug}/bind")
+def line_bind_page(slug: str):
+    """Patient-facing LINE binding page (public). Each clinic's LIFF app points here."""
+    _clinic_from_slug(slug)
     return FileResponse("static/line-bind.html")
 
 
-@app.get("/line/config")
-def line_public_config():
-    """Return public LINE config (LIFF ID only) — no secrets exposed."""
-    CLINIC_ID = 1
-    s = line_service.get_settings(CLINIC_ID)
+@app.get("/line/{slug}/config")
+def line_public_config(slug: str):
+    """Public LINE config (LIFF ID only) — no secrets exposed."""
+    s = line_service.get_settings(_clinic_from_slug(slug))
     return {"liff_id": s.get("liff_id", ""), "is_active": bool(s.get("is_active"))}
 
 
-@app.post("/line/webhook")
-async def line_webhook(request: Request):
-    """Receive LINE platform webhook events (public — LINE sends here)."""
-    CLINIC_ID = 1
+@app.post("/line/{slug}/webhook")
+async def line_webhook(slug: str, request: Request, background: BackgroundTasks):
+    """LINE platform webhook (public). Verify, answer 200 at once, process in the background."""
+    clinic_id = _clinic_from_slug(slug)
     body_bytes = await request.body()
     sig = request.headers.get("X-Line-Signature", "")
-    settings = line_service.get_settings(CLINIC_ID)
-    secret = settings.get("channel_secret", "")
+    secret = line_service.get_settings(clinic_id).get("channel_secret", "")
     if not secret:
         raise HTTPException(status_code=503, detail="Webhook not configured")
     if not line_service.verify_signature(body_bytes, sig, secret):
         raise HTTPException(status_code=400, detail="Invalid signature")
-    try:
-        body = await request.json()
-    except Exception:
-        import json as _json
-        body = _json.loads(body_bytes)
-    line_service.process_webhook(body, CLINIC_ID)
+    import json as _json
+    background.add_task(line_service.process_webhook, _json.loads(body_bytes), clinic_id)
     return {"status": "ok"}
 
 
-@app.post("/line/bind")
-async def line_bind_submit(request: Request):
-    """Bind a patient from the LIFF page (public — patients call this)."""
-    CLINIC_ID = 1
-
-    # Rate limit: 10 attempts per IP per hour
+@app.post("/line/{slug}/bind")
+async def line_bind_submit(slug: str, request: Request):
+    """Bind a patient from the LIFF page (public). Identity comes only from the verified
+    LIFF token; the national ID must match a synced record with the same birth date."""
+    clinic_id = _clinic_from_slug(slug)
     client_ip = (
         request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
         or (request.client.host if request.client else "unknown")
     )
-    now_ts = _time.time()
-    recent = [t for t in _bind_rate.get(client_ip, []) if t > now_ts - 3600]
-    if len(recent) >= 10:
+    if _rate_limited(_bind_rate, client_ip, 10):
         raise HTTPException(status_code=429, detail="請求過於頻繁，請稍後再試")
-    recent.append(now_ts)
-    if recent:
-        _bind_rate[client_ip] = recent
-    else:
-        _bind_rate.pop(client_ip, None)
 
     data = await request.json()
-    line_user_id = (data.get("line_user_id") or "").strip()
     chart_number = (data.get("chart_number") or "").strip().upper()
-    display_name = (data.get("display_name") or "").strip()
+    birth_date = (data.get("birth_date") or "").strip()
     liff_access_token = (data.get("liff_access_token") or "").strip()
 
-    if not line_user_id or not chart_number:
-        raise HTTPException(status_code=400, detail="缺少必要資訊")
-
-    # Validate chart number format (Taiwan national ID)
-    if not _re.match(r'^[A-Z]\d{9}$', chart_number):
-        raise HTTPException(status_code=400, detail="病歷號碼格式不正確")
-
-    # Verify LIFF access token — confirm caller controls the LINE account
+    if not _re.fullmatch(r"[A-Z]\d{9}", chart_number):
+        raise HTTPException(status_code=400, detail="身分證字號格式不正確")
+    if not _re.fullmatch(r"\d{4}-\d{2}-\d{2}", birth_date):
+        raise HTTPException(status_code=400, detail="請輸入生日")
     if not liff_access_token:
         raise HTTPException(status_code=400, detail="請透過 LINE 應用程式開啟綁定頁面")
-    try:
-        profile_resp = requests.get(
-            "https://api.line.me/v2/profile",
-            headers={"Authorization": f"Bearer {liff_access_token}"},
-            timeout=5,
-        )
-        if profile_resp.status_code == 200:
-            verified_uid = profile_resp.json().get("userId", "")
-            if verified_uid and verified_uid != line_user_id:
-                raise HTTPException(status_code=403, detail="LINE 身份驗證失敗")
-    except HTTPException:
-        raise
-    except Exception:
-        raise HTTPException(status_code=503, detail="LINE 服務暫時無法連線，請稍後再試")
 
-    line_service.bind_patient(chart_number, line_user_id, display_name, CLINIC_ID, actor="patient")
-    settings = line_service.get_settings(CLINIC_ID)
+    settings = line_service.get_settings(clinic_id)
+    try:
+        profile = line_service.verify_liff_token(liff_access_token, settings.get("login_channel_id", ""))
+    except (requests.RequestException, ValueError):
+        raise HTTPException(status_code=503, detail="LINE 服務暫時無法連線，請稍後再試")
+    if not profile:
+        raise HTTPException(status_code=403, detail="LINE 身份驗證失敗，請關閉頁面後重新開啟")
+
+    # Cap wrong-birth-date guesses per national ID so the date can't be brute-forced
+    fails = [t for t in _bind_fail_by_chart.get(chart_number, []) if t > _time.time() - 3600]
+    if len(fails) >= 5:
+        raise HTTPException(status_code=429, detail="嘗試次數過多，請一小時後再試或洽診所櫃台")
+    if not line_service.patient_matches(chart_number, birth_date, clinic_id):
+        _bind_fail_by_chart[chart_number] = fails + [_time.time()]
+        raise HTTPException(status_code=400, detail="資料不符：請確認身分證字號與生日，或洽診所櫃台協助")
+
+    line_service.bind_patient(chart_number, profile["userId"], profile["displayName"], clinic_id, actor="patient")
     token = settings.get("channel_access_token", "")
     if token:
-        line_service._push(token, line_user_id, [{"type": "text", "text": "✅ 綁定成功！您將收到診所的健康提醒訊息。"}])
+        line_service._push(token, profile["userId"], [{"type": "text", "text": "✅ 綁定成功！您將收到診所的回診與健康提醒訊息。"}])
     return {"status": "ok"}
 
 
+# Clinic 1's LINE console may still point at the original un-scoped URLs
+@app.get("/line/bind")
+def line_bind_page_legacy():
+    return FileResponse("static/line-bind.html")
+
+
+@app.get("/line/config")
+def line_public_config_legacy():
+    return line_public_config(line_service.slug_for_clinic(1))
+
+
+@app.post("/line/webhook")
+async def line_webhook_legacy(request: Request, background: BackgroundTasks):
+    return await line_webhook(line_service.slug_for_clinic(1), request, background)
+
+
+@app.post("/line/bind")
+async def line_bind_submit_legacy(request: Request):
+    return await line_bind_submit(line_service.slug_for_clinic(1), request)
+
+
+def _public_base(request: Request) -> str:
+    """Public origin as the browser sees it (Railway terminates TLS in front of uvicorn)."""
+    proto = request.headers.get("X-Forwarded-Proto", request.url.scheme).split(",")[0].strip()
+    host = request.headers.get("X-Forwarded-Host") or request.headers.get("Host") or request.url.netloc
+    return f"{proto}://{host}"
+
+
+def _line_urls(request: Request, clinic_id: int) -> dict:
+    base = f"{_public_base(request)}/line/{line_service.slug_for_clinic(clinic_id)}"
+    return {"webhook_url": f"{base}/webhook", "bind_endpoint_url": f"{base}/bind"}
+
+
 @app.get("/api/line/settings")
-def get_line_settings(user: auth.CurrentUser = Depends(auth.get_current_user)):
+def get_line_settings(request: Request, user: auth.CurrentUser = Depends(auth.get_current_user)):
     s = line_service.get_settings(user.clinic_id)
     return {
         "has_token": bool((s.get("channel_access_token") or "").strip()),
         "has_secret": bool((s.get("channel_secret") or "").strip()),
         "liff_id": s.get("liff_id", ""),
+        "login_channel_id": s.get("login_channel_id", ""),
+        "line_mode": s.get("line_mode", ""),
         "is_active": bool(s.get("is_active", 0)),
         "message_templates": line_service.get_message_templates(user.clinic_id),
+        **_line_urls(request, user.clinic_id),
     }
 
 
 @app.post("/api/line/settings")
 def save_line_settings(body: dict = Body(...), admin: auth.CurrentUser = Depends(auth.require_admin)):
+    mode = (body.get("line_mode") or "").strip()
+    if mode not in ("", "new", "own", "vendor"):
+        raise HTTPException(status_code=400, detail="line_mode 不正確")
     line_service.save_settings(
         admin.clinic_id,
-        token=body.get("channel_access_token", "").strip(),
-        secret=body.get("channel_secret", "").strip(),
-        liff_id=body.get("liff_id", "").strip(),
+        token=(body.get("channel_access_token") or "").strip(),
+        secret=(body.get("channel_secret") or "").strip(),
+        liff_id=(body.get("liff_id") or "").strip(),
         is_active=bool(body.get("is_active", False)),
+        login_channel_id=str(body.get("login_channel_id") or "").strip(),
+        line_mode=mode,
         actor=admin.display_name,
     )
     return {"status": "ok"}
+
+
+# ── LINE setup wizard ─────────────────────────────────────────────────────────
+
+@app.post("/api/line/setup/messaging")
+def line_setup_messaging(request: Request, body: dict = Body(...), admin: auth.CurrentUser = Depends(auth.require_admin)):
+    """Check the Messaging API token, save token + secret, point the webhook at this clinic
+    and send LINE's test event. A passing test also proves the channel secret is right,
+    because our webhook rejects events whose signature doesn't match it."""
+    token = (body.get("channel_access_token") or "").strip()
+    secret = (body.get("channel_secret") or "").strip()
+    if not token or not secret:
+        raise HTTPException(status_code=400, detail="請貼上 Channel access token 與 Channel secret")
+    info = line_service.get_bot_info(token)
+    if info is None:
+        raise HTTPException(status_code=400, detail="Channel access token 無效，請重新複製（注意不要多複製空白）")
+    s = line_service.get_settings(admin.clinic_id)
+    line_service.save_settings(
+        admin.clinic_id, token=token, secret=secret, liff_id=s.get("liff_id", ""),
+        is_active=bool(s.get("is_active")), actor=admin.display_name,
+    )
+    webhook_url = _line_urls(request, admin.clinic_id)["webhook_url"]
+    hook = line_service.setup_webhook(token, webhook_url)
+    return {"bot": info, "webhook_url": webhook_url, **hook}
+
+
+@app.post("/api/line/setup/liff")
+def line_setup_liff(request: Request, body: dict = Body(...), admin: auth.CurrentUser = Depends(auth.require_admin)):
+    """Create the patient binding page (LIFF app) in the clinic's LINE Login channel.
+    The channel secret is used once to get a short-lived token and is not stored."""
+    channel_id = str(body.get("login_channel_id") or "").strip()
+    channel_secret = (body.get("login_channel_secret") or "").strip()
+    if not channel_id.isdigit() or not channel_secret:
+        raise HTTPException(status_code=400, detail="請貼上 LINE Login 的 Channel ID（數字）與 Channel secret")
+    endpoint = _line_urls(request, admin.clinic_id)["bind_endpoint_url"]
+    result = line_service.create_liff_app(channel_id, channel_secret, endpoint)
+    if "error" in result:
+        raise HTTPException(status_code=400, detail=result["error"])
+    s = line_service.get_settings(admin.clinic_id)
+    line_service.save_settings(
+        admin.clinic_id, token="", secret="", liff_id=result["liff_id"],
+        is_active=bool(s.get("is_active")), login_channel_id=channel_id, actor=admin.display_name,
+    )
+    return {"liff_id": result["liff_id"], "liff_url": f"https://liff.line.me/{result['liff_id']}"}
+
+
+@app.post("/api/line/setup/liff-manual")
+def line_setup_liff_manual(body: dict = Body(...), admin: auth.CurrentUser = Depends(auth.require_admin)):
+    liff_id = (body.get("liff_id") or "").strip()
+    channel_id = str(body.get("login_channel_id") or "").strip()
+    if not _re.fullmatch(r"\d+-[A-Za-z0-9]+", liff_id) or not channel_id.isdigit():
+        raise HTTPException(status_code=400, detail="LIFF ID 或 Channel ID 格式不正確")
+    if not liff_id.startswith(channel_id + "-"):
+        raise HTTPException(status_code=400, detail="這個 LIFF ID 不屬於此 LINE Login channel，請確認兩者來自同一個 channel")
+    s = line_service.get_settings(admin.clinic_id)
+    line_service.save_settings(
+        admin.clinic_id, token="", secret="", liff_id=liff_id,
+        is_active=bool(s.get("is_active")), login_channel_id=channel_id, actor=admin.display_name,
+    )
+    return {"liff_id": liff_id, "liff_url": f"https://liff.line.me/{liff_id}"}
+
+
+@app.post("/api/line/setup/mode")
+def line_setup_mode(body: dict = Body(...), admin: auth.CurrentUser = Depends(auth.require_admin)):
+    mode = (body.get("line_mode") or "").strip()
+    if mode not in ("new", "own", "vendor"):
+        raise HTTPException(status_code=400, detail="line_mode 不正確")
+    line_service.set_line_mode(admin.clinic_id, mode, actor=admin.display_name)
+    return {"status": "ok"}
+
+
+@app.post("/api/line/setup/activate")
+def line_setup_activate(admin: auth.CurrentUser = Depends(auth.require_admin)):
+    s = line_service.get_settings(admin.clinic_id)
+    if not (s.get("channel_access_token") and s.get("channel_secret") and s.get("liff_id") and s.get("login_channel_id")):
+        raise HTTPException(status_code=400, detail="設定尚未完成")
+    line_service.save_settings(
+        admin.clinic_id, token="", secret="", liff_id=s["liff_id"], is_active=True, actor=admin.display_name,
+    )
+    return {"status": "ok"}
+
+
+@app.get("/api/line/setup/status")
+def line_setup_status(request: Request, admin: auth.CurrentUser = Depends(auth.require_admin)):
+    """Live check of every setup piece, so the wizard can resume and show what's missing."""
+    s = line_service.get_settings(admin.clinic_id)
+    token = (s.get("channel_access_token") or "").strip()
+    bot = line_service.get_bot_info(token) if token else None
+    hook = line_service.get_webhook_info(token) if token else None
+    urls = _line_urls(request, admin.clinic_id)
+    return {
+        "line_mode": s.get("line_mode", ""),
+        "bot": bot,
+        "webhook_ok": bool(hook and hook.get("active") and hook.get("endpoint") == urls["webhook_url"]),
+        "webhook_active": bool(hook and hook.get("active")),
+        "liff_id": s.get("liff_id", ""),
+        "login_channel_id": s.get("login_channel_id", ""),
+        "is_active": bool(s.get("is_active")),
+        "friend_count": line_service.get_friend_count(admin.clinic_id) if token else None,
+        "bound_count": line_service.get_binding_count(admin.clinic_id),
+        **urls,
+    }
 
 
 @app.get("/api/line/stats")
@@ -2885,7 +3033,7 @@ async def import_line_bindings(request: Request, admin: auth.CurrentUser = Depen
 
 @app.post("/api/line/broadcast-invite")
 def broadcast_bind_invite(admin: auth.CurrentUser = Depends(auth.require_admin)):
-    """Send binding invitation to all currently bound patients."""
+    """Broadcast the binding invitation to every friend of the clinic's account."""
     result = line_service.broadcast_bind_invite(admin.clinic_id)
     return result
 
