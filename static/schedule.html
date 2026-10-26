@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -11,14 +11,14 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>排班表 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=91">
+<link rel="stylesheet" href="/static/_layout.css?v=92">
 <style>
 .week-nav{display:flex;align-items:center;gap:12px;flex-shrink:0}
 .week-label{font-size:14px;font-weight:600;color:var(--text);flex:1;text-align:center}
-.wn-btn{width:34px;height:34px;border-radius:9px;border:1.5px solid var(--border);background:transparent;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.wn-btn:hover{border-color:var(--sub);color:var(--text)}
-.wn-today{padding:6px 14px;border-radius:100px;border:1.5px solid var(--border);background:transparent;font-size:13px;font-weight:500;color:var(--sub);cursor:pointer}
-.wn-today:hover{border-color:var(--sub);color:var(--text)}
+.wn-btn{width:var(--ctl-h);height:var(--ctl-h);border-radius:9px;border:1.5px solid var(--border);background:transparent;color:var(--sub);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+@media(hover:hover){.wn-btn:hover{border-color:var(--sub);color:var(--text)}}
+.wn-today{display:inline-flex;align-items:center;height:var(--ctl-h);padding:0 14px;border-radius:100px;border:1.5px solid var(--border);background:transparent;font-size:13px;font-weight:500;color:var(--sub);cursor:pointer}
+@media(hover:hover){.wn-today:hover{border-color:var(--sub);color:var(--text)}}
 .sched-grid{display:grid;grid-template-columns:100px repeat(7,1fr);border-radius:var(--r);overflow:hidden;border:1px solid var(--border);background:var(--card);box-shadow:var(--shadow);flex-shrink:0}
 .sg-cell{padding:10px 8px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);font-size:13px}
 .sg-cell:nth-child(8n){border-right:none}
@@ -36,7 +36,7 @@
 .excl-row{display:flex;align-items:center;gap:5px;margin-bottom:10px;flex-wrap:wrap}
 .excl-lbl{font-size:12px;color:var(--sub);flex-shrink:0;margin-right:2px}
 .excl-day{width:28px;height:28px;border-radius:7px;border:1.5px solid var(--border);background:transparent;font-size:12px;font-weight:600;color:var(--text);cursor:pointer;font-family:inherit;transition:background .12s,color .12s,border-color .12s}
-.excl-day:hover{border-color:var(--sub)}
+@media(hover:hover){.excl-day:hover{border-color:var(--sub)}}
 .excl-day.off{color:var(--muted);text-decoration:line-through;border-style:dashed}
 .sg-mine{background:rgba(75,170,255,.08)}
 .sg-entry{display:flex;flex-direction:column;gap:1px;padding:2px 0}
@@ -44,8 +44,8 @@
 .sg-time{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;letter-spacing:.01em}
 .sg-clean{font-size:10.5px;color:var(--muted)}
 .sg-clean::before{content:'清潔 '}
-.view-toggle{display:flex;border:1.5px solid var(--border);border-radius:100px;overflow:hidden;flex-shrink:0}
-.view-toggle button{padding:5px 14px;font-size:12.5px;font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;transition:background .12s,color .12s}
+.view-toggle{display:flex;height:var(--ctl-h);border:1.5px solid var(--border);border-radius:100px;overflow:hidden;flex-shrink:0}
+.view-toggle button{display:flex;align-items:center;justify-content:center;padding:0 14px;font-size:12.5px;font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;transition:background .12s,color .12s}
 .view-toggle button.on{background:#b5d7f5;color:#111827}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .view-toggle button.on{background:#1E3A5F;color:#93C5FD}}
 :root[data-theme="dark"] .view-toggle button.on{background:#1E3A5F;color:#93C5FD}
@@ -142,7 +142,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=84"></script>
+<script src="/static/_layout.js?v=85"></script>
 <script>
 (function () {
   'use strict';

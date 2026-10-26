@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>抽血追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=91">
+<link rel="stylesheet" href="/static/_layout.css?v=92">
 <style>
 .br-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;vertical-align:middle}
 .br-tag-up{background:#fef2f2;color:#B91C1C;border:1px solid #fecaca}
@@ -38,7 +38,7 @@
 :root[data-theme=dark] .br-normal{background:rgba(21,128,61,.15);border-color:rgba(21,128,61,.3)}
 :root[data-theme=dark] .br-due{background:rgba(194,65,12,.15);border-color:rgba(194,65,12,.3)}
 .p-table th.sortable{cursor:pointer;user-select:none}
-.p-table th.sortable:hover{opacity:.8}
+@media(hover:hover){.p-table th.sortable:hover{opacity:.8}}
 .sort-arrow{margin-left:4px;opacity:.35;font-size:10px}
 .sort-arrow.on{opacity:1}
 </style>
@@ -115,7 +115,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=84"></script>
+<script src="/static/_layout.js?v=85"></script>
 <script>
 var _allPatients = [];
 var _currentTab = 'pending';

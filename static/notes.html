@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>備忘錄 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=91">
+<link rel="stylesheet" href="/static/_layout.css?v=92">
 <style>
 /* ── Two-panel workspace ── */
 .notes-workspace{display:flex;background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;height:calc(100vh - 190px);min-height:480px;max-height:760px}
@@ -59,7 +59,7 @@
 .note-time{font-size:11px;color:var(--muted);margin-top:3px}
 
 .note-del{background:none;border:none;cursor:pointer;color:var(--muted);padding:4px;border-radius:4px;display:flex;align-items:center;transition:color .12s,background .12s;flex-shrink:0}
-.note-del:hover{color:#dc2626;background:rgba(220,38,38,.08)}
+@media(hover:hover){.note-del:hover{color:#dc2626;background:rgba(220,38,38,.08)}}
 
 /* ── Empty / idle states ── */
 .notes-empty{text-align:center;color:var(--muted);font-size:13px;padding:36px 16px}
@@ -88,7 +88,7 @@
 /* ── Circular color pickers with checkmark ── */
 .color-pick{display:flex;gap:8px;align-items:center}
 .cp-sw{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2.5px solid transparent;transition:transform .12s,border-color .12s,box-shadow .12s;flex-shrink:0;position:relative;display:inline-flex;align-items:center;justify-content:center}
-.cp-sw:hover{transform:scale(1.1)}
+@media(hover:hover){.cp-sw:hover{transform:scale(1.1)}}
 .cp-sw.active{border-color:rgba(0,0,0,.35);box-shadow:0 0 0 1px rgba(0,0,0,.12)}
 .cp-sw.active::after{content:'';position:absolute;width:9px;height:5px;border-left:2px solid rgba(0,0,0,.55);border-bottom:2px solid rgba(0,0,0,.55);transform:rotate(-45deg) translate(1px,-1px)}
 .cp-sw[data-c="yellow"]{background:#FCD34D}
@@ -103,7 +103,7 @@
 .undo-toast{position:fixed;bottom:24px;right:24px;background:#1F2937;color:#fff;padding:11px 14px 11px 18px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:0 4px 20px rgba(0,0,0,.28);display:flex;align-items:center;gap:12px;z-index:9999;transform:translateY(10px);opacity:0;transition:transform .22s,opacity .22s;pointer-events:none}
 .undo-toast.show{transform:translateY(0);opacity:1;pointer-events:auto}
 .undo-btn{background:#fff;color:#111827;border:none;border-radius:6px;padding:4px 12px;font-size:12.5px;font-weight:700;cursor:pointer;white-space:nowrap}
-.undo-btn:hover{background:#f3f4f6}
+@media(hover:hover){.undo-btn:hover{background:#f3f4f6}}
 
 /* ── Dark mode ── */
 @media(prefers-color-scheme:dark){
@@ -166,7 +166,7 @@
 
 /* ── Back button (mobile-only, hidden on desktop) ── */
 .notes-back-btn{display:none;align-items:center;gap:5px;background:transparent;border:none;cursor:pointer;color:var(--sub);font-size:14px;font-weight:600;padding:4px 8px 4px 0;font-family:inherit;flex-shrink:0;transition:color .1s}
-.notes-back-btn:hover{color:var(--text)}
+@media(hover:hover){.notes-back-btn:hover{color:var(--text)}}
 .notes-back-btn svg{flex-shrink:0}
 
 /* ── Mobile: show only one panel at a time ── */
@@ -317,7 +317,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=84"></script>
+<script src="/static/_layout.js?v=85"></script>
 <script>
 (function () {
   var L = window.Layout;

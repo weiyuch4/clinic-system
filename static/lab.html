@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>檢驗追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=91">
+<link rel="stylesheet" href="/static/_layout.css?v=92">
 <style>
 /* ── tabs ────────────────────────────────────────────────────────── */
 .lab-tabs{display:flex;gap:2px;background:var(--border);border-radius:9px;padding:3px;margin-bottom:14px;width:fit-content}
@@ -46,7 +46,7 @@
 .lab-name{font-size:14px;font-weight:600;color:var(--text)}
 .lab-meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .lab-meta .pr-copy{font-size:11.5px;color:var(--muted);cursor:pointer;border-radius:3px;padding:0 2px;transition:background .1s,color .1s}
-.lab-meta .pr-copy:hover{background:var(--border);color:var(--text)}
+@media(hover:hover){.lab-meta .pr-copy:hover{background:var(--border);color:var(--text)}}
 .lab-meta-sep{font-size:11px;color:var(--border)}
 .lab-codes{font-size:12px;color:var(--sub);flex:1;flex-wrap:wrap;display:flex;gap:5px;min-width:0}
 .lab-code-chip{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 7px;font-size:11.5px;color:var(--sub)}
@@ -82,27 +82,27 @@
 .lab-btn{font-size:12px;font-weight:600;padding:4px 12px;border-radius:6px;border:none;cursor:pointer;font-family:inherit;transition:background .15s,opacity .15s}
 .lab-btn:disabled{opacity:.5;cursor:default}
 .lab-btn-notify{background:#D1FAE5;color:#065F46}
-.lab-btn-notify:hover:not(:disabled){background:#A7F3D0}
+@media(hover:hover){.lab-btn-notify:hover:not(:disabled){background:#A7F3D0}}
 .lab-btn-physical{background:#EDE9FE;color:#6D28D9;font-size:11.5px;padding:4px 10px}
-.lab-btn-physical:hover:not(:disabled){background:#DDD6FE}
+@media(hover:hover){.lab-btn-physical:hover:not(:disabled){background:#DDD6FE}}
 .lab-btn-undo{background:var(--border);color:var(--muted);font-size:11px;padding:3px 9px}
-.lab-btn-undo:hover:not(:disabled){background:var(--sub);color:var(--card)}
+@media(hover:hover){.lab-btn-undo:hover:not(:disabled){background:var(--sub);color:var(--card)}}
 .lab-btn-done{background:#D1FAE5;color:#065F46}
-.lab-btn-done:hover:not(:disabled){background:#A7F3D0}
+@media(hover:hover){.lab-btn-done:hover:not(:disabled){background:#A7F3D0}}
 @media(prefers-color-scheme:dark){
   :root:not([data-theme="light"]) .lab-btn-notify{background:#042B18;color:#6EE7B7}
-  :root:not([data-theme="light"]) .lab-btn-notify:hover:not(:disabled){background:#064E2D;color:#6EE7B7}
+  @media(hover:hover){:root:not([data-theme="light"]) .lab-btn-notify:hover:not(:disabled){background:#064E2D;color:#6EE7B7}}
   :root:not([data-theme="light"]) .lab-btn-physical{background:#2E1065;color:#C4B5FD}
-  :root:not([data-theme="light"]) .lab-btn-physical:hover:not(:disabled){background:#3B0F80;color:#C4B5FD}
+  @media(hover:hover){:root:not([data-theme="light"]) .lab-btn-physical:hover:not(:disabled){background:#3B0F80;color:#C4B5FD}}
   :root:not([data-theme="light"]) .lab-btn-done{background:#042B18;color:#6EE7B7}
-  :root:not([data-theme="light"]) .lab-btn-done:hover:not(:disabled){background:#064E2D;color:#6EE7B7}
+  @media(hover:hover){:root:not([data-theme="light"]) .lab-btn-done:hover:not(:disabled){background:#064E2D;color:#6EE7B7}}
 }
 :root[data-theme="dark"] .lab-btn-notify{background:#042B18;color:#6EE7B7}
-:root[data-theme="dark"] .lab-btn-notify:hover:not(:disabled){background:#064E2D;color:#6EE7B7}
+@media(hover:hover){:root[data-theme="dark"] .lab-btn-notify:hover:not(:disabled){background:#064E2D;color:#6EE7B7}}
 :root[data-theme="dark"] .lab-btn-physical{background:#2E1065;color:#C4B5FD}
-:root[data-theme="dark"] .lab-btn-physical:hover:not(:disabled){background:#3B0F80;color:#C4B5FD}
+@media(hover:hover){:root[data-theme="dark"] .lab-btn-physical:hover:not(:disabled){background:#3B0F80;color:#C4B5FD}}
 :root[data-theme="dark"] .lab-btn-done{background:#042B18;color:#6EE7B7}
-:root[data-theme="dark"] .lab-btn-done:hover:not(:disabled){background:#064E2D;color:#6EE7B7}
+@media(hover:hover){:root[data-theme="dark"] .lab-btn-done:hover:not(:disabled){background:#064E2D;color:#6EE7B7}}
 
 /* ── physical tab cards ──────────────────────────────────────────── */
 .phys-group{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;flex-shrink:0}
@@ -119,7 +119,7 @@
 
 /* ── 已完成 toggle ───────────────────────────────────────────────── */
 .lab-done-toggle{display:flex;align-items:center;gap:6px;padding:9px 17px;font-size:12px;color:var(--muted);cursor:pointer;border-top:1px solid var(--border);user-select:none}
-.lab-done-toggle:hover{color:var(--text);background:var(--bg)}
+@media(hover:hover){.lab-done-toggle:hover{color:var(--text);background:var(--bg)}}
 .lab-done-toggle svg{flex-shrink:0;transition:transform .2s}
 .lab-done-toggle.open svg{transform:rotate(180deg)}
 
@@ -174,7 +174,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=84"></script>
+<script src="/static/_layout.js?v=85"></script>
 <script>
 (function () {
   'use strict';

@@ -30,12 +30,12 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);font-size:14px
 
 .topbar{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10}
 .topbar-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--t2);text-decoration:none;padding:6px 10px;border-radius:var(--r-s);border:1px solid var(--border);background:var(--bg);cursor:pointer;transition:border-color .12s,color .12s}
-.topbar-back:hover{border-color:var(--blue);color:var(--blue)}
+@media(hover:hover){.topbar-back:hover{border-color:var(--blue);color:var(--blue)}}
 .topbar-title{font-size:15px;font-weight:700}
 
 .tabs{display:flex;border-bottom:1px solid var(--border);background:var(--card);padding:0 24px;position:sticky;top:52px;z-index:9}
 .tab{padding:10px 18px;font:600 13px/1 var(--font);color:var(--t2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap;background:none;border-top:none;border-left:none;border-right:none}
-.tab:hover{color:var(--t1)}
+@media(hover:hover){.tab:hover{color:var(--t1)}}
 .tab.active{color:var(--blue);border-bottom-color:var(--blue)}
 .tab-panel{display:none}.tab-panel.active{display:block}
 
@@ -66,9 +66,9 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
 .toggle input:checked+.toggle-track::after{transform:translateX(16px)}
 
 .btn-sm{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border:1px solid var(--bm);border-radius:var(--r-s);background:var(--card);color:var(--t1);font:600 13px/1 var(--font);cursor:pointer;transition:background .12s,border-color .12s;white-space:nowrap}
-.btn-sm:hover{background:var(--bg);border-color:var(--blue);color:var(--blue)}
+@media(hover:hover){.btn-sm:hover{background:var(--bg);border-color:var(--blue);color:var(--blue)}}
 .btn-sm.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
-.btn-sm.primary:hover{background:#1d4ed8;border-color:#1d4ed8}
+@media(hover:hover){.btn-sm.primary:hover{background:#1d4ed8;border-color:#1d4ed8}}
 .btn-sm:disabled{opacity:.45;pointer-events:none}
 
 /* Stats tiles */
@@ -86,7 +86,7 @@ table{width:100%;border-collapse:collapse;font-size:13.5px}
 thead th{padding:10px 20px;background:var(--bg);border-bottom:1px solid var(--border);color:var(--t2);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;text-align:left;white-space:nowrap}
 tbody td{padding:12px 20px;border-bottom:1px solid var(--border);color:var(--t1)}
 tbody tr:last-child td{border-bottom:none}
-tbody tr:hover td{background:rgba(0,0,0,.02)}
+@media(hover:hover){tbody tr:hover td{background:rgba(0,0,0,.02)}}
 .empty-row td{text-align:center;color:var(--t3);padding:32px}
 
 .badge{display:inline-flex;align-items:center;font-size:11px;font-weight:600;padding:3px 9px;border-radius:999px;border:1px solid}

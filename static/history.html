@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
@@ -11,23 +11,23 @@
 <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>聯繫記錄 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=91">
+<link rel="stylesheet" href="/static/_layout.css?v=92">
 <style>
 /* date navigation */
 .hnav{display:flex;align-items:center;gap:8px;margin-bottom:14px;flex-shrink:0}
 .hnav-arrow{display:flex;align-items:center;justify-content:center;width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--text);cursor:pointer;flex-shrink:0;transition:background .12s;padding:0}
-.hnav-arrow:hover:not(:disabled){background:var(--hover)}
+@media(hover:hover){.hnav-arrow:hover:not(:disabled){background:var(--hover)}}
 .hnav-arrow:disabled{opacity:.35;cursor:default}
 .hnav-datewrap{position:relative;flex-shrink:0}
-.hnav-today{height:36px;padding:0 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--sub);transition:all .12s;flex-shrink:0;font-family:inherit}
-.hnav-today:hover{background:var(--hover)}
+.hnav-today{height:36px;padding:0 14px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--sub);transition:background-color .12s,border-color .12s,color .12s;flex-shrink:0;font-family:inherit}
+@media(hover:hover){.hnav-today:hover{background:var(--hover)}}
 .hnav-today.active{border-color:#6D28D9;color:#6D28D9;background:#EDE9FE}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .hnav-today.active{background:#1A0B35;border-color:#6D28D9;color:#C4B5FD}}
 :root[data-theme="dark"] .hnav-today.active{background:#1A0B35;border-color:#6D28D9;color:#C4B5FD}
 
 /* custom date picker */
 .pick-trigger{display:inline-flex;align-items:center;gap:7px;border:1.5px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:600 14px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;padding:0 14px;height:36px;cursor:pointer;white-space:nowrap;transition:border-color .12s,box-shadow .12s;user-select:none;font-variant-numeric:tabular-nums}
-.pick-trigger:hover{border-color:var(--sub)}
+@media(hover:hover){.pick-trigger:hover{border-color:var(--sub)}}
 .pick-trigger.open{border-color:var(--g5);box-shadow:0 0 0 3px rgba(107,114,128,.12)}
 .pick-trigger svg{width:13px;height:13px;color:var(--muted);flex-shrink:0;opacity:.55}
 .pick-drop{position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);z-index:600;background:var(--card);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.14),0 2px 6px rgba(0,0,0,.07);overflow:hidden;animation:pick-in .12s ease}
@@ -37,15 +37,15 @@
 .cal-drop{padding:14px;width:248px}
 .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .cal-nav-btn{width:26px;height:26px;border:none;border-radius:6px;background:var(--bg);color:var(--sub);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:background .1s,color .1s}
-.cal-nav-btn:hover{background:var(--g0);color:var(--text)}
+@media(hover:hover){.cal-nav-btn:hover{background:var(--g0);color:var(--text)}}
 .cal-month-lbl{font-size:13.5px;font-weight:700;color:var(--text)}
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:1px}
 .cal-dow{font-size:10px;font-weight:700;text-align:center;color:var(--muted);padding:0 0 8px;letter-spacing:.04em}
 .cal-day{height:30px;border:none;border-radius:6px;background:transparent;font-size:12.5px;color:var(--text);cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .1s;font-variant-numeric:tabular-nums}
-.cal-day:hover:not(:disabled){background:var(--g0)}
+@media(hover:hover){.cal-day:hover:not(:disabled){background:var(--g0)}}
 .cal-day.cal-today{font-weight:700;color:#2563EB}
 .cal-day.cal-sel{background:#2563EB;color:#fff;font-weight:700}
-.cal-day.cal-sel:hover{background:#1D4ED8}
+@media(hover:hover){.cal-day.cal-sel:hover{background:#1D4ED8}}
 .cal-day.cal-other{color:var(--muted)}
 .cal-day:disabled{opacity:.25;cursor:default}
 
@@ -90,7 +90,7 @@
 
 /* sortable header */
 .p-table th.sortable{cursor:pointer;user-select:none}
-.p-table th.sortable:hover{color:var(--sub)}
+@media(hover:hover){.p-table th.sortable:hover{color:var(--sub)}}
 .sort-arrow{margin-left:4px;opacity:.35;font-size:10px}
 .sort-arrow.on{opacity:1}
 </style>
@@ -147,7 +147,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=84"></script>
+<script src="/static/_layout.js?v=85"></script>
 <script>
 (function () {
   'use strict';

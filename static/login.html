@@ -165,7 +165,7 @@ input[type="password"]:focus {
   transition: background .15s;
   letter-spacing: .01em;
 }
-.btn:hover:not(:disabled) { background: var(--accent-h); }
+@media(hover:hover){.btn:hover:not(:disabled){ background: var(--accent-h); }}
 .btn:active:not(:disabled) { background: var(--accent-a); }
 .btn:disabled { opacity: .55; cursor: not-allowed; }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

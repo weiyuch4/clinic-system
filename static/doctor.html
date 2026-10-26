@@ -69,7 +69,7 @@ body {
   text-decoration: none; padding: 5px 10px; border-radius: var(--radius-s);
   transition: background .12s, color .12s;
 }
-.topbar-link:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.85); }
+@media(hover:hover){.topbar-link:hover{ background: rgba(255,255,255,.08); color: rgba(255,255,255,.85); }}
 
 /* ── Tab bar ── */
 .tabbar {
@@ -89,7 +89,7 @@ body {
   transition: color .15s, border-color .15s;
   white-space: nowrap;
 }
-.tab:hover { color: var(--text-2); }
+@media(hover:hover){.tab:hover{ color: var(--text-2); }}
 .tab.active { color: var(--blue); border-bottom-color: var(--blue); }
 .tab-spacer { flex: 1; }
 
@@ -112,7 +112,7 @@ body {
   padding: 4px 10px; cursor: pointer;
   transition: background .12s, border-color .12s, color .12s;
 }
-.notif-btn:hover { background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }
+@media(hover:hover){.notif-btn:hover{ background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }}
 .notif-btn.granted { color: var(--emerald); border-color: #BBF7D0; background: var(--emerald-bg); cursor: default; }
 .notif-btn.denied  { color: var(--text-3);  border-color: var(--border); background: var(--bg); cursor: not-allowed; }
 
@@ -160,7 +160,7 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
   padding: 4px 10px; cursor: pointer;
   transition: background .12s, border-color .12s;
 }
-.btn-clear:hover { background: var(--bg); border-color: var(--red); color: var(--red); }
+@media(hover:hover){.btn-clear:hover{ background: var(--bg); border-color: var(--red); color: var(--red); }}
 
 /* patient card in queue */
 .queue-card {

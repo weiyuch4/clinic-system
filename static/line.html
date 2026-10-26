@@ -1,11 +1,11 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
 <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>LINE 管理</title>
-<link rel="stylesheet" href="/static/_layout.css?v=91">
+<link rel="stylesheet" href="/static/_layout.css?v=92">
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -75,7 +75,7 @@ table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;padding:8px 12px;font-size:11px;font-weight:600;color:var(--text-3);border-bottom:1.5px solid var(--border-mid);white-space:nowrap}
 td{padding:9px 12px;border-bottom:1px solid var(--border-mid);color:var(--text-1)}
 tr:last-child td{border-bottom:none}
-tr:hover td{background:var(--hover)}
+@media(hover:hover){tr:hover td{background:var(--hover)}}
 
 /* Toast */
 .toast{position:fixed;bottom:24px;right:24px;left:auto;transform:none;background:#1e293b;color:#f1f5f9;padding:10px 18px;border-radius:8px;font-size:13.5px;box-shadow:0 4px 16px rgba(0,0,0,.18);z-index:9999;opacity:0;pointer-events:none;transition:opacity .2s;white-space:nowrap}
@@ -85,7 +85,7 @@ tr:hover td{background:var(--hover)}
 
 /* Upload zone */
 .upload-zone{border:2px dashed var(--border-mid);border-radius:var(--radius);padding:24px;text-align:center;cursor:pointer;transition:border-color .15s;margin-bottom:14px}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--blue)}
+.upload-zone.drag{border-color:var(--blue)}@media(hover:hover){.upload-zone:hover{border-color:var(--blue)}}
 .upload-zone input[type=file]{display:none}
 .upload-label{font-size:13px;color:var(--text-3)}
 .upload-label strong{color:var(--blue)}
@@ -100,7 +100,7 @@ tr:hover td{background:var(--hover)}
 /* Import result */
 .import-result{display:none;background:var(--green-bg);border:1px solid #A7F3D0;border-radius:var(--radius-s);padding:10px 14px;font-size:12.5px;color:var(--green);margin-top:10px}
 </style>
-<script src="/static/_layout.js?v=84"></script>
+<script src="/static/_layout.js?v=85"></script>
 <script src="/static/admin-auth.js?v=5"></script>
 </head>
 <body>
