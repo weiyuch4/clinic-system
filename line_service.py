@@ -83,6 +83,12 @@ def init() -> None:
                 "ALTER TABLE line_settings ADD COLUMN IF NOT EXISTS "
                 "line_mode TEXT NOT NULL DEFAULT ''"
             )
+            # Birth date the patient entered when binding (YYYY-MM-DD). Not checked yet — kept so
+            # bindings can be verified retroactively once a reliable patient-data source exists.
+            cur.execute(
+                "ALTER TABLE line_bindings ADD COLUMN IF NOT EXISTS "
+                "birth_date TEXT NOT NULL DEFAULT ''"
+            )
 
 
 # ── Clinic lookup (public LINE URLs carry the clinic slug) ────────────────────
@@ -267,6 +273,7 @@ def bind_patient(
     display_name: str = "",
     clinic_id: int = 1,
     actor: str = "system",
+    birth_date: str = "",
 ) -> None:
     now = datetime.now(_TW).strftime("%Y-%m-%d %H:%M:%S")
     with _conn() as conn:
@@ -278,27 +285,17 @@ def bind_patient(
             )
             cur.execute(
                 """INSERT INTO line_bindings
-                       (chart_number, line_user_id, display_name, bound_at, clinic_id)
-                   VALUES (%s, %s, %s, %s, %s)
+                       (chart_number, line_user_id, display_name, bound_at, clinic_id, birth_date)
+                   VALUES (%s, %s, %s, %s, %s, %s)
                    ON CONFLICT (chart_number, clinic_id) DO UPDATE SET
                        line_user_id = EXCLUDED.line_user_id,
                        display_name = EXCLUDED.display_name,
-                       bound_at     = EXCLUDED.bound_at""",
-                (chart_number, line_user_id, display_name, now, clinic_id),
+                       bound_at     = EXCLUDED.bound_at,
+                       birth_date   = CASE WHEN EXCLUDED.birth_date != '' THEN EXCLUDED.birth_date
+                                           ELSE line_bindings.birth_date END""",
+                (chart_number, line_user_id, display_name, now, clinic_id, birth_date),
             )
     log_audit(clinic_id, "bind", chart_number, actor, f"display_name={display_name}")
-
-
-def patient_matches(chart_number: str, birth_date: str, clinic_id: int) -> bool:
-    """True if the clinic's synced records contain this national ID with this birth date (YYYY-MM-DD)."""
-    with _conn() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                "SELECT 1 FROM synced_candidates "
-                "WHERE clinic_id = %s AND chart_number = %s AND birth_date = %s LIMIT 1",
-                (clinic_id, chart_number, birth_date),
-            )
-            return cur.fetchone() is not None
 
 
 def unbind_patient(chart_number: str, clinic_id: int = 1, actor: str = "system") -> bool:

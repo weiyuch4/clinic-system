@@ -106,7 +106,7 @@ input[type=text]:focus,input[type=date]:focus{border-color:var(--green)}
   <div id="state-form" class="state">
     <div class="step-label">STEP 1 / 2</div>
     <h2>確認 LINE 身份</h2>
-    <p>已取得您的 LINE 帳號資訊。請輸入身分證字號與生日，確認是您本人後即完成綁定。</p>
+    <p>已取得您的 LINE 帳號資訊。請輸入身分證字號與生日即完成綁定。</p>
 
     <div class="profile-row" id="profile-row" style="display:none">
       <img class="avatar" id="profile-avatar" alt="" hidden>
@@ -124,7 +124,7 @@ input[type=text]:focus,input[type=date]:focus{border-color:var(--green)}
     <label for="birth-input">生日</label>
     <input id="birth-input" type="date" min="1900-01-01"
            oninput="document.getElementById('chart-error').style.display='none'">
-    <div class="input-hint">用來確認是您本人，不會另外儲存</div>
+    <div class="input-hint">用來確認是您本人</div>
     <div id="chart-error" style="font-size:12.5px;color:#DC2626;margin-top:-14px;margin-bottom:14px;display:none"></div>
 
     <button class="btn" id="bind-btn" onclick="submitBind()">綁定</button>

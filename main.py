@@ -2754,9 +2754,6 @@ def _rate_limited(store: dict, key: str, limit: int, window: int = 3600) -> bool
     return False
 
 
-_bind_fail_by_chart: dict = {}  # chart_number -> [timestamps of failed birth-date checks]
-
-
 @app.get("/line/{slug}/bind")
 def line_bind_page(slug: str):
     """Patient-facing LINE binding page (public). Each clinic's LIFF app points here."""
@@ -2790,7 +2787,8 @@ async def line_webhook(slug: str, request: Request, background: BackgroundTasks)
 @app.post("/line/{slug}/bind")
 async def line_bind_submit(slug: str, request: Request):
     """Bind a patient from the LIFF page (public). Identity comes only from the verified
-    LIFF token; the national ID must match a synced record with the same birth date."""
+    LIFF token. Any patient may bind; an ID already bound to another LINE account is refused.
+    The birth date is stored unchecked so bindings can be verified later."""
     clinic_id = _clinic_from_slug(slug)
     client_ip = (
         request.headers.get("X-Forwarded-For", "").split(",")[0].strip()
@@ -2806,8 +2804,12 @@ async def line_bind_submit(slug: str, request: Request):
 
     if not _re.fullmatch(r"[A-Z]\d{9}", chart_number):
         raise HTTPException(status_code=400, detail="身分證字號格式不正確")
-    if not _re.fullmatch(r"\d{4}-\d{2}-\d{2}", birth_date):
-        raise HTTPException(status_code=400, detail="請輸入生日")
+    try:
+        bd = date.fromisoformat(birth_date)
+    except ValueError:
+        bd = None
+    if not bd or bd.year < 1900 or bd > date.today():
+        raise HTTPException(status_code=400, detail="請輸入正確的生日")
     if not liff_access_token:
         raise HTTPException(status_code=400, detail="請透過 LINE 應用程式開啟綁定頁面")
 
@@ -2819,15 +2821,13 @@ async def line_bind_submit(slug: str, request: Request):
     if not profile:
         raise HTTPException(status_code=403, detail="LINE 身份驗證失敗，請關閉頁面後重新開啟")
 
-    # Cap wrong-birth-date guesses per national ID so the date can't be brute-forced
-    fails = [t for t in _bind_fail_by_chart.get(chart_number, []) if t > _time.time() - 3600]
-    if len(fails) >= 5:
-        raise HTTPException(status_code=429, detail="嘗試次數過多，請一小時後再試或洽診所櫃台")
-    if not line_service.patient_matches(chart_number, birth_date, clinic_id):
-        _bind_fail_by_chart[chart_number] = fails + [_time.time()]
-        raise HTTPException(status_code=400, detail="資料不符：請確認身分證字號與生日，或洽診所櫃台協助")
+    # Without an identity check, never let someone silently take over another person's binding
+    existing = line_service.get_binding(chart_number, clinic_id)
+    if existing and existing["line_user_id"] != profile["userId"]:
+        raise HTTPException(status_code=409, detail="此身分證字號已由其他 LINE 帳號綁定，如需更換請洽診所櫃台")
 
-    line_service.bind_patient(chart_number, profile["userId"], profile["displayName"], clinic_id, actor="patient")
+    line_service.bind_patient(chart_number, profile["userId"], profile["displayName"], clinic_id,
+                              actor="patient", birth_date=birth_date)
     token = settings.get("channel_access_token", "")
     if token:
         line_service._push(token, profile["userId"], [{"type": "text", "text": "✅ 綁定成功！您將收到診所的回診與健康提醒訊息。"}])
