@@ -18,8 +18,12 @@ config_local.py
 alleypin_profile/
 alleypin_browser.pid
 
-# Claude Code local settings
-.claude/
+# Claude Code local settings (skills are shared project instructions, so they're tracked)
+.claude/*
+!.claude/skills/
+
+# Throwaway UI prototypes built by the prototype skill
+static/prototypes/
 
 # Mock data — not needed in production
 mock/
