@@ -2889,12 +2889,28 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
         <div class="tbl-wrap">
           <table>
             <thead><tr>
-              <th>病歷號碼</th><th>LINE 顯示名稱</th><th>綁定時間</th><th></th>
+              <th>病歷號碼</th><th>病患姓名</th><th>LINE 顯示名稱</th><th>綁定時間</th><th></th>
             </tr></thead>
             <tbody id="ln-bindings-body">
-              <tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px">載入中…</td></tr>
+              <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">載入中…</td></tr>
             </tbody>
           </table>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <div class="card-head"><span class="card-title">傳送測試訊息</span></div>
+        <div style="padding:16px 24px 20px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:14px;line-height:1.6">
+            傳送和護理師按「LINE」時一樣的訊息給一位已綁定的病患（例如你自己），確認內容與送達。<br>
+            不會標記為已聯繫，也不會傳給其他人。每次計 1 則訊息額度。
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <select id="ln-test-chart" class="ln-input" style="min-width:200px"><option value="">載入中…</option></select>
+            <select id="ln-test-cat" class="ln-input"></select>
+            <button class="btn-sm primary" id="ln-test-btn" onclick="lnTestSend()">傳送</button>
+          </div>
+          <div id="ln-test-preview" style="margin-top:12px;font-size:12.5px;color:var(--text-2);line-height:1.6;white-space:pre-wrap"></div>
         </div>
       </div>
 
@@ -7879,21 +7895,31 @@ function lnLoadStats() {
 
 function lnLoadBindings() {
   var tbody = document.getElementById('ln-bindings-body');
-  tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px">載入中…</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">載入中…</td></tr>';
   fetch('/api/line/bindings').then(function(r) { return r.json(); }).then(function(rows) {
+    lnFillTestPatients(rows);
     if (!rows.length) {
-      tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:24px">尚無綁定資料</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px">尚無綁定資料</td></tr>';
       return;
     }
     tbody.innerHTML = rows.map(function(r) {
       return '<tr>' +
         '<td style="font-weight:600">' + esc(r.chart_number) + '</td>' +
+        '<td>' + _lnRecordCell(r) + '</td>' +
         '<td>' + esc(r.display_name || '—') + '</td>' +
         '<td style="color:var(--muted)">' + esc((r.bound_at || '').substring(0,10)) + '</td>' +
         '<td><button class="btn-sm" style="border-color:var(--red);color:var(--red);font-size:12px;padding:4px 10px" onclick="lnUnbind(' + JSON.stringify(r.chart_number) + ')">解除綁定</button></td>' +
       '</tr>';
     }).join('');
-  }).catch(function() { tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted);text-align:center;padding:20px">載入失敗</td></tr>'; });
+  }).catch(function() { tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:20px">載入失敗</td></tr>'; });
+}
+
+// Name from the clinic's records — shown only when the birth date the patient entered matches
+function _lnRecordCell(r) {
+  if (r.record_status === 'match') return esc(r.patient_name);
+  if (r.record_status === 'dob_mismatch') return '<span class="badge badge-red" title="病患輸入的生日與診所資料不同，請向病患確認身分證字號">生日不符</span>';
+  if (r.record_status === 'no_dob') return '<span style="color:var(--muted)" title="在開始填寫生日之前綁定">未填生日</span>';
+  return '<span style="color:var(--muted)" title="目前不在任何追蹤名單中，列入名單後會自動顯示">尚無資料</span>';
 }
 
 function lnUnbind(chartNumber) {
@@ -7903,6 +7929,61 @@ function lnUnbind(chartNumber) {
       if (r.ok) { Layout.showToast('已解除綁定'); lnLoadBindings(); lnLoadStats(); }
       else { Layout.showToast('解除失敗'); }
     });
+}
+
+/* ---- test message: same text a nurse's LINE button sends, to one chosen bound patient ---- */
+var _lnTestTemplates = {};
+var _lnTestNames = {};
+
+function lnFillTestPatients(rows) {
+  var sel = document.getElementById('ln-test-chart');
+  _lnTestNames = {};
+  rows.forEach(function(r) { _lnTestNames[r.chart_number] = r.patient_name || ''; });
+  sel.onchange = lnTestPreview;
+  sel.innerHTML = rows.length
+    ? rows.map(function(r) {
+        var who = r.patient_name || r.display_name;
+        return '<option value="' + esc(r.chart_number) + '">' + esc(r.chart_number) + (who ? '（' + esc(who) + '）' : '') + '</option>';
+      }).join('')
+    : '<option value="">尚無已綁定的病患</option>';
+  document.getElementById('ln-test-btn').disabled = !rows.length;
+  fetch('/api/line/templates').then(function(r) { return r.json(); }).then(function(t) {
+    _lnTestTemplates = t || {};
+    var cat = document.getElementById('ln-test-cat');
+    var keep = cat.value;
+    cat.innerHTML = Object.keys(_lnTestTemplates).map(function(k) {
+      return '<option value="' + esc(k) + '">' + esc(k) + '</option>';
+    }).join('');
+    if (keep && _lnTestTemplates[keep] !== undefined) cat.value = keep;
+    cat.onchange = lnTestPreview;
+    lnTestPreview();
+  }).catch(function() {});
+}
+
+function lnTestPreview() {
+  var name = _lnTestNames[document.getElementById('ln-test-chart').value] || '';
+  var text = (_lnTestTemplates[document.getElementById('ln-test-cat').value] || '').replace(/\{患者姓名\}/g, name);
+  document.getElementById('ln-test-preview').textContent = text ? '將傳送：' + text : '';
+}
+
+function lnTestSend() {
+  var cn = document.getElementById('ln-test-chart').value;
+  var cat = document.getElementById('ln-test-cat').value;
+  if (!cn || !cat) return;
+  var btn = document.getElementById('ln-test-btn');
+  btn.disabled = true; btn.textContent = '傳送中…';
+  fetch('/api/line/test-send', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chart_number: cn, category: cat })
+  }).then(function(r) {
+    return r.json().then(function(d) { if (!r.ok) throw new Error(d.detail || '傳送失敗'); });
+  }).then(function() {
+    Layout.showToast('已傳送「' + cat + '」測試訊息');
+  }).catch(function(e) {
+    Layout.showToast(e.message || '傳送失敗');
+  }).then(function() {
+    btn.disabled = false; btn.textContent = '傳送';
+  });
 }
 
 function lnBroadcastInvite(after) {

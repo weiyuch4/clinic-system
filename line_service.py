@@ -311,15 +311,63 @@ def unbind_patient(chart_number: str, clinic_id: int = 1, actor: str = "system")
     return deleted
 
 
+def _record_match(entered_dob: str, record_name: str | None, record_dob: str | None) -> dict:
+    """Compare the birth date a patient entered when binding with the clinic's synced record.
+    The record name is only trusted when the dates agree, so a mistyped or someone else's ID
+    never puts a real patient's name into a message."""
+    if not record_name:
+        return {"patient_name": "", "record_status": "no_record"}   # not on any synced list yet
+    if not entered_dob:
+        return {"patient_name": "", "record_status": "no_dob"}      # bound before birth dates were collected
+    if entered_dob != record_dob:
+        return {"patient_name": "", "record_status": "dob_mismatch"}
+    return {"patient_name": record_name, "record_status": "match"}
+
+
+# Latest synced record for each binding's ID (synced_candidates has one row per category/due date)
+_BINDING_RECORD_JOIN = """
+    LEFT JOIN LATERAL (
+        SELECT s.name, s.birth_date FROM synced_candidates s
+        WHERE s.clinic_id = b.clinic_id AND s.chart_number = b.chart_number
+        ORDER BY s.synced_at DESC LIMIT 1
+    ) rec ON TRUE
+"""
+
+
 def get_all_bindings(clinic_id: int = 1) -> list[dict]:
+    """Bindings with the name on the clinic's record when the entered birth date matches it."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT chart_number, line_user_id, display_name, bound_at "
-                "FROM line_bindings WHERE clinic_id = %s ORDER BY bound_at DESC",
+                "SELECT b.chart_number, b.line_user_id, b.display_name, b.bound_at, b.birth_date, "
+                "rec.name AS record_name, rec.birth_date AS record_dob "
+                "FROM line_bindings b" + _BINDING_RECORD_JOIN +
+                "WHERE b.clinic_id = %s ORDER BY b.bound_at DESC",
                 (clinic_id,),
             )
-            return [dict(r) for r in cur.fetchall()]
+            rows = cur.fetchall()
+    out = []
+    for r in rows:
+        d = {k: r[k] for k in ("chart_number", "line_user_id", "display_name", "bound_at")}
+        d.update(_record_match(r["birth_date"], r["record_name"], r["record_dob"]))
+        out.append(d)
+    return out
+
+
+def get_patient_name(chart_number: str, clinic_id: int = 1) -> str:
+    """Name on the clinic's record for a bound patient, or '' unless the entered birth date matches."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT b.birth_date, rec.name AS record_name, rec.birth_date AS record_dob "
+                "FROM line_bindings b" + _BINDING_RECORD_JOIN +
+                "WHERE b.clinic_id = %s AND b.chart_number = %s",
+                (clinic_id, chart_number),
+            )
+            r = cur.fetchone()
+    if not r:
+        return ""
+    return _record_match(r["birth_date"], r["record_name"], r["record_dob"])["patient_name"]
 
 
 def get_binding_count(clinic_id: int = 1) -> int:
@@ -548,6 +596,9 @@ def push_category_message(
     text = templates.get(category, "")
     if not text:
         return {"status": 0, "body": "no_template"}
+    if "{患者姓名}" in text:
+        # Without a confirmed name the placeholder is dropped ("{患者姓名}您好" → "您好")
+        text = text.replace("{患者姓名}", get_patient_name(chart_number, clinic_id))
     result = _push(token, uid, [{"type": "text", "text": text}])
     log_audit(
         clinic_id,

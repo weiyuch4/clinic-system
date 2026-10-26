@@ -3113,6 +3113,36 @@ def line_push_one(
     raise HTTPException(status_code=502, detail="LINE 傳送失敗，請確認綁定是否有效")
 
 
+@app.post("/api/line/test-send")
+def line_test_send(
+    body: dict = Body(...),
+    admin: auth.CurrentUser = Depends(auth.require_admin),
+) -> dict:
+    """Send one category message to a chosen bound patient so the admin can check wording and
+    delivery. Works before LINE is switched on and never marks anyone as contacted."""
+    chart_number = (body.get("chart_number") or "").strip().upper()
+    category = (body.get("category") or "").strip()
+    if not chart_number or not category:
+        raise HTTPException(status_code=400, detail="請選擇病患與訊息類型")
+    result = line_service.push_category_message(
+        chart_number, category, admin.clinic_id, actor=f"{admin.display_name}（測試）"
+    )
+    if result.get("status") == 200:
+        return {"status": "sent"}
+    reason = {
+        "no_token": "尚未完成 LINE 設定",
+        "not_bound": "此病患尚未綁定 LINE",
+        "no_template": "此類型沒有訊息內容",
+    }.get(result.get("body"))
+    if reason:
+        raise HTTPException(status_code=400, detail=reason)
+    if result.get("status") == 429:
+        raise HTTPException(status_code=502, detail="本月訊息額度已用完")
+    logger.warning("LINE test-send failed for %s: status=%s body=%s",
+                   chart_number, result.get("status"), (result.get("body") or "")[:300])
+    raise HTTPException(status_code=502, detail="LINE 傳送失敗，對方可能已封鎖官方帳號")
+
+
 @app.get("/api/line/audit")
 def get_line_audit_log(
     limit: int = Query(200, ge=1, le=1000),
