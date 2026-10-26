@@ -329,9 +329,9 @@ def get_binding_count(clinic_id: int = 1) -> int:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT COUNT(*) FROM line_bindings WHERE clinic_id = %s", (clinic_id,)
+                "SELECT COUNT(*) AS n FROM line_bindings WHERE clinic_id = %s", (clinic_id,)
             )
-            return cur.fetchone()[0]
+            return cur.fetchone()["n"]
 
 
 def bulk_import_bindings(
