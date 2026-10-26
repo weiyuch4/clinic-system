@@ -47,12 +47,17 @@
     admin:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>',
     risk:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     'blood-recall': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2C9 5 5 9 5 14a7 7 0 0 0 14 0C19 9 15 5 12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    inventory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><polyline points="3 8 12 13 21 8"/><line x1="12" y1="13" x2="12" y2="21"/></svg>',
   };
 
   // ── Changelog ────────────────────────────────────────
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 2, date: '2026-10-27', items: [
+      '新增「點貨」頁面：每月用手機盤點庫存，數字輸入後自動儲存，兩個人可以分區同時點',
+      '點完後自動列出建議訂購的品項和數量，到貨時按一下就能記錄',
+    ]},
     { version: 1, date: '2026-09-18', items: [
       '新增公告系統：管理員可發布診所公告，護理師登入後即可查看',
       '新增醫師留言區：醫師可從後台寫留言，護理師在備忘錄頁面可閱讀',
@@ -88,22 +93,21 @@
     { id: 'directory', label: '聯絡資訊',  href: '/directory',   badge: false },
     { id: 'schedule',  label: '排班表',    href: '/schedule',    badge: false },
     { id: 'nurse-ot',  label: '加班記錄',  href: '/nurse-ot',    badge: false },
+    { id: 'inventory', label: '點貨',      href: '/inventory',   badge: false },
   ];
 
   // ── Mobile config ────────────────────────────────────
   var _isMobile = window.innerWidth < 768;
   // Pages nurses may visit on their phones (no patient data)
-  var MOBILE_ALLOWED = { schedule: 1, 'nurse-ot': 1, notes: 1, 'change-password': 1, login: 1 };
+  var MOBILE_ALLOWED = { schedule: 1, 'nurse-ot': 1, notes: 1, inventory: 1, 'change-password': 1, login: 1 };
+  // Same five slots for nurses and admins; admins reach 後台 from the 我的 menu
   var MOBILE_NAV = [
     { id: 'schedule',  label: '排班',  href: '/schedule' },
     { id: 'nurse-ot',  label: '加班',  href: '/nurse-ot' },
+    { id: 'inventory', label: '點貨',  href: '/inventory' },
     { id: 'notes',     label: '備忘錄',  href: '/notes'    },
-    { id: 'me',        label: '我的',  href: null        },  // opens nurse selector
+    { id: 'me',        label: '我的',  href: null        },  // nurse selector, or the admin account menu
   ];
-  if (_role === 'admin') {
-    MOBILE_NAV.splice(3, 0, { id: 'admin', label: '後台', href: '/admin' });
-    // me item stays href: null — rendered as a logout-only dropdown for admin
-  }
 
   // ── Private state ────────────────────────────────────
   var _activePage      = 'dashboard';
@@ -623,7 +627,7 @@
     nav.className = 'mob-nav';
     // Map 'nurse-ot' and 'change-password' active pages to their nav ids
     var activeId = _activePage;
-    if (activeId === 'change-password') activeId = 'me';
+    if (activeId === 'change-password' || activeId === 'admin') activeId = 'me';
     nav.innerHTML = '<div class="mn-items">' +
       MOBILE_NAV.map(function (item) {
         var isActive = item.id === activeId ||
@@ -632,7 +636,7 @@
         var inner = '<span class="mn-ic">' + (ICONS[item.id] || '') + '</span>';
         if (item.href === null) {
           if (_role === 'admin') {
-            // Admin: person icon opens a logout-only account menu
+            // Admin: person icon opens the account menu (後台, theme, logout)
             return '<button type="button" class="' + cls + '" onclick="event.stopPropagation();Layout._openAdminMenu()">' + inner + '</button>';
           }
           // Nurse: avatar opens the nurse selector dropdown
@@ -726,6 +730,8 @@
     dd.innerHTML =
       '<div class="nurse-dd-hd">帳號</div>' +
       '<div class="nurse-dd-sep"></div>' +
+      '<a class="adm-acct-admin" href="/admin">' + ICONS.admin + '管理員後台</a>' +
+      '<div class="nurse-dd-sep"></div>' +
       '<button class="nurse-change-pin" id="adm-acct-theme" type="button"></button>' +
       '<div class="nurse-dd-sep"></div>' +
       '<button class="nurse-logout" id="adm-acct-logout" type="button">登出</button>';
@@ -765,7 +771,7 @@
   }
   // ── Topbar ───────────────────────────────────────────
   var _MOB_TITLES = {
-    schedule: '排班表', 'nurse-ot': '加班紀錄', notes: '備忘錄',
+    schedule: '排班表', 'nurse-ot': '加班紀錄', notes: '備忘錄', inventory: '點貨',
     'change-password': '我的設定', login: '登入', admin: '管理員後台',
   };
 

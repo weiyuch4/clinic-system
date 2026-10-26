@@ -1,0 +1,1006 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+  <meta name="theme-color" media="(prefers-color-scheme: light)" content="#FFFFFF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="診所追蹤">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>點貨 — 診所追蹤系統</title>
+<link rel="stylesheet" href="/static/_layout.css?v=92">
+<style>
+/* ── page tokens (accent matches the app's #b5d7f5 pill buttons) ─────────── */
+:root{
+  --inv-ok:#047857;--inv-ok-bg:#ECFDF5;
+  --inv-warn:#92400E;--inv-warn-bg:#FFFBEB;--inv-warn-bd:#FDE68A;
+  --inv-acc:#b5d7f5;--inv-acc-ink:#111827;--inv-acc-soft:#EAF4FD;
+  --inv-err:#B91C1C;
+}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --inv-ok:#34D399;--inv-ok-bg:rgba(52,211,153,.12);
+  --inv-warn:#FCD34D;--inv-warn-bg:#1C1200;--inv-warn-bd:#78350F;
+  --inv-acc:#1E3A5F;--inv-acc-ink:#93C5FD;--inv-acc-soft:rgba(147,197,253,.10);
+  --inv-err:#FCA5A5;
+}}
+:root[data-theme=dark]{
+  --inv-ok:#34D399;--inv-ok-bg:rgba(52,211,153,.12);
+  --inv-warn:#FCD34D;--inv-warn-bg:#1C1200;--inv-warn-bd:#78350F;
+  --inv-acc:#1E3A5F;--inv-acc-ink:#93C5FD;--inv-acc-soft:rgba(147,197,253,.10);
+  --inv-err:#FCA5A5;
+}
+
+/* .ct is a flex column; without flex-shrink:0 the page column (and its tab bar) gets squashed */
+.inv{width:100%;max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:13px;flex-shrink:0}
+.inv > *, #pane > *{flex-shrink:0}
+#pane{display:flex;flex-direction:column;gap:13px}
+
+/* ── tabs (same pill toggle as 排班表) ───────────────────────────────────── */
+.inv-tabs{display:flex;height:var(--ctl-h);border:1.5px solid var(--border);border-radius:100px;overflow:hidden;background:var(--card)}
+.inv-tabs button{flex:1;padding:0;font-size:14px;font-weight:600;border:none;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;transition:background .12s,color .12s;position:relative}
+.inv-tabs button.on{background:var(--inv-acc);color:var(--inv-acc-ink)}
+.inv-tabs .tab-dot{display:inline-block;min-width:18px;height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--inv-err);color:#fff;font-size:11px;line-height:18px;font-weight:700;vertical-align:1px}
+
+/* ── shared ─────────────────────────────────────────────────────────────── */
+.big-btn{width:100%;justify-content:center;padding:13px 0;font-size:15px}
+.muted{color:var(--muted)}
+.inv-empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:13.5px;line-height:1.7}
+.sec-h{display:flex;align-items:baseline;gap:8px;padding:4px 2px 0}
+.sec-h h2{font-size:15px;font-weight:700;color:var(--text)}
+.sec-h .sec-n{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.sec-h .sec-act{margin-left:auto}
+.note-box{background:var(--inv-warn-bg);border:1px solid var(--inv-warn-bd);color:var(--inv-warn);border-radius:10px;padding:10px 13px;font-size:12.5px;line-height:1.6}
+
+/* ── start / done hero ──────────────────────────────────────────────────── */
+.hero{display:flex;flex-direction:column;gap:14px;padding:22px 20px}
+.hero-month{font-size:26px;font-weight:800;color:var(--text);letter-spacing:.01em}
+.hero-meta{font-size:13px;color:var(--sub);line-height:1.7}
+.hero-stats{display:flex;gap:10px}
+.hero-stat{flex:1;background:var(--bg);border-radius:10px;padding:10px 12px}
+.hero-stat b{display:block;font-size:20px;color:var(--text);font-variant-numeric:tabular-nums}
+.hero-stat span{font-size:11.5px;color:var(--muted)}
+.done-mark{display:inline-flex;align-items:center;gap:6px;color:var(--inv-ok);font-weight:700;font-size:14px}
+.done-mark svg{width:18px;height:18px}
+
+/* ── counting: sticky progress bar ──────────────────────────────────────── */
+/* Browsers stick inside .ct's padding, so pull the bar up by that padding (18px / 16px on
+   phones). The 8px same-color shadow hides card edges at the sides; it stays inside the 13px
+   gap above, so it never covers the tab bar. */
+.cbar{position:sticky;top:-18px;z-index:5;padding:14px 0 8px;background:var(--bg);box-shadow:0 0 0 8px var(--bg);display:flex;flex-direction:column;gap:9px}
+.cbar-top{display:flex;align-items:center;gap:10px}
+.cbar-txt{font-size:14px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.cbar-save{font-size:11.5px;color:var(--muted);margin-left:auto;min-width:48px;text-align:right}
+.cbar-save.err{color:var(--inv-err);font-weight:600}
+.ptrack{height:6px;border-radius:3px;background:var(--border);overflow:hidden}
+.pfill{height:100%;background:var(--inv-ok);border-radius:3px;transition:width .25s}
+.chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+/* Filter chips live in their own row (never beside buttons), so they use the compact 32px / 36px on phones */
+.chip{flex-shrink:0;display:inline-flex;align-items:center;height:32px;border:1.5px solid var(--border);background:var(--card);color:var(--sub);border-radius:100px;padding:0 12px;font-size:12.5px;font-weight:500;cursor:pointer;font-family:inherit;white-space:nowrap;font-variant-numeric:tabular-nums}
+.chip.on{background:var(--inv-acc);border-color:var(--inv-acc);color:var(--inv-acc-ink);font-weight:600}
+.chip.done{color:var(--inv-ok)}
+
+/* ── item rows (count + order share the stepper) ────────────────────────── */
+.grp{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;scroll-margin-top:120px}
+.grp-h{display:flex;align-items:center;gap:8px;padding:12px 16px 8px;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted)}
+.grp-h .grp-n{margin-left:auto;font-weight:600;letter-spacing:0;font-variant-numeric:tabular-nums}
+.row{display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--border);min-height:64px}
+.grp-h + .row{border-top:none}
+.row-main{flex:1;min-width:0}
+.row-name{font-size:15px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:6px;line-height:1.35}
+.row-name .tick{width:16px;height:16px;flex-shrink:0;color:var(--inv-ok);display:none}
+.row.counted .row-name .tick{display:block}
+.row-sub{font-size:12.5px;color:var(--muted);margin-top:2px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-variant-numeric:tabular-nums}
+.same-btn{border:none;background:var(--inv-acc-soft);color:var(--sub);font-size:12px;font-weight:600;border-radius:6px;padding:3px 8px;cursor:pointer;font-family:inherit}
+.row.counted .same-btn{display:none}
+.row.err .stp-in{border-color:var(--inv-err)}
+
+.stp{display:flex;align-items:center;gap:6px;flex-shrink:0}
+/* Counting is a touch task even on desktop, so the stepper always uses the 44px touch height */
+.stp-b{width:var(--ctl-h-touch);height:var(--ctl-h-touch);border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--sub);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.stp-b:active{background:var(--g0);transform:scale(.94)}
+.stp-in{width:64px;height:var(--ctl-h-touch);border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:19px;font-weight:700;text-align:center;font-family:inherit;font-variant-numeric:tabular-nums;outline:none;-webkit-appearance:none;appearance:none}
+.stp-in:focus{border-color:#4aa7f7;background:var(--card)}
+.stp-in::placeholder{color:var(--border);font-weight:400}
+.row.counted .stp-in{background:var(--inv-ok-bg);border-color:transparent;color:var(--inv-ok)}
+.row-unit{width:26px;font-size:12.5px;color:var(--muted);flex-shrink:0;text-align:left}
+.row-ro{font-size:17px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+
+/* order rows */
+.ochk{width:22px;height:22px;flex-shrink:0;accent-color:#2563EB;cursor:pointer}
+.row.off .row-name,.row.off .stp{opacity:.45}
+.reason{font-size:12px;color:var(--sub);margin-top:3px;line-height:1.5}
+.flag{display:inline-block;font-size:11.5px;font-weight:600;color:var(--inv-warn);background:var(--inv-warn-bg);border:1px solid var(--inv-warn-bd);border-radius:6px;padding:1px 7px;margin-top:4px;margin-right:4px}
+/* Order rows: name + explanation get the full width; the quantity sits on its own line below */
+.orow{flex-wrap:wrap;align-items:flex-start;row-gap:8px}
+.orow .ochk{margin-top:2px}
+.ocol{flex-basis:100%;display:flex;align-items:center;justify-content:flex-end;gap:10px;padding-left:32px}
+.conv{font-size:12px;color:var(--muted);margin-right:auto;font-variant-numeric:tabular-nums}
+.sbar{position:sticky;bottom:0;z-index:5;padding:12px 0 4px;background:linear-gradient(to bottom,transparent,var(--bg) 12px);box-shadow:0 24px 0 var(--bg)}
+.more-btn{width:100%;border:none;background:transparent;color:var(--sub);font-size:13px;font-weight:600;padding:12px;cursor:pointer;font-family:inherit;border-top:1px solid var(--border)}
+
+/* pending deliveries */
+.drow-meta{font-size:12.5px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums}
+.drow-act{display:flex;gap:6px;flex-shrink:0}
+
+/* items tab */
+.itoolbar{display:flex;gap:8px;flex-wrap:wrap}
+.irow{cursor:pointer}
+.irow:active{background:var(--g0)}
+.irow .chev{width:16px;height:16px;color:var(--muted);flex-shrink:0}
+.mv{display:none;gap:4px}
+.sorting .mv{display:flex}
+.sorting .chev{display:none}
+.sorting .irow{cursor:default}
+.mv button{width:34px;height:34px;border-radius:8px;border:1.5px solid var(--border);background:var(--card);color:var(--sub);cursor:pointer;font-size:15px}
+.mv button:disabled{opacity:.3;cursor:default}
+
+/* history in item editor */
+.hist{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-top:4px}
+.hist-row{display:flex;justify-content:space-between;padding:7px 12px;font-size:12.5px;color:var(--sub);font-variant-numeric:tabular-nums}
+.hist-row + .hist-row{border-top:1px solid var(--border)}
+.hist-row b{color:var(--text)}
+.pack-row{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--sub)}
+.pack-row .modal-input{width:76px;text-align:center}
+.fld-hint{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.5}
+.modal-box{max-height:calc(100vh - 32px);overflow-y:auto}
+.danger-link{border:none;background:none;color:var(--inv-err);font-size:13px;cursor:pointer;margin-right:auto;font-family:inherit;padding:0}
+
+@media(max-width:767px){
+  .cbar{top:-16px}
+  /* Order button floats just above the bottom nav, like the toast */
+  .sbar{position:fixed;left:16px;right:16px;bottom:calc(74px + env(safe-area-inset-bottom,0px) + 6px);padding:0;background:none;box-shadow:none}
+  .sbar .bp{box-shadow:0 6px 20px rgba(0,0,0,.18)}
+  #pane.has-sbar{padding-bottom:64px}
+  /* Sheets slide up from the bottom on phones */
+  .modal-overlay{align-items:flex-end}
+  .modal-box{max-width:100%;margin:0;border-radius:20px 20px 0 0;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px));max-height:88vh}
+  .modal-input{font-size:16px}  /* 16px stops iOS from zooming into the field */
+  .row-name{font-size:15.5px}
+  .chip{height:36px;font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){.pfill{transition:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="sidebar"></aside>
+  <div class="main">
+    <div id="topbar"></div>
+    <div class="ct">
+      <div class="inv">
+        <div class="ph">
+          <div><h1>點貨</h1><p>每月盤點庫存，決定要訂購的品項與數量</p></div>
+        </div>
+        <div class="inv-tabs" role="tablist">
+          <button type="button" data-tab="count" role="tab">點貨</button>
+          <button type="button" data-tab="order" role="tab">訂購</button>
+          <button type="button" data-tab="items" role="tab">品項</button>
+        </div>
+        <div id="pane"><div class="inv-empty">載入中…</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- item editor -->
+<div class="modal-overlay" id="m-item">
+  <div class="modal-box">
+    <div class="modal-title" id="mi-title">新增品項</div>
+    <div class="modal-sub" id="mi-sub">之後隨時可以修改</div>
+    <input type="hidden" id="mi-id">
+    <div class="modal-field">
+      <label class="modal-label" for="mi-name">品名 *</label>
+      <input class="modal-input" id="mi-name" type="text" placeholder="例：酒精棉片" autocomplete="off">
+    </div>
+    <div style="display:flex;gap:10px">
+      <div class="modal-field" style="flex:1">
+        <label class="modal-label" for="mi-unit">點貨單位</label>
+        <input class="modal-input" id="mi-unit" type="text" list="dl-units" placeholder="盒" autocomplete="off">
+      </div>
+      <div class="modal-field" style="flex:1.4">
+        <label class="modal-label" for="mi-loc">存放位置</label>
+        <input class="modal-input" id="mi-loc" type="text" list="dl-locs" placeholder="例：治療室" autocomplete="off">
+      </div>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label">訂購包裝</label>
+      <div class="pack-row">
+        <span>1</span>
+        <input class="modal-input" id="mi-pack-unit" type="text" list="dl-packs" placeholder="箱" autocomplete="off">
+        <span>＝</span>
+        <input class="modal-input" id="mi-pack" type="text" inputmode="numeric" placeholder="1">
+        <span id="mi-pack-base">盒</span>
+      </div>
+      <div class="fld-hint">廠商以整箱出貨時填寫，建議訂購量會自動湊成整箱。單買就留 1。</div>
+    </div>
+    <div style="display:flex;gap:10px">
+      <div class="modal-field" style="flex:1">
+        <label class="modal-label" for="mi-min">安全量</label>
+        <input class="modal-input" id="mi-min" type="text" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="modal-field" style="flex:1.4">
+        <label class="modal-label" for="mi-sup">供應商</label>
+        <input class="modal-input" id="mi-sup" type="text" list="dl-sups" autocomplete="off">
+      </div>
+    </div>
+    <div class="fld-hint" style="margin:-8px 0 14px">安全量：至少要留著的數量，低於這個數字會提醒。</div>
+    <div class="modal-field">
+      <label class="modal-label" for="mi-note">備註</label>
+      <input class="modal-input" id="mi-note" type="text" placeholder="例：規格、品牌" autocomplete="off">
+    </div>
+    <div id="mi-hist"></div>
+    <div class="modal-error" id="mi-err"></div>
+    <div class="modal-footer">
+      <button class="danger-link" id="mi-archive" type="button">封存品項</button>
+      <button class="act-btn" type="button" data-close="m-item">取消</button>
+      <button class="act-btn act-primary" id="mi-save" type="button">儲存</button>
+    </div>
+  </div>
+</div>
+
+<!-- bulk add -->
+<div class="modal-overlay" id="m-bulk">
+  <div class="modal-box">
+    <div class="modal-title">一次新增多個品項</div>
+    <div class="modal-sub">每行一項，格式：品名, 單位, 位置（單位和位置可省略）</div>
+    <div class="modal-field">
+      <textarea class="modal-input" id="mb-text" style="min-height:180px;resize:none" placeholder="酒精棉片, 盒, 治療室&#10;紗布 4x4, 包, 治療室&#10;生理食鹽水 500ml, 瓶, 庫房"></textarea>
+    </div>
+    <div class="modal-field">
+      <label class="modal-label" for="mb-loc">沒寫位置的品項放在</label>
+      <input class="modal-input" id="mb-loc" type="text" list="dl-locs" placeholder="（未分類）" autocomplete="off">
+    </div>
+    <div class="modal-error" id="mb-err"></div>
+    <div class="modal-footer">
+      <button class="act-btn" type="button" data-close="m-bulk">取消</button>
+      <button class="act-btn act-primary" id="mb-save" type="button">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- receive delivery -->
+<div class="modal-overlay" id="m-recv">
+  <div class="modal-box">
+    <div class="modal-title" id="mr-title">到貨</div>
+    <div class="modal-sub" id="mr-sub"></div>
+    <div class="modal-field">
+      <label class="modal-label">實際收到</label>
+      <div class="stp" id="mr-stp">
+        <button class="stp-b" type="button" data-d="-1" aria-label="減少">−</button>
+        <input class="stp-in" id="mr-qty" type="text" inputmode="decimal">
+        <button class="stp-b" type="button" data-d="1" aria-label="增加">＋</button>
+        <span class="row-unit" id="mr-unit" style="width:auto;margin-left:4px"></span>
+      </div>
+      <div class="fld-hint">少到或多到時改成實際數量，用量計算才會準確。</div>
+    </div>
+    <div class="modal-footer">
+      <button class="danger-link" id="mr-cancel" type="button">取消這筆訂單</button>
+      <button class="act-btn" type="button" data-close="m-recv">返回</button>
+      <button class="act-btn act-primary" id="mr-save" type="button">確認到貨</button>
+    </div>
+  </div>
+</div>
+
+<datalist id="dl-units"><option value="盒"><option value="包"><option value="瓶"><option value="支"><option value="個"><option value="片"><option value="罐"><option value="卷"><option value="條"><option value="組"></datalist>
+<datalist id="dl-packs"><option value="箱"><option value="打"><option value="袋"><option value="盒"></datalist>
+<datalist id="dl-locs"></datalist>
+<datalist id="dl-sups"></datalist>
+
+<script src="/static/_layout.js?v=85"></script>
+<script>
+(function () {
+  'use strict';
+  var L = Layout, esc = L.escHtml;
+  var TICK = '<svg class="tick" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+  var CHEV = '<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>';
+  var NO_LOC = '未分類';
+
+  var S = {
+    tab: null,
+    items: [],          // active items
+    archived: [],
+    cnt: null,          // /api/inventory/count
+    sugg: null,         // /api/inventory/suggestions
+    orders: [],         // open orders
+    onlyTodo: false,
+    showAllOrder: false,
+    sorting: false,
+    showArchived: false,
+    orderPick: {},      // item_id -> {on, packs}
+  };
+
+  function nurse() { return L.getNurse() || ''; }
+  function num(n) { return n == null ? '' : (Math.round(n * 10) / 10).toString(); }
+  function monthLabel(m) { return m ? parseInt(m.slice(5), 10) + ' 月' : ''; }
+  function mmdd(ts) { return ts ? parseInt(ts.slice(5, 7), 10) + '/' + parseInt(ts.slice(8, 10), 10) : ''; }
+  function locOf(it) { return it.location || NO_LOC; }
+
+  // Items grouped by storage location, keeping the saved walking order
+  function groups(items) {
+    var out = [], idx = {};
+    items.forEach(function (it) {
+      var k = locOf(it);
+      if (!(k in idx)) { idx[k] = out.length; out.push({ loc: k, items: [] }); }
+      out[idx[k]].items.push(it);
+    });
+    return out;
+  }
+
+  function fillDatalists() {
+    var locs = {}, sups = {};
+    S.items.concat(S.archived).forEach(function (it) {
+      if (it.location) locs[it.location] = 1;
+      if (it.supplier) sups[it.supplier] = 1;
+    });
+    document.getElementById('dl-locs').innerHTML = Object.keys(locs).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
+    document.getElementById('dl-sups').innerHTML = Object.keys(sups).map(function (v) { return '<option value="' + esc(v) + '">'; }).join('');
+  }
+
+  // ── loading ───────────────────────────────────────────────────────────────
+  function loadItems() {
+    return L.apiFetch('/api/inventory/items?archived=true').then(function (all) {
+      S.items = all.filter(function (i) { return i.active; });
+      S.archived = all.filter(function (i) { return !i.active; });
+      fillDatalists();
+    });
+  }
+  function loadCount() { return L.apiFetch('/api/inventory/count').then(function (d) { S.cnt = d; }); }
+  function loadOrder() {
+    return Promise.all([
+      L.apiFetch('/api/inventory/suggestions'),
+      L.apiFetch('/api/inventory/orders'),
+    ]).then(function (r) { S.sugg = r[0]; S.orders = r[1]; S.orderPick = {}; });
+  }
+
+  function loadAll() {
+    return Promise.all([loadItems(), loadCount(), loadOrder()]).then(function () {
+      if (!S.tab) {
+        var c = S.cnt.count;
+        S.tab = (c && c.completed_at) ? 'order' : 'count';
+      }
+      render();
+    }).catch(function (e) {
+      document.getElementById('pane').innerHTML = '<div class="inv-empty">載入失敗，請重新整理頁面。</div>';
+    });
+  }
+
+  // ── tabs ──────────────────────────────────────────────────────────────────
+  function render() {
+    document.getElementById('pane').classList.remove('has-sbar');
+    document.querySelectorAll('.inv-tabs button').forEach(function (b) {
+      var on = b.dataset.tab === S.tab;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+      if (b.dataset.tab === 'order') {
+        var n = S.orders.length;
+        b.innerHTML = '訂購' + (n ? '<span class="tab-dot" title="等待到貨">' + n + '</span>' : '');
+      }
+    });
+    if (S.tab === 'count') renderCount();
+    else if (S.tab === 'order') renderOrder();
+    else renderItems();
+  }
+
+  document.querySelector('.inv-tabs').addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-tab]');
+    if (!b || b.dataset.tab === S.tab) return;
+    flushSaves();
+    S.tab = b.dataset.tab;
+    var reload = S.tab === 'order' ? loadOrder() : S.tab === 'count' ? loadCount() : Promise.resolve();
+    reload.then(render);
+    document.querySelector('.ct').scrollTop = 0;
+  });
+
+  // ══ 點貨 ══════════════════════════════════════════════════════════════════
+  var _pending = {}, _timers = {}, _inflight = 0, _saveErr = false;
+
+  function counted() {
+    var lines = S.cnt.lines;
+    return S.items.filter(function (it) { return lines[it.id] != null; }).length;
+  }
+
+  function renderCount() {
+    var c = S.cnt.count, pane = document.getElementById('pane');
+    if (!S.items.length) {
+      pane.innerHTML = '<div class="card hero"><div class="hero-month">' + monthLabel(S.cnt.month) + '點貨</div>' +
+        '<div class="hero-meta">還沒有任何品項。先把筆記本上的品項加進來，下次點貨就能直接用手機點。</div>' +
+        '<button class="bp big-btn" type="button" data-act="bulk">一次新增多個品項</button>' +
+        '<button class="act-btn big-btn" type="button" data-act="new-item">新增單一品項</button></div>';
+      return;
+    }
+    if (!c) {
+      var prev = S.cnt.previous;
+      pane.innerHTML = '<div class="card hero">' +
+        '<div class="hero-month">' + monthLabel(S.cnt.month) + '點貨</div>' +
+        '<div class="hero-meta">' + (prev
+          ? '上次點貨：' + monthLabel(prev.month) + '，' + esc(prev.completed_by || '') + ' 在 ' + mmdd(prev.completed_at) + ' 完成'
+          : '這是第一次點貨。完成兩次之後，系統就能估算每個月的用量和建議訂購量。') + '</div>' +
+        '<div class="hero-stats">' +
+          '<div class="hero-stat"><b>' + S.items.length + '</b><span>個品項</span></div>' +
+          '<div class="hero-stat"><b>' + groups(S.items).length + '</b><span>個存放位置</span></div>' +
+        '</div>' +
+        '<button class="bp big-btn" type="button" data-act="start">開始點貨</button>' +
+        '<div class="hero-meta muted" style="font-size:12px">每個數字輸入後會自動儲存，中途離開也可以回來繼續，兩個人也能分區同時點。</div>' +
+        '</div>';
+      return;
+    }
+    var done = !!c.completed_at;
+    var gs = groups(S.items);
+    var lines = S.cnt.lines, prevLines = S.cnt.previous_lines;
+    var html = '';
+    if (done) {
+      html += '<div class="card hero">' +
+        '<div class="done-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="16 9 10.5 15 8 12.5"/></svg>' + monthLabel(c.month) + '點貨已完成</div>' +
+        '<div class="hero-meta">' + esc(c.completed_by || '') + ' 在 ' + mmdd(c.completed_at) + ' 完成，共點了 ' + counted() + ' / ' + S.items.length + ' 項。</div>' +
+        '<button class="bp big-btn" type="button" data-act="go-order">前往訂購</button>' +
+        '<button class="act-btn big-btn" type="button" data-act="reopen">重新開啟修改</button>' +
+        '</div>';
+    } else {
+      var n = counted(), tot = S.items.length;
+      html += '<div class="cbar">' +
+        '<div class="cbar-top"><span class="cbar-txt" id="cb-txt">已點 ' + n + ' / ' + tot + '</span>' +
+        '<span class="cbar-save" id="cb-save"></span></div>' +
+        '<div class="ptrack"><div class="pfill" id="cb-fill" style="width:' + (tot ? n / tot * 100 : 0) + '%"></div></div>' +
+        '<div class="chips">' +
+          '<button class="chip' + (S.onlyTodo ? ' on' : '') + '" type="button" data-act="todo">只看未點</button>' +
+          gs.map(function (g, i) {
+            var left = g.items.filter(function (it) { return lines[it.id] == null; }).length;
+            return '<button class="chip' + (left ? '' : ' done') + '" type="button" data-jump="' + i + '">' + esc(g.loc) +
+              (left ? ' ' + left : ' ✓') + '</button>';
+          }).join('') +
+        '</div></div>';
+    }
+    gs.forEach(function (g, gi) {
+      var rows = g.items.filter(function (it) { return done || !S.onlyTodo || lines[it.id] == null; });
+      if (!rows.length) return;
+      var left = g.items.filter(function (it) { return lines[it.id] == null; }).length;
+      html += '<div class="grp" id="grp-' + gi + '"><div class="grp-h">' + esc(g.loc) +
+        '<span class="grp-n">' + (left ? '剩 ' + left + ' 項' : '完成') + '</span></div>';
+      rows.forEach(function (it) {
+        var q = lines[it.id], p = prevLines[it.id];
+        html += '<div class="row' + (q != null ? ' counted' : '') + '" data-id="' + it.id + '">' +
+          '<div class="row-main"><div class="row-name">' + TICK + '<span>' + esc(it.name) + '</span></div>' +
+          '<div class="row-sub">' + (p != null ? '上月 ' + num(p) + ' ' + esc(it.unit) : '上月沒有紀錄') +
+            (!done && p != null ? '<button class="same-btn" type="button" data-same="' + num(p) + '">同上月</button>' : '') +
+          '</div></div>' +
+          (done
+            ? '<span class="row-ro">' + (q != null ? num(q) : '—') + '</span>'
+            : '<div class="stp"><button class="stp-b" type="button" data-d="-1" aria-label="減少">−</button>' +
+              '<input class="stp-in" type="text" inputmode="decimal" enterkeyhint="next" placeholder="—" aria-label="' + esc(it.name) + ' 數量" value="' + num(q) + '">' +
+              '<button class="stp-b" type="button" data-d="1" aria-label="增加">＋</button></div>') +
+          '<span class="row-unit">' + esc(it.unit) + '</span></div>';
+      });
+      html += '</div>';
+    });
+    if (!done) {
+      var left = S.items.length - counted();
+      html += '<div class="card" style="display:flex;flex-direction:column;gap:10px">' +
+        '<button class="bp big-btn" type="button" data-act="complete">完成點貨' + (left ? '（還有 ' + left + ' 項未點）' : '') + '</button>' +
+        '<button class="act-btn big-btn" type="button" data-act="new-item">清單上沒有？新增品項</button></div>';
+    }
+    pane.innerHTML = html;
+    if (_saveErr) setSaveState('err');
+  }
+
+  function updateProgress() {
+    var n = counted(), tot = S.items.length;
+    var t = document.getElementById('cb-txt'), f = document.getElementById('cb-fill');
+    if (t) t.textContent = '已點 ' + n + ' / ' + tot;
+    if (f) f.style.width = (tot ? n / tot * 100 : 0) + '%';
+  }
+
+  function setSaveState(state) {
+    var el = document.getElementById('cb-save');
+    if (!el) return;
+    el.classList.toggle('err', state === 'err');
+    el.textContent = state === 'saving' ? '儲存中…' : state === 'err' ? '有數量未儲存' : state === 'ok' ? '已儲存' : '';
+  }
+
+  function parseQty(v) {
+    v = String(v).trim();
+    if (v === '') return null;
+    var n = parseFloat(v);
+    return isNaN(n) || n < 0 ? NaN : n;
+  }
+
+  // Each item saves on its own, shortly after the nurse stops typing
+  function queueSave(itemId, qty) {
+    _pending[itemId] = qty;
+    clearTimeout(_timers[itemId]);
+    _timers[itemId] = setTimeout(function () { save(itemId); }, 600);
+  }
+
+  function save(itemId) {
+    if (!(itemId in _pending)) return;
+    var qty = _pending[itemId];
+    delete _pending[itemId];
+    clearTimeout(_timers[itemId]);
+    _inflight++;
+    setSaveState('saving');
+    L.apiAction('PUT', '/api/inventory/count/' + S.cnt.count.id + '/lines/' + itemId, { qty: qty, nurse: nurse() })
+      .then(function () {
+        var row = document.querySelector('.row[data-id="' + itemId + '"]');
+        if (row) row.classList.remove('err');
+      })
+      .catch(function (e) {
+        _saveErr = true;
+        var row = document.querySelector('.row[data-id="' + itemId + '"]');
+        if (row) row.classList.add('err');
+        L.showToast('儲存失敗：' + (e.message || '請檢查網路'), 'error');
+      })
+      .then(function () {
+        _inflight--;
+        if (!_inflight) setSaveState(document.querySelector('.row.err') ? 'err' : 'ok');
+        if (!document.querySelector('.row.err')) _saveErr = false;
+      });
+  }
+
+  function flushSaves() { Object.keys(_pending).forEach(save); }
+
+  function setRowQty(row, qty, fromInput) {
+    var id = row.dataset.id;
+    var input = row.querySelector('.stp-in');
+    if (!fromInput) input.value = num(qty);
+    if (qty == null) delete S.cnt.lines[id]; else S.cnt.lines[id] = qty;
+    row.classList.toggle('counted', qty != null);
+    updateProgress();
+    queueSave(id, qty);
+  }
+
+  // ══ 訂購 ══════════════════════════════════════════════════════════════════
+  function orderUnit(it) { return it.pack_size > 1 ? (it.pack_unit || '包裝') : it.unit; }
+
+  function pick(it) {
+    var p = S.orderPick[it.id];
+    if (!p) {
+      var packs = it.suggested ? it.suggested / it.pack_size : 0;
+      p = S.orderPick[it.id] = { on: !!it.suggested, packs: packs };
+    }
+    return p;
+  }
+
+  function needsAttention(it) { return it.suggested > 0 || it.flags.length; }
+
+  function orderRow(it) {
+    var p = pick(it);
+    var sub = it.stock == null ? '本月尚未點' : '現有 ' + num(it.stock) + ' ' + esc(it.unit) + (it.on_order ? '・在途 ' + num(it.on_order) : '');
+    return '<div class="row orow' + (p.on ? '' : ' off') + '" data-oid="' + it.id + '">' +
+      '<input class="ochk" type="checkbox" aria-label="訂購 ' + esc(it.name) + '"' + (p.on ? ' checked' : '') + '>' +
+      '<div class="row-main"><div class="row-name"><span>' + esc(it.name) + '</span></div>' +
+        '<div class="row-sub">' + sub + (it.supplier ? '・' + esc(it.supplier) : '') + '</div>' +
+        (it.reason ? '<div class="reason">' + esc(it.reason) + (it.suggested ? ' → 建議 ' + num(it.suggested / it.pack_size) + ' ' + esc(orderUnit(it)) : '') + '</div>' : '') +
+        it.flags.map(function (f) { return '<span class="flag">' + esc(f) + '</span>'; }).join('') +
+      '</div>' +
+      '<div class="ocol">' +
+        (it.pack_size > 1 ? '<div class="conv" data-conv>＝ ' + num(p.packs * it.pack_size) + ' ' + esc(it.unit) + '</div>' : '') +
+        '<div class="stp"><button class="stp-b" type="button" data-d="-1" aria-label="減少">−</button>' +
+        '<input class="stp-in" type="text" inputmode="numeric" value="' + num(p.packs) + '" aria-label="' + esc(it.name) + ' 訂購數量">' +
+        '<button class="stp-b" type="button" data-d="1" aria-label="增加">＋</button>' +
+        '<span class="row-unit">' + esc(orderUnit(it)) + '</span></div>' +
+      '</div></div>';
+  }
+
+  function chosen() {
+    return S.sugg.items.filter(function (it) { var p = S.orderPick[it.id]; return p && p.on && p.packs > 0; });
+  }
+
+  function renderOrder() {
+    var pane = document.getElementById('pane');
+    var latest = S.sugg.count, html = '';
+
+    if (S.orders.length) {
+      html += '<div class="sec-h"><h2>等待到貨</h2><span class="sec-n">' + S.orders.length + ' 項</span>' +
+        '<button class="act-btn sec-act" type="button" data-act="copy">複製訂購清單</button></div>' +
+        '<div class="grp">' + S.orders.map(function (o) {
+          var packs = o.qty / (o.pack_size || 1);
+          var amt = o.pack_size > 1 ? num(packs) + ' ' + esc(o.pack_unit || '包裝') + '（' + num(o.qty) + ' ' + esc(o.unit) + '）' : num(o.qty) + ' ' + esc(o.unit);
+          return '<div class="row" data-order="' + o.id + '"><div class="row-main">' +
+            '<div class="row-name"><span>' + esc(o.name) + '</span></div>' +
+            '<div class="drow-meta">' + amt + '・' + mmdd(o.ordered_at) + ' ' + esc(o.ordered_by) + ' 訂' + (o.supplier ? '・' + esc(o.supplier) : '') + '</div>' +
+            '</div><div class="drow-act"><button class="act-btn act-primary" type="button" data-recv="' + o.id + '">到貨</button></div></div>';
+        }).join('') + '</div>';
+    }
+
+    if (!latest) {
+      html += '<div class="card inv-empty">完成本月點貨後，這裡會列出建議訂購的品項和數量。</div>';
+      pane.innerHTML = html;
+      return;
+    }
+    var items = S.sugg.items;
+    var need = items.filter(needsAttention), rest = items.filter(function (it) { return !needsAttention(it); });
+
+    html += '<div class="sec-h"><h2>' + monthLabel(latest.month) + '建議訂購</h2><span class="sec-n">' + need.length + ' 項</span></div>';
+    if (!latest.completed_at) {
+      html += '<div class="note-box">本月點貨還沒完成，只有已點的品項會算出建議數量。</div>';
+    }
+    if (need.length) {
+      html += '<div class="grp">' + need.map(orderRow).join('') + '</div>';
+    } else {
+      html += '<div class="card inv-empty" style="padding:22px">目前沒有需要補貨的品項。</div>';
+    }
+    if (rest.length) {
+      html += '<div class="grp">' +
+        (S.showAllOrder ? rest.map(orderRow).join('') : '') +
+        '<button class="more-btn" type="button" data-act="toggle-rest">' +
+          (S.showAllOrder ? '收起其他品項' : '其他品項也要訂？顯示全部（' + rest.length + '）') + '</button></div>';
+    }
+    html += '<div class="sbar"><button class="bp big-btn" type="button" id="btn-place" data-act="place"></button></div>';
+    pane.innerHTML = html;
+    pane.classList.add('has-sbar');
+    updatePlaceBtn();
+  }
+
+  function updatePlaceBtn() {
+    var b = document.getElementById('btn-place');
+    if (!b) return;
+    var n = chosen().length;
+    b.disabled = !n;
+    b.style.opacity = n ? '' : '.5';
+    b.textContent = n ? '標記為已訂購（' + n + ' 項）' : '勾選要訂購的品項';
+  }
+
+  function orderText() {
+    // Grouped by supplier so it can be pasted straight into a LINE chat or read over the phone
+    var bySup = {};
+    S.orders.forEach(function (o) {
+      var k = o.supplier || '未指定供應商';
+      (bySup[k] = bySup[k] || []).push(o);
+    });
+    var d = new Date();
+    return '【' + (d.getMonth() + 1) + '/' + d.getDate() + ' 訂購清單】\n' + Object.keys(bySup).map(function (k) {
+      return '\n' + k + '\n' + bySup[k].map(function (o) {
+        var amt = o.pack_size > 1 ? num(o.qty / o.pack_size) + ' ' + (o.pack_unit || '包裝') : num(o.qty) + ' ' + o.unit;
+        return '・' + o.name + ' ' + amt;
+      }).join('\n');
+    }).join('\n');
+  }
+
+  // ══ 品項 ══════════════════════════════════════════════════════════════════
+  function renderItems() {
+    var pane = document.getElementById('pane');
+    var html = '<div class="itoolbar">' +
+      '<button class="bp" type="button" data-act="new-item">＋ 新增品項</button>' +
+      '<button class="act-btn" type="button" data-act="bulk">一次新增多個</button>' +
+      (S.items.length > 1 ? '<button class="act-btn" type="button" data-act="sort" style="margin-left:auto">' + (S.sorting ? '完成排序' : '調整順序') + '</button>' : '') +
+      '</div>';
+    if (S.sorting) html += '<div class="note-box" style="background:var(--inv-acc-soft);border-color:transparent;color:var(--sub)">照實際走過的順序排列，點貨時就能一路往下點。</div>';
+    if (!S.items.length) {
+      html += '<div class="card inv-empty">還沒有品項。可以一項一項新增，或把筆記本上的清單一次貼上。</div>';
+    }
+    html += '<div class="' + (S.sorting ? 'sorting' : '') + '" style="display:flex;flex-direction:column;gap:13px">';
+    groups(S.items).forEach(function (g) {
+      html += '<div class="grp"><div class="grp-h">' + esc(g.loc) + '<span class="grp-n">' + g.items.length + ' 項</span></div>';
+      g.items.forEach(function (it, i) {
+        var meta = [esc(it.unit)];
+        if (it.pack_size > 1) meta.push('1 ' + esc(it.pack_unit || '包裝') + '＝' + it.pack_size + ' ' + esc(it.unit));
+        if (it.min_stock) meta.push('安全量 ' + num(it.min_stock));
+        if (it.supplier) meta.push(esc(it.supplier));
+        html += '<div class="row irow" data-item="' + it.id + '"><div class="row-main">' +
+          '<div class="row-name"><span>' + esc(it.name) + '</span></div>' +
+          '<div class="row-sub">' + meta.join('・') + '</div></div>' +
+          '<div class="mv"><button type="button" data-mv="-1" aria-label="上移"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+          '<button type="button" data-mv="1" aria-label="下移"' + (i === g.items.length - 1 ? ' disabled' : '') + '>↓</button></div>' +
+          CHEV + '</div>';
+      });
+      html += '</div>';
+    });
+    html += '</div>';
+    if (S.archived.length) {
+      html += '<div class="grp"><button class="more-btn" style="border-top:none" type="button" data-act="toggle-archived">' +
+        (S.showArchived ? '收起已封存品項' : '已封存品項（' + S.archived.length + '）') + '</button>' +
+        (S.showArchived ? S.archived.map(function (it) {
+          return '<div class="row"><div class="row-main"><div class="row-name"><span class="muted">' + esc(it.name) + '</span></div>' +
+            '<div class="row-sub">' + esc(locOf(it)) + '</div></div>' +
+            '<button class="act-btn" type="button" data-restore="' + it.id + '">還原</button></div>';
+        }).join('') : '') + '</div>';
+    }
+    pane.innerHTML = html;
+  }
+
+  function moveItem(itemId, dir) {
+    var it = S.items.find(function (x) { return x.id === itemId; });
+    var g = groups(S.items).find(function (x) { return x.loc === locOf(it); });
+    var ids = g.items.map(function (x) { return x.id; });
+    var i = ids.indexOf(itemId), j = i + dir;
+    if (j < 0 || j >= ids.length) return;
+    ids[i] = ids[j]; ids[j] = itemId;
+    // Reflect locally right away, then save
+    ids.forEach(function (id, k) { S.items.find(function (x) { return x.id === id; }).sort_order = k; });
+    S.items.sort(function (a, b) {
+      return locOf(a) === locOf(b) ? a.sort_order - b.sort_order : (locOf(a) < locOf(b) ? -1 : 1);
+    });
+    renderItems();
+    L.apiAction('PUT', '/api/inventory/items-order', { ids: ids }).catch(function () {
+      L.showToast('順序儲存失敗', 'error');
+    });
+  }
+
+  // ── item editor ───────────────────────────────────────────────────────────
+  var _editLoc = '';
+  function openItem(it, presetLoc) {
+    var isNew = !it;
+    it = it || { name: '', unit: '', location: presetLoc || '', pack_size: 1, pack_unit: '', min_stock: 0, supplier: '', note: '' };
+    document.getElementById('mi-title').textContent = isNew ? '新增品項' : '編輯品項';
+    document.getElementById('mi-sub').textContent = isNew ? '之後隨時可以修改' : '修改後下次點貨就會套用';
+    document.getElementById('mi-id').value = isNew ? '' : it.id;
+    document.getElementById('mi-name').value = it.name;
+    document.getElementById('mi-unit').value = it.unit && !isNew ? it.unit : '';
+    document.getElementById('mi-loc').value = it.location;
+    document.getElementById('mi-pack').value = it.pack_size > 1 ? it.pack_size : '';
+    document.getElementById('mi-pack-unit').value = it.pack_unit;
+    document.getElementById('mi-min').value = it.min_stock ? num(it.min_stock) : '';
+    document.getElementById('mi-sup').value = it.supplier;
+    document.getElementById('mi-note').value = it.note;
+    document.getElementById('mi-archive').style.display = isNew ? 'none' : '';
+    document.getElementById('mi-err').classList.remove('show');
+    syncPackBase();
+    renderHistory(isNew ? null : it.id);
+    L.showModal('m-item');
+    if (isNew) setTimeout(function () { document.getElementById('mi-name').focus(); }, 220);
+  }
+
+  function renderHistory(itemId) {
+    var box = document.getElementById('mi-hist');
+    var s = itemId && S.sugg && S.sugg.items.find(function (x) { return x.id === itemId; });
+    if (!s || !s.history.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="modal-field"><label class="modal-label">最近用量</label><div class="hist">' +
+      s.history.slice().reverse().map(function (h) {
+        return '<div class="hist-row"><span>' + mmdd(h.from) + ' → ' + mmdd(h.to) + '</span>' +
+          '<span>' + num(h.start) + (h.arrived ? ' ＋到貨 ' + num(h.arrived) : '') + ' → ' + num(h.end) +
+          '　用 <b>' + (h.valid ? num(h.used) : '?') + '</b> ' + esc(s.unit) + '</span></div>';
+      }).join('') + '</div></div>';
+  }
+
+  function syncPackBase() {
+    document.getElementById('mi-pack-base').textContent = document.getElementById('mi-unit').value.trim() || '盒';
+  }
+  document.getElementById('mi-unit').addEventListener('input', syncPackBase);
+
+  document.getElementById('mi-save').addEventListener('click', function () {
+    var name = document.getElementById('mi-name').value.trim();
+    var err = document.getElementById('mi-err');
+    if (!name) { err.textContent = '請輸入品名'; err.classList.add('show'); return; }
+    var id = document.getElementById('mi-id').value;
+    var body = {
+      name: name,
+      unit: document.getElementById('mi-unit').value.trim(),
+      location: document.getElementById('mi-loc').value.trim(),
+      pack_size: parseInt(document.getElementById('mi-pack').value, 10) || 1,
+      pack_unit: document.getElementById('mi-pack-unit').value.trim(),
+      min_stock: parseFloat(document.getElementById('mi-min').value) || 0,
+      supplier: document.getElementById('mi-sup').value.trim(),
+      note: document.getElementById('mi-note').value.trim(),
+    };
+    var btn = this; btn.disabled = true;
+    L.apiAction(id ? 'PUT' : 'POST', id ? '/api/inventory/items/' + id : '/api/inventory/items', body)
+      .then(function () {
+        L.hideModal('m-item');
+        L.showToast(id ? '已更新' : '已新增「' + name + '」');
+        return Promise.all([loadItems(), loadOrder()]);
+      })
+      .then(render)
+      .catch(function (e) { err.textContent = e.message || '儲存失敗'; err.classList.add('show'); })
+      .then(function () { btn.disabled = false; });
+  });
+
+  document.getElementById('mi-archive').addEventListener('click', function () {
+    var id = document.getElementById('mi-id').value;
+    if (!id || !confirm('封存後不會再出現在點貨清單，過去的紀錄會保留。確定封存？')) return;
+    L.apiAction('POST', '/api/inventory/items/' + id + '/archive', {})
+      .then(function () { L.hideModal('m-item'); L.showToast('已封存'); return Promise.all([loadItems(), loadOrder()]); })
+      .then(render)
+      .catch(function (e) { L.showToast('封存失敗：' + (e.message || ''), 'error'); });
+  });
+
+  document.getElementById('mb-save').addEventListener('click', function () {
+    var text = document.getElementById('mb-text').value;
+    var err = document.getElementById('mb-err');
+    if (!text.trim()) { err.textContent = '請貼上至少一個品項'; err.classList.add('show'); return; }
+    var btn = this; btn.disabled = true;
+    L.apiAction('POST', '/api/inventory/items/bulk', { text: text, location: document.getElementById('mb-loc').value.trim() })
+      .then(function (r) {
+        L.hideModal('m-bulk');
+        L.showToast('已新增 ' + r.added + ' 個品項');
+        document.getElementById('mb-text').value = '';
+        return Promise.all([loadItems(), loadOrder()]);
+      })
+      .then(render)
+      .catch(function (e) { err.textContent = e.message || '新增失敗'; err.classList.add('show'); })
+      .then(function () { btn.disabled = false; });
+  });
+
+  // ── receive delivery ──────────────────────────────────────────────────────
+  var _recv = null;
+  function openRecv(orderId) {
+    _recv = S.orders.find(function (o) { return o.id === orderId; });
+    if (!_recv) return;
+    var packs = _recv.pack_size > 1;
+    document.getElementById('mr-title').textContent = _recv.name + ' 到貨';
+    document.getElementById('mr-sub').textContent = mmdd(_recv.ordered_at) + ' 訂購 ' +
+      (packs ? num(_recv.qty / _recv.pack_size) + ' ' + (_recv.pack_unit || '包裝') : num(_recv.qty) + ' ' + _recv.unit);
+    document.getElementById('mr-qty').value = num(packs ? _recv.qty / _recv.pack_size : _recv.qty);
+    document.getElementById('mr-unit').textContent = packs ? (_recv.pack_unit || '包裝') : _recv.unit;
+    L.showModal('m-recv');
+  }
+
+  document.getElementById('mr-stp').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-d]');
+    if (!b) return;
+    var inp = document.getElementById('mr-qty');
+    inp.value = num(Math.max(0, (parseFloat(inp.value) || 0) + parseInt(b.dataset.d, 10)));
+  });
+
+  document.getElementById('mr-save').addEventListener('click', function () {
+    var q = parseQty(document.getElementById('mr-qty').value);
+    if (q == null || isNaN(q)) { L.showToast('請輸入收到的數量', 'error'); return; }
+    var base = _recv.pack_size > 1 ? q * _recv.pack_size : q;
+    L.apiAction('POST', '/api/inventory/orders/' + _recv.id + '/receive', { qty: base, nurse: nurse() })
+      .then(function () { L.hideModal('m-recv'); L.showToast('已記錄到貨'); return loadOrder(); })
+      .then(render)
+      .catch(function (e) { L.showToast('記錄失敗：' + (e.message || ''), 'error'); });
+  });
+
+  document.getElementById('mr-cancel').addEventListener('click', function () {
+    if (!confirm('取消這筆訂單？（例如廠商缺貨、不會送來）')) return;
+    L.apiAction('POST', '/api/inventory/orders/' + _recv.id + '/cancel', {})
+      .then(function () { L.hideModal('m-recv'); L.showToast('已取消訂單'); return loadOrder(); })
+      .then(render)
+      .catch(function (e) { L.showToast('取消失敗：' + (e.message || ''), 'error'); });
+  });
+
+  document.querySelectorAll('[data-close]').forEach(function (b) {
+    b.addEventListener('click', function () { L.hideModal(b.dataset.close); });
+  });
+
+  // ── pane events (delegated; the pane is re-rendered often) ────────────────
+  var pane = document.getElementById('pane');
+
+  pane.addEventListener('click', function (e) {
+    var t;
+    if ((t = e.target.closest('[data-act]'))) return onAct(t.dataset.act, t);
+    if ((t = e.target.closest('[data-jump]'))) {
+      var g = document.getElementById('grp-' + t.dataset.jump);
+      if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      return;
+    }
+    if ((t = e.target.closest('[data-same]'))) {
+      return setRowQty(t.closest('.row'), parseFloat(t.dataset.same), false);
+    }
+    if ((t = e.target.closest('[data-recv]'))) return openRecv(parseInt(t.dataset.recv, 10));
+    if ((t = e.target.closest('[data-restore]'))) {
+      return L.apiAction('POST', '/api/inventory/items/' + t.dataset.restore + '/archive', { restore: true })
+        .then(function () { L.showToast('已還原'); return Promise.all([loadItems(), loadOrder()]); })
+        .then(render);
+    }
+    if ((t = e.target.closest('[data-mv]'))) {
+      return moveItem(parseInt(t.closest('[data-item]').dataset.item, 10), parseInt(t.dataset.mv, 10));
+    }
+    if ((t = e.target.closest('.stp-b'))) {
+      var row = t.closest('.row'), d = parseInt(t.dataset.d, 10);
+      var inp = row.querySelector('.stp-in');
+      var cur = parseFloat(inp.value);
+      if (row.dataset.id) {
+        if (isNaN(cur) && d < 0) return;
+        setRowQty(row, Math.max(0, (isNaN(cur) ? 0 : cur) + d), false);
+      } else if (row.dataset.oid) {
+        setPacks(row, Math.max(0, (isNaN(cur) ? 0 : cur) + d), false);
+      }
+      return;
+    }
+    if ((t = e.target.closest('.irow')) && !e.target.closest('.mv') && !S.sorting) {
+      var id = parseInt(t.dataset.item, 10);
+      openItem(S.items.find(function (x) { return x.id === id; }));
+    }
+  });
+
+  pane.addEventListener('input', function (e) {
+    var inp = e.target;
+    if (!inp.classList.contains('stp-in')) return;
+    var row = inp.closest('.row');
+    var q = parseQty(inp.value);
+    if (isNaN(q)) return;   // ignore half-typed values like "1." until they parse
+    if (row.dataset.id) setRowQty(row, q, true);
+    else if (row.dataset.oid) setPacks(row, q, true);
+  });
+
+  pane.addEventListener('focusin', function (e) {
+    if (e.target.classList.contains('stp-in')) e.target.select();
+  });
+
+  pane.addEventListener('change', function (e) {
+    if (!e.target.classList.contains('ochk')) return;
+    var row = e.target.closest('.row');
+    var it = S.sugg.items.find(function (x) { return String(x.id) === row.dataset.oid; });
+    var p = pick(it);
+    p.on = e.target.checked;
+    if (p.on && !p.packs) setPacks(row, 1, false);
+    row.classList.toggle('off', !p.on);
+    updatePlaceBtn();
+  });
+
+  function setPacks(row, packs, fromInput) {
+    var it = S.sugg.items.find(function (x) { return String(x.id) === row.dataset.oid; });
+    var p = pick(it);
+    p.packs = packs || 0;
+    p.on = p.packs > 0;
+    if (!fromInput) row.querySelector('.stp-in').value = num(p.packs);
+    row.querySelector('.ochk').checked = p.on;
+    row.classList.toggle('off', !p.on);
+    var conv = row.querySelector('[data-conv]');
+    if (conv) conv.textContent = '＝ ' + num(p.packs * it.pack_size) + ' ' + it.unit;
+    updatePlaceBtn();
+  }
+
+  function onAct(act, el) {
+    if (act === 'start') {
+      el.disabled = true;
+      return L.apiAction('POST', '/api/inventory/count', { nurse: nurse() })
+        .then(loadCount).then(render)
+        .catch(function (e) { el.disabled = false; L.showToast('無法開始：' + (e.message || ''), 'error'); });
+    }
+    if (act === 'todo') { S.onlyTodo = !S.onlyTodo; return renderCount(); }
+    if (act === 'complete') {
+      flushSaves();
+      var left = S.items.length - counted();
+      if (left && !confirm('還有 ' + left + ' 項沒有點。沒點的品項這個月不會計算用量和建議訂購量。\n\n確定完成點貨？')) return;
+      el.disabled = true;
+      return L.apiAction('POST', '/api/inventory/count/' + S.cnt.count.id + '/complete', { nurse: nurse() })
+        .then(function () { L.showToast('點貨完成，以下是建議訂購的品項'); S.tab = 'order'; return Promise.all([loadCount(), loadOrder()]); })
+        .then(function () { render(); document.querySelector('.ct').scrollTop = 0; })
+        .catch(function (e) { el.disabled = false; L.showToast('完成失敗：' + (e.message || ''), 'error'); });
+    }
+    if (act === 'reopen') {
+      return L.apiAction('POST', '/api/inventory/count/' + S.cnt.count.id + '/reopen', {})
+        .then(loadCount).then(render)
+        .catch(function (e) { L.showToast('無法重新開啟：' + (e.message || ''), 'error'); });
+    }
+    if (act === 'go-order') { S.tab = 'order'; return loadOrder().then(render); }
+    if (act === 'new-item') return openItem(null, '');
+    if (act === 'bulk') {
+      document.getElementById('mb-err').classList.remove('show');
+      return L.showModal('m-bulk');
+    }
+    if (act === 'sort') { S.sorting = !S.sorting; return renderItems(); }
+    if (act === 'toggle-archived') { S.showArchived = !S.showArchived; return renderItems(); }
+    if (act === 'toggle-rest') { S.showAllOrder = !S.showAllOrder; return renderOrder(); }
+    if (act === 'copy') {
+      var text = orderText();
+      return (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject())
+        .then(function () { L.showToast('已複製，可以貼到 LINE 或簡訊給廠商'); })
+        .catch(function () { prompt('複製以下內容：', text); });
+    }
+    if (act === 'place') {
+      var lines = chosen().map(function (it) {
+        return { item_id: it.id, qty: S.orderPick[it.id].packs * it.pack_size };
+      });
+      if (!lines.length) return;
+      el.disabled = true;
+      return L.apiAction('POST', '/api/inventory/orders', {
+        lines: lines, nurse: nurse(), count_id: S.sugg.count ? S.sugg.count.id : null,
+      })
+        .then(function (r) { L.showToast('已記錄 ' + r.placed + ' 項訂購，到貨時記得按「到貨」'); return loadOrder(); })
+        .then(function () { render(); document.querySelector('.ct').scrollTop = 0; })
+        .catch(function (e) { el.disabled = false; L.showToast('記錄失敗：' + (e.message || ''), 'error'); });
+    }
+  }
+
+  // Don't lose a number typed just before leaving the page
+  window.addEventListener('pagehide', flushSaves);
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'hidden') flushSaves();
+    // Coming back: another nurse may have counted other sections meanwhile
+    else if (S.tab === 'count' && S.cnt && S.cnt.count && !S.cnt.count.completed_at && !Object.keys(_pending).length) {
+      loadCount().then(function () { if (!document.activeElement || !document.activeElement.classList.contains('stp-in')) renderCount(); });
+    }
+  });
+
+  Layout.init({ activePage: 'inventory', onRefresh: loadAll });
+  loadAll();
+})();
+</script>
+</body>
+</html>

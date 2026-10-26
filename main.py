@@ -27,6 +27,7 @@ import contacts
 import database
 import db
 import directory
+import inventory
 import lab_report
 import lab_results
 import line_service
@@ -115,6 +116,7 @@ except RuntimeError as e:
 auth.init()
 contacts.init()
 directory.init()
+inventory.init()
 lab_report.init()
 line_service.init()
 broadcast_service.init()
@@ -2731,6 +2733,149 @@ def delete_clinic_contact(contact_id: int, user: auth.CurrentUser = Depends(auth
     except Exception:
         logger.exception("delete_clinic_contact failed for id=%s", contact_id)
         raise HTTPException(status_code=500, detail="刪除失敗")
+
+
+# ── Inventory (monthly 點貨 + ordering) ────────────────────────────────────────
+
+def _inv_nurse(body: dict, user: auth.CurrentUser) -> str:
+    # Shared-session model: nurse name comes from PIN selection passed by the frontend
+    return str(body.get("nurse") or "").strip() or user.display_name
+
+
+def _inv_qty(value, allow_none: bool = False) -> float | None:
+    if value is None or value == "":
+        if allow_none:
+            return None
+        raise HTTPException(status_code=422, detail="請輸入數量")
+    try:
+        q = float(value)
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=422, detail="數量格式不正確")
+    if q < 0 or q > 1_000_000:
+        raise HTTPException(status_code=422, detail="數量格式不正確")
+    return q
+
+
+@app.get("/api/inventory/items")
+def inv_list_items(archived: bool = False, user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    return inventory.list_items(user.clinic_id, include_archived=archived)
+
+
+@app.post("/api/inventory/items")
+def inv_add_item(body: dict = Body(...), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    if not str(body.get("name") or "").strip():
+        raise HTTPException(status_code=422, detail="品名不可空白")
+    return {"id": inventory.add_item(user.clinic_id, body)}
+
+
+@app.post("/api/inventory/items/bulk")
+def inv_bulk_add(body: dict = Body(...), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    """Add many items at once from pasted lines: 品名, 單位, 位置 (unit and location optional)."""
+    added = 0
+    for line in str(body.get("text") or "").splitlines():
+        parts = [p.strip() for p in _re.split(r"[,，\t]", line)]
+        if not parts or not parts[0]:
+            continue
+        inventory.add_item(user.clinic_id, {
+            "name": parts[0],
+            "unit": parts[1] if len(parts) > 1 else "",
+            "location": parts[2] if len(parts) > 2 else str(body.get("location") or ""),
+        })
+        added += 1
+    return {"added": added}
+
+
+@app.put("/api/inventory/items/{item_id}")
+def inv_update_item(item_id: int, body: dict = Body(...), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    if not str(body.get("name") or "").strip():
+        raise HTTPException(status_code=422, detail="品名不可空白")
+    if not inventory.update_item(user.clinic_id, item_id, body):
+        raise HTTPException(status_code=404, detail="找不到此品項")
+    return {"ok": True}
+
+
+@app.post("/api/inventory/items/{item_id}/archive")
+def inv_archive_item(item_id: int, body: dict = Body(default={}), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    if not inventory.set_item_active(user.clinic_id, item_id, bool(body.get("restore"))):
+        raise HTTPException(status_code=404, detail="找不到此品項")
+    return {"ok": True}
+
+
+@app.put("/api/inventory/items-order")
+def inv_reorder(body: dict = Body(...), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    ids = body.get("ids")
+    if not isinstance(ids, list):
+        raise HTTPException(status_code=422, detail="ids 須為陣列")
+    inventory.reorder_items(user.clinic_id, [int(i) for i in ids])
+    return {"ok": True}
+
+
+@app.get("/api/inventory/count")
+def inv_current_count(user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    return inventory.get_current_count(user.clinic_id)
+
+
+@app.post("/api/inventory/count")
+def inv_start_count(body: dict = Body(default={}), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    return inventory.start_count(user.clinic_id, _inv_nurse(body, user))
+
+
+@app.put("/api/inventory/count/{count_id}/lines/{item_id}")
+def inv_set_line(count_id: int, item_id: int, body: dict = Body(...), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    qty = _inv_qty(body.get("qty"), allow_none=True)
+    if not inventory.set_line(user.clinic_id, count_id, item_id, qty, _inv_nurse(body, user)):
+        raise HTTPException(status_code=409, detail="這次點貨已完成，請先重新開啟才能修改")
+    return {"ok": True}
+
+
+@app.post("/api/inventory/count/{count_id}/complete")
+def inv_complete_count(count_id: int, body: dict = Body(default={}), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    if not inventory.complete_count(user.clinic_id, count_id, _inv_nurse(body, user)):
+        raise HTTPException(status_code=409, detail="這次點貨已經完成")
+    return {"ok": True}
+
+
+@app.post("/api/inventory/count/{count_id}/reopen")
+def inv_reopen_count(count_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    if not inventory.reopen_count(user.clinic_id, count_id):
+        raise HTTPException(status_code=404, detail="找不到這次點貨")
+    return {"ok": True}
+
+
+@app.get("/api/inventory/suggestions")
+def inv_suggestions(user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    return inventory.get_suggestions(user.clinic_id)
+
+
+@app.get("/api/inventory/orders")
+def inv_open_orders(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
+    return inventory.list_open_orders(user.clinic_id)
+
+
+@app.post("/api/inventory/orders")
+def inv_place_orders(body: dict = Body(...), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    lines = body.get("lines")
+    if not isinstance(lines, list) or not lines:
+        raise HTTPException(status_code=422, detail="請選擇要訂購的品項")
+    count_id = body.get("count_id")
+    placed = inventory.place_orders(user.clinic_id, lines, _inv_nurse(body, user),
+                                    int(count_id) if count_id else None)
+    return {"placed": placed}
+
+
+@app.post("/api/inventory/orders/{order_id}/receive")
+def inv_receive_order(order_id: int, body: dict = Body(...), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    qty = _inv_qty(body.get("qty"))
+    if not inventory.receive_order(user.clinic_id, order_id, qty, _inv_nurse(body, user)):
+        raise HTTPException(status_code=404, detail="找不到此訂單，或已經標記到貨")
+    return {"ok": True}
+
+
+@app.post("/api/inventory/orders/{order_id}/cancel")
+def inv_cancel_order(order_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    if not inventory.cancel_order(user.clinic_id, order_id):
+        raise HTTPException(status_code=404, detail="找不到此訂單")
+    return {"ok": True}
 
 
 # ── LINE integration ────────────────────────────────────────────────────────────

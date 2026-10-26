@@ -43,6 +43,10 @@ DECLARE
         'synced_candidates',
         'lab_reports',
         'clinic_contacts',
+        'inventory_items',
+        'inventory_counts',
+        'inventory_count_lines',
+        'inventory_orders',
         'blood_dismissed',
         'synced_blood_pending'
     ];
