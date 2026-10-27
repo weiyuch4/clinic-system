@@ -188,6 +188,7 @@
 .lg-hint.ok{color:var(--inv-ok)}
 .lg-hint.bad{color:var(--inv-err)}
 .danger-link{border:none;background:none;color:var(--inv-err);font-size:13px;cursor:pointer;margin-right:auto;font-family:inherit;padding:0}
+.danger-link.cancel-count{align-self:center;margin:0;min-height:var(--ctl-h-touch);padding:0 12px}
 
 @media(max-width:767px){
   .cbar{top:-16px}
@@ -568,7 +569,8 @@
       var left = S.items.length - counted();
       html += '<div class="card" style="display:flex;flex-direction:column;gap:10px">' +
         '<button class="bp big-btn" type="button" data-act="complete">完成點貨' + (left ? '（還有 ' + left + ' 項未點）' : '') + '</button>' +
-        '<button class="act-btn big-btn" type="button" data-act="new-item">清單上沒有？新增品項</button></div>';
+        '<button class="act-btn big-btn" type="button" data-act="new-item">清單上沒有？新增品項</button>' +
+        '<button class="danger-link cancel-count" type="button" data-act="cancel-count">取消這次點貨</button></div>';
     }
     pane.innerHTML = html;
     if (_saveErr) setSaveState('err');
@@ -1247,6 +1249,16 @@
         .then(function () { L.showToast('點貨完成，以下是建議訂購的品項'); S.tab = 'order'; return Promise.all([loadCount(), loadOrder()]); })
         .then(function () { render(); document.querySelector('.ct').scrollTop = 0; })
         .catch(function (e) { el.disabled = false; L.showToast('完成失敗：' + (e.message || ''), 'error'); });
+    }
+    if (act === 'cancel-count') {
+      var n = counted();
+      if (!confirm(n ? '取消這次點貨？已輸入的 ' + n + ' 項數量會一起刪除。' : '取消這次點貨？')) return;
+      Object.keys(_timers).forEach(function (k) { clearTimeout(_timers[k]); });
+      _pending = {};
+      return L.apiAction('DELETE', '/api/inventory/count/' + S.cnt.count.id, {})
+        .then(function () { _saveErr = false; L.showToast('已取消這次點貨'); return loadCount(); })
+        .then(function () { render(); document.querySelector('.ct').scrollTop = 0; })
+        .catch(function (e) { L.showToast('取消失敗：' + (e.message || ''), 'error'); });
     }
     if (act === 'reopen') {
       return L.apiAction('POST', '/api/inventory/count/' + S.cnt.count.id + '/reopen', {})

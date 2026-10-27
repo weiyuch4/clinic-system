@@ -2921,6 +2921,13 @@ def inv_complete_count(count_id: int, body: dict = Body(default={}), user: auth.
     return {"ok": True}
 
 
+@app.delete("/api/inventory/count/{count_id}")
+def inv_cancel_count(count_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    if not inventory.cancel_count(user.clinic_id, count_id):
+        raise HTTPException(status_code=409, detail="這次點貨已完成，不能取消")
+    return {"ok": True}
+
+
 @app.post("/api/inventory/count/{count_id}/reopen")
 def inv_reopen_count(count_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     if not inventory.reopen_count(user.clinic_id, count_id):

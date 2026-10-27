@@ -295,6 +295,19 @@ def complete_count(clinic_id: int, count_id: int, nurse: str) -> bool:
             return cur.rowcount > 0
 
 
+def cancel_count(clinic_id: int, count_id: int) -> bool:
+    """Throw away an open count and whatever was entered so far (e.g. 開始點貨 pressed by mistake).
+    Finished counts can't be cancelled — they feed usage history."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            if _open_count_id(cur, clinic_id, count_id) is None:
+                return False
+            cur.execute("DELETE FROM inventory_count_lines WHERE count_id = %s", (count_id,))
+            cur.execute("UPDATE inventory_orders SET count_id = NULL WHERE count_id = %s", (count_id,))
+            cur.execute("DELETE FROM inventory_counts WHERE id = %s", (count_id,))
+    return True
+
+
 def reopen_count(clinic_id: int, count_id: int) -> bool:
     with _conn() as conn:
         with conn.cursor() as cur:
