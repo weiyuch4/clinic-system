@@ -753,7 +753,7 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
    phone doesn't leave a button stuck in its hover color. */
 :where(.bp,.pb,.btn-sm,.add-btn,.wn-btn,.wn-today,.pick-trigger,.print-btn,.month-nav-btn,
   .pr-more-btn,.go-btn,.ib,.chip,.reason-chip,.mp-btn,.seg-btn,.view-toggle button,
-  .inv-tabs button,.nurse-opt,.wz-opt):active:not(:disabled){transform:scale(.97)}
+  .inv-tabs button,.nurse-opt,.wz-opt,.ph-help,.lg-approx,.book-link):active:not(:disabled){transform:scale(.97)}
 
 /* ── reduced motion ───────────────────────────────────────────────────────
    Keep fades (they help orientation); drop movement: slides, scale-ins, sheet
@@ -767,6 +767,6 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
   .pick-drop,.filter-panel{animation:none!important}
   :where(.bp,.pb,.btn-sm,.add-btn,.wn-btn,.wn-today,.pick-trigger,.print-btn,.month-nav-btn,
     .pr-more-btn,.go-btn,.ib,.chip,.reason-chip,.mp-btn,.seg-btn,.view-toggle button,
-    .inv-tabs button,.nurse-opt,.wz-opt,.act-btn,.stp-b,.notes-fab):active{transform:none!important}
+    .inv-tabs button,.nurse-opt,.wz-opt,.act-btn,.stp-b,.notes-fab,.ph-help,.lg-approx,.book-link):active{transform:none!important}
   html{scroll-behavior:auto!important}
 }

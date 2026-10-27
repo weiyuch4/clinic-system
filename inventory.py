@@ -73,6 +73,25 @@ _CREATE_ORDERS = """
     )
 """
 
+# Lines copied from (or kept like) the paper stock book: 日期 / 摘要 / 收入 / 發出 / 結存.
+# Kept apart from the monthly counts so entering old pages never marks a month as counted;
+# 結存 and 收入 still feed the usage calculation.
+_CREATE_LEDGER = """
+    CREATE TABLE IF NOT EXISTS inventory_ledger (
+        id          SERIAL PRIMARY KEY,
+        clinic_id   INTEGER NOT NULL DEFAULT 1,
+        item_id     INTEGER NOT NULL,
+        entry_date  TEXT NOT NULL,
+        note        TEXT NOT NULL DEFAULT '',
+        in_qty      DOUBLE PRECISION,
+        out_qty     DOUBLE PRECISION,
+        balance     DOUBLE PRECISION,
+        approx      BOOLEAN NOT NULL DEFAULT FALSE,
+        created_by  TEXT NOT NULL DEFAULT '',
+        created_at  TEXT NOT NULL
+    )
+"""
+
 _ITEM_FIELDS = ("name", "unit", "location", "pack_size", "pack_unit", "min_stock", "supplier", "note")
 
 
@@ -83,6 +102,7 @@ def init() -> None:
             cur.execute(_CREATE_COUNTS)
             cur.execute(_CREATE_COUNT_LINES)
             cur.execute(_CREATE_ORDERS)
+            cur.execute(_CREATE_LEDGER)
 
 
 def _now() -> str:
@@ -344,6 +364,112 @@ def cancel_order(clinic_id: int, order_id: int) -> bool:
             return cur.rowcount > 0
 
 
+# ── Stock book (帳冊紀錄) ──────────────────────────────────────────────────────
+
+_LEDGER_COLS = "id, item_id, entry_date, note, in_qty, out_qty, balance, approx, created_by, created_at"
+
+
+def _item_exists(cur, clinic_id: int, item_id: int) -> bool:
+    cur.execute("SELECT 1 FROM inventory_items WHERE id = %s AND clinic_id = %s", (item_id, clinic_id))
+    return cur.fetchone() is not None
+
+
+def get_item_ledger(clinic_id: int, item_id: int) -> list[dict] | None:
+    """The item's whole record, oldest first: stock-book lines (editable) merged with the
+    app's own monthly counts and deliveries (read-only), like one page of the paper book."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            if not _item_exists(cur, clinic_id, item_id):
+                return None
+            cur.execute(
+                f"SELECT {_LEDGER_COLS} FROM inventory_ledger WHERE clinic_id = %s AND item_id = %s",
+                (clinic_id, item_id),
+            )
+            rows = [{**dict(r), "source": "book"} for r in cur.fetchall()]
+            cur.execute(
+                "SELECT l.qty, l.counted_at, l.counted_by, c.month FROM inventory_count_lines l "
+                "JOIN inventory_counts c ON c.id = l.count_id WHERE l.clinic_id = %s AND l.item_id = %s",
+                (clinic_id, item_id),
+            )
+            for r in cur.fetchall():
+                rows.append({"source": "count", "entry_date": r["counted_at"][:10], "balance": r["qty"],
+                             "note": f"{int(r['month'][5:])} 月點貨", "created_by": r["counted_by"]})
+            cur.execute(
+                "SELECT received_qty, received_at, received_by FROM inventory_orders "
+                "WHERE clinic_id = %s AND item_id = %s AND status = 'received'",
+                (clinic_id, item_id),
+            )
+            for r in cur.fetchall():
+                rows.append({"source": "receipt", "entry_date": r["received_at"][:10], "in_qty": r["received_qty"],
+                             "note": "到貨", "created_by": r["received_by"]})
+    rows.sort(key=lambda r: (r["entry_date"], 0 if r["source"] == "book" else 1, r.get("id") or 0))
+    return rows
+
+
+def _clean_ledger(data: dict) -> dict:
+    """Validate one stock-book line. Raises ValueError with a message the nurse can act on."""
+    try:
+        d = date.fromisoformat(str(data.get("entry_date") or "")[:10])
+    except ValueError:
+        raise ValueError("請選擇日期")
+    if d > datetime.now(_TW).date():
+        raise ValueError("日期不能是未來")
+
+    def qty(key: str) -> float | None:
+        v = data.get(key)
+        if v is None or str(v).strip() == "":
+            return None
+        try:
+            q = float(v)
+        except (TypeError, ValueError):
+            raise ValueError("數量請填數字")
+        if q < 0 or q > 1_000_000:
+            raise ValueError("數量請填 0 以上的數字")
+        return q
+
+    out = {"entry_date": d.isoformat(), "note": str(data.get("note") or "").strip()[:200],
+           "in_qty": qty("in_qty"), "out_qty": qty("out_qty"), "balance": qty("balance"),
+           "approx": bool(data.get("approx"))}
+    if out["in_qty"] is None and out["out_qty"] is None and out["balance"] is None and not out["note"]:
+        raise ValueError("至少填寫摘要、收入、發出或結存其中一項")
+    return out
+
+
+def add_ledger_entry(clinic_id: int, item_id: int, data: dict, nurse: str) -> int | None:
+    d = _clean_ledger(data)
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            if not _item_exists(cur, clinic_id, item_id):
+                return None
+            cur.execute(
+                "INSERT INTO inventory_ledger (clinic_id, item_id, entry_date, note, in_qty, out_qty, balance, "
+                "approx, created_by, created_at) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
+                (clinic_id, item_id, d["entry_date"], d["note"], d["in_qty"], d["out_qty"], d["balance"],
+                 d["approx"], nurse, _now()),
+            )
+            return cur.fetchone()["id"]
+
+
+def update_ledger_entry(clinic_id: int, entry_id: int, data: dict) -> bool:
+    d = _clean_ledger(data)
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE inventory_ledger SET entry_date = %s, note = %s, in_qty = %s, out_qty = %s, "
+                "balance = %s, approx = %s WHERE id = %s AND clinic_id = %s",
+                (d["entry_date"], d["note"], d["in_qty"], d["out_qty"], d["balance"], d["approx"],
+                 entry_id, clinic_id),
+            )
+            return cur.rowcount > 0
+
+
+def delete_ledger_entry(clinic_id: int, entry_id: int) -> bool:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("DELETE FROM inventory_ledger WHERE id = %s AND clinic_id = %s", (entry_id, clinic_id))
+            return cur.rowcount > 0
+
+
 # ── Usage and order suggestions ───────────────────────────────────────────────
 
 _USAGE_MONTHS = 3      # average over this many recent months
@@ -443,6 +569,11 @@ def get_suggestions(clinic_id: int) -> dict:
                 (clinic_id,),
             )
             on_order = {r["item_id"]: r["q"] for r in cur.fetchall()}
+            cur.execute(
+                "SELECT item_id, entry_date, in_qty, balance FROM inventory_ledger WHERE clinic_id = %s",
+                (clinic_id,),
+            )
+            book = cur.fetchall()
             latest = _count_row(cur, clinic_id, "TRUE", ())
 
     points: dict[int, list] = {}
@@ -451,14 +582,24 @@ def get_suggestions(clinic_id: int) -> dict:
     recv: dict[int, list] = {}
     for r in receipts:
         recv.setdefault(r["item_id"], []).append((r["received_at"], r["received_qty"]))
+    # Stock-book lines: a 結存 is an earlier stock level, a 收入 is a delivery
+    book_pts: dict[int, list] = {}
+    book_n: dict[int, int] = {}
+    for r in book:
+        book_n[r["item_id"]] = book_n.get(r["item_id"], 0) + 1
+        if r["balance"] is not None:
+            book_pts.setdefault(r["item_id"], []).append((r["entry_date"], r["balance"]))
+        if r["in_qty"]:
+            recv.setdefault(r["item_id"], []).append((r["entry_date"], r["in_qty"]))
 
     out = []
     for it in items:
         pts = points.get(it["id"], [])
         # Stock is only "current" if counted in the latest count
         stock = pts[-1][1] if pts and latest and pts[-1][2] == latest["month"] else None
-        hist = usage_history([(t, q) for t, q, _ in pts], recv.get(it["id"], []))
+        merged = sorted([(t, q) for t, q, _ in pts] + book_pts.get(it["id"], []), key=lambda p: p[0][:10])
+        hist = usage_history(merged, recv.get(it["id"], []))
         s = suggest(it, stock, on_order.get(it["id"], 0), hist)
         out.append({**it, "stock": stock, "on_order": on_order.get(it["id"], 0),
-                    "history": hist[-6:], **s})
+                    "history": hist[-6:], "book_n": book_n.get(it["id"], 0), **s})
     return {"count": latest, "items": out}

@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>點貨 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=98">
+<link rel="stylesheet" href="/static/_layout.css?v=99">
 <style>
 /* ── page tokens (accent matches the app's #b5d7f5 pill buttons) ─────────── */
 :root{
@@ -147,6 +147,46 @@
 .pack-row .modal-input{width:76px;text-align:center}
 .fld-hint{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.5}
 .modal-box{max-height:calc(100vh - 32px);overflow-y:auto}
+.book-link{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;margin-bottom:14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font:inherit;text-align:left;cursor:pointer}
+.book-link svg{width:18px;height:18px;color:var(--muted);flex-shrink:0}
+.book-link b{font-size:14px;font-weight:600}
+.book-link span{font-size:12px;color:var(--muted);display:block;margin-top:1px}
+.book-link .chev{margin-left:auto}
+@media(hover:hover){.book-link:hover{border-color:var(--sub)}}
+
+/* ── 帳冊紀錄: one item's page, laid out like the paper stock book ─────────── */
+.lg-box{max-width:620px}
+.lg{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:14px}
+.lg-scroll{max-height:42vh;overflow-y:auto}
+.lg-row{display:grid;grid-template-columns:3.6em minmax(0,1fr) 3.6em 3.6em 4.4em;gap:8px;align-items:center;padding:8px 12px;font-size:13px;border-top:1px solid var(--border);font-variant-numeric:tabular-nums}
+.lg-head{border-top:none;background:var(--bg);font-size:12px;color:var(--muted);position:sticky;top:0;z-index:1}
+.lg-row > .n{text-align:right}
+.lg-yr{padding:6px 12px;font-size:11.5px;font-weight:600;color:var(--muted);background:var(--bg);border-top:1px solid var(--border)}
+.lg-date{color:var(--sub)}
+.lg-note{min-width:0;overflow-wrap:anywhere;color:var(--text)}
+.lg-bal{font-weight:600;color:var(--text)}
+.lg-src{display:inline-block;font-size:11px;font-weight:600;color:var(--sub);background:var(--g0);border-radius:5px;padding:0 6px;margin-right:6px}
+.lg-row.app{color:var(--sub)}
+.lg-row.app .lg-note{color:var(--sub)}
+.lg-row.book{cursor:pointer}
+@media(hover:hover){.lg-row.book:hover{background:var(--inv-acc-soft)}}
+.lg-row.editing{background:var(--inv-acc-soft);box-shadow:inset 3px 0 0 #4aa7f7}
+/* The line just added stays marked (no animation — this repeats for every line of a page) */
+.lg-row.just{background:var(--inv-ok-bg)}
+.lg-empty{padding:22px 16px;text-align:center;font-size:13px;color:var(--muted);line-height:1.7}
+.lg-form{background:var(--bg);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.lg-form-h{font-size:13px;font-weight:700;color:var(--text)}
+.lg-f2{display:grid;grid-template-columns:8.5em minmax(0,1fr);gap:8px}
+.lg-f4{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px;align-items:end}
+.lg-fld{display:flex;flex-direction:column;gap:4px;min-width:0}
+.lg-fld label{font-size:11.5px;color:var(--muted)}
+.lg-fld .modal-input{background:var(--card)}
+.lg-fld .modal-input.n{text-align:right;font-variant-numeric:tabular-nums}
+.lg-approx{height:var(--ctl-h);min-width:calc(var(--ctl-h) + 8px);padding:0 12px;border:1.5px solid var(--border);border-radius:9px;background:var(--card);color:var(--sub);font-size:17px;font-weight:600;font-family:inherit;line-height:1;cursor:pointer}
+.lg-approx[aria-pressed="true"]{background:var(--inv-acc);border-color:var(--inv-acc);color:var(--inv-acc-ink)}
+.lg-hint{font-size:11.5px;color:var(--muted);line-height:1.55}
+.lg-hint.ok{color:var(--inv-ok)}
+.lg-hint.bad{color:var(--inv-err)}
 .danger-link{border:none;background:none;color:var(--inv-err);font-size:13px;cursor:pointer;margin-right:auto;font-family:inherit;padding:0}
 
 @media(max-width:767px){
@@ -161,6 +201,14 @@
   .modal-input{font-size:16px}  /* 16px stops iOS from zooming into the field */
   .row-name{font-size:15.5px}
   .chip{height:36px;font-size:13px}
+  /* Stock-book lines are tapped to edit, so they get the 44px touch height */
+  .lg-row{min-height:44px;padding-top:6px;padding-bottom:6px}
+  .lg-head{min-height:0}
+}
+/* Short screen (phone with the keyboard up): keep the table small so the entry form fits */
+@media(max-width:767px) and (max-height:640px){
+  .lg-scroll{max-height:132px}
+  #m-ledger .modal-sub{display:none}
 }
 @media(prefers-reduced-motion:reduce){.pfill{transition:none}}
 </style>
@@ -232,6 +280,11 @@
       <label class="modal-label" for="mi-note">備註</label>
       <input class="modal-input" id="mi-note" type="text" placeholder="例：規格、品牌" autocomplete="off">
     </div>
+    <button class="book-link" id="mi-book" type="button">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+      <div><b>帳冊紀錄</b><span id="mi-book-sub">日期、摘要、收入、發出、結存</span></div>
+      <svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+    </button>
     <div id="mi-hist"></div>
     <div class="modal-error" id="mi-err"></div>
     <div class="modal-footer">
@@ -246,9 +299,9 @@
 <div class="modal-overlay" id="m-bulk">
   <div class="modal-box">
     <div class="modal-title">一次新增多個品項</div>
-    <div class="modal-sub">每行一項，格式：品名, 單位, 位置（單位和位置可省略）</div>
+    <div class="modal-sub">每行一項，格式：品名, 單位, 位置, 備註（品名以外都可省略）</div>
     <div class="modal-field">
-      <textarea class="modal-input" id="mb-text" style="min-height:180px;resize:none" placeholder="酒精棉片, 盒, 治療室&#10;紗布 4x4, 包, 治療室&#10;生理食鹽水 500ml, 瓶, 庫房"></textarea>
+      <textarea class="modal-input" id="mb-text" style="min-height:180px;resize:none" placeholder="酒精棉片, 盒, 治療室&#10;紗布 4x4, 包, 治療室, 筆記本第 5 頁&#10;生理食鹽水 500ml, 瓶, 庫房"></textarea>
     </div>
     <div class="modal-field">
       <label class="modal-label" for="mb-loc">沒寫位置的品項放在</label>
@@ -258,6 +311,41 @@
     <div class="modal-footer">
       <button class="act-btn" type="button" data-close="m-bulk">取消</button>
       <button class="act-btn act-primary" id="mb-save" type="button">新增</button>
+    </div>
+  </div>
+</div>
+
+<!-- stock book (帳冊紀錄) for one item -->
+<div class="modal-overlay" id="m-ledger">
+  <div class="modal-box lg-box">
+    <div class="modal-title" id="ml-title">帳冊紀錄</div>
+    <div class="modal-sub" id="ml-sub"></div>
+    <div class="lg" id="ml-table"></div>
+    <div class="lg-form">
+      <div class="lg-form-h" id="ml-form-h">新增一行</div>
+      <div class="lg-f2">
+        <div class="lg-fld">
+          <label for="ml-date">日期</label>
+          <input class="modal-input" id="ml-date" type="text" placeholder="例：3/30" autocomplete="off" enterkeyhint="next">
+        </div>
+        <div class="lg-fld">
+          <label for="ml-note">摘要</label>
+          <input class="modal-input" id="ml-note" type="text" placeholder="例：存貨 7 箱、N/S 入 3 箱" autocomplete="off" enterkeyhint="next">
+        </div>
+      </div>
+      <div class="lg-f4">
+        <div class="lg-fld"><label for="ml-in">收入</label><input class="modal-input n" id="ml-in" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next"></div>
+        <div class="lg-fld"><label for="ml-out">發出</label><input class="modal-input n" id="ml-out" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="next"></div>
+        <div class="lg-fld"><label for="ml-bal">結存</label><input class="modal-input n" id="ml-bal" type="text" inputmode="decimal" autocomplete="off" enterkeyhint="done"></div>
+        <div class="lg-fld"><label for="ml-approx">約略</label><button class="lg-approx" id="ml-approx" type="button" aria-pressed="false" title="結存是約略數量（≒）">≒</button></div>
+      </div>
+      <div class="lg-hint" id="ml-hint">日期可寫 3/30 或 115/3/30。結存是當天點到的數量；筆記本上有寫的欄位才需要填。</div>
+      <div class="modal-error" id="ml-err" style="margin-top:0"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="danger-link" id="ml-del" type="button" hidden>刪除這一行</button>
+      <button class="act-btn" id="ml-close" type="button">關閉</button>
+      <button class="act-btn act-primary" id="ml-save" type="button">新增這一行</button>
     </div>
   </div>
 </div>
@@ -290,7 +378,7 @@
 <datalist id="dl-locs"></datalist>
 <datalist id="dl-sups"></datalist>
 
-<script src="/static/_layout.js?v=92"></script>
+<script src="/static/_layout.js?v=93"></script>
 <script>
 (function () {
   'use strict';
@@ -736,6 +824,12 @@
     document.getElementById('mi-sup').value = it.supplier;
     document.getElementById('mi-note').value = it.note;
     document.getElementById('mi-archive').style.display = isNew ? 'none' : '';
+    document.getElementById('mi-book').hidden = isNew;
+    if (!isNew) {
+      var sg = S.sugg && S.sugg.items.find(function (x) { return x.id === it.id; });
+      var bn = sg ? sg.book_n : 0;
+      document.getElementById('mi-book-sub').textContent = bn ? '已輸入 ' + bn + ' 行，可以繼續補' : '把筆記本這一頁的紀錄輸入進來';
+    }
     document.getElementById('mi-err').classList.remove('show');
     syncPackBase();
     renderHistory(isNew ? null : it.id);
@@ -811,6 +905,207 @@
       .then(render)
       .catch(function (e) { err.textContent = e.message || '新增失敗'; err.classList.add('show'); })
       .then(function () { btn.disabled = false; });
+  });
+
+  // ── 帳冊紀錄 (stock book) ──────────────────────────────────────────────────
+  var LG = { item: null, rows: [], editId: null, approx: false, justId: null };
+
+  function roc(iso) { return parseInt(iso.slice(0, 4), 10) - 1911; }
+  function todayIso() { var d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+
+  // Accepts 3/30, 115/3/30, 115.3.30, 2026-03-30. A bare month/day takes the year of the
+  // last line entered (or this year), and steps back a year if that would land in the future.
+  function parseLgDate(v) {
+    v = String(v || '').trim().replace(/[.\-年月]/g, '/').replace(/日$/, '');
+    var p = v.split('/').filter(Boolean).map(function (x) { return parseInt(x, 10); });
+    if (p.some(isNaN) || p.length < 2 || p.length > 3) return null;
+    var y, m, d;
+    if (p.length === 3) { y = p[0] < 1000 ? p[0] + 1911 : p[0]; m = p[1]; d = p[2]; }
+    else {
+      var books = LG.rows.filter(function (r) { return r.source === 'book'; });
+      y = books.length ? parseInt(books[books.length - 1].entry_date.slice(0, 4), 10) : new Date().getFullYear();
+      m = p[0]; d = p[1];
+    }
+    var dt = new Date(y, m - 1, d);
+    if (dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+    var iso = function (x) { return x.getFullYear() + '-' + String(x.getMonth() + 1).padStart(2, '0') + '-' + String(x.getDate()).padStart(2, '0'); };
+    if (p.length === 2 && iso(dt) > todayIso()) dt = new Date(y - 1, m - 1, d);
+    return iso(dt);
+  }
+
+  function lgNum(n, approx) { return n == null ? '' : (approx ? '≒' : '') + num(n); }
+
+  function openLedger(item) {
+    LG.item = item;
+    LG.justId = null;
+    document.getElementById('ml-title').textContent = item.name + ' 帳冊紀錄';
+    document.getElementById('ml-sub').textContent = '單位：' + item.unit + (item.note ? '・' + item.note : '');
+    resetLgForm();
+    document.getElementById('ml-table').innerHTML = '<div class="lg-empty">載入中…</div>';
+    L.hideModal('m-item');
+    L.showModal('m-ledger');
+    loadLedger(true);
+  }
+
+  function loadLedger(scrollEnd) {
+    return L.apiFetch('/api/inventory/items/' + LG.item.id + '/ledger').then(function (d) {
+      LG.rows = d.entries || [];
+      renderLedger(scrollEnd);
+    }).catch(function () {
+      document.getElementById('ml-table').innerHTML = '<div class="lg-empty">載入失敗，請關閉後再開一次。</div>';
+    });
+  }
+
+  function renderLedger(scrollEnd) {
+    var html = '<div class="lg-row lg-head"><span>日期</span><span>摘要</span><span class="n">收入</span><span class="n">發出</span><span class="n">結存</span></div>';
+    if (!LG.rows.length) {
+      html += '<div class="lg-empty">還沒有紀錄。<br>照筆記本這一頁，從最舊的一行開始輸入。</div>';
+      document.getElementById('ml-table').innerHTML = html;
+      return;
+    }
+    var yr = null, body = '';
+    LG.rows.forEach(function (r) {
+      var y = roc(r.entry_date);
+      if (y !== yr) { body += '<div class="lg-yr">' + y + ' 年</div>'; yr = y; }
+      var book = r.source === 'book';
+      var tag = book ? '' : '<span class="lg-src">' + (r.source === 'count' ? '點貨' : '到貨') + '</span>';
+      body += '<div class="lg-row ' + (book ? 'book' : 'app') + (book && r.id === LG.editId ? ' editing' : '') + (book && r.id === LG.justId ? ' just' : '') + '"' +
+        (book ? ' data-lg="' + r.id + '" tabindex="0" role="button" aria-label="修改 ' + mmdd(r.entry_date) + ' 這一行"' : '') + '>' +
+        '<span class="lg-date">' + mmdd(r.entry_date) + '</span>' +
+        '<span class="lg-note">' + tag + esc(r.note || '') + '</span>' +
+        '<span class="n">' + lgNum(r.in_qty) + '</span>' +
+        '<span class="n">' + lgNum(r.out_qty) + '</span>' +
+        '<span class="n lg-bal">' + lgNum(r.balance, r.approx) + '</span></div>';
+    });
+    // The header sits inside the scroll area so it stays pinned while the rows scroll
+    document.getElementById('ml-table').innerHTML = '<div class="lg-scroll" id="ml-scroll">' + html + body + '</div>';
+    var sc = document.getElementById('ml-scroll');
+    if (scrollEnd) sc.scrollTop = sc.scrollHeight;
+  }
+
+  function setApprox(on) {
+    LG.approx = on;
+    document.getElementById('ml-approx').setAttribute('aria-pressed', on ? 'true' : 'false');
+  }
+
+  function resetLgForm() {
+    LG.editId = null;
+    ['ml-date', 'ml-note', 'ml-in', 'ml-out', 'ml-bal'].forEach(function (id) { document.getElementById(id).value = ''; });
+    setApprox(false);
+    document.getElementById('ml-form-h').textContent = '新增一行';
+    document.getElementById('ml-save').textContent = '新增這一行';
+    document.getElementById('ml-close').textContent = '關閉';
+    document.getElementById('ml-del').hidden = true;
+    document.getElementById('ml-err').classList.remove('show');
+    updateDateHint();
+  }
+
+  function editLgRow(id) {
+    var r = LG.rows.find(function (x) { return x.source === 'book' && x.id === id; });
+    if (!r) return;
+    LG.editId = id;
+    LG.justId = null;
+    document.getElementById('ml-date').value = roc(r.entry_date) + '/' + parseInt(r.entry_date.slice(5, 7), 10) + '/' + parseInt(r.entry_date.slice(8, 10), 10);
+    document.getElementById('ml-note').value = r.note || '';
+    document.getElementById('ml-in').value = num(r.in_qty);
+    document.getElementById('ml-out').value = num(r.out_qty);
+    document.getElementById('ml-bal').value = num(r.balance);
+    setApprox(!!r.approx);
+    document.getElementById('ml-form-h').textContent = '修改 ' + mmdd(r.entry_date) + ' 這一行';
+    document.getElementById('ml-save').textContent = '儲存修改';
+    document.getElementById('ml-close').textContent = '取消修改';
+    document.getElementById('ml-del').hidden = false;
+    document.getElementById('ml-err').classList.remove('show');
+    updateDateHint();
+    renderLedger(false);
+    document.getElementById('ml-date').focus();
+  }
+
+  function updateDateHint() {
+    var v = document.getElementById('ml-date').value.trim(), hint = document.getElementById('ml-hint');
+    hint.classList.remove('ok', 'bad');
+    if (!v) { hint.textContent = '日期可寫 3/30 或 115/3/30。結存是當天點到的數量；筆記本上有寫的欄位才需要填。'; return; }
+    var iso = parseLgDate(v);
+    if (!iso) { hint.textContent = '看不懂這個日期，請寫成 3/30 或 115/3/30'; hint.classList.add('bad'); return; }
+    if (iso > todayIso()) { hint.textContent = '日期不能是未來'; hint.classList.add('bad'); return; }
+    hint.textContent = '→ ' + roc(iso) + ' 年 ' + parseInt(iso.slice(5, 7), 10) + ' 月 ' + parseInt(iso.slice(8, 10), 10) + ' 日';
+    hint.classList.add('ok');
+  }
+
+  function saveLgRow() {
+    var err = document.getElementById('ml-err');
+    err.classList.remove('show');
+    var iso = parseLgDate(document.getElementById('ml-date').value);
+    if (!iso) { err.textContent = '請輸入日期，例如 3/30 或 115/3/30'; err.classList.add('show'); document.getElementById('ml-date').focus(); return; }
+    var body = {
+      entry_date: iso,
+      note: document.getElementById('ml-note').value.trim(),
+      in_qty: document.getElementById('ml-in').value.trim(),
+      out_qty: document.getElementById('ml-out').value.trim(),
+      balance: document.getElementById('ml-bal').value.trim(),
+      approx: LG.approx,
+      nurse: nurse(),
+    };
+    var bad = ['in_qty', 'out_qty', 'balance'].some(function (k) { return body[k] !== '' && isNaN(parseQty(body[k])); });
+    if (bad) { err.textContent = '收入、發出、結存請填數字（例如 6.5）'; err.classList.add('show'); return; }
+    var editing = LG.editId != null, btn = document.getElementById('ml-save');
+    btn.disabled = true;
+    L.apiAction(editing ? 'PUT' : 'POST', editing ? '/api/inventory/ledger/' + LG.editId : '/api/inventory/items/' + LG.item.id + '/ledger', body)
+      .then(function (r) {
+        // Confirm inside the form: a toast would cover the fields on a phone with the keyboard up
+        LG.justId = editing ? LG.editId : (r && r.id);
+        resetLgForm();
+        var hint = document.getElementById('ml-hint');
+        hint.textContent = '✓ 已' + (editing ? '修改' : '新增') + ' ' + mmdd(iso) + ' 這一行' + (editing ? '' : '，接著輸入下一行');
+        hint.classList.add('ok');
+        document.getElementById('ml-date').focus();
+        return Promise.all([loadLedger(!editing), loadOrder()]);
+      })
+      .catch(function (e) { err.textContent = e.message || '儲存失敗'; err.classList.add('show'); })
+      .then(function () { btn.disabled = false; });
+  }
+
+  document.getElementById('mi-book').addEventListener('click', function () {
+    var id = parseInt(document.getElementById('mi-id').value, 10);
+    var it = S.items.find(function (x) { return x.id === id; });
+    if (it) openLedger(it);
+  });
+  document.getElementById('ml-date').addEventListener('input', updateDateHint);
+  // Phone with the keyboard up: bring the whole entry form into view, not just the focused field
+  document.querySelector('#m-ledger .lg-form').addEventListener('focusin', function () {
+    if (window.innerHeight >= 700) return;
+    var form = this;
+    setTimeout(function () { form.scrollIntoView({ block: 'end' }); }, 60);
+  });
+  document.getElementById('ml-approx').addEventListener('click', function () { setApprox(!LG.approx); });
+  document.getElementById('ml-save').addEventListener('click', saveLgRow);
+  document.getElementById('ml-close').addEventListener('click', function () {
+    if (LG.editId != null) { resetLgForm(); renderLedger(false); return; }
+    L.hideModal('m-ledger');
+    if (S.tab === 'items') render();
+  });
+  document.getElementById('ml-del').addEventListener('click', function () {
+    if (LG.editId == null || !confirm('刪除這一行紀錄？')) return;
+    L.apiAction('DELETE', '/api/inventory/ledger/' + LG.editId, {})
+      .then(function () { L.showToast('已刪除'); resetLgForm(); return Promise.all([loadLedger(false), loadOrder()]); })
+      .catch(function (e) { L.showToast('刪除失敗：' + (e.message || ''), 'error'); });
+  });
+  document.getElementById('ml-table').addEventListener('click', function (e) {
+    var row = e.target.closest('[data-lg]');
+    if (row) editLgRow(parseInt(row.dataset.lg, 10));
+  });
+  document.getElementById('ml-table').addEventListener('keydown', function (e) {
+    var row = e.target.closest('[data-lg]');
+    if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); editLgRow(parseInt(row.dataset.lg, 10)); }
+  });
+  // Enter moves through the fields like a paper row; Enter on 結存 saves the line
+  ['ml-date', 'ml-note', 'ml-in', 'ml-out', 'ml-bal'].forEach(function (id, i, ids) {
+    document.getElementById(id).addEventListener('keydown', function (e) {
+      if (e.key !== 'Enter' || e.isComposing) return;
+      e.preventDefault();
+      if (i < ids.length - 1) document.getElementById(ids[i + 1]).focus();
+      else saveLgRow();
+    });
   });
 
   // ── receive delivery ──────────────────────────────────────────────────────

@@ -54,6 +54,12 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 4, date: '2026-10-27', items: [
+      '點貨的每個品項新增「帳冊紀錄」：跟筆記本一樣記日期、摘要、收入、發出、結存，可以把筆記本上以前的紀錄一行一行輸入進來',
+      '日期可以直接寫 3/30 或 115/3/30；約略的數量按「≒」標示',
+      '輸入的舊紀錄會用來估算每月用量，建議訂購量更準',
+      '一次新增多個品項時可以多寫一欄備註，例如「筆記本第 1 頁」',
+    ]},
     { version: 3, date: '2026-10-27', items: [
       '追蹤名單畫面更清爽：每位病患只有「已聯繫」一顆藍色按鈕，暫緩改為一般按鈕',
       '逾期天數只有 15 天以上才標顏色（15–29 天橘色、30 天以上紅色），一眼看出誰最需要先聯絡',

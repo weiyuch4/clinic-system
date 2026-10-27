@@ -2818,7 +2818,7 @@ def inv_add_item(body: dict = Body(...), user: auth.CurrentUser = Depends(auth.g
 
 @app.post("/api/inventory/items/bulk")
 def inv_bulk_add(body: dict = Body(...), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
-    """Add many items at once from pasted lines: 品名, 單位, 位置 (unit and location optional)."""
+    """Add many items at once from pasted lines: 品名, 單位, 位置, 備註 (all but 品名 optional)."""
     added = 0
     for line in str(body.get("text") or "").splitlines():
         parts = [p.strip() for p in _re.split(r"[,，\t]", line)]
@@ -2827,10 +2827,48 @@ def inv_bulk_add(body: dict = Body(...), user: auth.CurrentUser = Depends(auth.g
         inventory.add_item(user.clinic_id, {
             "name": parts[0],
             "unit": parts[1] if len(parts) > 1 else "",
-            "location": parts[2] if len(parts) > 2 else str(body.get("location") or ""),
+            "location": (parts[2] if len(parts) > 2 else "") or str(body.get("location") or ""),
+            "note": parts[3] if len(parts) > 3 else "",
         })
         added += 1
     return {"added": added}
+
+
+@app.get("/api/inventory/items/{item_id}/ledger")
+def inv_item_ledger(item_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    rows = inventory.get_item_ledger(user.clinic_id, item_id)
+    if rows is None:
+        raise HTTPException(status_code=404, detail="找不到此品項")
+    return {"entries": rows}
+
+
+@app.post("/api/inventory/items/{item_id}/ledger")
+def inv_add_ledger(item_id: int, body: dict = Body(...), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    try:
+        new_id = inventory.add_ledger_entry(user.clinic_id, item_id, body, _inv_nurse(body, user))
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if new_id is None:
+        raise HTTPException(status_code=404, detail="找不到此品項")
+    return {"id": new_id}
+
+
+@app.put("/api/inventory/ledger/{entry_id}")
+def inv_update_ledger(entry_id: int, body: dict = Body(...), user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    try:
+        ok = inventory.update_ledger_entry(user.clinic_id, entry_id, body)
+    except ValueError as exc:
+        raise HTTPException(status_code=422, detail=str(exc))
+    if not ok:
+        raise HTTPException(status_code=404, detail="找不到這一行")
+    return {"ok": True}
+
+
+@app.delete("/api/inventory/ledger/{entry_id}")
+def inv_delete_ledger(entry_id: int, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    if not inventory.delete_ledger_entry(user.clinic_id, entry_id):
+        raise HTTPException(status_code=404, detail="找不到這一行")
+    return {"ok": True}
 
 
 @app.put("/api/inventory/items/{item_id}")
