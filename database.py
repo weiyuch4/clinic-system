@@ -22,6 +22,8 @@ from models import (
 CHRONIC_GRACE_DAYS       = 5    # days after due before a 慢簽 patient surfaces
 MAX_CHRONIC_OVERDUE_DAYS = 60   # days after which a 慢簽 patient drops off the list
 MSPT_REOPEN_DAYS         = 365  # overdue beyond this → restart from 收案
+MSPT_MAX_INACTIVE_DAYS   = 2 * 365  # ignore patients whose last MSPT activity is older than this
+MSPT_LONG_INACTIVE_DAYS  = 180  # no clinic visit for this long → 長期未回診
 
 # NHI procedure codes for 代謝症候群 tracking (DRUG_NO field in P files).
 _CKD_CODE_MAP: dict[str, str] = {
@@ -566,7 +568,7 @@ PRESCRIPTION_LOOKBACK_DAYS = 60  # how far back to scan IC files
 PRESCRIPTION_GRACE_DAYS    = 60  # days after due before row drops off the list
 
 
-def _query_all_prescriptions(as_of: date) -> list[dict]:
+def _query_all_prescriptions(as_of: date, min_ps: int = 3) -> list[dict]:
     """Return upcoming/recently-expired prescriptions for all patients.
 
     Tracking unit: one row per IC entry (CODE_F).
@@ -625,8 +627,8 @@ def _query_all_prescriptions(as_of: date) -> list[dict]:
             if cf in cf_mspt:
                 continue  # MSPT visit — tracked on the 代謝症候群 page, not here
             max_ps = cf_max_ps.get(cf, 0)
-            if max_ps < 3:
-                continue  # procedure-only or blood-test visit (PS<3 = no trackable prescription)
+            if max_ps < min_ps:
+                continue  # procedure-only or blood-test visit (clinic setting prescription_min_ps_days)
             name  = r.get('NAME',  '').strip()
             birth = _roc_to_date(r.get('BIRTH', ''))
             if not name or not birth:
@@ -885,11 +887,7 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
     History is grouped by national ID because CODE_F changes across visits for the same patient.
     The P file has no DATE field, so each CODE_F's IC visit date is used as the stage date.
     """
-    MAX_INACTIVE_DAYS  = 2 * 365  # ignore patients whose last MSPT activity is > 2 years old
-    REOPEN_AFTER_DAYS  = 365      # > 1 year since last MSPT → case closed, needs 收案 restart
-    LONG_INACTIVE_DAYS = 180      # > 6 months since any clinic visit → 長期未回診
-
-    since = as_of - timedelta(days=MAX_INACTIVE_DAYS)
+    since = as_of - timedelta(days=MSPT_MAX_INACTIVE_DAYS)
 
     patient_info: dict[str, dict] = {}         # nat_id → {name, birth, latest_date}
     stage_history: dict[str, list[dict]] = {}  # nat_id → [{stage, date}, ...]
@@ -960,7 +958,7 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
         last_date     = history[-1]['date']
         days_inactive = (as_of - last_date).days
 
-        if days_inactive > MAX_INACTIVE_DAYS:
+        if days_inactive > MSPT_MAX_INACTIVE_DAYS:
             continue
 
         next_stage = MSPT_STAGE_NEXT.get(last_stage)
@@ -994,9 +992,9 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
 
         # Case closed: missed by > 1 year → needs 收案 restart.
         # Route to inactive (長期未回診) if no clinic visit in the past 6 months.
-        if days_overdue > REOPEN_AFTER_DAYS:
+        if days_overdue > MSPT_REOPEN_DAYS:
             entry = entry.model_copy(update={'mspt_stage': '收案'})
-            if (as_of - info['latest_date']).days > LONG_INACTIVE_DAYS:
+            if (as_of - info['latest_date']).days > MSPT_LONG_INACTIVE_DAYS:
                 inactive.append(entry)
             else:
                 results.append(entry)
@@ -1466,32 +1464,8 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
         panel_cfs = _p_file_drug_cfs(p_path, HEP_PANEL_CODES) if category == 'B肝' else None
         try:
             for r in _parse_dbf_cached(ic_path):
-                h = r.get('H_TYPE', '')
-                if category == '慢簽':
-                    m33 = r.get('M33', '').strip()
-                    m26 = r.get('M26', '').strip()
-                    # See _query_chronic_prescriptions: some refills are filed under
-                    # H_TYPE values other than AE連續 (e.g. AB療程, AI同日) but still
-                    # carry the same cycle markers — trust the markers over H_TYPE.
-                    is_ae = h == 'AE連續' or (h != '01西醫' and m26 == '3' and m33 in ('2', '3'))
-                    if not is_ae:
-                        if h != '01西醫':
-                            continue
-                        if not (m33 == '1' and m26 == '3'):
-                            continue
-                elif category == 'B肝':
-                    if h not in ('01西醫', 'AE連續'):
-                        continue
-                    if not _hep_type(r):
-                        continue
-                    # Same panel-order requirement as _scan_hep_patient_info —
-                    # the ICD code alone doesn't mean the visit was for hep follow-up.
-                    if r.get('CODE_F', '').strip() not in panel_cfs:
-                        continue
-                else:
-                    if h != '01西醫':
-                        continue
-
+                if not _visit_counts_for(category, r, panel_cfs):
+                    continue
                 key = r.get('ID', '').strip()
                 if not key or key not in chart_numbers:
                     continue
@@ -1501,6 +1475,75 @@ def get_latest_visit_dates(chart_numbers: set[str], category: str) -> dict[str, 
         except Exception:
             pass
     return result
+
+
+def _visit_counts_for(category: str, r: dict, panel_cfs: set[str] | None) -> bool:
+    """Does this IC row count as a return visit for the given follow-up list?
+    panel_cfs is the hep panel CODE_F set for the row's file (only needed for B肝/C肝)."""
+    h = r.get('H_TYPE', '')
+    if category == '慢簽':
+        m33 = r.get('M33', '').strip()
+        m26 = r.get('M26', '').strip()
+        # See _query_chronic_prescriptions: some refills are filed under
+        # H_TYPE values other than AE連續 (e.g. AB療程, AI同日) but still
+        # carry the same cycle markers — trust the markers over H_TYPE.
+        is_ae = h == 'AE連續' or (h != '01西醫' and m26 == '3' and m33 in ('2', '3'))
+        if is_ae:
+            return True
+        return h == '01西醫' and m33 == '1' and m26 == '3'
+    if category in ('B肝', 'C肝'):
+        if h not in ('01西醫', 'AE連續') or not _hep_type(r):
+            return False
+        # Same panel-order requirement as _scan_hep_patient_info —
+        # the ICD code alone doesn't mean the visit was for hep follow-up.
+        return r.get('CODE_F', '').strip() in (panel_cfs or set())
+    return h == '01西醫'
+
+
+def get_first_returns(episodes: list[dict], lookback_days: int = 120) -> list[dict]:
+    """For open follow-up episodes [{chart_number, category, due_date}], find the first matching
+    visit on or after each due date. Returns [{chart_number, category, due_date, returned_on}]
+    for the episodes that have one. Scans IC files from the oldest due date (capped at lookback_days)."""
+    if not episodes:
+        return []
+    want: dict[tuple[str, str], list[tuple[date, str]]] = {}
+    oldest = date.today()
+    for ep in episodes:
+        try:
+            due = date.fromisoformat(str(ep['due_date'])[:10])
+        except ValueError:
+            continue
+        want.setdefault((ep['chart_number'], ep['category']), []).append((due, str(ep['due_date'])[:10]))
+        oldest = min(oldest, due)
+    oldest = max(oldest, date.today() - timedelta(days=lookback_days))
+    categories = {cat for _, cat in want}
+    charts = {ch for ch, _ in want}
+    first: dict[tuple[str, str, str], date] = {}
+
+    for ic_path in _ic_files_since(oldest):
+        p_path = ic_path[:-4] + 'P.DBF'
+        needs_panel = bool(categories & {'B肝', 'C肝'})
+        panel_cfs = _p_file_drug_cfs(p_path, HEP_PANEL_CODES) if needs_panel else None
+        try:
+            for r in _parse_dbf_cached(ic_path):
+                key = r.get('ID', '').strip()
+                if key not in charts:
+                    continue
+                v_date = _roc_to_date(r.get('DATE', ''))
+                if not v_date:
+                    continue
+                for cat in categories:
+                    dues = want.get((key, cat))
+                    if not dues or not _visit_counts_for(cat, r, panel_cfs):
+                        continue
+                    for due, due_s in dues:
+                        k = (key, cat, due_s)
+                        if v_date >= due and (k not in first or v_date < first[k]):
+                            first[k] = v_date
+        except Exception:
+            pass
+    return [{'chart_number': ch, 'category': cat, 'due_date': due_s, 'returned_on': d.isoformat()}
+            for (ch, cat, due_s), d in first.items()]
 
 
 # ── Doctor return-rate analytics ──────────────────────────────────────────────

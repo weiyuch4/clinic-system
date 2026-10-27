@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>抽血追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=92">
+<link rel="stylesheet" href="/static/_layout.css?v=98">
 <style>
 .br-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;vertical-align:middle}
 .br-tag-up{background:#fef2f2;color:#B91C1C;border:1px solid #fecaca}
@@ -59,14 +59,14 @@
         <div>
           <div style="display:flex;align-items:center;gap:8px">
             <h1>抽血追蹤</h1>
-            <button onclick="Layout.showModal('modal-help')" title="說明" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;padding:0;margin-bottom:1px">?</button>
+            <button onclick="Layout.showModal('modal-help')" title="說明" aria-label="說明" class="ph-help">?</button>
           </div>
           <p>異常指標病患回診提醒，抽血後 90 天追蹤</p>
         </div>
       </div>
 
       <div class="search-row">
-        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
+        <input class="si" type="text" id="search-input" placeholder="篩選名單：姓名或身份證">
       </div>
 
       <div class="filter-bar" id="filter-bar">
@@ -115,7 +115,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=85"></script>
+<script src="/static/_layout.js?v=92"></script>
 <script>
 var _allPatients = [];
 var _currentTab = 'pending';

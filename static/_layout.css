@@ -1,4 +1,4 @@
-﻿/* Override browser UA [hidden] which author styles (display:inline-flex etc.) would otherwise beat */
+/* Override browser UA [hidden] which author styles (display:inline-flex etc.) would otherwise beat */
 [hidden]{display:none!important}
 /* â”€â”€ CSS variables & themes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root {
@@ -56,13 +56,14 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .logo{display:flex;align-items:center;gap:9px;padding:0 4px;margin-bottom:24px}
 .lm{width:28px;height:28px;background:#F3F4F6;border-radius:7px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#374151}
 .ln{font-size:14.5px;font-weight:700;color:var(--text)}
-.nl{font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:0 7px;margin:14px 0 5px}
+.nl{font-size:11.5px;font-weight:500;color:var(--muted);padding:0 7px;margin:16px 0 6px}
 .ni{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:9px;color:var(--sub);font-size:13.5px;cursor:pointer;position:relative;border:none;background:transparent;width:100%;text-align:left;text-decoration:none;transition:background .12s,color .12s}
 @media(hover:hover){.ni:hover{background:var(--g0);color:var(--g7)}}
 .ni.on{color:var(--text);font-weight:600;background:rgba(0,0,0,.06)}
 .ni svg{width:16px;height:16px;flex-shrink:0}
-.nb{margin-left:auto;background:var(--border);color:var(--muted);font-size:11px;font-weight:700;padding:2px 7px;border-radius:20px;line-height:1.4;min-width:20px;text-align:center;transition:opacity .2s}
-.nb.zero{opacity:.4}
+/* Sidebar counts: plain numbers; nothing shown when there is nothing to do */
+.nb{margin-left:auto;color:var(--muted);font-size:12px;font-weight:500;font-variant-numeric:tabular-nums;line-height:1.4;min-width:20px;text-align:right;transition:opacity .2s}
+.nb.zero{visibility:hidden}
 .sf{flex:1}
 .promo{background:#F0F4F8;border-radius:11px;padding:14px;color:var(--text);margin-top:12px;border:1px solid var(--border)}
 .adm-entry{display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;margin-top:4px;background:transparent;border:none;border-radius:9px;font-size:13px;color:var(--muted);cursor:pointer;text-align:left;font-family:inherit;flex-shrink:0;transition:background .12s,color .12s}
@@ -181,7 +182,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 
 /* â”€â”€ category chips â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .cat-chip{font-size:11px;padding:2px 8px;border-radius:6px;font-weight:500;white-space:nowrap}
-.cat-c{background:#DCFCE7;color:#14532D}
+.cat-c{background:#DBEAFE;color:#1E40AF}
 .cat-m{background:#ECFDF5;color:#065F46}
 .cat-h{background:#EDE9FE;color:#6D28D9}
 .cat-k{background:#FEF3C7;color:#92400E}
@@ -196,13 +197,14 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .b-hold{background:#E0F2FE;color:#0369A1}
 .b-sub{background:#EDE9FE;color:#6D28D9}
 .b-call{background:#FFEDD5;color:#C2410C}
-.b-line{background:#DBEAFE;color:#1D4ED8}
+.b-line{background:var(--g0);color:var(--sub)}
 
 /* â”€â”€ days overdue badge â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .days{font-weight:700;font-variant-numeric:tabular-nums}
 .days-hi{color:#B91C1C}
 .days-md{color:#B45309}
-.days-lo{color:#047857}
+/* Under 15 days overdue is normal work, not "good": plain text. Green never means overdue. */
+.days-lo{color:var(--text)}
 
 /* â”€â”€ skeleton loading â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .skel{height:14px;background:var(--border);border-radius:6px;animation:pulse 1.5s ease-in-out infinite}
@@ -214,11 +216,15 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .filter-tab{padding:7px 13px;border-radius:7px;border:none;background:transparent;color:var(--sub);font-size:13px;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .12s,color .12s;white-space:nowrap;min-height:36px}
 @media(hover:hover){.filter-tab:hover{color:var(--text)}}
 .filter-tab.on{background:#b5d7f5;color:#111827;font-weight:600}
-.tc-count{font-size:10px;font-weight:700;background:var(--border);border-radius:10px;padding:1px 6px;color:var(--muted)}
-.filter-tab.on .tc-count{background:rgba(255,255,255,.35);color:#111827}
+/* Counts are plain numbers; a pill is reserved for things that need attention */
+.tc-count{font-size:12px;font-weight:500;color:var(--muted);font-variant-numeric:tabular-nums}
+.filter-tab.on .tc-count{color:inherit}
 
 /* â”€â”€ search row + list area (shared tracker styles) â”€â”€â”€â”€â”€ */
-.search-row{display:flex;align-items:center;gap:10px;flex-shrink:0}
+/* The list filter is a list control, not a page search: compact, with its count beside it.
+   Finding any patient is the top bar's job. */
+.search-row{display:flex;align-items:center;gap:10px;flex-shrink:0;flex-wrap:wrap}
+.search-row > .si,.search-row > .si-wrap{flex:0 1 320px;min-width:0}
 .si{flex:1;border:1.5px solid var(--border);border-radius:9px;padding:0 13px;font-size:13.5px;background:var(--bg);color:var(--text);outline:none;font-family:inherit;height:var(--ctl-h)}
 .si:focus{border-color:#b5d7f5}
 .si-wrap{position:relative;flex:1;min-width:0}
@@ -226,7 +232,25 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .si-clear{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--muted);font-size:16px;line-height:1;padding:2px 5px;border-radius:4px;display:none}
 @media(hover:hover){.si-clear:hover{color:var(--text)}}
 .sr-count{font-size:12.5px;color:var(--muted);white-space:nowrap;font-variant-numeric:tabular-nums;flex-shrink:0}
+/* The tab already shows its count; the result count only adds information while a filter is typed */
+.search-row:not(.filtering) .sr-count{display:none}
+/* Page-title help button (?) */
+.ph-help{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;padding:0;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;flex-shrink:0;transition:color .12s,border-color .12s}
+@media(hover:hover){.ph-help:hover{color:var(--text);border-color:var(--sub)}}
+.ph-help:focus-visible{outline:2.5px solid #4aa7f7;outline-offset:2px}
+/* The one action at the end of the tab row (逐一追蹤) */
+.filter-bar > .act-btn{margin-left:auto;flex-shrink:0}
 .list-area{flex:1;overflow-y:auto}
+/* Tab hints (what this tab is for): a quiet caption above the list, not a colored box.
+   Only the icon carries the tone — amber for "needs action", muted for information. */
+.tab-hint{font-size:12.5px;color:var(--sub);display:flex;align-items:flex-start;gap:7px;line-height:1.55;padding:0 4px 10px;flex-shrink:0}
+.tab-hint svg{color:var(--muted)}
+.tab-hint-warn svg{color:#B45309}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .tab-hint-warn svg{color:#FBBF24}}
+:root[data-theme=dark] .tab-hint-warn svg{color:#FBBF24}
+/* Tabs with nothing in them stay in place (nurses know where they are) but step back */
+.filter-tab.empty:not(.on){color:var(--muted)}
+.filter-tab.empty:not(.on) .tc-count{display:none}
 .filter-panel{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px;display:flex;flex-direction:column;gap:8px;margin-bottom:6px;animation:fp-in .12s ease}
 @keyframes fp-in{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .chip-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -287,7 +311,7 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 /* â”€â”€ patient table rows â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ptbl-wrap{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow-x:auto}
 .p-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed}
-.p-table thead th{text-align:left;font-size:10px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);padding:10px 14px;border-bottom:1.5px solid var(--border);white-space:nowrap;background:var(--card);position:sticky;top:0;z-index:1;overflow:hidden;box-shadow:0 2px 6px rgba(0,0,0,.06)}
+.p-table thead th{text-align:left;font-size:12px;font-weight:500;color:var(--muted);padding:10px 14px;border-bottom:1px solid var(--border);white-space:nowrap;background:var(--card);position:sticky;top:0;z-index:1;overflow:hidden}
 .pr{border-bottom:1px solid var(--border);transition:background .08s}
 .pr:last-child{border-bottom:none}
 @media(hover:hover){.pr:hover{background:var(--bg)}}
@@ -297,7 +321,9 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .pr-info{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pr-noph{opacity:.35}
 .pr-cat{white-space:nowrap}
-.pr-days{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.p-table.no-cat .pr-cat{display:none}
+.pr-days{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pr-days-u{font-size:11.5px;font-weight:400;color:var(--muted);margin-left:2px}
 .pr-date{color:var(--sub);font-size:12.5px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .pr-act{text-align:right}
 .pr-btns{display:flex;gap:6px;justify-content:flex-end;align-items:center}
@@ -307,8 +333,8 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .p-table .act-btn{padding:4px 11px;font-size:12px;white-space:nowrap}
 .pr-act{overflow:visible}
 .pr-more-wrap{position:relative;flex-shrink:0}
-/* Sits beside .act-btn in list rows, so it shares the height and pill shape */
-.pr-more-btn{display:inline-flex;align-items:center;justify-content:center;width:var(--ctl-h);height:var(--ctl-h);padding:0;font-size:13px;font-weight:700;border:1.5px solid #C4CBD5;border-radius:100px;background:transparent;color:var(--muted);cursor:pointer;line-height:1}
+/* Sits beside .act-btn in list rows, so it shares the height; no border — it opens a menu, it isn't a peer action */
+.pr-more-btn{display:inline-flex;align-items:center;justify-content:center;width:var(--ctl-h);height:var(--ctl-h);padding:0;font-size:13px;font-weight:700;border:none;border-radius:100px;background:transparent;color:var(--muted);cursor:pointer;line-height:1}
 @media(hover:hover){.pr-more-btn:hover{background:var(--bg);color:var(--text)}}
 .pr-dd{display:none;position:fixed;z-index:200;background:var(--card);border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.14);min-width:130px;padding:3px}
 .pr-dd.open{display:block}
@@ -439,11 +465,11 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
   :root:not([data-theme=light]) .b-hold{background:#062236;color:#7DD3FC}
   :root:not([data-theme=light]) .b-sub{background:#1A0B35;color:#C4B5FD}
   :root:not([data-theme=light]) .b-call{background:#1C0A00;color:#FB923C}
-  :root:not([data-theme=light]) .b-line{background:#1E3A5F;color:#93C5FD}
+  :root:not([data-theme=light]) .b-line{background:var(--g0);color:var(--sub)}
   :root:not([data-theme=light]) .chip-g{background:#042B18;color:#6EE7B7}
   :root:not([data-theme=light]) .chip-a{background:#2A1600;color:#FBD38D}
   :root:not([data-theme=light]) .chip-r{background:#2A0A0F;color:#FCA5A5}
-  :root:not([data-theme=light]) .cat-c{background:#0A1F14;color:#4ADE80}
+  :root:not([data-theme=light]) .cat-c{background:#10233F;color:#93C5FD}
   :root:not([data-theme=light]) .cat-m{background:#062B18;color:#34D399}
   :root:not([data-theme=light]) .cat-h{background:#1A0B35;color:#C4B5FD}
   :root:not([data-theme=light]) .cat-k{background:#2A1600;color:#FBD38D}
@@ -459,7 +485,7 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
   @media(hover:hover){:root:not([data-theme=light]) .act-blue:hover{background:#082A42;color:#7DD3FC;border-color:#1E40AF}}
   :root:not([data-theme=light]) .days-hi{color:#F87171}
   :root:not([data-theme=light]) .days-md{color:#FBBF24}
-  :root:not([data-theme=light]) .days-lo{color:#34D399}
+  :root:not([data-theme=light]) .days-lo{color:var(--text)}
   :root:not([data-theme=light]) .modal-error{background:#2A0A0F;color:#FCA5A5}
   :root:not([data-theme=light]) .act-primary{background:#1E3A5F;color:#93C5FD;border-color:#1E3A5F}
   @media(hover:hover){:root:not([data-theme=light]) .act-primary:hover{background:#254A76;color:#93C5FD;border-color:#254A76}}
@@ -471,11 +497,11 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
 :root[data-theme=dark] .b-hold{background:#062236;color:#7DD3FC}
 :root[data-theme=dark] .b-sub{background:#1A0B35;color:#C4B5FD}
 :root[data-theme=dark] .b-call{background:#1C0A00;color:#FB923C}
-:root[data-theme=dark] .b-line{background:#1E3A5F;color:#93C5FD}
+:root[data-theme=dark] .b-line{background:var(--g0);color:var(--sub)}
 :root[data-theme=dark] .chip-g{background:#042B18;color:#6EE7B7}
 :root[data-theme=dark] .chip-a{background:#2A1600;color:#FBD38D}
 :root[data-theme=dark] .chip-r{background:#2A0A0F;color:#FCA5A5}
-:root[data-theme=dark] .cat-c{background:#0A1F14;color:#4ADE80}
+:root[data-theme=dark] .cat-c{background:#10233F;color:#93C5FD}
 :root[data-theme=dark] .cat-m{background:#062B18;color:#34D399}
 :root[data-theme=dark] .cat-h{background:#1A0B35;color:#C4B5FD}
 :root[data-theme=dark] .cat-k{background:#2A1600;color:#FBD38D}
@@ -491,7 +517,7 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
 @media(hover:hover){:root[data-theme=dark] .act-blue:hover{background:#082A42;color:#7DD3FC;border-color:#1E40AF}}
 :root[data-theme=dark] .days-hi{color:#F87171}
 :root[data-theme=dark] .days-md{color:#FBBF24}
-:root[data-theme=dark] .days-lo{color:#34D399}
+:root[data-theme=dark] .days-lo{color:var(--text)}
 :root[data-theme=dark] .modal-error{background:#2A0A0F;color:#FCA5A5}
 :root[data-theme=dark] .act-primary{background:#1E3A5F;color:#93C5FD;border-color:#1E3A5F}
 @media(hover:hover){:root[data-theme=dark] .act-primary:hover{background:#254A76;color:#93C5FD;border-color:#254A76}}
@@ -503,10 +529,10 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
 @media(hover:hover){:root[data-theme=dark] .ann-read-btn:hover{background:#60a5fa;color:#1E3A5F}}
 @media(prefers-color-scheme:dark){
   :root:not([data-theme=light]) .filter-tab.on{background:#1E3A5F;color:#93C5FD}
-  :root:not([data-theme=light]) .filter-tab.on .tc-count{background:rgba(147,197,253,.18);color:#93C5FD}
+  :root:not([data-theme=light]) .filter-tab.on .tc-count{color:inherit}
 }
 :root[data-theme=dark] .filter-tab.on{background:#1E3A5F;color:#93C5FD}
-:root[data-theme=dark] .filter-tab.on .tc-count{background:rgba(147,197,253,.18);color:#93C5FD}
+:root[data-theme=dark] .filter-tab.on .tc-count{color:inherit}
 
 /* â”€â”€ sidebar selected state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 @media(prefers-color-scheme:dark){
@@ -532,7 +558,11 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
 /* â”€â”€ sortable column headers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .th-sort{cursor:pointer;user-select:none;white-space:nowrap}
 @media(hover:hover){.th-sort:hover{color:var(--sub)}}
-.sort-icon{margin-left:3px;opacity:.45;font-size:9px;vertical-align:middle}
+/* Arrows appear on hover and on the sorted column only */
+.sort-icon{margin-left:3px;opacity:0;font-size:10px;vertical-align:middle;transition:opacity .12s ease-out}
+.th-sort[data-dir]{color:var(--text)}
+.th-sort[data-dir] .sort-icon{opacity:.8}
+@media(hover:hover){.th-sort:hover .sort-icon{opacity:.5}}
 
 
 /* ── patient search dropdown ───────────────────────────── */
@@ -573,6 +603,7 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
 }
 
 @media(max-width:767px){
+  .search-row > .si,.search-row > .si-wrap{flex:1 1 auto}
   /* ── hide desktop chrome ──────────────────────────── */
   .sb{display:none!important}
   .mob-nav{display:block;bottom:calc(8px + env(safe-area-inset-bottom,0px));left:16px;right:16px;border-top:none;border:1px solid var(--border);border-radius:40px;padding-bottom:0;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,.22);touch-action:manipulation}

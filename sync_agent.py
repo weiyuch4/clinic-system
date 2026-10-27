@@ -154,7 +154,18 @@ def do_sync() -> None:
     # General prescription tracking (處方追蹤)
     try:
         from database import _query_all_prescriptions
-        prescriptions = _query_all_prescriptions(date.today())
+        min_ps = 3
+        try:
+            settings_resp = requests.get(
+                f"{CLOUD_URL}/api/sync/clinic-settings",
+                headers={"X-Sync-Token": SYNC_TOKEN},
+                timeout=15,
+            )
+            settings_resp.raise_for_status()
+            min_ps = int(settings_resp.json().get("prescription_min_ps_days", 3))
+        except Exception as exc:
+            log.warning("Clinic settings fetch failed, using min_ps=%d: %s", min_ps, exc)
+        prescriptions = _query_all_prescriptions(date.today(), min_ps)
         resp = requests.post(
             f"{CLOUD_URL}/api/sync/push-prescriptions",
             json={"clinic_id": 1, "prescriptions": prescriptions},
@@ -191,6 +202,31 @@ def do_sync() -> None:
         log.info("Synced doctor return rates for last 12 months")
     except Exception as exc:
         log.error("Doctor rates sync failed: %s", exc)
+
+    # Return visits for overdue episodes (統計：病患是否回診). The cloud keeps every overdue
+    # episode; we look up the first matching visit on or after each due date and send back
+    # only {chart_number, category, due_date, returned_on}.
+    try:
+        from database import get_first_returns
+        resp = requests.get(
+            f"{CLOUD_URL}/api/sync/open-episodes",
+            headers={"X-Sync-Token": SYNC_TOKEN},
+            timeout=30,
+        )
+        resp.raise_for_status()
+        episodes = resp.json().get("episodes", [])
+        returns = get_first_returns(episodes)
+        if returns:
+            resp = requests.post(
+                f"{CLOUD_URL}/api/sync/push-returns",
+                json={"clinic_id": 1, "returns": returns},
+                headers={"X-Sync-Token": SYNC_TOKEN},
+                timeout=30,
+            )
+            resp.raise_for_status()
+        log.info("Return check: %d open episodes, %d returned", len(episodes), len(returns))
+    except Exception as exc:
+        log.error("Return check failed: %s", exc)
 
     # Blood pending sync (reads IC + BIO files, writes result JSONB to Supabase)
     try:

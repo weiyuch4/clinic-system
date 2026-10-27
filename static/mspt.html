@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>代謝症候群 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=92">
+<link rel="stylesheet" href="/static/_layout.css?v=98">
 <style>
 .sub-banner{border-radius:10px;padding:12px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0;background:#EDE9FE;border:1px solid #DDD6FE}
 .sub-banner-icon{width:30px;height:30px;border-radius:8px;background:#6D28D9;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -21,12 +21,6 @@
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .sub-banner{background:#1A0B35;border-color:#4C1D95;color:#C4B5FD}:root:not([data-theme="light"]) .sub-banner-title,:root:not([data-theme="light"]) .sub-banner-sub,:root:not([data-theme="light"]) .sub-count{color:#C4B5FD}}
 :root[data-theme="dark"] .sub-banner{background:#1A0B35;border-color:#4C1D95;color:#C4B5FD}
 :root[data-theme="dark"] .sub-banner-title,:root[data-theme="dark"] .sub-banner-sub,:root[data-theme="dark"] .sub-count{color:#C4B5FD}
-.tab-hint{font-size:12px;border-radius:8px;padding:9px 13px;flex-shrink:0;display:flex;align-items:flex-start;gap:8px;line-height:1.5;margin-bottom:10px}
-.tab-hint-warn{background:#fef3c7;border:1px solid #fde68a;color:#78350f}
-.tab-hint-info{background:#eff6ff;border:1px solid #bfdbfe;color:#1e40af}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .tab-hint-warn{background:#1c1200;border-color:#78350f;color:#fcd34d}:root:not([data-theme="light"]) .tab-hint-info{background:#0d1f3b;border-color:#1d4ed8;color:#93c5fd}}
-:root[data-theme="dark"] .tab-hint-warn{background:#1c1200;border-color:#78350f;color:#fcd34d}
-:root[data-theme="dark"] .tab-hint-info{background:#0d1f3b;border-color:#1d4ed8;color:#93c5fd}
 .modal-hint{font-size:12.5px;padding:9px 11px;border-radius:7px;border:1px solid;margin-bottom:2px}
 .mdp-trigger{display:inline-flex;align-items:center;gap:8px;border:1.5px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);font:600 13px/1 system-ui,-apple-system,'Microsoft JhengHei',sans-serif;padding:7px 12px;height:36px;cursor:pointer;white-space:nowrap;transition:border-color .12s,box-shadow .12s;user-select:none;width:100%}
 @media(hover:hover){.mdp-trigger:hover{border-color:var(--sub)}}.mdp-trigger.open{border-color:var(--g5);box-shadow:0 0 0 3px rgba(107,114,128,.12)}.mdp-trigger svg{width:13px;height:13px;color:var(--muted);flex-shrink:0}
@@ -55,7 +49,7 @@
         <div>
           <div style="display:flex;align-items:center;gap:8px">
             <h1>代謝症候群</h1>
-            <button onclick="Layout.showModal('modal-help')" title="說明" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;padding:0;margin-bottom:1px">?</button>
+            <button onclick="Layout.showModal('modal-help')" title="說明" aria-label="說明" class="ph-help">?</button>
           </div>
           <p id="page-date">MSPT 各階段追蹤</p>
         </div>
@@ -73,7 +67,7 @@
       </div>
 
       <div class="search-row">
-        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
+        <input class="si" type="text" id="search-input" placeholder="篩選名單：姓名或身份證">
         <button class="act-btn" id="btn-filter" style="flex-shrink:0;gap:5px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
           篩選<span class="filter-badge" id="filter-badge" style="display:none">0</span>
@@ -92,7 +86,7 @@
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
         <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
         <button class="filter-tab" data-tab="upcoming">未到期 <span class="tc-count" id="cnt-upcoming">…</span></button>
-        <button class="act-btn" id="btn-workflow" style="margin-left:auto;gap:5px;flex-shrink:0;padding:6px 12px;font-size:13px">
+        <button class="act-btn" id="btn-workflow">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
         </button>
@@ -401,7 +395,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=85"></script>
+<script src="/static/_layout.js?v=92"></script>
 <script>
 // ── Modal date picker ──────────────────────────────────────────────────────
 var _mdp = {
@@ -625,7 +619,7 @@ document.addEventListener('click', function(ev) {
     return L.patientRow({ entry: e, tags: tags,
       actions: [
         { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-        { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+        { label: '暫緩',   cls: '',            key: 'hold' },
       ],
       more: [
         { label: '送去可電話完成', key: 'waive-blood', cls: '' },
@@ -643,7 +637,7 @@ document.addEventListener('click', function(ev) {
     if (isPriorTracked(e.patient.chart_number, e.mspt_stage)) tags.push('<span class="pbadge b-done">已追蹤</span>');
     return L.patientRow({ entry: e, tags: tags, actions: [
       { label: '完成', cls: 'act-primary', key: 'phone-complete' },
-      { label: '暫緩', cls: 'act-warn',    key: 'hold' },
+      { label: '暫緩', cls: '',            key: 'hold' },
     ], more: [
       { label: '送回需回診', key: 'blood-invalid', cls: '' },
       { label: '排除', key: 'exclude', cls: 'item-danger' },
@@ -686,7 +680,7 @@ document.addEventListener('click', function(ev) {
     else if (e.blood_draw_date) tags.push('<span class="pbadge b-done">有血液報告</span>');
     return L.patientRow({ entry: e, tags: tags, actions: [
       { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-      { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+      { label: '暫緩',   cls: '',            key: 'hold' },
     ], more: [{ label: '排除', key: 'exclude', cls: 'item-danger' }]});
   }
 

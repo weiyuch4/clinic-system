@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>處方追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=92">
+<link rel="stylesheet" href="/static/_layout.css?v=98">
 </head>
 <body>
 <div class="app">
@@ -29,7 +29,7 @@
         <div>
           <div style="display:flex;align-items:center;gap:8px">
             <h1>處方追蹤</h1>
-            <button onclick="Layout.showModal('modal-help')" title="說明" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;padding:0;margin-bottom:1px">?</button>
+            <button onclick="Layout.showModal('modal-help')" title="說明" aria-label="說明" class="ph-help">?</button>
           </div>
           <p id="page-date">所有處方 — 即將到期與需關懷</p>
           <div id="cutover-banner" style="display:none;margin-top:6px;padding:6px 10px;background:var(--warn-bg,#fff8e1);border:1px solid #ffe08a;border-radius:6px;font-size:12.5px;color:#7a5c00">
@@ -39,7 +39,7 @@
       </div>
 
       <div class="search-row">
-        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
+        <input class="si" type="text" id="search-input" placeholder="篩選名單：姓名或身份證">
         <button class="act-btn" id="btn-filter" style="flex-shrink:0;gap:5px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
           篩選<span class="filter-badge" id="filter-badge" style="display:none">0</span>
@@ -54,7 +54,7 @@
         <button class="filter-tab" data-tab="care">一般關懷 <span class="tc-count" id="cnt-care">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
         <button class="filter-tab" data-tab="excluded">已排除 <span class="tc-count" id="cnt-excluded"></span></button>
-        <button class="act-btn" id="btn-workflow" style="margin-left:auto;gap:5px;flex-shrink:0;padding:6px 12px;font-size:13px">
+        <button class="act-btn" id="btn-workflow">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
         </button>
@@ -169,7 +169,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=85"></script>
+<script src="/static/_layout.js?v=92"></script>
 <script>
 (function () {
   'use strict';
@@ -276,7 +276,7 @@
       '<td class="pr-act"><div class="pr-btns">' +
         '<button class="act-btn act-primary" data-action="contact">已聯繫</button>' +
         '<button class="act-btn" data-action="no-line" style="color:#15803d;border-color:#bbf7d0">未加LINE</button>' +
-        '<button class="act-btn act-warn" data-action="hold">暫緩</button>' +
+        '<button class="act-btn" data-action="hold">暫緩</button>' +
       '</div></td>' +
       '</tr>';
   }

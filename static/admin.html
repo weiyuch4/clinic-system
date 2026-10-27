@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>管理員後台</title>
-<link rel="stylesheet" href="/static/_layout.css?v=92">
+<link rel="stylesheet" href="/static/_layout.css?v=98">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
@@ -1795,7 +1795,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
 .send-panel{border:1px solid var(--border);border-radius:var(--radius-s);padding:16px;background:var(--bg);margin-bottom:16px}
 .send-panel-title{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
 </style>
-<script src="/static/_layout.js?v=85"></script>
+<script src="/static/_layout.js?v=92"></script>
 <script src="/static/admin-auth.js?v=5"></script>
 </head>
 <body>
@@ -2070,6 +2070,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
       <label style="display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;white-space:nowrap;color:var(--text-2)"><input type="checkbox" id="print-all-nurse" checked> 護理師</label>
       <label style="display:flex;align-items:center;gap:3px;font-size:12px;cursor:pointer;white-space:nowrap;color:var(--text-2)"><input type="checkbox" id="print-all-pharm" checked> 藥師</label>
       <button class="btn-sm" onclick="printAllPhPaySlips()" style="white-space:nowrap">列印全月薪資條</button>
+      <button class="btn-sm" onclick="openPaySettings()" style="white-space:nowrap">薪資預設值</button>
     </span>
   </div>
   <div id="sal-nurse-pane">
@@ -2109,10 +2110,10 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
         </div>
         <div class="sal-row sal-full-only">
           <span class="sal-label">執照費</span>
-          <span class="sal-amount">2,000</span>
+          <span class="sal-amount" id="sal-license-amt">2,000</span>
         </div>
 
-        <div class="sal-part-rate-note">兼職時薪：<strong>250 元/h</strong>（一般）；<strong>335 元/h</strong>（加班，250 × 1.34）</div>
+        <div class="sal-part-rate-note" id="sal-part-rate-note"></div>
 
         <!-- 加班記錄 (unified) -->
         <div class="sal-section-head" style="margin-top:18px">
@@ -3330,6 +3331,25 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
     <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:20px">
       <button class="btn-sm" onclick="closeUsrModal()">取消</button>
       <button class="btn-sm" id="usr-modal-confirm">確認</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 薪資預設值 modal ── -->
+<div id="pay-modal-overlay" class="modal-overlay" onclick="if(event.target===this)closePaySettings()">
+  <div class="modal" style="width:min(440px,94vw)">
+    <div class="modal-title" style="margin-bottom:6px">薪資預設值</div>
+    <div style="font-size:13px;color:var(--text-3);margin-bottom:16px">新計算的薪資使用這些金額。已儲存的薪資單維持當時的金額，不會改變。藥師的薪資單可個別調整。</div>
+    <div class="field"><label class="field-label" for="pay-base">底薪（元）</label><input id="pay-base" class="lfi" type="number" min="1" step="1" oninput="updatePayDerived()"></div>
+    <div class="field"><label class="field-label" for="pay-attendance">全勤獎金（元）</label><input id="pay-attendance" class="lfi" type="number" min="0" step="1" oninput="updatePayDerived()"></div>
+    <div class="field"><label class="field-label" for="pay-license">執照津貼（元）</label><input id="pay-license" class="lfi" type="number" min="0" step="1" oninput="updatePayDerived()"></div>
+    <div class="field"><label class="field-label" for="pay-float_base">浮動獎金基數（元，扣除周六加班費後發放）</label><input id="pay-float_base" class="lfi" type="number" min="0" step="1" oninput="updatePayDerived()"></div>
+    <div class="field"><label class="field-label" for="pay-part_rate">兼職時薪（元/h）</label><input id="pay-part_rate" class="lfi" type="number" min="1" step="1" oninput="updatePayDerived()"></div>
+    <div id="pay-derived" style="font-size:12px;color:var(--text-2);line-height:1.6"></div>
+    <div id="pay-err" style="display:none;color:var(--red);font-size:12px;margin-top:8px"></div>
+    <div class="modal-actions">
+      <button class="btn-sm" onclick="closePaySettings()">取消</button>
+      <button class="btn-sm primary" id="pay-save-btn" onclick="savePaySettings()">儲存</button>
     </div>
   </div>
 </div>
@@ -5528,11 +5548,79 @@ async function copyLastWeek() {
 
 // ── 薪資計算 ──────────────────────────────────────────────────────────────────
 
-const SAL_BASE       = 30500;
-const SAL_LICENSE    = 2000;
-const SAL_ATTENDANCE = 2000;
-const SAL_FLOAT_BASE = 7500;
-const SAL_SAT_RATE   = 175;   // (42000/30)/8 — Saturday overtime base rate
+// Pay amounts come from clinic settings (薪資預設值). Each saved slip keeps a copy in
+// ot_entries.pay; slips saved before that existed were calculated with PAY_LEGACY.
+const PAY_LEGACY = { base: 30500, license: 2000, attendance: 2000, float_base: 7500, part_rate: 250 };
+let _clinicPay = { ...PAY_LEGACY };
+let _salPay = _clinicPay;  // amounts the nurse slip on screen is calculated with
+const payFullMonthly = p => p.base + p.attendance + p.license + p.float_base;  // sick/proration base (42,000)
+const payOtRate      = p => Math.round(payFullMonthly(p) / 240);             // overtime base rate (42,000 ÷ 240 = 175)
+const payPartOtRate  = p => p.part_rate * 1.34;
+
+async function loadClinicPay() {
+  try {
+    const s = await api('/api/admin/settings');
+    _clinicPay = { base: s.pay_base, license: s.pay_license, attendance: s.pay_attendance,
+                   float_base: s.pay_float_base, part_rate: s.pay_part_rate };
+  } catch (_) {}
+}
+
+const PAY_FIELDS = [
+  ['base', 'pay_base', '底薪'], ['attendance', 'pay_attendance', '全勤獎金'], ['license', 'pay_license', '執照津貼'],
+  ['float_base', 'pay_float_base', '浮動獎金基數'], ['part_rate', 'pay_part_rate', '兼職時薪'],
+];
+
+function openPaySettings() {
+  PAY_FIELDS.forEach(([k]) => { $('pay-' + k).value = _clinicPay[k]; });
+  $('pay-err').style.display = 'none';
+  updatePayDerived();
+  $('pay-modal-overlay').classList.add('show');
+}
+
+function closePaySettings() {
+  const overlay = $('pay-modal-overlay');
+  overlay.classList.add('closing');
+  setTimeout(() => overlay.classList.remove('show', 'closing'), 150);
+}
+
+function _readPayInputs() {
+  const p = {};
+  PAY_FIELDS.forEach(([k]) => { p[k] = parseInt($('pay-' + k).value, 10); });
+  return p;
+}
+
+function updatePayDerived() {
+  const p = _readPayInputs();
+  const ok = PAY_FIELDS.every(([k]) => Number.isInteger(p[k]) && p[k] >= 0);
+  $('pay-derived').textContent = ok
+    ? `月薪合計 ${fmtNT(payFullMonthly(p))}（病假與到職日扣款依此計算）・加班基準時薪 ${fmtNT(payOtRate(p))} 元/h・兼職加班時薪 ${fmtNT(Math.ceil(payPartOtRate(p)))} 元/h`
+    : '';
+}
+
+async function savePaySettings() {
+  const p = _readPayInputs();
+  const bad = PAY_FIELDS.find(([k]) => !Number.isInteger(p[k]) || p[k] < 0 || ((k === 'base' || k === 'part_rate') && p[k] < 1));
+  if (bad) {
+    $('pay-err').textContent = `請輸入有效的${bad[2]}（${bad[0] === 'base' || bad[0] === 'part_rate' ? '需大於 0' : '0 或以上'}）`;
+    $('pay-err').style.display = '';
+    return;
+  }
+  const body = {};
+  PAY_FIELDS.forEach(([k, key]) => { body[key] = p[k]; });
+  const btn = $('pay-save-btn');
+  btn.disabled = true;
+  try {
+    await api('/api/admin/settings', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    _clinicPay = p;
+    if (!_salEditingId) { _salPay = _clinicPay; recalcSalary(); }
+    closePaySettings();
+  } catch (err) {
+    $('pay-err').textContent = '儲存失敗：' + err.message;
+    $('pay-err').style.display = '';
+  } finally {
+    btn.disabled = false;
+  }
+}
 
 // full: {date:'YYYY-MM-DD', start:'HH:MM', end:'HH:MM'}
 // part: same + isOt:bool
@@ -5794,6 +5882,10 @@ function initSalaryTab() {
   recalcSalary();
   initBonusInline();
   loadSalaryHistory();
+  loadClinicPay().then(() => {
+    if (!_salEditingId) { _salPay = _clinicPay; recalcSalary(); }
+    applyPhPayDefaults();
+  });
 }
 
 let _salEditingId = null;  // null = new record; number = editing existing record id
@@ -5812,6 +5904,7 @@ function setEditingRecord(id) {
   $('sal-editing-badge').style.display = id ? '' : 'none';
   $('sal-new-btn').style.display = id ? '' : 'none';
   $('sal-save-btn').textContent = id ? '更新記錄' : '儲存薪資記錄';
+  if (!id && _salPay !== _clinicPay) { _salPay = _clinicPay; recalcSalary(); }
 }
 
 function newSalaryRecord() {
@@ -5834,7 +5927,7 @@ function _currentSalaryPayload() {
   return {
     nurse:       $('sal-nurse').value,
     month:       salMonthStr(),
-    attendance:  isPart ? 0 : ($('sal-attendance-chk').checked ? 2000 : 0),
+    attendance:  isPart ? 0 : ($('sal-attendance-chk').checked ? _salPay.attendance : 0),
     performance: _bonusCalculated || 0,
     sat_pay:     isPart ? 0 : (parseInt($('sal-sat-amt').textContent.replace(/,/g, '')) || 0),
     float_bonus: isPart ? 0 : (parseInt($('sal-float-amt').textContent.replace(/,/g, '')) || 0),
@@ -5845,7 +5938,8 @@ function _currentSalaryPayload() {
                   labor_ins: parseInt(($('sal-labor-ins')||{}).value)||0,
                   health_ins: parseInt(($('sal-health-ins')||{}).value)||0,
                   pension: parseInt(($('sal-pension')||{}).value)||0,
-                  unworked_days: parseInt(($('sal-unworked-days')||{}).value)||0}),
+                  unworked_days: parseInt(($('sal-unworked-days')||{}).value)||0,
+                  pay: _salPay}),
   };
 }
 
@@ -5885,12 +5979,13 @@ async function saveSalaryRecord() {
 
 function loadSalaryRecord(record) {
   // restore mode and overtime entries from JSON
-  let parsed = {};
-  try {
-    const raw = JSON.parse(record.ot_entries || '[]');
-    if (Array.isArray(raw)) { _salOtRows = raw; setSalMode('full'); }
-    else { _salOtRows = raw.rows || []; setSalMode(raw.mode || 'full'); parsed = raw; }
-  } catch (_) { _salOtRows = []; setSalMode('full'); }
+  let raw = [];
+  try { raw = JSON.parse(record.ot_entries || '[]'); } catch (_) {}
+  const parsed = Array.isArray(raw) ? {} : raw;
+  // recalculate with the amounts this slip was saved with, not today's settings
+  _salPay = parsed.pay || PAY_LEGACY;
+  _salOtRows = Array.isArray(raw) ? raw : (raw.rows || []);
+  setSalMode(parsed.mode || 'full');
 
   // restore attendance checkbox
   $('sal-attendance-chk').checked = record.attendance > 0;
@@ -5947,11 +6042,11 @@ function renderSalaryHistory(records, nurse, month) {
   card.style.display = '';
   $('sal-history-meta').textContent = `${nurse} · ${month} · ${records.length} 筆`;
   $('sal-history-list').innerHTML = records.map(r => {
-    let recMode = 'full';
-    try { const p = JSON.parse(r.ot_entries || '[]'); if (!Array.isArray(p)) recMode = p.mode || 'full'; } catch (_) {}
+    let recMode = 'full', recPay = PAY_LEGACY;
+    try { const p = JSON.parse(r.ot_entries || '[]'); if (!Array.isArray(p)) { recMode = p.mode || 'full'; recPay = p.pay || PAY_LEGACY; } } catch (_) {}
     const breakdown = recMode === 'part'
       ? `兼職工時薪資 ${r.ot_pay}`
-      : `底薪 30,500 ＋ 全勤 ${r.attendance} ＋ 執照 2,000 ＋ 周六 ${r.sat_pay} ＋ 浮動 ${r.float_bonus} ＋ 不定期獎金 ${r.performance} ＋ 加班 ${r.ot_pay}`;
+      : `底薪 ${fmtNT(recPay.base)} ＋ 全勤 ${r.attendance} ＋ 執照 ${fmtNT(recPay.license)} ＋ 周六 ${r.sat_pay} ＋ 浮動 ${r.float_bonus} ＋ 不定期獎金 ${r.performance} ＋ 加班 ${r.ot_pay}`;
     return `
     <div class="sal-hist-row${_salEditingId === r.id ? ' selected' : ''}"
          onclick="selectSalHistRow(this, ${JSON.stringify(r).replace(/"/g, '&quot;')})">
@@ -6127,15 +6222,30 @@ let _phSalOtRows = [];
 let _phRegRows   = [];
 let _phSalExtras = [];
 let _phSalEditingId = null;
-const PH_SAL_BASE = 30500;
-const PH_SAL_ATTENDANCE = 2000;
-const PH_SAL_SAT_RATE = 175;
-let _phSalBase = PH_SAL_BASE;
+// Pharmacist amounts are set per slip; new slips start from the clinic pay settings.
+let _phSalBase = PAY_LEGACY.base;
 let _phSalBaseNote = '';
-let _phSalAttendance = PH_SAL_ATTENDANCE;
-let _phSalOtRate = PH_SAL_SAT_RATE;
-let _phSalHourlyRate = 250;
-let _phSalHourlyOtRate = 335;
+let _phSalAttendance = PAY_LEGACY.attendance;
+let _phSalOtRate = payOtRate(PAY_LEGACY);
+let _phSalHourlyRate = PAY_LEGACY.part_rate;
+let _phSalHourlyOtRate = Math.ceil(PAY_LEGACY.part_rate * 1.34);
+let _phPayDefaultsApplied = false;
+
+// Fill an untouched new pharmacist slip with the clinic's pay settings (once per page load).
+function applyPhPayDefaults() {
+  if (_phPayDefaultsApplied || _phSalEditingId) return;
+  _phPayDefaultsApplied = true;
+  _phSalBase         = _clinicPay.base;
+  _phSalAttendance   = _clinicPay.attendance;
+  _phSalOtRate       = payOtRate(_clinicPay);
+  _phSalHourlyRate   = _clinicPay.part_rate;
+  _phSalHourlyOtRate = Math.ceil(_phSalHourlyRate * 1.34);
+  if ($('ph-sal-base-inp'))            $('ph-sal-base-inp').value            = _phSalBase;
+  if ($('ph-sal-ot-rate-inp'))         $('ph-sal-ot-rate-inp').value         = _phSalOtRate;
+  if ($('ph-sal-hourly-rate-inp'))     $('ph-sal-hourly-rate-inp').value     = _phSalHourlyRate;
+  if ($('ph-sal-hourly-ot-rate-disp')) $('ph-sal-hourly-ot-rate-disp').textContent = _phSalHourlyOtRate;
+  recalcPhSalary();
+}
 
 function phSalMonthStr() {
   return `${_phSalYear}-${String(_phSalMon).padStart(2,'0')}`;
@@ -6622,9 +6732,10 @@ function _buildNurseSlipItems(parsed, rec) {
   const sickDays = rec.sick_days || 0;
   const [ry, rm] = (rec.month || '').split('-').map(Number);
   const daysInMonth = (ry && rm) ? new Date(ry, rm, 0).getDate() : 30;
+  const pay = parsed.pay || PAY_LEGACY;
   const items = [];
   if (isPart) {
-    const PART_RATE = 250, PART_OT_RATE = 250 * 1.34;
+    const PART_RATE = pay.part_rate, PART_OT_RATE = payPartOtRate(pay);
     const rows = parsed.rows || [];
     let partRegular = 0, partOt = 0;
     const workDays = new Set();
@@ -6642,9 +6753,9 @@ function _buildNurseSlipItems(parsed, rec) {
     if (partOt > 0) items.push({ label: '加班費', amount: partOt });
     if (rec.performance > 0) items.push({ label: '不定期獎金', amount: rec.performance });
   } else {
-    items.push({ label: '底薪', amount: SAL_BASE });
+    items.push({ label: '底薪', amount: pay.base });
     if (rec.attendance > 0) items.push({ label: '全勤獎金', amount: rec.attendance });
-    items.push({ label: '執照津貼', amount: SAL_LICENSE });
+    if (pay.license > 0) items.push({ label: '執照津貼', amount: pay.license });
     if (rec.sat_pay > 0) items.push({ label: '周六加班費', amount: rec.sat_pay });
     if (rec.float_bonus > 0) items.push({ label: '浮動獎金', amount: rec.float_bonus });
     if (rec.performance > 0) items.push({ label: '不定期獎金', amount: rec.performance });
@@ -6653,14 +6764,14 @@ function _buildNurseSlipItems(parsed, rec) {
   extras.filter(e => e.amount > 0).forEach(e => items.push({ label: e.name || '其他獎金', amount: e.amount }));
   extras.filter(e => e.amount < 0).forEach(e => items.push({ label: e.name || '其他扣款', amount: e.amount, red: true }));
   if (!isPart && sickDays > 0) {
-    const sd = Math.round(42000 / daysInMonth * sickDays * 0.5);
+    const sd = Math.round(payFullMonthly(pay) / daysInMonth * sickDays * 0.5);
     if (sd > 0) items.push({ label: `病假扣款 (${sickDays}天)`, amount: -sd, red: true });
   }
   if (laborIns > 0) items.push({ label: '勞保自付額', amount: -laborIns, red: true });
   if (healthIns > 0) items.push({ label: '健保自付額', amount: -healthIns, red: true });
   if (pension > 0) items.push({ label: '勞退自提', amount: -pension, red: true });
   if (!isPart && unworkedDays > 0) {
-    const pd2 = Math.round(42000 / daysInMonth * unworkedDays);
+    const pd2 = Math.round(payFullMonthly(pay) / daysInMonth * unworkedDays);
     if (pd2 > 0) items.push({ label: `到職日調整 (${unworkedDays}天)`, amount: -pd2, red: true });
   }
   return { items, slipStart: '', slipEnd: '' };
@@ -6668,11 +6779,11 @@ function _buildNurseSlipItems(parsed, rec) {
 
 function _buildSlipItems(parsed) {
   const isPart = (parsed.mode || 'full') === 'part';
-  const base = parsed.base !== undefined ? parsed.base : PH_SAL_BASE;
+  const base = parsed.base !== undefined ? parsed.base : PAY_LEGACY.base;
   const baseNote = parsed.base_note || '';
-  const otRate = parsed.ot_rate !== undefined ? parsed.ot_rate : PH_SAL_SAT_RATE;
-  const hourlyRate = parsed.hourly_rate !== undefined ? parsed.hourly_rate : 250;
-  const hourlyOtRate = parsed.hourly_ot_rate !== undefined ? parsed.hourly_ot_rate : 335;
+  const otRate = parsed.ot_rate !== undefined ? parsed.ot_rate : payOtRate(PAY_LEGACY);
+  const hourlyRate = parsed.hourly_rate !== undefined ? parsed.hourly_rate : PAY_LEGACY.part_rate;
+  const hourlyOtRate = parsed.hourly_ot_rate !== undefined ? parsed.hourly_ot_rate : Math.ceil(hourlyRate * 1.34);
   const rows = parsed.rows || [];
   const regRows = parsed.reg_rows || [];
   const extras = Array.isArray(parsed.extras) ? parsed.extras : [];
@@ -6744,15 +6855,16 @@ async function printAllPhPaySlips() {
       const [ry, rm] = (rec.month || '').split('-').map(Number);
       const dim = (ry && rm) ? new Date(ry, rm, 0).getDate() : 30;
       const sickDays = rec.sick_days || 0;
-      const sickDeduct = (type==='nurse' && !isPart && sickDays>0) ? Math.round(42000/dim*sickDays*0.5) : 0;
-      const prorateDeduct = (type==='nurse' && !isPart && (p.unworked_days||0)>0) ? Math.round(42000/dim*p.unworked_days) : 0;
+      const pay = p.pay || PAY_LEGACY;
+      const sickDeduct = (type==='nurse' && !isPart && sickDays>0) ? Math.round(payFullMonthly(pay)/dim*sickDays*0.5) : 0;
+      const prorateDeduct = (type==='nurse' && !isPart && (p.unworked_days||0)>0) ? Math.round(payFullMonthly(pay)/dim*p.unworked_days) : 0;
       const otherDeduct = sickDeduct + prorateDeduct + negExtras;
 
       // Build columns: [{ h1group, h2label, value }]
       let cols = [];
       if (type === 'nurse') {
         if (isPart) {
-          const PART_RATE = 250, PART_OT_RATE = 250 * 1.34;
+          const PART_RATE = pay.part_rate, PART_OT_RATE = payPartOtRate(pay);
           let partReg = 0, partOt = 0;
           (p.rows||[]).forEach(r => { const m=calcMinutes(r.start,r.end); if(m<=0)return; const h=m/60; if(r.isOt)partOt+=h*PART_OT_RATE;else partReg+=h*PART_RATE; });
           partReg=Math.ceil(partReg); partOt=Math.ceil(partOt);
@@ -6764,9 +6876,9 @@ async function printAllPhPaySlips() {
           ];
         } else {
           cols = [
-            {g:'薪資',h:'底薪',       val:SAL_BASE.toLocaleString('zh-TW')},
+            {g:'薪資',h:'底薪',       val:pay.base.toLocaleString('zh-TW')},
             {g:'',    h:'全勤獎金',   val:v(rec.attendance||0)},
-            {g:'',    h:'執照津貼',   val:SAL_LICENSE.toLocaleString('zh-TW')},
+            {g:'',    h:'執照津貼',   val:v(pay.license)},
             {g:'',    h:'周六加班費', val:v(rec.sat_pay||0)},
             {g:'',    h:'加班費',     val:v(rec.ot_pay||0)},
             {g:'',    h:'浮動獎金',   val:v(rec.float_bonus||0)},
@@ -6776,14 +6888,15 @@ async function printAllPhPaySlips() {
         }
       } else {
         if (isPart) {
-          const _otRate = p.hourly_ot_rate || Math.ceil((p.hourly_rate||250)*1.34);
+          const _hourly = p.hourly_rate || PAY_LEGACY.part_rate;
+          const _otRate = p.hourly_ot_rate || Math.ceil(_hourly*1.34);
           let partReg = 0, partOt = 0;
           if (p.reg_pay !== undefined || p.ot_pay_only !== undefined) {
             partReg = p.reg_pay    || 0;
             partOt  = p.ot_pay_only || 0;
           } else {
-            (p.rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) { if (r.isOt) partOt += Math.ceil((m/60)*_otRate); else partReg += Math.ceil((m/60)*(p.hourly_rate||250)); } });
-            (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) partReg += Math.ceil((m/60)*(p.hourly_rate||250)); });
+            (p.rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) { if (r.isOt) partOt += Math.ceil((m/60)*_otRate); else partReg += Math.ceil((m/60)*_hourly); } });
+            (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) partReg += Math.ceil((m/60)*_hourly); });
           }
           const otExtra     = extras.filter(e => e.amount > 0 && (e.name||'').trim() === '加班費').reduce((s,e) => s+e.amount, 0);
           const otherExtras = extras.filter(e => e.amount > 0 && (e.name||'').trim() !== '加班費').reduce((s,e) => s+e.amount, 0);
@@ -6793,9 +6906,9 @@ async function printAllPhPaySlips() {
             {g:'',    h:'其他獎金', val:v(otherExtras)},
           ];
         } else {
-          const base = p.base!==undefined ? p.base : PH_SAL_BASE;
+          const base = p.base!==undefined ? p.base : PAY_LEGACY.base;
           const note = p.base_note||'';
-          const otRate = p.ot_rate !== undefined ? p.ot_rate : PH_SAL_SAT_RATE;
+          const otRate = p.ot_rate !== undefined ? p.ot_rate : payOtRate(PAY_LEGACY);
           let fullOtPay = 0;
           (p.rows||[]).forEach(row => {
             const mins = calcMinutes(row.start, row.end);
@@ -6803,7 +6916,7 @@ async function printAllPhPaySlips() {
             const info = getDayInfo(row.date);
             fullOtPay += calcOvertimePay(mins, info.isSaturday ? '休息日' : '平日', otRate);
           });
-          (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) fullOtPay += Math.ceil((m/60)*(p.hourly_rate||250)); });
+          (p.reg_rows||[]).forEach(r => { const m = calcMinutes(r.start, r.end); if (m > 0) fullOtPay += Math.ceil((m/60)*(p.hourly_rate||PAY_LEGACY.part_rate)); });
           fullOtPay = Math.ceil(fullOtPay);
           cols = [
             {g:'薪資',h:'月薪',  val:`${base.toLocaleString('zh-TW')}${note?`<br><span class="note">${note}</span>`:''}` },
@@ -6972,11 +7085,11 @@ async function loadPhSalRecord(id) {
       else { _phSalOtRows = parsed.rows || []; setPhSalMode(parsed.mode || 'full'); }
     } catch(_) { _phSalOtRows = []; setPhSalMode('full'); }
     _phSalExtras = Array.isArray(parsed.extras) ? parsed.extras : [];
-    _phSalBase         = parsed.base         !== undefined ? parsed.base         : PH_SAL_BASE;
+    _phSalBase         = parsed.base         !== undefined ? parsed.base         : PAY_LEGACY.base;
     _phSalBaseNote     = parsed.base_note    !== undefined ? parsed.base_note    : '';
-    _phSalAttendance   = parsed.attendance   !== undefined ? parsed.attendance   : PH_SAL_ATTENDANCE;
-    _phSalOtRate       = parsed.ot_rate      !== undefined ? parsed.ot_rate      : PH_SAL_SAT_RATE;
-    _phSalHourlyRate   = parsed.hourly_rate  !== undefined ? parsed.hourly_rate  : 250;
+    _phSalAttendance   = parsed.attendance   !== undefined ? parsed.attendance   : PAY_LEGACY.attendance;
+    _phSalOtRate       = parsed.ot_rate      !== undefined ? parsed.ot_rate      : payOtRate(PAY_LEGACY);
+    _phSalHourlyRate   = parsed.hourly_rate  !== undefined ? parsed.hourly_rate  : PAY_LEGACY.part_rate;
     _phSalHourlyOtRate = Math.ceil(_phSalHourlyRate * 1.34);
     if ($('ph-sal-base-inp'))           $('ph-sal-base-inp').value           = _phSalBase;
     if ($('ph-sal-base-note-inp'))      $('ph-sal-base-note-inp').value      = _phSalBaseNote;
@@ -7207,9 +7320,14 @@ function recalcSalary() {
   // NOTE: does NOT call renderOtRows() — that would destroy date-pickers.
   // Instead, update only the tag/result spans by id.
 
+  const partNote = `兼職時薪：${fmtNT(_salPay.part_rate)} 元/h（一般）；${fmtNT(Math.ceil(payPartOtRate(_salPay)))} 元/h（加班，${fmtNT(_salPay.part_rate)} × 1.34）`;
+  $('sal-part-rate-note').textContent = partNote;
+  $('sal-base').textContent = fmtNT(_salPay.base);
+  $('sal-license-amt').textContent = _salPay.license > 0 ? fmtNT(_salPay.license) : '—';
+
   if (_salMode === 'part') {
-    const PART_RATE    = 250;
-    const PART_OT_RATE = 250 * 1.34;
+    const PART_RATE    = _salPay.part_rate;
+    const PART_OT_RATE = payPartOtRate(_salPay);
     let partPay = 0;
     _salOtRows.forEach((r, i) => {
       const mins = calcMinutes(r.start, r.end);
@@ -7235,7 +7353,7 @@ function recalcSalary() {
     if (partExtrasEl) partExtrasEl.textContent = (partExtras >= 0 ? '' : '−') + fmtNT(Math.abs(partExtras));
     $('sal-ot-total').textContent    = fmtNT(partPay);
     $('sal-grand-total').textContent = fmtNT(partPay + partBonus + partExtras - partInsDeduct) + ' 元';
-    $('sal-hourly-note').textContent = '兼職時薪：250 元/h（一般）；335 元/h（加班，250 × 1.34）';
+    $('sal-hourly-note').textContent = partNote;
     return;
   }
 
@@ -7246,8 +7364,8 @@ function recalcSalary() {
   // prorate 全勤獎金: always divide by 30 regardless of month
   const attendance = hasAttendance
     ? (_sickDays > 0
-        ? Math.round(SAL_ATTENDANCE * (30 - _sickDays) / 30)
-        : SAL_ATTENDANCE)
+        ? Math.round(_salPay.attendance * (30 - _sickDays) / 30)
+        : _salPay.attendance)
     : 0;
 
   // Group entries by date, sort each group by start time, accumulate hours
@@ -7263,7 +7381,7 @@ function recalcSalary() {
     group.sort((a, b) => a.r.start.localeCompare(b.r.start));
     const info = getDayInfo(group[0].r.date);
     const isSat  = info.isSaturday;
-    const rate   = SAL_SAT_RATE;  // 42,000 ÷ 240 = 175 元/h for all overtime
+    const rate   = payOtRate(_salPay);  // monthly total ÷ 240 (42,000 ÷ 240 = 175 元/h) for all overtime
     const tiers  = (isSat || info.isRestDay)
       ? [{limit: 2, mult: 1.34}, {limit: 8, mult: 1.67}, {limit: 12, mult: 2.67}]
       : [{limit: 2, mult: 1.34}, {limit: 4, mult: 1.67}];
@@ -7316,7 +7434,7 @@ function recalcSalary() {
     });
   }
   // satPay and otPay are already integer sums of per-entry ceiled values
-  const floatPay = Math.max(0, SAL_FLOAT_BASE - satPay);
+  const floatPay = Math.max(0, _salPay.float_base - satPay);
 
   // extras (other bonuses/deductions)
   const extrasTotal = _salExtras.reduce((s, ex) => s + (parseInt(ex.amount) || 0), 0);
@@ -7326,9 +7444,8 @@ function recalcSalary() {
     extrasEl.className = 'sal-amount' + (extrasTotal < 0 ? '' : '');
   }
 
-  // Sick deduction: 42,000 ÷ days_in_month × sick_days × 50%  (勞基法病假半薪)
-  const fixedMonthly  = SAL_BASE + attendance + SAL_LICENSE + floatPay;
-  const sickDailyRate = (SAL_BASE + SAL_ATTENDANCE + SAL_LICENSE + SAL_FLOAT_BASE) / _daysInMonth;
+  // Sick deduction: monthly total (42,000) ÷ days_in_month × sick_days × 50%  (勞基法病假半薪)
+  const sickDailyRate = payFullMonthly(_salPay) / _daysInMonth;
   const sickDeduct    = _sickDays > 0 ? Math.round(sickDailyRate * _sickDays * 0.5) : 0;
   const sickRow = $('sal-sick-row');
   if (sickRow) sickRow.style.display = sickDeduct > 0 ? '' : 'none';
@@ -7343,7 +7460,7 @@ function recalcSalary() {
   if ($('sal-ins-deduct')) $('sal-ins-deduct').textContent = insDeduct > 0 ? `−${fmtNT(insDeduct)}` : '—';
 
   const unworkedDays    = parseInt(($('sal-unworked-days') || {}).value) || 0;
-  const prorateBase     = SAL_BASE + SAL_ATTENDANCE + SAL_LICENSE + SAL_FLOAT_BASE;  // always 42,000
+  const prorateBase     = payFullMonthly(_salPay);
   const prorateDeduct   = unworkedDays > 0 ? Math.round(prorateBase / _daysInMonth * unworkedDays) : 0;
   const prorateRow      = $('sal-prorate-row');
   if (prorateRow) prorateRow.style.display = prorateDeduct > 0 ? '' : 'none';
@@ -7353,17 +7470,17 @@ function recalcSalary() {
     ? `${fmtNT(prorateBase)} ÷ ${_daysInMonth}天 × ${unworkedDays}天`
     : '';
 
-  const grand = SAL_BASE + attendance + SAL_LICENSE + satPay + floatPay + perf + otPay + extrasTotal - sickDeduct - insDeduct - prorateDeduct;
+  const grand = _salPay.base + attendance + _salPay.license + satPay + floatPay + perf + otPay + extrasTotal - sickDeduct - insDeduct - prorateDeduct;
 
   $('sal-attendance-amt').textContent = hasAttendance
-    ? (attendance < SAL_ATTENDANCE ? `${fmtNT(attendance)} （指勤比例）` : '2,000')
+    ? (attendance < _salPay.attendance ? `${fmtNT(attendance)} （指勤比例）` : fmtNT(_salPay.attendance))
     : '—';
   $('sal-attendance-amt').className   = 'sal-amount' + (hasAttendance ? '' : ' muted');
   $('sal-sat-amt').textContent        = fmtNT(satPay);
   $('sal-float-amt').textContent      = fmtNT(floatPay);
   $('sal-ot-total').textContent       = fmtNT(otPay);
   $('sal-grand-total').textContent    = fmtNT(grand) + ' 元';
-  $('sal-hourly-note').textContent    = '加班基準時薪：175 元/h（42,000 ÷ 240）';
+  $('sal-hourly-note').textContent    = `加班基準時薪：${fmtNT(payOtRate(_salPay))} 元/h（${fmtNT(payFullMonthly(_salPay))} ÷ 240）`;
 }
 
 function printPaySlip() {
@@ -7380,8 +7497,8 @@ function printPaySlip() {
 
   let rows = '';
   if (isPart) {
-    const PART_RATE    = 250;
-    const PART_OT_RATE = 250 * 1.34;
+    const PART_RATE    = _salPay.part_rate;
+    const PART_OT_RATE = payPartOtRate(_salPay);
     let partRegular = 0, partOt = 0;
     _salOtRows.forEach(r => {
       const mins = calcMinutes(r.start, r.end);
@@ -7420,9 +7537,9 @@ function printPaySlip() {
     const sickDays = parseInt(($('sal-sick-days') || {}).value) || 0;
     const sickDeductAmt = sickDays > 0 ? (parseInt(($('sal-sick-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
     rows = `
-      <tr><td>底薪</td><td>NT$ 30,500</td></tr>
+      <tr><td>底薪</td><td>NT$ ${_salPay.base.toLocaleString('zh-TW')}</td></tr>
       <tr><td>全勤獎金</td><td>${att ? 'NT$ ' + parseInt($('sal-attendance-amt').textContent.replace(/[^0-9]/g,'') || '0').toLocaleString('zh-TW') : '—'}</td></tr>
-      <tr><td>執照津貼</td><td>NT$ 2,000</td></tr>
+      ${_salPay.license > 0 ? `<tr><td>執照津貼</td><td>NT$ ${_salPay.license.toLocaleString('zh-TW')}</td></tr>` : ''}
       <tr><td>周六加班費</td><td>${fmt(sat)}</td></tr>
       <tr><td>浮動獎金</td><td>${fmt(flt)}</td></tr>
       ${perf > 0 ? `<tr><td>不定期獎金</td><td>NT$ ${perf.toLocaleString('zh-TW')}</td></tr>` : ''}

@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>慢簽追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=92">
+<link rel="stylesheet" href="/static/_layout.css?v=98">
 </head>
 <body>
 <div class="app">
@@ -29,14 +29,14 @@
         <div>
           <div style="display:flex;align-items:center;gap:8px">
             <h1>慢簽追蹤</h1>
-            <button onclick="Layout.showModal('modal-help')" title="說明" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;padding:0;margin-bottom:1px">?</button>
+            <button onclick="Layout.showModal('modal-help')" title="說明" aria-label="說明" class="ph-help">?</button>
           </div>
           <p id="page-date">慢性病連續處方箋 — 逾期待聯繫</p>
         </div>
       </div>
 
       <div class="search-row">
-        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
+        <input class="si" type="text" id="search-input" placeholder="篩選名單：姓名或身份證">
         <span class="sr-count" id="result-count"></span>
       </div>
 
@@ -45,7 +45,7 @@
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
               <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
-        <button class="act-btn" id="btn-workflow" style="margin-left:auto;gap:5px;flex-shrink:0;padding:6px 12px;font-size:13px">
+        <button class="act-btn" id="btn-workflow">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
         </button>
@@ -168,7 +168,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=85"></script>
+<script src="/static/_layout.js?v=92"></script>
 <script>
 (function () {
   'use strict';
@@ -232,7 +232,7 @@
     return L.patientRow({ entry: e,
       actions: [
         { label: '已聯繫', cls: 'act-primary', key: 'contact' },
-        { label: '暫緩',   cls: 'act-warn',    key: 'hold' },
+        { label: '暫緩',   cls: '',            key: 'hold' },
       ],
       more:    [{ label: '排除', key: 'exclude', cls: 'item-danger' }],
     });
@@ -265,7 +265,7 @@
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件的病患' : '目前沒有記錄') + '</div>';
     } else {
-      el.innerHTML = L.patientTable(filtered.map(renderFn).join(''));
+      el.innerHTML = L.patientTable(filtered.map(renderFn).join(''), [], { hideCat: true });
     }
     if (_tab === id.replace('list-', ''))
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';

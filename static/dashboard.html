@@ -11,17 +11,22 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>今日總覽 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=92">
+<link rel="stylesheet" href="/static/_layout.css?v=98">
 <style>
 /* ── dashboard-specific ─────────────────────────────── */
-.big-num{font-size:34px;font-weight:700;color:var(--text);line-height:1;margin-bottom:6px;font-variant-numeric:tabular-nums}
-.num-row{display:flex;align-items:center;gap:8px;margin-bottom:14px}
-.csvg{width:100%;display:block;overflow:hidden}
-.leg-line{width:20px;height:2.5px;border-radius:2px}
 .tc{display:grid;grid-template-columns:1fr minmax(260px,28%);gap:12px;flex:1;min-height:0}
 .lc,.rc{display:flex;flex-direction:column;gap:12px;padding-bottom:20px;min-height:0}
-.urg-item{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px solid var(--border)}
+.urg-item{display:flex;align-items:center;gap:9px;padding:8px 8px;margin:0 -8px;border-bottom:1px solid var(--border);border-radius:8px;text-decoration:none;color:inherit;transition:background-color .12s}
 .urg-item:last-child{border-bottom:none}
+@media(hover:hover){.urg-item:hover{background:var(--bg)}}
+.urg-item:focus-visible{outline:2.5px solid #4aa7f7;outline-offset:-2px}
+.urg-item:active{background:var(--g0)}
+.urg-go{width:14px;height:14px;color:var(--muted);flex-shrink:0;margin-left:2px}
+/* Nothing to do: the row and tile step back so the ones with work stand out */
+.urg-item.is-zero .urg-count,.urg-item.is-zero .urg-name{color:var(--muted);font-weight:500}
+.urg-item.is-zero .urg-icon{opacity:.45}
+.sc.is-zero .sn{color:var(--muted)!important;font-weight:500}
+.sc.is-zero .sico{opacity:.45}
 .urg-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .urg-name{font-size:13px;font-weight:600;color:var(--text)}
 .urg-sub{font-size:11px;color:var(--sub)}
@@ -31,16 +36,32 @@
   .tc{grid-template-columns:1fr}
   .rc{display:grid;grid-template-columns:repeat(2,1fr)}
 }
-#chart-htip{position:fixed;z-index:999;pointer-events:none;background:var(--card);border:1px solid var(--border);border-radius:9px;box-shadow:0 6px 22px rgba(0,0,0,.13);padding:10px 13px;min-width:152px;font-size:12px;line-height:1.4;display:none}
-.ht-date{font-size:10.5px;color:var(--muted);font-weight:600;margin-bottom:5px;letter-spacing:.2px}
-.ht-total{font-size:22px;font-weight:700;color:var(--text);line-height:1;font-variant-numeric:tabular-nums}
-.ht-total-lbl{font-size:11px;color:var(--muted);margin-bottom:7px}
-.ht-div{border:none;border-top:1px solid var(--border);margin:6px 0}
-.ht-row{display:flex;justify-content:space-between;gap:14px;margin-bottom:3px}
-.ht-lbl{color:var(--sub);font-size:11.5px}
-.ht-num{font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
-.ht-cats{display:flex;flex-wrap:wrap;gap:3px;margin-top:7px}
-.ht-cat{font-size:10px;padding:2px 6px;border-radius:10px;font-weight:600;white-space:nowrap}
+/* 本週聯繫: seven small bars, count above, weekday below */
+.wk-total{margin-left:auto;font-size:12.5px;color:var(--sub);font-variant-numeric:tabular-nums}
+.wk-strip{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px;align-items:end}
+.wk-day{display:flex;flex-direction:column;align-items:center;gap:4px;min-width:0}
+.wk-n{font-size:12.5px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;line-height:1}
+.wk-track{width:100%;max-width:44px;height:44px;display:flex;align-items:flex-end}
+.wk-bar{width:100%;min-height:2px;border-radius:4px 4px 2px 2px;background:#b5d7f5}
+.wk-day.today .wk-bar{background:#4aa7f7}
+.wk-lbl{font-size:11.5px;color:var(--muted)}
+.wk-day.today .wk-lbl{color:var(--text);font-weight:600}
+.wk-day.future .wk-n,.wk-day.future .wk-lbl{opacity:.4}
+.wk-day.future .wk-bar{background:var(--border)}
+.wk-day.zero .wk-n{color:var(--muted);font-weight:500}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .wk-bar{background:#1E3A5F}}
+:root[data-theme=dark] .wk-bar{background:#1E3A5F}
+/* 下週即將到期: one row per day */
+.up-note{font-size:12px;color:var(--muted);margin-bottom:8px}
+.up-list{flex:1;overflow-y:auto;min-height:0}
+.up-row{display:grid;grid-template-columns:7.5em minmax(0,1fr) auto;gap:12px;align-items:center;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px}
+.up-row:last-child{border-bottom:none}
+.up-date{color:var(--sub);font-variant-numeric:tabular-nums;white-space:nowrap}
+.up-cats{display:flex;flex-wrap:wrap;gap:4px 16px;min-width:0}
+.up-cat{text-decoration:none;color:var(--sub);white-space:nowrap;transition:color .12s}
+@media(hover:hover){.up-cat:hover{color:var(--text);text-decoration:underline}}
+.up-cat b{font-weight:600;color:var(--text);font-variant-numeric:tabular-nums;margin-left:4px}
+.up-sum{font-weight:600;font-variant-numeric:tabular-nums;color:var(--text)}
 </style>
 </head>
 <body>
@@ -87,7 +108,7 @@
             </div>
           </div>
           <div class="sn" id="stat-mspt" style="color:var(--text)">—</div>
-          <div class="str" style="color:#6D28D9;font-weight:500;font-size:11.5px">今日可提交健保</div>
+          <div class="str" style="color:var(--muted)">今日可提交健保</div>
         </div>
         <div class="sc">
           <div class="sct"><span class="scl">暫緩中</span>
@@ -104,35 +125,23 @@
       <div class="tc">
         <div class="lc">
 
-          <!-- chart -->
-          <div class="card" style="flex:1;display:flex;flex-direction:column">
-            <div class="chd">
-              <div>
-                <div class="cttl">本週聯繫活動</div>
-                <div class="num-row" style="margin-top:6px">
-                  <span class="big-num" id="chart-big-num">—</span>
-                  <span class="chip chip-g" id="chart-chip" style="display:none"></span>
-                </div>
-                <div style="font-size:12px;color:var(--sub)" id="chart-sub">今日聯繫件數</div>
-              </div>
-              <div style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--sub)">
-                <div class="leg-line" style="background:#4aa7f7"></div>本週
-              </div>
+          <!-- this week's contacts: compact strip -->
+          <div class="card">
+            <div class="chd" style="margin-bottom:12px">
+              <div class="cttl">本週聯繫</div>
+              <div class="wk-total" id="wk-total">—</div>
             </div>
-            <div style="flex:1;display:flex;align-items:center">
-              <svg class="csvg" viewBox="0 0 560 166" preserveAspectRatio="xMidYMid meet" id="chart-svg"></svg>
-            </div>
+            <div class="wk-strip" id="wk-strip"></div>
           </div>
-          <!-- chart hover tooltip (fixed, outside card) -->
-          <div id="chart-htip">
-            <div class="ht-date" id="ht-date"></div>
-            <div class="ht-total" id="ht-total">0</div>
-            <div class="ht-total-lbl">件聯繫</div>
-            <hr class="ht-div">
-            <div class="ht-row"><span class="ht-lbl">已通知</span><span class="ht-num" id="ht-c1">0</span></div>
-            <div class="ht-row"><span class="ht-lbl">已二通</span><span class="ht-num" id="ht-c2">0</span></div>
-            <div id="ht-mspt-row" class="ht-row" style="display:none"><span class="ht-lbl">收案完成</span><span class="ht-num" id="ht-mspt">0</span></div>
-            <div class="ht-cats" id="ht-cats"></div>
+
+          <!-- next 7 days -->
+          <div class="card" style="flex:1;display:flex;flex-direction:column;min-height:0">
+            <div class="chd" style="margin-bottom:6px">
+              <div class="cttl">下週即將到期</div>
+              <div class="wk-total" id="up-total">—</div>
+            </div>
+            <div class="up-note">代謝症候群、B/C肝、慢性腎臟病的下次追蹤日落在未來 7 天的病患。</div>
+            <div class="up-list" id="up-list"><div class="sec-empty">載入中…</div></div>
           </div>
 
         </div><!-- end left col -->
@@ -142,41 +151,41 @@
           <!-- urgent -->
           <div class="card">
             <div class="chd" style="margin-bottom:10px"><div class="cttl">今日待處理</div></div>
-            <div class="urg-item">
+            <a class="urg-item" href="/prescription">
               <div class="urg-icon ico-green">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#065F46" stroke-width="2" stroke-linecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2M9 5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2"/></svg>
               </div>
               <div><div class="urg-name">處方追蹤</div><div class="urg-sub">待聯絡處方病患</div></div>
-              <div class="urg-count" id="urg-rx">—</div>
-            </div>
-            <div class="urg-item">
+              <div class="urg-count" id="urg-rx">—</div><svg class="urg-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+            </a>
+            <a class="urg-item" href="/lab">
               <div class="urg-icon ico-sky">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0369A1" stroke-width="2" stroke-linecap="round"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0a3 3 0 1 0 6 0m-6 0h6m-6 0H3m12 0h6"/></svg>
               </div>
               <div><div class="urg-name">抽血結果待確認</div><div class="urg-sub">檢驗追蹤</div></div>
-              <div class="urg-count" id="urg-blood">—</div>
-            </div>
-            <div class="urg-item">
+              <div class="urg-count" id="urg-blood">—</div><svg class="urg-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+            </a>
+            <a class="urg-item" href="/mspt" data-tab-key="mspt_active_tab" data-tab="submittable">
               <div class="urg-icon ico-purple">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#6D28D9" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 12 18 15 15"/></svg>
               </div>
               <div><div class="urg-name">可申報MSPT</div><div class="urg-sub">血液報告已出爐</div></div>
-              <div class="urg-count" id="urg-mspt">—</div>
-            </div>
-            <div class="urg-item">
+              <div class="urg-count" id="urg-mspt">—</div><svg class="urg-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+            </a>
+            <a class="urg-item" href="/hepatitis" data-tab-key="hep_active_tab" data-tab="returned">
               <div class="urg-icon ico-sky">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0369A1" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
               </div>
               <div><div class="urg-name">B肝待輸入VPN</div><div class="urg-sub">近期回診未登錄</div></div>
-              <div class="urg-count" id="urg-hep">—</div>
-            </div>
-            <div class="urg-item">
+              <div class="urg-count" id="urg-hep">—</div><svg class="urg-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+            </a>
+            <a class="urg-item" href="/blood-recall">
               <div class="urg-icon ico-rose">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#9D174D" stroke-width="2" stroke-linecap="round"><path d="M12 2C9 5 5 9 5 14a7 7 0 0 0 14 0C19 9 15 5 12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
               </div>
               <div><div class="urg-name">抽血追蹤</div><div class="urg-sub">異常指標需複查</div></div>
-              <div class="urg-count" id="urg-recall">—</div>
-            </div>
+              <div class="urg-count" id="urg-recall">—</div><svg class="urg-go" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+            </a>
           </div>
 
           <!-- contact log -->
@@ -196,7 +205,7 @@
   </div><!-- end main -->
 </div><!-- end app -->
 
-<script src="/static/_layout.js?v=85"></script>
+<script src="/static/_layout.js?v=92"></script>
 <script>
 (function () {
   'use strict';
@@ -224,10 +233,10 @@
       var thr = (e.category === '代謝症候群' && e.needs_blood_test === false) ? 5 : 15;
       if (dtc >= 0 && dtc <= thr) riskCount++;
     });
-    document.getElementById('stat-pending').textContent = pending.length + rxCount + labCount;
-    document.getElementById('stat-risk').textContent    = riskCount;
-    document.getElementById('stat-mspt').textContent    = (report.mspt_submittable||[]).length;
-    document.getElementById('stat-hold').textContent    = (report.on_hold||[]).length;
+    setCount('stat-pending', pending.length + rxCount + labCount);
+    setCount('stat-risk',    riskCount);
+    setCount('stat-mspt',    (report.mspt_submittable||[]).length);
+    setCount('stat-hold',    (report.on_hold||[]).length);
     document.getElementById('stat-pending-sub').textContent =
       '處方 '+rxCount+' · MSPT '+(report.mspt_followups||[]).length+' · B肝 '+(report.hep_followups||[]).length+' · 腎臟 '+(report.ckd_followups||[]).length+' · 檢驗 '+labCount;
     L.updateBadges(report, bloodCount);
@@ -238,13 +247,28 @@
   var CLOSE_DAYS_DB = {'代謝症候群':90,'B肝':185,'C肝':185,'慢性腎臟病':180};
 
   // ── urgent panel ────────────────────────────────────
-  function renderUrgent(report, bloodCount, rxPendingCount, brCount) {
-    document.getElementById('urg-rx').textContent    = rxPendingCount || 0;
-    document.getElementById('urg-blood').textContent = bloodCount;
-    document.getElementById('urg-mspt').textContent  = (report.mspt_submittable||[]).length;
-    document.getElementById('urg-hep').textContent   = (report.hep_returned||[]).length;
-    document.getElementById('urg-recall').textContent = brCount || 0;
+  // Set a tile/row count and mark its tile or row when it is zero
+  function setCount(id, n) {
+    var el = document.getElementById(id);
+    el.textContent = n;
+    var box = el.closest('.sc, .urg-item');
+    if (box) box.classList.toggle('is-zero', !Number(n));
   }
+
+  function renderUrgent(report, bloodCount, rxPendingCount, brCount) {
+    setCount('urg-rx',     rxPendingCount || 0);
+    setCount('urg-blood',  bloodCount || 0);
+    setCount('urg-mspt',   (report.mspt_submittable||[]).length);
+    setCount('urg-hep',    (report.hep_returned||[]).length);
+    setCount('urg-recall', brCount || 0);
+  }
+
+  // Rows that open a specific tab remember it the same way the list pages do
+  document.querySelectorAll('.urg-item[data-tab-key]').forEach(function (a) {
+    a.addEventListener('click', function () {
+      try { sessionStorage.setItem(a.dataset.tabKey, a.dataset.tab); } catch (ex) {}
+    });
+  });
 
   // ── contact log card ────────────────────────────────
   var CAT_SHORT = {'慢簽':'慢簽','代謝症候群':'代謝','慢性腎臟病':'腎臟','B肝':'B肝','C肝':'C肝'};
@@ -316,131 +340,68 @@
       });
     });
   }
-  var _weekDataGlobal = [], _todayIdxGlobal = -1;
   var DAY_NAMES = ['一','二','三','四','五','六','日'];
-  function renderChart(weekData) {
-    _weekDataGlobal = weekData;
-    var counts = weekData.map(function(d){return d.count!=null?d.count:0;});
-    var maxVal = Math.max.apply(null, counts.concat([1]));
-    var todayIdx = -1;
-    weekData.forEach(function(d,i){if(d.isToday)todayIdx=i;});
-    _todayIdxGlobal = todayIdx;
-    var pts = weekData.map(function(d,i){
-      return {x:30+i*80,y:Math.round(140-((d.count!=null?d.count:0)/maxVal)*118),isFuture:!!d.isFuture,isToday:!!d.isToday,count:d.count};
-    });
-    var active = pts.filter(function(p){return !p.isFuture;});
-    function smooth(ps) {
-      if(!ps.length) return '';
-      if(ps.length===1) return 'M '+ps[0].x+','+ps[0].y;
-      var s='M '+ps[0].x+','+ps[0].y;
-      for(var i=1;i<ps.length;i++){var p=ps[i-1],c=ps[i],dx=(c.x-p.x)/2.5;s+=' C '+(p.x+dx)+','+p.y+' '+(c.x-dx)+','+c.y+' '+c.x+','+c.y;}
-      return s;
-    }
-    var line = smooth(active), area='';
-    if(active.length){var f=active[0],l=active[active.length-1];area=line+' L '+l.x+',140 L '+f.x+',140 Z';}
-    var yStep=Math.max(1,Math.ceil(maxVal/3));
-    var svgH='<defs><linearGradient id="ag" x1="0" y1="0" x2="0" y2="1">'+
-      '<stop offset="0%" stop-color="#4aa7f7" stop-opacity=".18"/>'+
-      '<stop offset="100%" stop-color="#4aa7f7" stop-opacity="0"/>'+
-      '</linearGradient></defs>';
-    // vertical hover guide (hidden by default)
-    svgH+='<line id="chart-vline" x1="30" y1="16" x2="30" y2="140" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3,3" style="display:none"/>';
-    [0,yStep,yStep*2,yStep*3].filter(function(v){return v<=maxVal+yStep;}).forEach(function(v){
-      var y=Math.round(140-(v/maxVal)*118);
-      svgH+='<line x1="25" y1="'+y+'" x2="545" y2="'+y+'" stroke="var(--border)" stroke-width="1"'+(v>0?' stroke-dasharray="4,4"':'')+'/>';
-      svgH+='<text x="18" y="'+(y+4)+'" font-size="9.5" fill="var(--muted)" text-anchor="end">'+v+'</text>';
-    });
-    if(area) svgH+='<path d="'+area+'" fill="url(#ag)"/>';
-    if(line) svgH+='<path d="'+line+'" fill="none" stroke="#4aa7f7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>';
-    // dots for past/today points
-    active.forEach(function(p){
-      svgH+='<circle cx="'+p.x+'" cy="'+p.y+'" r="4" fill="#4aa7f7" class="chart-dot" data-idx="'+pts.indexOf(p)+'"/>';
-      svgH+='<circle cx="'+p.x+'" cy="'+p.y+'" r="2.5" fill="white" pointer-events="none"/>';
-    });
-    // day labels inside SVG — exact alignment with dots
-    weekData.forEach(function(d,i){
-      var x=30+i*80, iT=i===todayIdx, iF=todayIdx>=0&&i>todayIdx;
-      var opacity=iF?'0.4':'1', fill=iT?'var(--text)':'var(--muted)';
-      var fw=iT?'700':'400';
-      svgH+='<text x="'+x+'" y="163" font-size="10" text-anchor="middle" fill="'+fill+'" font-weight="'+fw+'" opacity="'+opacity+'">'+DAY_NAMES[i]+'</text>';
-    });
-    // invisible hit areas per day column for hover
-    weekData.forEach(function(d,i){
-      var x = 30+i*80, w = 80;
-      svgH+='<rect x="'+(x-40)+'" y="0" width="'+w+'" height="152" fill="transparent" class="day-hit" data-idx="'+i+'" style="cursor:'+(d.isFuture?'default':'pointer')+'"/>';
-    });
-    document.getElementById('chart-svg').innerHTML = svgH;
-    document.getElementById('chart-big-num').textContent = todayIdx>=0&&counts[todayIdx]!=null?counts[todayIdx]:0;
+  var CAT_SHORT_UP = {'慢簽':'慢簽','代謝症候群':'代謝','B肝':'B肝','C肝':'C肝','慢性腎臟病':'腎臟'};
 
-    // attach hover listeners
-    var svg = document.getElementById('chart-svg');
-    svg.querySelectorAll('.day-hit').forEach(function(rect) {
-      rect.addEventListener('mouseenter', function() {
-        var idx = parseInt(rect.dataset.idx, 10);
-        var d = _weekDataGlobal[idx];
-        if (!d || d.isFuture) return;
-        var cnt = d.count != null ? d.count : 0;
-        // update big number + chip in card header
-        var bigNum = document.getElementById('chart-big-num');
-        if(bigNum) bigNum.textContent = cnt;
-        var chip = document.getElementById('chart-chip');
-        if(chip) { chip.textContent = DAY_NAMES[idx]+'　'+d.dateStr.slice(5); chip.style.display=''; }
-        var sub = document.getElementById('chart-sub');
-        if(sub) sub.textContent = d.isToday ? '今日聯繫件數' : '當日聯繫件數';
-        // update vertical guide line
-        var vline = document.getElementById('chart-vline');
-        if(vline) { vline.setAttribute('x1',30+idx*80); vline.setAttribute('x2',30+idx*80); vline.style.display=''; }
-        // populate HTML tooltip
-        var tip = document.getElementById('chart-htip');
-        if(!tip) return;
-        document.getElementById('ht-date').textContent = '週'+DAY_NAMES[idx]+'　'+d.dateStr.slice(5);
-        document.getElementById('ht-total').textContent = cnt;
-        document.getElementById('ht-c1').textContent = d.contacted || 0;
-        document.getElementById('ht-c2').textContent = d.called || 0;
-        var msptRow = document.getElementById('ht-mspt-row');
-        if(d.mspt_completed > 0) {
-          document.getElementById('ht-mspt').textContent = d.mspt_completed;
-          msptRow.style.display = '';
-        } else {
-          msptRow.style.display = 'none';
-        }
-        // category chips
-        var catsEl = document.getElementById('ht-cats');
-        var cats = d.cats || {};
-        var catOrder = ['慢簽','代謝症候群','B肝','C肝','慢性腎臟病'];
-        var html = '';
-        catOrder.forEach(function(c){if(cats[c])html+='<span class="ht-cat cat-chip '+(CAT_CLS[c]||'')+'">'+c.replace('代謝症候群','代謝')+' '+cats[c]+'</span>';});
-        Object.keys(cats).forEach(function(c){if(catOrder.indexOf(c)<0&&cats[c])html+='<span class="ht-cat">'+c+' '+cats[c]+'</span>';});
-        catsEl.innerHTML = html;
-        // position tooltip near column
-        var svgRect = svg.getBoundingClientRect();
-        var colFrac = (30 + idx * 80) / 560;
-        var colScreenX = svgRect.left + colFrac * svgRect.width;
-        var py = Math.round(140 - (cnt / maxVal) * 118);
-        var dotScreenY = svgRect.top + (py / 150) * svgRect.height;
-        var tipW = 164, tipH = 150 + (d.mspt_completed > 0 ? 20 : 0) + (html ? 28 : 0);
-        var tipX = colScreenX - tipW / 2;
-        tipX = Math.max(8, Math.min(tipX, window.innerWidth - tipW - 8));
-        var tipY = dotScreenY - tipH - 12;
-        if(tipY < 8) tipY = dotScreenY + 16;
-        tip.style.left = tipX + 'px';
-        tip.style.top  = tipY + 'px';
-        tip.style.display = '';
-      });
-      rect.addEventListener('mouseleave', function() {
-        var chip = document.getElementById('chart-chip');
-        if(chip) chip.style.display='none';
-        var bigNum = document.getElementById('chart-big-num');
-        if(bigNum) bigNum.textContent = _todayIdxGlobal>=0&&counts[_todayIdxGlobal]!=null?counts[_todayIdxGlobal]:0;
-        var sub = document.getElementById('chart-sub');
-        if(sub) sub.textContent = '今日聯繫件數';
-        var vline = document.getElementById('chart-vline');
-        if(vline) vline.style.display='none';
-        var tip = document.getElementById('chart-htip');
-        if(tip) tip.style.display='none';
+  // 本週聯繫 — one small bar per weekday; hover title gives the day's breakdown by list
+  function renderWeek(weekData) {
+    var counts = weekData.map(function (d) { return d.count != null ? d.count : 0; });
+    var maxVal = Math.max.apply(null, counts.concat([1]));
+    var total = counts.reduce(function (a, b) { return a + b; }, 0);
+    document.getElementById('wk-total').textContent = '本週共 ' + total + ' 件';
+    document.getElementById('wk-strip').innerHTML = weekData.map(function (d, i) {
+      var n = counts[i];
+      var cls = 'wk-day' + (d.isToday ? ' today' : '') + (d.isFuture ? ' future' : '') + (!d.isFuture && !n ? ' zero' : '');
+      var cats = d.cats || {};
+      var parts = Object.keys(cats).filter(function (c) { return cats[c]; })
+        .map(function (c) { return (CAT_SHORT_UP[c] || c) + ' ' + cats[c]; });
+      var title = '週' + DAY_NAMES[i] + ' ' + d.dateStr.slice(5) + '：' + (d.isFuture ? '尚未到' : n + ' 件' + (parts.length ? '（' + parts.join('、') + '）' : ''));
+      var h = d.isFuture ? 0 : Math.round(n / maxVal * 44);
+      return '<div class="' + cls + '" title="' + L.escHtml(title) + '">' +
+        '<span class="wk-n">' + (d.isFuture ? '' : n) + '</span>' +
+        '<span class="wk-track"><span class="wk-bar" style="height:' + h + 'px"></span></span>' +
+        '<span class="wk-lbl">' + DAY_NAMES[i] + '</span></div>';
+    }).join('');
+  }
+
+  // 下週即將到期 — patients whose next follow-up date falls in the next 7 days, grouped by day.
+  // Each list name opens that page on its 未到期 tab.
+  var UP_SOURCES = [
+    { key: 'mspt_upcoming', label: '代謝症候群', href: '/mspt',      tabKey: 'mspt_active_tab' },
+    { key: 'hep_upcoming',  label: 'B/C肝',      href: '/hepatitis', tabKey: 'hep_active_tab' },
+    { key: 'ckd_upcoming',  label: '慢性腎臟病', href: '/ckd',       tabKey: 'ckd_active_tab' },
+  ];
+  function renderUpcoming(report) {
+    var today = D(), days = [], i;
+    for (i = 1; i <= 7; i++) days.push(L.addDays(today, i));
+    var byDay = {}; days.forEach(function (d) { byDay[d] = {}; });
+    var total = 0;
+    UP_SOURCES.forEach(function (src) {
+      (report[src.key] || []).forEach(function (e) {
+        var d = String(e.due_date || '').slice(0, 10);
+        if (!byDay[d]) return;
+        byDay[d][src.label] = (byDay[d][src.label] || 0) + 1;
+        total++;
       });
     });
+    document.getElementById('up-total').textContent = '共 ' + total + ' 人';
+    var rows = days.filter(function (d) { return Object.keys(byDay[d]).length; }).map(function (d) {
+      var dt = new Date(d + 'T00:00:00');
+      var wd = DAY_NAMES[(dt.getDay() + 6) % 7];
+      var sum = 0;
+      var cats = UP_SOURCES.filter(function (s) { return byDay[d][s.label]; }).map(function (s) {
+        sum += byDay[d][s.label];
+        return '<a class="up-cat" href="' + s.href + '" data-tab-key="' + s.tabKey + '">' + s.label + '<b>' + byDay[d][s.label] + '</b></a>';
+      }).join('');
+      return '<div class="up-row"><span class="up-date">' + d.slice(5).replace('-', '/') + ' 週' + wd + '</span>' +
+        '<span class="up-cats">' + cats + '</span><span class="up-sum">' + sum + '</span></div>';
+    });
+    document.getElementById('up-list').innerHTML = rows.length ? rows.join('') : '<div class="sec-empty">未來 7 天沒有到期的病患</div>';
   }
+  document.getElementById('up-list').addEventListener('click', function (ev) {
+    var a = ev.target.closest('.up-cat'); if (!a) return;
+    try { sessionStorage.setItem(a.dataset.tabKey, 'upcoming'); } catch (ex) {}
+  });
 
   // ── main load ───────────────────────────────────────
   function load() {
@@ -486,7 +447,8 @@
       var brCount = Array.isArray(brData) ? brData.filter(function(p){ return p.status === 'active'; }).length : 0;
       renderUrgent(report, bloodCount, rxPendingCount, brCount);
       renderContactLog(todayHistory);
-      renderChart(week);
+      renderWeek(week);
+      renderUpcoming(report);
       L.updateLastUpdated();
     }).catch(function(e){
       L.showError('資料載入失敗 — '+(e.message||'請確認伺服器連線'));

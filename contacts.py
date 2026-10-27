@@ -487,7 +487,16 @@ CLINIC_SETTINGS_DEFAULTS: dict = {
     "prescription_grace_days":    60,   # days after due date before row disappears
     "auto_exclude_days":          60,   # days after 2nd contact before auto-excluded
     "prescription_cutover_date":  None, # hide post-cutover patients (catch-up mode); ISO date string or null
+    # Nurse pay (薪資). Saved pay slips keep a copy of the amounts they were calculated with.
+    "pay_base":                   30500,
+    "pay_license":                2000,
+    "pay_attendance":             2000,
+    "pay_float_base":             7500,
+    "pay_part_rate":              250,  # part-time hourly rate
 }
+
+# Settings that may be 0 (an allowance the clinic doesn't pay); all other ints must be ≥ 1.
+CLINIC_SETTINGS_ZERO_OK = {"pay_license", "pay_attendance", "pay_float_base"}
 
 _CREATE_SYNCED_PRESCRIPTIONS = """
     CREATE TABLE IF NOT EXISTS synced_prescriptions (
@@ -541,6 +550,85 @@ _CREATE_BLOOD_RECALL_PATIENTS = """
         UNIQUE (clinic_id, nat_id)
     )
 """
+
+# One row per overdue episode (patient × list × due date), kept after the patient leaves the list,
+# so return rates can be computed later. returned_on is filled in by the sync agent.
+_CREATE_FOLLOWUP_EPISODES = """
+    CREATE TABLE IF NOT EXISTS followup_episodes (
+        clinic_id     INTEGER NOT NULL DEFAULT 1,
+        chart_number  TEXT    NOT NULL,
+        category      TEXT    NOT NULL,
+        due_date      TEXT    NOT NULL,
+        first_seen    TEXT    NOT NULL,
+        last_seen     TEXT    NOT NULL,
+        max_overdue   INTEGER NOT NULL DEFAULT 0,
+        birth_date    TEXT,
+        returned_on   TEXT,
+        PRIMARY KEY (clinic_id, chart_number, category, due_date)
+    )
+"""
+
+# Episodes stay open for return checks this long after the patient was last on a list
+EPISODE_OPEN_DAYS = 120
+
+
+def record_followup_episodes(candidates: list[dict], clinic_id: int = 1) -> None:
+    """Upsert an episode for every overdue candidate in a sync push (not 未到期 / 未複診 lists)."""
+    from psycopg2.extras import execute_values
+    today = date.today().isoformat()
+    rows = {}
+    for c in candidates:
+        cat = c.get("category") or ""
+        if cat.endswith("_upcoming") or cat.endswith("_inactive") or not c.get("due_date"):
+            continue
+        key = (c["chart_number"], cat, str(c["due_date"])[:10])
+        overdue = int(c.get("days_overdue") or 0)
+        if key not in rows or overdue > rows[key][1]:
+            rows[key] = (c.get("birth_date") or None, overdue)
+    if not rows:
+        return
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            execute_values(
+                cur,
+                """INSERT INTO followup_episodes
+                   (clinic_id, chart_number, category, due_date, first_seen, last_seen, max_overdue, birth_date)
+                   VALUES %s
+                   ON CONFLICT (clinic_id, chart_number, category, due_date) DO UPDATE SET
+                       last_seen   = EXCLUDED.last_seen,
+                       max_overdue = GREATEST(followup_episodes.max_overdue, EXCLUDED.max_overdue),
+                       birth_date  = COALESCE(EXCLUDED.birth_date, followup_episodes.birth_date)""",
+                [(clinic_id, ch, cat, due, today, today, od, bd) for (ch, cat, due), (bd, od) in rows.items()],
+            )
+
+
+def get_open_episodes(clinic_id: int = 1) -> list[dict]:
+    """Episodes still waiting for a return, seen on a list within EPISODE_OPEN_DAYS."""
+    since = (date.today() - timedelta(days=EPISODE_OPEN_DAYS)).isoformat()
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT chart_number, category, due_date FROM followup_episodes
+                   WHERE clinic_id = %s AND returned_on IS NULL AND last_seen >= %s""",
+                (clinic_id, since),
+            )
+            return [dict(r) for r in cur.fetchall()]
+
+
+def record_episode_returns(returns: list[dict], clinic_id: int = 1) -> int:
+    """Set returned_on for open episodes. Only the first return is kept; returns before the due date are ignored."""
+    n = 0
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            for r in returns:
+                cur.execute(
+                    """UPDATE followup_episodes SET returned_on = %s
+                       WHERE clinic_id = %s AND chart_number = %s AND category = %s AND due_date = %s
+                         AND returned_on IS NULL AND %s >= due_date""",
+                    (r["returned_on"], clinic_id, r["chart_number"], r["category"], r["due_date"], r["returned_on"]),
+                )
+                n += cur.rowcount
+    return n
 
 
 def get_blood_recall_settings(clinic_id: int = 1) -> dict:
@@ -898,6 +986,7 @@ def init() -> None:
             cur.execute(_CREATE_SYNCED_DOCTOR_RATES)
             cur.execute(_CREATE_BLOOD_RECALL_SETTINGS)
             cur.execute(_CREATE_BLOOD_RECALL_PATIENTS)
+            cur.execute(_CREATE_FOLLOWUP_EPISODES)
             cur.execute("ALTER TABLE blood_physical ADD COLUMN IF NOT EXISTS draw_code_names TEXT NOT NULL DEFAULT '[]'")
             # Migrations for existing databases
             for col in ("last_visit_date TEXT", "contacted_time TEXT", "nurse TEXT DEFAULT ''"):

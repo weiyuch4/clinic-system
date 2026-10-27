@@ -54,6 +54,18 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 3, date: '2026-10-27', items: [
+      '追蹤名單畫面更清爽：每位病患只有「已聯繫」一顆藍色按鈕，暫緩改為一般按鈕',
+      '逾期天數只有 15 天以上才標顏色（15–29 天橘色、30 天以上紅色），一眼看出誰最需要先聯絡',
+      '上方搜尋框改為「找病患」：輸入姓名或身份證，直接打開病患資料；篩選目前名單請用名單上方的「篩選名單」',
+      '慢簽、慢性腎臟病名單不再每列重複顯示類別',
+      '病患電話旁的民國日期加上「生日」標示，不會和到期日搞混',
+      '沒有病患的分頁改為淡色，有人的分頁更容易看到',
+      '修正 B/C 型肝炎與慢性腎臟病「未到期」分頁點了沒有內容的問題',
+      '今日總覽的「今日待處理」每一列都可以點，直接打開該名單（可申報 MSPT、B肝待輸入 VPN 會直接開到對應分頁）',
+      '今日總覽數字為 0 的項目改為淡色，有待辦的項目更明顯',
+      '今日總覽的聯繫圖表縮小為一週長條，騰出空間顯示「下週即將到期」：未來 7 天每天有幾位代謝症候群、B/C肝、慢性腎臟病病患到期，點類別可直接打開該名單的未到期分頁',
+    ]},
     { version: 2, date: '2026-10-27', items: [
       '新增「點貨」頁面：每月用手機盤點庫存，數字輸入後自動儲存，兩個人可以分區同時點',
       '點完後自動列出建議訂購的品項和數量，到貨時按一下就能記錄',
@@ -892,7 +904,7 @@
     if (!el) return;
     el.className = 'tb';
     el.innerHTML =
-      '<div class="srch">' + ICONS.search + '<input class="srch-input" type="text" placeholder="搜尋病患姓名或身份證…" autocomplete="off"></div>' +
+      '<div class="srch">' + ICONS.search + '<input class="srch-input" type="text" placeholder="找病患：姓名或身份證…" autocomplete="off"></div>' +
       '<span class="tb-title" id="tb-title">' + (_MOB_TITLES[_activePage] || '') + '</span>' +
       '<div class="tbr">' +
         '<span class="lu" id="last-updated"></span>' +
@@ -1005,12 +1017,8 @@
         items[_ddFocused].classList.add('focused');
       }
 
+      // Top bar = find any patient. It no longer types into the page's own list filter (#search-input).
       srchInput.addEventListener('input', function () {
-        var target = document.getElementById('search-input') || document.getElementById('dir-search');
-        if (target) {
-          target.value = srchInput.value;
-          target.dispatchEvent(new Event('input', { bubbles: true }));
-        }
         clearTimeout(_ddTimer);
         var q = srchInput.value.trim();
         if (q.length < 1) { _ddClose(); return; }
@@ -1028,8 +1036,6 @@
           }
         }
         if (e.key !== 'Enter') return;
-        var target = document.getElementById('search-input') || document.getElementById('dir-search');
-        if (target) return;
         var q = srchInput.value.trim();
         if (q) location.href = '/history?q=' + encodeURIComponent(q);
       });
@@ -1242,14 +1248,15 @@
     var infoParts = [];
     if (contact) infoParts.push('<span class="pr-copy" data-copy="' + escHtml(contact) + '">' + escHtml(contact) + '</span>');
     else         infoParts.push('<span class="pr-noph">無電話</span>');
-    if (dobRoc)  infoParts.push('<span class="pr-copy" data-copy="' + escHtml(dobRoc) + '">' + escHtml(dobRoc) + '</span>');
+    // Labeled so the ROC birthday isn't read as another due date
+    if (dobRoc)  infoParts.push('<span class="pr-copy" data-copy="' + escHtml(dobRoc) + '">生日 ' + escHtml(dobRoc) + '</span>');
     return '<tr class="pr" data-chart="' + escHtml(e.patient.chart_number) + '">' +
       '<td class="pr-num"><span class="pr-copy" data-copy="' + escHtml(e.patient.chart_number) + '" title="點擊複製身份證">' + escHtml(e.patient.chart_number) + '</span></td>' +
       '<td class="pr-pt"><div class="pr-name"><span class="pr-lab" data-chart="' + escHtml(e.patient.chart_number) + '" data-name="' + escHtml(e.patient.name) + '" title="點擊查看檢驗結果">' + escHtml(e.patient.name) + '</span></div>' +
         '<div class="pr-info">' + infoParts.join(' · ') + '</div>' +
       '</td>' +
       '<td class="pr-cat">' + catChip(e.category, e.mspt_stage) + '</td>' +
-      '<td class="pr-days ' + daysCls + '">' + daysN + '天</td>' +
+      '<td class="pr-days ' + daysCls + '">' + daysN + '<span class="pr-days-u">天</span></td>' +
       '<td class="pr-date">' + (e.due_date        ? escHtml(sd(e.due_date))        : '—') + '</td>' +
       '<td class="pr-date">' + (e.last_visit_date ? escHtml(sd(e.last_visit_date)) : '—') + '</td>' +
       '<td class="pr-note"' + (tagsText ? ' title="' + escHtml(tagsText) + '"' : '') + '>' + (tags ? '<div class="pr-tags">' + tags + '</div>' : '') + '</td>' +
@@ -1260,7 +1267,10 @@
 
   // Wrap row-html strings in a full table with standard headers.
   // extraHeaders: optional extra <th> text to insert before the actions column.
-  function patientTable(rowsHtml, extraHeaders) {
+  // opts.hideCat: the page holds one category only (慢簽, CKD), so the 類別 column would repeat on every row.
+  //   The cells stay in the DOM (hidden) so column indexes used by sorting don't shift.
+  function patientTable(rowsHtml, extraHeaders, opts) {
+    var hideCat = !!(opts && opts.hideCat);
     var cols = ['身份證','病患','類別','逾期','到期日','上次回診','備註'];
     var extra = extraHeaders || [];
     cols = cols.concat(extra);
@@ -1269,7 +1279,7 @@
     var colgroup = '<colgroup>' +
       '<col style="width:115px">' +   // 身份證
       '<col>' +                        // 病患 — fills remaining space
-      '<col style="width:150px">' +   // 類別
+      (hideCat ? '' : '<col style="width:150px">') +   // 類別
       '<col style="width:72px">' +    // 逾期
       '<col style="width:70px">' +    // 到期日
       '<col style="width:70px">' +    // 上次回診
@@ -1277,11 +1287,11 @@
       extraCols +
       '<col style="width:220px">' +   // 操作
       '</colgroup>';
-    return '<div class="ptbl-wrap"><table class="p-table">' + colgroup + '<thead><tr>' +
+    return '<div class="ptbl-wrap"><table class="p-table' + (hideCat ? ' no-cat' : '') + '">' + colgroup + '<thead><tr>' +
       cols.map(function (c) {
         if (!c) return '<th></th>';
         var st = c === '逾期' ? 'num' : 'text';
-        return '<th class="th-sort" data-sort="' + st + '">' + c + ' <span class="sort-icon">⇅</span></th>';
+        return '<th class="th-sort' + (c === '類別' ? ' pr-cat' : '') + '" data-sort="' + st + '">' + c + ' <span class="sort-icon">⇅</span></th>';
       }).join('') +
       '</tr></thead><tbody>' + rowsHtml + '</tbody></table></div>';
   }
@@ -1545,6 +1555,32 @@
   }
 
   // ── Public init ──────────────────────────────────────
+  // Pages write tab counts straight into .tc-count; mark a tab .empty whenever its count reads 0 (or blank).
+  function _watchEmptyTabs() {
+    document.querySelectorAll('.filter-bar').forEach(function (bar) {
+      function mark() {
+        bar.querySelectorAll('.filter-tab').forEach(function (tab) {
+          var c = tab.querySelector('.tc-count');
+          var v = c ? c.textContent.trim() : null;
+          tab.classList.toggle('empty', v === '0' || v === '');  // some pages write '' for zero
+        });
+      }
+      mark();
+      new MutationObserver(mark).observe(bar, { subtree: true, childList: true, characterData: true });
+    });
+  }
+
+  // .search-row gets .filtering while its list filter has text (CSS shows the result count only then)
+  function _watchListFilter() {
+    document.querySelectorAll('.search-row').forEach(function (row) {
+      var inp = row.querySelector('input');
+      if (!inp) return;
+      function mark() { row.classList.toggle('filtering', inp.value.trim() !== ''); }
+      inp.addEventListener('input', mark);
+      mark();
+    });
+  }
+
   function init(config) {
     _activePage    = config.activePage    || 'dashboard';
     _onRefresh     = config.onRefresh     || null;
@@ -1571,6 +1607,8 @@
     _injectPinModal();
     _initNurseSelector();
     _initAdminMobileMenu();
+    _watchEmptyTabs();
+    _watchListFilter();
     loadShiftSidebar();
     if (_onRefresh) {
       document.addEventListener('visibilitychange', function () {

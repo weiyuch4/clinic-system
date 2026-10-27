@@ -175,7 +175,7 @@ if not contacts.get_nurses():  # first run on this DB — seed from the hardcode
 # still comes from request body fields (Option B shared-session model).
 @app.middleware("http")
 async def require_auth_for_api(request: Request, call_next):
-    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/push-blood-pending", "/api/sync/push-prescriptions", "/api/sync/push-doctor-rates", "/api/sync/status", "/api/sync/push-blood-recall", "/api/sync/blood-recall-settings"}
+    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/push-blood-pending", "/api/sync/push-prescriptions", "/api/sync/push-doctor-rates", "/api/sync/status", "/api/sync/push-blood-recall", "/api/sync/blood-recall-settings", "/api/sync/clinic-settings", "/api/sync/open-episodes", "/api/sync/push-returns"}
     if request.url.path.startswith("/api/") and request.url.path not in _sync_exempt:
         token = request.headers.get("Authorization", "")
         if token.startswith("Bearer "):
@@ -381,7 +381,10 @@ def admin_update_settings(body: dict, admin: auth.CurrentUser = Depends(auth.req
                     date.fromisoformat(str(v))
                 except ValueError:
                     raise HTTPException(status_code=400, detail=f"{k} 必須為 YYYY-MM-DD 格式或 null")
-        elif not isinstance(v, int) or v < 1:
+        elif k in contacts.CLINIC_SETTINGS_ZERO_OK:
+            if not isinstance(v, int) or isinstance(v, bool) or v < 0:
+                raise HTTPException(status_code=400, detail=f"{k} 必須為 0 或正整數")
+        elif not isinstance(v, int) or isinstance(v, bool) or v < 1:
             raise HTTPException(status_code=400, detail=f"{k} 必須為正整數")
     try:
         return contacts.update_clinic_settings(body, admin.clinic_id)
@@ -1192,8 +1195,40 @@ async def sync_push(request: Request) -> dict:
     db.set_clinic_id(clinic_id)
     candidates = body.get("candidates", [])
     contacts.upsert_synced_candidates(candidates, clinic_id)
+    try:
+        contacts.record_followup_episodes(candidates, clinic_id)
+    except Exception as exc:  # stats history must never block the follow-up lists
+        logger.warning("record_followup_episodes failed: %s", exc)
     _invalidate_report_cache(clinic_id)
     return {"ok": True, "count": len(candidates)}
+
+
+@app.get("/api/sync/open-episodes")
+def sync_open_episodes(request: Request) -> dict:
+    """Overdue episodes the sync agent should check for a return visit."""
+    token = request.headers.get("X-Sync-Token", "")
+    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    db.set_clinic_id(1)
+    return {"episodes": contacts.get_open_episodes(1)}
+
+
+@app.post("/api/sync/push-returns")
+async def sync_push_returns(request: Request) -> dict:
+    token = request.headers.get("X-Sync-Token", "")
+    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    body = await request.json()
+    clinic_id = int(body.get("clinic_id", 1))
+    db.set_clinic_id(clinic_id)
+    rows = body.get("returns", [])
+    for r in rows:
+        try:
+            date.fromisoformat(str(r["returned_on"]))
+            date.fromisoformat(str(r["due_date"]))
+        except (KeyError, ValueError):
+            raise HTTPException(status_code=400, detail="each return needs chart_number, category, due_date, returned_on (YYYY-MM-DD)")
+    return {"ok": True, "updated": contacts.record_episode_returns(rows, clinic_id)}
 
 
 @app.post("/api/sync/push-prescriptions")
@@ -1255,6 +1290,15 @@ def sync_blood_recall_settings(request: Request) -> dict:
         raise HTTPException(status_code=401, detail="Invalid sync token")
     db.set_clinic_id(1)
     return contacts.get_blood_recall_settings(1)
+
+
+@app.get("/api/sync/clinic-settings")
+def sync_clinic_settings(request: Request) -> dict:
+    token = request.headers.get("X-Sync-Token", "")
+    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    db.set_clinic_id(1)
+    return contacts.get_clinic_settings(1)
 
 
 @app.post("/api/sync/push-blood-recall")
@@ -1336,6 +1380,7 @@ def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = 
         if CLOUD_MODE:
             settings = contacts.get_clinic_settings(user.clinic_id)
             grace = settings["prescription_grace_days"]
+            min_ps = settings["prescription_min_ps_days"]
             cutover_str = settings.get("prescription_cutover_date")
             cutover = date.fromisoformat(cutover_str) if cutover_str else None
             rows = contacts.get_synced_prescriptions(user.clinic_id)
@@ -1346,6 +1391,8 @@ def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = 
                 days_until_due = (due - as_of).days
                 if days_until_due < -grace:
                     continue  # past grace period
+                if (r.get('ps') or 0) < min_ps:
+                    continue  # shorter than the clinic's minimum prescription length
                 if _PRESCRIPTION_START_DATE and due < _PRESCRIPTION_START_DATE:
                     continue  # pre-adoption prescriptions hidden for this clinic
                 if cutover and r.get('visit_date'):
@@ -1364,8 +1411,9 @@ def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = 
                 "cutover_date": cutover_str,
             }
         phone_idx = database._get_patdb_phone_index()
+        min_ps = contacts.get_clinic_settings(user.clinic_id)["prescription_min_ps_days"]
         rows = [{**r, 'phone': phone_idx.get(r['nat_id'], ''), 'mobile': ''}
-                for r in database._query_all_prescriptions(as_of)]
+                for r in database._query_all_prescriptions(as_of, min_ps)]
         return {"rows": rows, "cutover_date": None}
     except Exception as exc:
         logger.exception("get_prescriptions failed: %s", exc)

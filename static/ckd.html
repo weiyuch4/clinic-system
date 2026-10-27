@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>慢性腎臟病 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=92">
+<link rel="stylesheet" href="/static/_layout.css?v=98">
 <style>
 .ckd-inactive-banner{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0}
 .ckd-bi{width:32px;height:32px;border-radius:8px;background:#0369A1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -41,7 +41,7 @@
         <div>
           <div style="display:flex;align-items:center;gap:8px">
             <h1>慢性腎臟病</h1>
-            <button onclick="Layout.showModal('modal-help')" title="說明" style="display:flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;flex-shrink:0;padding:0;margin-bottom:1px">?</button>
+            <button onclick="Layout.showModal('modal-help')" title="說明" aria-label="說明" class="ph-help">?</button>
           </div>
           <p id="page-date">CKD 定期追蹤 — 逾期待聯繫</p>
         </div>
@@ -59,7 +59,7 @@
       </div>
 
       <div class="search-row">
-        <input class="si" type="text" id="search-input" placeholder="搜尋姓名或身份證…">
+        <input class="si" type="text" id="search-input" placeholder="篩選名單：姓名或身份證">
         <button class="act-btn" id="btn-filter" style="flex-shrink:0;gap:5px">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
           篩選<span class="filter-badge" id="filter-badge" style="display:none">0</span>
@@ -74,7 +74,7 @@
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
               <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
         <button class="filter-tab" data-tab="upcoming">未到期 <span class="tc-count" id="cnt-upcoming">…</span></button>
-        <button class="act-btn" id="btn-workflow" style="margin-left:auto;gap:5px;flex-shrink:0;padding:6px 12px;font-size:13px">
+        <button class="act-btn" id="btn-workflow">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
         </button>
@@ -247,7 +247,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=85"></script>
+<script src="/static/_layout.js?v=92"></script>
 <script>
 (function () {
   'use strict';
@@ -314,7 +314,7 @@
   function pendingRow(e) {
     return L.patientRow({ entry: e, actions: [
       { label: '已聯繫',  cls: 'act-primary', key: 'contact' },
-      { label: '暫緩',    cls: 'act-warn',    key: 'hold' },
+      { label: '暫緩',    cls: '',            key: 'hold' },
     ], more: [
       { label: '移至未複診', key: 'move-to-inactive' },
       { label: '排除', key: 'exclude', cls: 'item-danger' },
@@ -361,7 +361,7 @@
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件的病患' : '目前沒有記錄') + '</div>';
     } else {
-      el.innerHTML = L.patientTable(filtered.map(renderFn).join(''));
+      el.innerHTML = L.patientTable(filtered.map(renderFn).join(''), [], { hideCat: true });
     }
     if (_tab === id.replace('list-', ''))
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
@@ -427,7 +427,7 @@
     try { sessionStorage.setItem('ckd_active_tab', _tab); } catch(ex) {}
     document.querySelectorAll('.filter-tab').forEach(function (b) { b.classList.remove('on'); });
     btn.classList.add('on');
-    ['pending','inactive','contacted','hold','excluded'].forEach(function (t) {
+    ['pending','inactive','contacted','hold','excluded','upcoming'].forEach(function (t) {
       document.getElementById('list-' + t).style.display = t === _tab ? '' : 'none';
     });
     _resetCtxFilters();
@@ -667,7 +667,7 @@
 
   try {
     var _st = sessionStorage.getItem('ckd_active_tab');
-    var _ckdTabs = ['pending','inactive','contacted','hold','excluded'];
+    var _ckdTabs = ['pending','inactive','contacted','hold','excluded','upcoming'];
     if (_st && _ckdTabs.indexOf(_st) !== -1) {
       _tab = _st;
       var _stBtn = document.querySelector('.filter-tab[data-tab="' + _st + '"]');
