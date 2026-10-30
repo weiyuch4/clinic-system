@@ -27,6 +27,7 @@ import contacts
 import database
 import db
 import directory
+import environment
 import inventory
 import lab_report
 import lab_results
@@ -104,6 +105,8 @@ logging.basicConfig(
     format="%(asctime)s %(levelname)s %(name)s: %(message)s",
 )
 logger = logging.getLogger(__name__)
+
+environment.install_outbound_guard()  # test copies (staging) never send LINE
 
 app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -187,6 +190,40 @@ async def require_auth_for_api(request: Request, call_next):
         except Exception:
             return JSONResponse({"detail": "憑證無效或已過期，請重新登入"}, status_code=401)
     return await call_next(request)
+
+
+if environment.IS_TEST_COPY:
+    _TEST_BANNER = environment.BANNER_HTML.encode()
+
+    @app.middleware("http")
+    async def label_test_copy(request: Request, call_next):
+        """Put the 測試環境 label on every HTML page so nobody mistakes staging for the real clinic."""
+        response = await call_next(request)
+        if not response.headers.get("content-type", "").startswith("text/html"):
+            return response
+        body = b"".join([chunk async for chunk in response.body_iterator])
+        body = body.replace(b"</body>", _TEST_BANNER + b"</body>", 1)
+        headers = {k: v for k, v in response.headers.items() if k.lower() not in ("content-length", "etag")}
+        return Response(content=body, status_code=response.status_code, headers=headers)
+
+
+@app.get("/healthz")
+def healthz() -> JSONResponse:
+    """For Railway's deploy check and the uptime monitor: the app is up and can reach the database.
+    Public and free of patient data; `commit` shows which version is live."""
+    try:
+        with db._conn() as conn:
+            with conn.cursor() as cur:
+                cur.execute("SELECT 1")
+        ok = True
+    except Exception:
+        logger.exception("healthz: database check failed")
+        ok = False
+    return JSONResponse(
+        {"ok": ok, "db": ok, "env": environment.NAME or "local", "commit": environment.COMMIT},
+        status_code=200 if ok else 503,
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 _REFRESH_COOKIE = "refresh_token"
@@ -1185,14 +1222,27 @@ def _build_cloud_report(synced: list[dict], as_of: date) -> DailyReport:
     )
 
 
+def _sync_clinic(request: Request, body: dict | None = None) -> int:
+    """Which clinic a sync-agent request is for — decided by its token, never by what the agent claims.
+    SYNC_TOKEN (env) is clinic 1's agent; every other clinic has its own token (auth.issue_sync_token).
+    A body that names a different clinic is refused rather than silently redirected."""
+    token = request.headers.get("X-Sync-Token", "")
+    if _SYNC_TOKEN and token and secrets.compare_digest(token, _SYNC_TOKEN):
+        clinic_id = 1
+    else:
+        clinic_id = auth.clinic_for_sync_token(token)
+    if clinic_id is None:
+        raise HTTPException(status_code=401, detail="Invalid sync token")
+    if body is not None and "clinic_id" in body and str(body["clinic_id"]) != str(clinic_id):
+        raise HTTPException(status_code=403, detail="This sync token belongs to another clinic")
+    db.set_clinic_id(clinic_id)
+    return clinic_id
+
+
 @app.post("/api/sync/push")
 async def sync_push(request: Request) -> dict:
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
     body = await request.json()
-    clinic_id = int(body.get("clinic_id", 1))
-    db.set_clinic_id(clinic_id)
+    clinic_id = _sync_clinic(request, body)
     candidates = body.get("candidates", [])
     contacts.upsert_synced_candidates(candidates, clinic_id)
     try:
@@ -1206,21 +1256,14 @@ async def sync_push(request: Request) -> dict:
 @app.get("/api/sync/open-episodes")
 def sync_open_episodes(request: Request) -> dict:
     """Overdue episodes the sync agent should check for a return visit."""
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
-    db.set_clinic_id(1)
-    return {"episodes": contacts.get_open_episodes(1)}
+    clinic_id = _sync_clinic(request)
+    return {"episodes": contacts.get_open_episodes(clinic_id)}
 
 
 @app.post("/api/sync/push-returns")
 async def sync_push_returns(request: Request) -> dict:
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
     body = await request.json()
-    clinic_id = int(body.get("clinic_id", 1))
-    db.set_clinic_id(clinic_id)
+    clinic_id = _sync_clinic(request, body)
     rows = body.get("returns", [])
     for r in rows:
         try:
@@ -1233,11 +1276,8 @@ async def sync_push_returns(request: Request) -> dict:
 
 @app.post("/api/sync/push-prescriptions")
 async def sync_push_prescriptions(request: Request) -> dict:
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
     body = await request.json()
-    clinic_id = int(body.get("clinic_id", 1))
+    clinic_id = _sync_clinic(request, body)
     rows = body.get("prescriptions", [])
     contacts.upsert_synced_prescriptions(rows, clinic_id)
     return {"ok": True, "count": len(rows)}
@@ -1245,11 +1285,8 @@ async def sync_push_prescriptions(request: Request) -> dict:
 
 @app.post("/api/sync/push-doctor-rates")
 async def sync_push_doctor_rates(request: Request) -> dict:
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
     body = await request.json()
-    clinic_id = int(body.get("clinic_id", 1))
+    clinic_id = _sync_clinic(request, body)
     month = body.get("month", "")
     rows = body.get("rates", [])
     if month:
@@ -1259,11 +1296,8 @@ async def sync_push_doctor_rates(request: Request) -> dict:
 
 @app.post("/api/sync/push-lab")
 async def sync_push_lab(request: Request) -> dict:
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
     body = await request.json()
-    clinic_id = int(body.get("clinic_id", 1))
+    clinic_id = _sync_clinic(request, body)
     lab_data = body.get("lab_data", {})
     contacts.upsert_lab_cache(lab_data, clinic_id)
     _invalidate_blood_pending_cache(clinic_id)
@@ -1272,11 +1306,8 @@ async def sync_push_lab(request: Request) -> dict:
 
 @app.post("/api/sync/push-blood-pending")
 async def sync_push_blood_pending(request: Request) -> dict:
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
     body = await request.json()
-    clinic_id = int(body.get("clinic_id", 1))
+    clinic_id = _sync_clinic(request, body)
     days = body.get("days", [])
     contacts.upsert_synced_blood_pending(days, clinic_id)
     _invalidate_blood_pending_cache(clinic_id)
@@ -1285,31 +1316,19 @@ async def sync_push_blood_pending(request: Request) -> dict:
 
 @app.get("/api/sync/blood-recall-settings")
 def sync_blood_recall_settings(request: Request) -> dict:
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
-    db.set_clinic_id(1)
-    return contacts.get_blood_recall_settings(1)
+    return contacts.get_blood_recall_settings(_sync_clinic(request))
 
 
 @app.get("/api/sync/clinic-settings")
 def sync_clinic_settings(request: Request) -> dict:
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
-    db.set_clinic_id(1)
-    return contacts.get_clinic_settings(1)
+    return contacts.get_clinic_settings(_sync_clinic(request))
 
 
 @app.post("/api/sync/push-blood-recall")
 async def sync_push_blood_recall(request: Request) -> dict:
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
     body = await request.json()
-    clinic_id = int(body.get("clinic_id", 1))
+    clinic_id = _sync_clinic(request, body)
     patients = body.get("patients", [])
-    db.set_clinic_id(clinic_id)
     for p in patients:
         nat_id = p.get("nat_id", "").strip()
         name = p.get("name", "")
@@ -1364,11 +1383,7 @@ def save_blood_recall_settings(body: dict = Body(...),
 
 @app.get("/api/sync/status")
 def sync_status(request: Request) -> dict:
-    token = request.headers.get("X-Sync-Token", "")
-    if not _SYNC_TOKEN or not secrets.compare_digest(token, _SYNC_TOKEN):
-        raise HTTPException(status_code=401, detail="Invalid sync token")
-    db.set_clinic_id(1)
-    rows = contacts.get_synced_candidates(1)
+    rows = contacts.get_synced_candidates(_sync_clinic(request))
     synced_at = max((r["synced_at"] for r in rows), default=None)
     return {"synced_at": synced_at, "count": len(rows)}
 
@@ -2406,7 +2421,7 @@ def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -
         if CLOUD_MODE:
             days = contacts.get_synced_blood_pending(user.clinic_id)
         else:
-            days = database.get_blood_draw_patients(date.today())
+            days = database.get_blood_draw_patients(date.today(), clinic_id=cid)
             for day in days:
                 draw_date = date.fromisoformat(day['date'])
                 for p in day['patients']:

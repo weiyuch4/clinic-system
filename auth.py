@@ -99,6 +99,32 @@ def init() -> None:
             cur.execute(_CREATE_USERS)
             cur.execute(_CREATE_REFRESH_TOKENS)
             cur.execute(_CREATE_CLINIC_SETTINGS)
+            # Each clinic's sync agent gets its own token; only the hash is stored.
+            cur.execute("ALTER TABLE clinics ADD COLUMN IF NOT EXISTS sync_token_hash TEXT UNIQUE")
+
+
+# ── Sync agent tokens ───────────────────────────────────────────────────────────
+
+def clinic_for_sync_token(raw: str) -> Optional[int]:
+    """The clinic a sync-agent token belongs to, or None."""
+    if not raw:
+        return None
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT id FROM clinics WHERE sync_token_hash = %s", (_hash_refresh_token(raw),))
+            r = cur.fetchone()
+    return r["id"] if r else None
+
+
+def issue_sync_token(clinic_id: int) -> str:
+    """Create (or replace) a clinic's sync token; return the raw token — it is shown once, never stored."""
+    raw = secrets.token_urlsafe(32)
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("UPDATE clinics SET sync_token_hash = %s WHERE id = %s", (_hash_refresh_token(raw), clinic_id))
+            if cur.rowcount == 0:
+                raise ValueError(f"clinic {clinic_id} does not exist")
+    return raw
 
 
 # ── Bootstrap ───────────────────────────────────────────────────────────────────

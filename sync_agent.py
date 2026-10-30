@@ -138,7 +138,7 @@ def do_sync() -> None:
     for entry in report.ckd_upcoming:
         candidates.append(_entry_to_dict(entry, "慢性腎臟病_upcoming"))
 
-    payload = {"clinic_id": 1, "candidates": candidates}
+    payload = {"candidates": candidates}
     try:
         resp = requests.post(
             f"{CLOUD_URL}/api/sync/push",
@@ -168,7 +168,7 @@ def do_sync() -> None:
         prescriptions = _query_all_prescriptions(date.today(), min_ps)
         resp = requests.post(
             f"{CLOUD_URL}/api/sync/push-prescriptions",
-            json={"clinic_id": 1, "prescriptions": prescriptions},
+            json={"prescriptions": prescriptions},
             headers={"X-Sync-Token": SYNC_TOKEN},
             timeout=30,
         )
@@ -194,7 +194,7 @@ def do_sync() -> None:
                 continue
             resp = requests.post(
                 f"{CLOUD_URL}/api/sync/push-doctor-rates",
-                json={"clinic_id": 1, "month": month_str, "rates": rates},
+                json={"month": month_str, "rates": rates},
                 headers={"X-Sync-Token": SYNC_TOKEN},
                 timeout=30,
             )
@@ -219,7 +219,7 @@ def do_sync() -> None:
         if returns:
             resp = requests.post(
                 f"{CLOUD_URL}/api/sync/push-returns",
-                json={"clinic_id": 1, "returns": returns},
+                json={"returns": returns},
                 headers={"X-Sync-Token": SYNC_TOKEN},
                 timeout=30,
             )
@@ -277,7 +277,7 @@ def do_sync() -> None:
 
             resp = requests.post(
                 f"{CLOUD_URL}/api/sync/push-blood-pending",
-                json={"clinic_id": 1, "days": days},
+                json={"days": days},
                 headers={"X-Sync-Token": SYNC_TOKEN},
                 timeout=30,
             )
@@ -298,7 +298,7 @@ def do_sync() -> None:
                 chunk = dict(items[i:i + 50])
                 resp = requests.post(
                     f"{CLOUD_URL}/api/sync/push-lab",
-                    json={"clinic_id": 1, "lab_data": chunk},
+                    json={"lab_data": chunk},
                     headers={"X-Sync-Token": SYNC_TOKEN},
                     timeout=60,
                 )
@@ -328,7 +328,7 @@ def do_sync() -> None:
                     chunk = scan_results[i:i + 100]
                     resp = requests.post(
                         f"{CLOUD_URL}/api/sync/push-blood-recall",
-                        json={"clinic_id": 1, "patients": chunk},
+                        json={"patients": chunk},
                         headers={"X-Sync-Token": SYNC_TOKEN},
                         timeout=60,
                     )

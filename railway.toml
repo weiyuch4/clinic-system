@@ -1,2 +1,5 @@
 [deploy]
 startCommand = "uvicorn main:app --host 0.0.0.0 --port $PORT"
+# Railway switches traffic to a new deploy only after this answers 200; a broken build keeps the old one live
+healthcheckPath = "/healthz"
+healthcheckTimeout = 300
