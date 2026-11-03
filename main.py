@@ -577,6 +577,35 @@ def service_worker() -> FileResponse:
     })
 
 
+@app.get("/demos/{name}.mp4")
+def demo_video(name: str, request: Request) -> Response:
+    """Short how-to videos (fake patients only). Served with byte ranges:
+    Safari won't play a video without them and this Starlette's StaticFiles has none."""
+    if not _re.fullmatch(r"[a-z0-9-]{1,40}", name):
+        raise HTTPException(status_code=404, detail="影片不存在")
+    path = f"static/demos/{name}.mp4"
+    try:
+        size = os.path.getsize(path)
+    except OSError:
+        raise HTTPException(status_code=404, detail="影片不存在")
+    headers = {"Accept-Ranges": "bytes", "Cache-Control": "public, max-age=86400"}
+    m = _re.fullmatch(r"bytes=(\d*)-(\d*)", request.headers.get("range", "").strip())
+    if not m or not (m.group(1) or m.group(2)):
+        return FileResponse(path, media_type="video/mp4", headers=headers)
+    if m.group(1):
+        start = int(m.group(1))
+        end = min(int(m.group(2)) if m.group(2) else size - 1, size - 1)
+    else:  # "bytes=-N": the last N bytes
+        start, end = max(0, size - int(m.group(2))), size - 1
+    if start > end or start >= size:
+        return Response(status_code=416, headers={"Content-Range": f"bytes */{size}"})
+    with open(path, "rb") as f:
+        f.seek(start)
+        body = f.read(end - start + 1)
+    headers.update({"Content-Range": f"bytes {start}-{end}/{size}"})
+    return Response(body, status_code=206, media_type="video/mp4", headers=headers)
+
+
 @app.get("/{page}")
 def app_page(page: str) -> Response:
     if not _re.fullmatch(r"[a-z0-9_-]{1,40}", page):

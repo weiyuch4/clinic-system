@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>處方追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=100">
+<link rel="stylesheet" href="/static/_layout.css?v=102">
 </head>
 <body>
 <div class="app">
@@ -121,6 +121,7 @@
     <div style="font-size:13.5px;line-height:1.75;color:var(--text);overflow-y:auto;max-height:65vh;padding-right:4px">
 
       <p style="margin:0 0 12px;color:var(--muted);font-size:12.5px">處方追蹤會自動列出逾期或即將到期的處方病患，協助護理師安排聯繫。</p>
+      <div id="rx-help-demos" class="demo-list" style="display:flex;flex-direction:column;align-items:flex-start;gap:4px;margin:-4px 0 14px"></div>
 
       <div style="font-weight:600;margin:0 0 6px">📋 處方類型</div>
       <div style="display:grid;gap:6px;margin-bottom:14px">
@@ -171,7 +172,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=94"></script>
+<script src="/static/_layout.js?v=96"></script>
 <script>
 (function () {
   'use strict';
@@ -285,8 +286,12 @@
 
   // ── 不聯絡 row: same columns as pending, greyed, the note shows the request, one link to change it ──
   function dncRow(e) {
-    return pendingRow(Object.assign({}, e, { icd_name: e.dnc_note || '不聯絡' }))
+    var note = e.dnc_note || '不聯絡';
+    return pendingRow(Object.assign({}, e, { icd_name: '' }))
       .replace('<tr class="pr"', '<tr class="pr pr-dnc"')
+      // one line, full request on hover — the 備註 column is narrow
+      .replace('<td class="pr-note" style="color:var(--sub);font-size:12px"></td>',
+        '<td class="pr-note" title="' + _esc(note) + '" style="color:var(--sub);font-size:12px;white-space:nowrap;text-overflow:ellipsis">' + _esc(note) + '</td>')
       .replace(/<div class="pr-btns">[\s\S]*?<\/div><\/td>/,
         '<div class="pr-btns"><a class="act-btn" href="/patient?chart=' + encodeURIComponent(e.nat_id) + '">修改</a></div></td>');
   }
@@ -960,6 +965,9 @@
   } catch(ex) {}
 
   Layout.init({ activePage: 'prescription', onRefresh: _load });
+  document.getElementById('rx-help-demos').innerHTML =
+    L.demoLink('after-contact').replace('看示範', '看示範：聯絡完病患後按哪個按鈕') +
+    L.demoLink('find-vs-filter').replace('看示範', '看示範：找病患和篩選名單的差別');
   _load();
 })();
 </script>

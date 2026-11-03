@@ -3,7 +3,7 @@
 /* â”€â”€ CSS variables & themes â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 :root {
   --bg:#F0EFED;--card:#FFFFFF;--border:#E5E7EB;
-  --text:#111827;--sub:#4B5563;--muted:#596172;
+  --text:#111827;--sub:#4B5563;--muted:#596172;--link:#1D4ED8;
   --g9:#1E3A8A;--g7:#374151;--g5:#6B7280;--g0:#F3F4F6;
   --shadow:0 1px 3px rgba(0,0,0,.07),0 0 1px rgba(0,0,0,.04);
   --r:14px;
@@ -15,13 +15,13 @@
 }
 @media(prefers-color-scheme:dark){:root:not([data-theme=light]){
   --bg:#0D1117;--card:#161B27;--border:#262F3E;
-  --text:#ECE9E3;--sub:#9CA3AF;--muted:#8896A5;
+  --text:#ECE9E3;--sub:#9CA3AF;--muted:#8896A5;--link:#93C5FD;
   --g7:#D1D5DB;--g5:#93C5FD;--g0:#1F2937;
   --shadow:0 1px 4px rgba(0,0,0,.4);
   --red-hover:rgba(239,68,68,.22);
 }}
-:root[data-theme=dark]{--bg:#0D1117;--card:#161B27;--border:#262F3E;--text:#ECE9E3;--sub:#9CA3AF;--muted:#8896A5;--g7:#D1D5DB;--g5:#93C5FD;--g0:#1F2937;--shadow:0 1px 4px rgba(0,0,0,.4);--red-hover:rgba(239,68,68,.22);}
-:root[data-theme=light]{--bg:#F0EFED;--card:#FFFFFF;--border:#E5E7EB;--text:#111827;--sub:#4B5563;--muted:#596172;--g9:#1E3A8A;--g7:#374151;--g5:#6B7280;--g0:#F3F4F6;--shadow:0 1px 3px rgba(0,0,0,.07),0 0 1px rgba(0,0,0,.04);--red-hover:rgba(220,38,38,.10);}
+:root[data-theme=dark]{--link:#93C5FD;--bg:#0D1117;--card:#161B27;--border:#262F3E;--text:#ECE9E3;--sub:#9CA3AF;--muted:#8896A5;--g7:#D1D5DB;--g5:#93C5FD;--g0:#1F2937;--shadow:0 1px 4px rgba(0,0,0,.4);--red-hover:rgba(239,68,68,.22);}
+:root[data-theme=light]{--link:#1D4ED8;--bg:#F0EFED;--card:#FFFFFF;--border:#E5E7EB;--text:#111827;--sub:#4B5563;--muted:#596172;--g9:#1E3A8A;--g7:#374151;--g5:#6B7280;--g0:#F3F4F6;--shadow:0 1px 3px rgba(0,0,0,.07),0 0 1px rgba(0,0,0,.04);--red-hover:rgba(220,38,38,.10);}
 
 /* â”€â”€ scrollbar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 ::-webkit-scrollbar{width:6px;height:6px}
@@ -69,6 +69,8 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .adm-entry{display:flex;align-items:center;gap:9px;width:100%;padding:8px 9px;margin-top:4px;background:transparent;border:none;border-radius:9px;font-size:13px;color:var(--muted);cursor:pointer;text-align:left;font-family:inherit;flex-shrink:0;transition:background .12s,color .12s}
 @media(hover:hover){.adm-entry:hover{background:var(--g0);color:var(--sub)}}
 .adm-entry svg{width:16px;height:16px;flex-shrink:0}
+a.adm-entry{text-decoration:none}
+.adm-entry.on{background:var(--g0);color:var(--text);font-weight:600}
 .promo-slot{margin-bottom:6px}
 .promo-slot-label{font-size:10px;opacity:.6;margin-bottom:2px}
 .promo-slot-time{font-size:13.5px;font-weight:700}
@@ -385,6 +387,25 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
 .cl-list{text-align:left;padding:0 0 0 20px;margin:0 0 22px;display:flex;flex-direction:column;gap:9px;list-style:disc}
 .cl-list li{font-size:14px;line-height:1.55;color:var(--text)}
 .cl-ok{width:100%;justify-content:center;padding:11px;font-size:15px}
+.cl-demo{margin:-10px 0 16px}
+
+/* ── how-to videos (Layout.demoLink / playDemo) ──────────────────────────── */
+.demo-link{display:inline-flex;align-items:center;gap:5px;border:0;background:none;padding:2px 0;margin-left:6px;
+  font:inherit;font-size:12.5px;font-weight:600;color:var(--link);letter-spacing:0;text-transform:none;cursor:pointer;white-space:nowrap;vertical-align:baseline}
+.demo-link svg{flex-shrink:0}
+.demo-list .demo-link{margin-left:0}
+@media(hover:hover){.demo-link:hover{text-decoration:underline}}
+.demo-link:focus-visible{outline:2.5px solid #4aa7f7;outline-offset:2px;border-radius:4px}
+.demo-box{max-width:min(960px,calc(100vw - 32px));padding:16px 18px 18px}
+.demo-head{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.demo-head .modal-title{flex:1;margin:0}
+.demo-x{display:inline-flex;align-items:center;justify-content:center;width:var(--ctl-h);height:var(--ctl-h);border:0;border-radius:50%;
+  background:none;color:var(--sub);cursor:pointer;flex-shrink:0;transition:background-color .12s,color .12s}
+@media(hover:hover){.demo-x:hover{background:var(--g0);color:var(--text)}}
+.demo-video{display:block;width:100%;aspect-ratio:1366/768;max-height:calc(100vh - 140px);background:#000;border-radius:10px}
+/* phone recordings are portrait: size by height, keep the box narrow */
+.demo-phone .demo-box{max-width:min(440px,calc(100vw - 32px))}
+.demo-phone .demo-video{width:auto;max-width:100%;height:min(calc(100vh - 140px),780px);aspect-ratio:390/844;margin:0 auto}
 @media(max-width:767px){
   .cl-overlay{align-items:flex-end}
   .cl-overlay .cl-box{max-width:100%;width:100%;margin:0;border-radius:20px 20px 0 0;padding-bottom:calc(24px + env(safe-area-inset-bottom,0px))}
@@ -758,7 +779,7 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
    phone doesn't leave a button stuck in its hover color. */
 :where(.bp,.pb,.btn-sm,.add-btn,.wn-btn,.wn-today,.pick-trigger,.print-btn,.month-nav-btn,
   .pr-more-btn,.go-btn,.ib,.chip,.reason-chip,.mp-btn,.seg-btn,.view-toggle button,
-  .inv-tabs button,.nurse-opt,.wz-opt,.ph-help,.lg-approx,.book-link):active:not(:disabled){transform:scale(.97)}
+  .inv-tabs button,.nurse-opt,.wz-opt,.ph-help,.lg-approx,.book-link,.demo-link,.demo-x):active:not(:disabled){transform:scale(.97)}
 
 /* ── reduced motion ───────────────────────────────────────────────────────
    Keep fades (they help orientation); drop movement: slides, scale-ins, sheet
@@ -772,6 +793,6 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
   .pick-drop,.filter-panel{animation:none!important}
   :where(.bp,.pb,.btn-sm,.add-btn,.wn-btn,.wn-today,.pick-trigger,.print-btn,.month-nav-btn,
     .pr-more-btn,.go-btn,.ib,.chip,.reason-chip,.mp-btn,.seg-btn,.view-toggle button,
-    .inv-tabs button,.nurse-opt,.wz-opt,.act-btn,.stp-b,.notes-fab,.ph-help,.lg-approx,.book-link):active{transform:none!important}
+    .inv-tabs button,.nurse-opt,.wz-opt,.act-btn,.stp-b,.notes-fab,.ph-help,.lg-approx,.book-link,.demo-link,.demo-x):active{transform:none!important}
   html{scroll-behavior:auto!important}
 }

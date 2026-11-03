@@ -49,17 +49,20 @@
     risk:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     'blood-recall': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2C9 5 5 9 5 14a7 7 0 0 0 14 0C19 9 15 5 12 2z"/><line x1="12" y1="9" x2="12" y2="14"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
     inventory: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8l-9-5-9 5v8l9 5 9-5z"/><polyline points="3 8 12 13 21 8"/><line x1="12" y1="13" x2="12" y2="21"/></svg>',
+    videos:    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="3"/><polygon points="10 9 15 12 10 15 10 9"/></svg>',
   };
 
   // ── Changelog ────────────────────────────────────────
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
-    { version: 5, date: '2026-11-03', items: [
+    { version: 5, date: '2026-11-03', demo: 'do-not-contact', items: [
       '病患要求不要收到訊息時，可以在「病患資料」設定：全部不聯絡，或只停止某幾種（慢簽、MSPT、B肝、CKD、處方追蹤、抽血、群發訊息）',
       '用上方「找病患」搜尋，打開病患資料，在「聯絡偏好」勾選後按儲存；誰在什麼時候設定的都會留下紀錄',
       '設定後，病患不會再出現在待聯絡，也不會收到 LINE；各名單新增「不聯絡」分頁，仍看得到哪些人已到期',
       '左側選單新增「病患資料」，可以看到所有要求不聯絡的病患',
+      '左下角新增「教學影片」：聯絡完病患要按什麼、找病患和篩選名單、不聯絡、每月點貨、帳冊補登，每支不到 40 秒',
+      '點貨時，上方各區的「剩幾項」和「完成點貨」按鈕會隨著輸入即時更新',
     ]},
     { version: 4, date: '2026-10-27', items: [
       '點貨的每個品項新增「帳冊紀錄」：跟筆記本一樣記日期、摘要、收入、發出、結存，可以把筆記本上以前的紀錄一行一行輸入進來',
@@ -120,6 +123,29 @@
     { id: 'schedule',  label: '排班表',    href: '/schedule',    badge: false },
     { id: 'nurse-ot',  label: '加班記錄',  href: '/nurse-ot',    badge: false },
     { id: 'inventory', label: '點貨',      href: '/inventory',   badge: false },
+  ];
+
+  // ── How-to videos ────────────────────────────────────
+  // Files live in static/demos/<id>.mp4 (recorded with tools/demos/, fake patients only).
+  // Re-recording keeps the id; bump `v` so browsers fetch the new file.
+  // Titles say what the nurse wants to do, not the feature name.
+  // Newest date first on /videos; same date keeps this order. phone: recorded at phone size (portrait).
+  var DEMOS = [
+    { id: 'after-contact', v: 1, secs: 33, added: '2026-11-03',
+      title: '聯絡完病患後，按哪個按鈕',
+      desc: '已聯繫、未加LINE、暫緩怎麼選，按錯了怎麼撤銷' },
+    { id: 'find-vs-filter', v: 1, secs: 18, added: '2026-11-03',
+      title: '「找病患」和「篩選名單」差在哪',
+      desc: '一個找所有病患並打開病患資料，一個只篩選目前這份名單' },
+    { id: 'do-not-contact', v: 1, secs: 38, added: '2026-11-03',
+      title: '病患說「不要再傳通知給我」',
+      desc: '在病患資料設定全部或部分不聯絡，之後名單和 LINE 都會跳過他' },
+    { id: 'monthly-count', v: 1, secs: 33, added: '2026-11-03', phone: true,
+      title: '每月點貨',
+      desc: '輸入數量、同上月、−／＋ 調整，完成後看建議訂購量' },
+    { id: 'stock-book', v: 1, secs: 30, added: '2026-11-03', phone: true,
+      title: '把筆記本上的舊紀錄打進帳冊',
+      desc: '日期、摘要、收入、發出、結存一行一行補登，約略的數量按 ≒' },
   ];
 
   // ── Mobile config ────────────────────────────────────
@@ -638,6 +664,8 @@
           '<div class="pt" id="sb-shift-info">載入中…</div>' +
           '<a href="/schedule" class="pb">查看完整班表</a>' +
         '</div>' +
+        // Pinned here (not in the scrolling list) so it's visible on a 768px-tall screen
+        '<a class="adm-entry' + (_activePage === 'videos' ? ' on' : '') + '" href="/videos">' + ICONS.videos + '教學影片</a>' +
         '<button class="adm-entry" type="button" onclick="window.open(\'/admin\',\'_blank\',\'noopener\')">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>' +
           '管理員後台</button>' +
@@ -1292,7 +1320,8 @@
   function dncHint() {
     return '<div class="tab-hint tab-hint-info">' +
       '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>' +
-      '<span>這些病患已到期，但要求不要聯絡：不會出現在待聯絡，也不會收到 LINE。要恢復聯絡，按「修改」到病患資料更改。</span></div>';
+      '<span>這些病患已到期，但要求不要聯絡：不會出現在待聯絡，也不會收到 LINE。要恢復聯絡，按「修改」到病患資料更改。' +
+      demoLink('do-not-contact') + '</span></div>';
   }
   function dncListHtml(all, shown, tableOpts) {
     var hint = dncHint();
@@ -1473,6 +1502,7 @@
           '<div class="modal-title" style="text-align:center">功能更新</div>' +
           '<div class="cl-date">' + escHtml(latest.date) + '</div>' +
           '<ul class="cl-list">' + itemsHtml + '</ul>' +
+          (latest.demo ? '<div class="cl-demo">' + demoLink(latest.demo, { fromChangelog: true }) + '</div>' : '') +
           '<button class="act-btn act-primary cl-ok" onclick="Layout._dismissChangelog()">了解</button>' +
         '</div>' +
       '</div>';
@@ -1494,6 +1524,59 @@
     var seen = parseInt(localStorage.getItem(_clKey(_nurse)) || '0', 10);
     if (seen >= latest.version) return;
     setTimeout(_showChangelogModal, 700);
+  }
+
+  // ── How-to video player ──────────────────────────────
+  function _demo(id) {
+    for (var i = 0; i < DEMOS.length; i++) if (DEMOS[i].id === id) return DEMOS[i];
+    return null;
+  }
+  function _demoSrc(d) { return '/demos/' + d.id + '.mp4?v=' + d.v; }
+
+  // Quiet "▶ 看示範（39 秒）" button; opens the video in a modal on the same page
+  function demoLink(id, opts) {
+    var d = _demo(id); if (!d) return '';
+    var from = opts && opts.fromChangelog ? ',true' : '';
+    return '<button type="button" class="demo-link" onclick="Layout.playDemo(\'' + d.id + '\'' + from + ')">' +
+      '<svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor"><path d="M7 4.5v15l12.5-7.5z"/></svg>' +
+      '看示範（' + d.secs + ' 秒）</button>';
+  }
+
+  function playDemo(id, fromChangelog) {
+    var d = _demo(id); if (!d) return;
+    if (fromChangelog) _dismissChangelog();
+    var m = document.getElementById('demo-modal');
+    if (!m) {
+      m = document.createElement('div');
+      m.className = 'modal-overlay demo-overlay';
+      m.id = 'demo-modal';
+      m.innerHTML =
+        '<div class="modal-box demo-box" role="dialog" aria-modal="true" aria-labelledby="demo-title">' +
+          '<div class="demo-head"><div class="modal-title" id="demo-title"></div>' +
+            '<button type="button" class="demo-x" aria-label="關閉" onclick="Layout.closeDemo()">' +
+              '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg></button></div>' +
+          '<video class="demo-video" controls playsinline preload="metadata"></video>' +
+        '</div>';
+      document.body.appendChild(m);
+      // showModal already closes on backdrop click and Escape; make sure the video stops too
+      m.addEventListener('click', function (e) { if (e.target === m) _stopDemo(); });
+      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') _stopDemo(); });
+    }
+    m.querySelector('#demo-title').textContent = d.title;
+    m.classList.toggle('demo-phone', !!d.phone);
+    var v = m.querySelector('video');
+    if (v.getAttribute('src') !== _demoSrc(d)) v.setAttribute('src', _demoSrc(d));
+    try { v.currentTime = 0; } catch (e) {}
+    showModal('demo-modal');
+    var p = v.play(); if (p && p.catch) p.catch(function () {});
+  }
+  function _stopDemo() {
+    var v = document.querySelector('#demo-modal video');
+    if (v) v.pause();
+  }
+  function closeDemo() {
+    _stopDemo();
+    hideModal('demo-modal');
   }
 
   function _checkChangelogForNurse(name) {
@@ -1826,6 +1909,10 @@
     dncRow:            dncRow,
     dncListHtml:       dncListHtml,
     dncHint:           dncHint,
+    demos:             DEMOS,
+    demoLink:          demoLink,
+    playDemo:          playDemo,
+    closeDemo:         closeDemo,
     decorateLineBadges: decorateLineBadges,
     catChip:           catChip,
     dayBadge:          dayBadge,

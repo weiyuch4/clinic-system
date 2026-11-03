@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>點貨 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=100">
+<link rel="stylesheet" href="/static/_layout.css?v=102">
 <style>
 /* ── page tokens (accent matches the app's #b5d7f5 pill buttons) ─────────── */
 :root{
@@ -323,7 +323,7 @@
     <div class="modal-sub" id="ml-sub"></div>
     <div class="lg" id="ml-table"></div>
     <div class="lg-form">
-      <div class="lg-form-h" id="ml-form-h">新增一行</div>
+      <div class="lg-form-h"><span id="ml-form-h">新增一行</span><span id="ml-demo"></span></div>
       <div class="lg-f2">
         <div class="lg-fld">
           <label for="ml-date">日期</label>
@@ -379,7 +379,7 @@
 <datalist id="dl-locs"></datalist>
 <datalist id="dl-sups"></datalist>
 
-<script src="/static/_layout.js?v=94"></script>
+<script src="/static/_layout.js?v=96"></script>
 <script>
 (function () {
   'use strict';
@@ -513,7 +513,7 @@
           '<div class="hero-stat"><b>' + groups(S.items).length + '</b><span>個存放位置</span></div>' +
         '</div>' +
         '<button class="bp big-btn" type="button" data-act="start">開始點貨</button>' +
-        '<div class="hero-meta muted" style="font-size:12px">每個數字輸入後會自動儲存，中途離開也可以回來繼續，兩個人也能分區同時點。</div>' +
+        '<div class="hero-meta muted" style="font-size:12px">每個數字輸入後會自動儲存，中途離開也可以回來繼續，兩個人也能分區同時點。' + L.demoLink('monthly-count') + '</div>' +
         '</div>';
       return;
     }
@@ -581,6 +581,17 @@
     var t = document.getElementById('cb-txt'), f = document.getElementById('cb-fill');
     if (t) t.textContent = '已點 ' + n + ' / ' + tot;
     if (f) f.style.width = (tot ? n / tot * 100 : 0) + '%';
+    // Rows save one by one without a re-render, so refresh every "how many left" label here too
+    var lines = S.cnt && S.cnt.lines || {};
+    groups(S.items).forEach(function (g, i) {
+      var left = g.items.filter(function (it) { return lines[it.id] == null; }).length;
+      var chip = document.querySelector('.chip[data-jump="' + i + '"]');
+      if (chip) { chip.classList.toggle('done', !left); chip.textContent = g.loc + (left ? ' ' + left : ' ✓'); }
+      var gn = document.querySelector('#grp-' + i + ' .grp-n');
+      if (gn) gn.textContent = left ? '剩 ' + left + ' 項' : '完成';
+    });
+    var cb = document.querySelector('[data-act="complete"]');
+    if (cb) cb.textContent = '完成點貨' + (tot - n ? '（還有 ' + (tot - n) + ' 項未點）' : '');
   }
 
   function setSaveState(state) {
@@ -1306,6 +1317,7 @@
   });
 
   Layout.init({ activePage: 'inventory', onRefresh: loadAll });
+  document.getElementById('ml-demo').innerHTML = L.demoLink('stock-book');
   loadAll();
 })();
 </script>
