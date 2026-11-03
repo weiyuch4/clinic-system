@@ -57,7 +57,14 @@ def record():
         d.spot("#log-body tr >> nth=0")
         d.wait(2000)
         d.spot(None)
-        d.cap("加班紀錄會留在系統裡，月底不用再另外抄", hold=2600)
+        d.spot(".log-head")
+        d.cap("按 ‹ › 可以查看以前月份的加班紀錄", hold=1200)
+        d.spot(None)
+        d.click(".log-head .log-mon >> nth=0")
+        d.wait(500)
+        d.spot(".ot-summary")
+        d.cap("上方的總時數也會換成那個月份", hold=2200)
+        d.spot(None)
 
 
 if __name__ == "__main__":

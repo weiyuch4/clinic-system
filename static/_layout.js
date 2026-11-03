@@ -56,6 +56,10 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 7, date: '2026-11-03', items: [
+      '手機上的加班紀錄可以查看以前的月份：按紀錄上方的 ‹ ›',
+      '上方的總加班時間和筆數會標出是哪個月份',
+    ]},
     { version: 6, date: '2026-11-03', demo: 'one-by-one', items: [
       '「教學影片」新增 4 支：逐一追蹤、外送抽血報告、訂購和到貨、記加班',
       '教學影片依「追蹤名單與聯絡」「檢驗」「點貨」「排班與加班」分類，新影片標「新」',
@@ -162,9 +166,9 @@
     { id: 'stock-book', v: 1, secs: 30, added: '2026-11-03', group: '點貨', phone: true,
       title: '把筆記本上的舊紀錄打進帳冊',
       desc: '日期、摘要、收入、發出、結存一行一行補登，約略的數量按 ≒' },
-    { id: 'overtime', v: 1, secs: 22, added: '2026-11-03', group: '排班與加班', phone: true,
+    { id: 'overtime', v: 2, secs: 23, added: '2026-11-03', group: '排班與加班', phone: true,
       title: '記加班',
-      desc: '選日期和時間、寫備註，本月總加班時間自動加總' },
+      desc: '選日期和時間、寫備註，總加班時間自動加總，‹ › 看以前的月份' },
   ];
 
   // ── Mobile config ────────────────────────────────────

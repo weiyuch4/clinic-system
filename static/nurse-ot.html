@@ -23,6 +23,8 @@
 }
 @media(hover:hover){.month-nav-btn:hover{ border-color:var(--sub); color:var(--text); }}
 .month-display { font-size:14px; font-weight:700; color:var(--text); min-width:96px; text-align:center; }
+/* phones hide the page header, so the log card carries its own ‹ › */
+.log-mon { display:none; }
 
 /* ── summary tiles ─────────────────────────────────────────────────────── */
 .ot-summary { display:flex; gap:12px; flex-wrap:wrap; }
@@ -208,6 +210,9 @@
 }
 /* ── Mobile: convert log table to stacked cards ──────── */
 @media(max-width:767px){
+  .log-head{align-items:center;gap:8px}
+  .log-head .cttl{flex:1;text-align:center}
+  .log-mon{display:flex;flex-shrink:0}
   .ot-summary{gap:8px}
   .ot-tile{min-width:0;flex:1}
   .ot-tile-val{font-size:20px}
@@ -304,8 +309,8 @@
 
       <!-- Summary tiles -->
       <div class="ot-summary">
-        <div class="ot-tile"><div class="ot-tile-val" id="tile-hours">—</div><div class="ot-tile-lbl">本月總加班時間</div></div>
-        <div class="ot-tile"><div class="ot-tile-val" id="tile-count">—</div><div class="ot-tile-lbl">本月筆數</div></div>
+        <div class="ot-tile"><div class="ot-tile-val" id="tile-hours">—</div><div class="ot-tile-lbl" id="lbl-hours">本月總加班時間</div></div>
+        <div class="ot-tile"><div class="ot-tile-val" id="tile-count">—</div><div class="ot-tile-lbl" id="lbl-count">本月筆數</div></div>
       </div>
 
       <!-- Add entry -->
@@ -351,7 +356,11 @@
 
       <!-- Log table -->
       <div class="card">
-        <div class="chd" style="margin-bottom:12px"><span class="cttl" id="log-card-title">加班紀錄</span></div>
+        <div class="chd log-head" style="margin-bottom:12px">
+          <button type="button" class="month-nav-btn log-mon" onclick="stepMonth(-1)" aria-label="上個月">‹</button>
+          <span class="cttl" id="log-card-title">加班紀錄</span>
+          <button type="button" class="month-nav-btn log-mon" onclick="stepMonth(1)" aria-label="下個月">›</button>
+        </div>
         <div class="ot-table-wrap">
           <div id="log-state" class="ot-loading">載入中…</div>
           <table class="ot-table" id="log-table" style="display:none">
@@ -418,7 +427,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=97"></script>
+<script src="/static/_layout.js?v=98"></script>
 <script src="/static/auth-client.js"></script>
 <script>
 (function () {
@@ -609,6 +618,12 @@
   function updateMonthDisplay() {
     document.getElementById('month-display').textContent =
       _currentYear + ' 年 ' + MON_ZH[_currentMon] + ' 月';
+    // The tiles total the month being viewed, so name it when it isn't this month
+    var now = new Date();
+    var cur = _currentYear === now.getFullYear() && _currentMon === now.getMonth() + 1;
+    var m = cur ? '本月' : MON_ZH[_currentMon] + ' 月';
+    document.getElementById('lbl-hours').textContent = m + '總加班時間';
+    document.getElementById('lbl-count').textContent = m + '筆數';
   }
 
   window.stepMonth = function(dir) {
