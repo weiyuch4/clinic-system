@@ -54,7 +54,8 @@ ITEMS = [
 ]
 
 
-def seed():
+def seed(this_month_counted: bool = False):
+    """this_month_counted: also finish this month's 點貨, so 訂購 has suggestions right away."""
     conn = psycopg2.connect(DB)
     conn.autocommit = True
     cur = conn.cursor()
@@ -63,7 +64,8 @@ def seed():
 
     for t in ("contact_prefs", "contact_prefs_log", "contacts", "on_hold", "synced_prescriptions",
               "blood_recall_patients", "synced_candidates", "inventory_ledger", "inventory_orders",
-              "inventory_count_lines", "inventory_counts", "inventory_items"):
+              "inventory_count_lines", "inventory_counts", "inventory_items", "blood_notified",
+              "blood_physical", "synced_blood_pending", "nurse_ot_logs"):
         cur.execute(f"DELETE FROM {t} WHERE clinic_id = 1")
 
     cur.execute("INSERT INTO nurses (name, sort_order, clinic_id) VALUES (%s, 0, 1) ON CONFLICT (name) DO NOTHING",
@@ -92,6 +94,8 @@ def seed():
         while m < 1:
             y, m = y - 1, m + 12
         months.append((f"{y}-{m:02d}", f"{y}-{m:02d}-28"))
+    if this_month_counted:
+        months.append((f"{today.year}-{today.month:02d}", today.isoformat()))
     count_ids = []
     for month, day in months:
         cur.execute("INSERT INTO inventory_counts (clinic_id, month, started_at, started_by, completed_at, completed_by) "
@@ -102,9 +106,16 @@ def seed():
                     "min_stock, created_at) VALUES (1, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id",
                     (name, unit, loc, i, pack, pack_unit, safety, months[0][1] + "T08:00"))
         item_id = cur.fetchone()[0]
-        for cid, qty, (_, day) in zip(count_ids, history, months):
+        # This month: used a bit more than usual, so several items drop below their safety stock
+        counts = history + ([round(history[-1] * 0.55)] if this_month_counted else [])
+        for cid, qty, (_, day) in zip(count_ids, counts, months):
             cur.execute("INSERT INTO inventory_count_lines (count_id, item_id, clinic_id, qty, counted_by, counted_at) "
                         "VALUES (%s, %s, 1, %s, %s, %s)", (cid, item_id, qty, NURSE, day + "T09:30"))
+    # One earlier overtime entry this month, so 加班紀錄 isn't empty
+    if today.day > 1:
+        cur.execute("INSERT INTO nurse_ot_logs (clinic_id, nurse, date, start_time, end_time, note, created_at) "
+                    "VALUES (1, %s, %s, '18:00', '19:30', '整理病歷', %s)",
+                    (NURSE, today.replace(day=1).isoformat(), now.isoformat(timespec="seconds")))
     conn.close()
 
 

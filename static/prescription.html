@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>處方追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=102">
+<link rel="stylesheet" href="/static/_layout.css?v=103">
 </head>
 <body>
 <div class="app">
@@ -172,7 +172,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=96"></script>
+<script src="/static/_layout.js?v=97"></script>
 <script>
 (function () {
   'use strict';
@@ -967,7 +967,8 @@
   Layout.init({ activePage: 'prescription', onRefresh: _load });
   document.getElementById('rx-help-demos').innerHTML =
     L.demoLink('after-contact').replace('看示範', '看示範：聯絡完病患後按哪個按鈕') +
-    L.demoLink('find-vs-filter').replace('看示範', '看示範：找病患和篩選名單的差別');
+    L.demoLink('find-vs-filter').replace('看示範', '看示範：找病患和篩選名單的差別') +
+    L.demoLink('one-by-one').replace('看示範', '看示範：用逐一追蹤一位一位處理');
   _load();
 })();
 </script>

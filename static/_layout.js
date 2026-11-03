@@ -56,6 +56,11 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 6, date: '2026-11-03', demo: 'one-by-one', items: [
+      '「教學影片」新增 4 支：逐一追蹤、外送抽血報告、訂購和到貨、記加班',
+      '教學影片依「追蹤名單與聯絡」「檢驗」「點貨」「排班與加班」分類，新影片標「新」',
+      '檢驗追蹤、點貨的「訂購」、加班紀錄旁也有「看示範」',
+    ]},
     { version: 5, date: '2026-11-03', demo: 'do-not-contact', items: [
       '病患要求不要收到訊息時，可以在「病患資料」設定：全部不聯絡，或只停止某幾種（慢簽、MSPT、B肝、CKD、處方追蹤、抽血、群發訊息）',
       '用上方「找病患」搜尋，打開病患資料，在「聯絡偏好」勾選後按儲存；誰在什麼時候設定的都會留下紀錄',
@@ -129,23 +134,37 @@
   // Files live in static/demos/<id>.mp4 (recorded with tools/demos/, fake patients only).
   // Re-recording keeps the id; bump `v` so browsers fetch the new file.
   // Titles say what the nurse wants to do, not the feature name.
-  // Newest date first on /videos; same date keeps this order. phone: recorded at phone size (portrait).
+  // /videos shows them under DEMO_GROUPS (same areas as the sidebar), in this order within a group.
+  // phone: recorded at phone size (portrait).
+  var DEMO_GROUPS = ['追蹤名單與聯絡', '檢驗', '點貨', '排班與加班'];
   var DEMOS = [
-    { id: 'after-contact', v: 1, secs: 33, added: '2026-11-03',
+    { id: 'after-contact', v: 1, secs: 33, added: '2026-11-03', group: '追蹤名單與聯絡',
       title: '聯絡完病患後，按哪個按鈕',
       desc: '已聯繫、未加LINE、暫緩怎麼選，按錯了怎麼撤銷' },
-    { id: 'find-vs-filter', v: 1, secs: 18, added: '2026-11-03',
+    { id: 'one-by-one', v: 1, secs: 24, added: '2026-11-03', group: '追蹤名單與聯絡',
+      title: '名單很長？用「逐一追蹤」一位一位處理',
+      desc: '小視窗一次一位病患，複製資料、已聯繫、跳過、暫緩' },
+    { id: 'find-vs-filter', v: 1, secs: 18, added: '2026-11-03', group: '追蹤名單與聯絡',
       title: '「找病患」和「篩選名單」差在哪',
       desc: '一個找所有病患並打開病患資料，一個只篩選目前這份名單' },
-    { id: 'do-not-contact', v: 1, secs: 38, added: '2026-11-03',
+    { id: 'do-not-contact', v: 1, secs: 38, added: '2026-11-03', group: '追蹤名單與聯絡',
       title: '病患說「不要再傳通知給我」',
       desc: '在病患資料設定全部或部分不聯絡，之後名單和 LINE 都會跳過他' },
-    { id: 'monthly-count', v: 1, secs: 33, added: '2026-11-03', phone: true,
+    { id: 'lab-tracking', v: 1, secs: 21, added: '2026-11-03', group: '檢驗',
+      title: '外送抽血的報告回來了',
+      desc: '已出報告就通知病患，超時待出要追，紙本報告移到「實體報告」' },
+    { id: 'monthly-count', v: 1, secs: 33, added: '2026-11-03', group: '點貨', phone: true,
       title: '每月點貨',
       desc: '輸入數量、同上月、−／＋ 調整，完成後看建議訂購量' },
-    { id: 'stock-book', v: 1, secs: 30, added: '2026-11-03', phone: true,
+    { id: 'order-arrival', v: 1, secs: 24, added: '2026-11-03', group: '點貨', phone: true,
+      title: '訂購和到貨',
+      desc: '照建議數量訂購、複製清單給廠商，到貨時填實際收到的數量' },
+    { id: 'stock-book', v: 1, secs: 30, added: '2026-11-03', group: '點貨', phone: true,
       title: '把筆記本上的舊紀錄打進帳冊',
       desc: '日期、摘要、收入、發出、結存一行一行補登，約略的數量按 ≒' },
+    { id: 'overtime', v: 1, secs: 22, added: '2026-11-03', group: '排班與加班', phone: true,
+      title: '記加班',
+      desc: '選日期和時間、寫備註，本月總加班時間自動加總' },
   ];
 
   // ── Mobile config ────────────────────────────────────
@@ -1558,9 +1577,12 @@
           '<video class="demo-video" controls playsinline preload="metadata"></video>' +
         '</div>';
       document.body.appendChild(m);
-      // showModal already closes on backdrop click and Escape; make sure the video stops too
+      // showModal closes on backdrop click, and on Escape only while focus is inside the modal;
+      // the player also closes on Escape from anywhere, and the video always stops
       m.addEventListener('click', function (e) { if (e.target === m) _stopDemo(); });
-      document.addEventListener('keydown', function (e) { if (e.key === 'Escape') _stopDemo(); });
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape' && m.style.display !== 'none') closeDemo();
+      });
     }
     m.querySelector('#demo-title').textContent = d.title;
     m.classList.toggle('demo-phone', !!d.phone);
@@ -1910,6 +1932,7 @@
     dncListHtml:       dncListHtml,
     dncHint:           dncHint,
     demos:             DEMOS,
+    demoGroups:        DEMO_GROUPS,
     demoLink:          demoLink,
     playDemo:          playDemo,
     closeDemo:         closeDemo,

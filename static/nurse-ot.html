@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>加班紀錄</title>
-<link rel="stylesheet" href="/static/_layout.css?v=102">
+<link rel="stylesheet" href="/static/_layout.css?v=103">
 <style>
 /* ── month nav (page header) ───────────────────────────────────────────── */
 .month-nav { display:flex; align-items:center; gap:6px; }
@@ -310,7 +310,7 @@
 
       <!-- Add entry -->
       <div class="card">
-        <div class="chd" style="margin-bottom:14px"><span class="cttl">新增加班紀錄</span></div>
+        <div class="chd" style="margin-bottom:14px"><span class="cttl">新增加班紀錄</span><span id="ot-demo"></span></div>
         <div class="add-form">
           <!-- Date picker -->
           <div class="add-field" id="dp-wrap">
@@ -418,7 +418,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=96"></script>
+<script src="/static/_layout.js?v=97"></script>
 <script src="/static/auth-client.js"></script>
 <script>
 (function () {
@@ -433,6 +433,7 @@
       loadLogs();
     },
   });
+  document.getElementById('ot-demo').innerHTML = L.demoLink('overtime');
 
   /* ── picker state ─────────────────────────────────────────────────────── */
   var _openPicker = null;   // 'dp' | 'tp-start' | 'tp-end' | null

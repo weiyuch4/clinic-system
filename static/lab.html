@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>檢驗追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=102">
+<link rel="stylesheet" href="/static/_layout.css?v=103">
 <style>
 /* ── tabs ────────────────────────────────────────────────────────── */
 .lab-tabs{display:flex;gap:2px;background:var(--border);border-radius:9px;padding:3px;margin-bottom:14px;width:fit-content}
@@ -141,7 +141,7 @@
       </div>
 
       <div class="ph">
-        <div><h1>檢驗追蹤</h1><p id="page-date">外送抽血結果追蹤</p></div>
+        <div><h1>檢驗追蹤</h1><p id="page-date">外送抽血結果追蹤</p><div id="lab-demo" class="demo-list"></div></div>
       </div>
 
       <!-- Tab switcher + action -->
@@ -174,7 +174,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=96"></script>
+<script src="/static/_layout.js?v=97"></script>
 <script>
 (function () {
   'use strict';
@@ -596,6 +596,7 @@
   window.addEventListener('message', function (ev) { if (ev.data === 'workflow_refresh') load(); });
 
   Layout.init({ activePage: 'lab', onRefresh: load });
+  document.getElementById('lab-demo').innerHTML = L.demoLink('lab-tracking');
   load();
 })();
 </script>

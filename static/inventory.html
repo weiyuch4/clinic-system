@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>點貨 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=102">
+<link rel="stylesheet" href="/static/_layout.css?v=103">
 <style>
 /* ── page tokens (accent matches the app's #b5d7f5 pill buttons) ─────────── */
 :root{
@@ -379,7 +379,7 @@
 <datalist id="dl-locs"></datalist>
 <datalist id="dl-sups"></datalist>
 
-<script src="/static/_layout.js?v=96"></script>
+<script src="/static/_layout.js?v=97"></script>
 <script>
 (function () {
   'use strict';
@@ -714,7 +714,7 @@
     var items = S.sugg.items;
     var need = items.filter(needsAttention), rest = items.filter(function (it) { return !needsAttention(it); });
 
-    html += '<div class="sec-h"><h2>' + monthLabel(latest.month) + '建議訂購</h2><span class="sec-n">' + need.length + ' 項</span></div>';
+    html += '<div class="sec-h"><h2>' + monthLabel(latest.month) + '建議訂購</h2><span class="sec-n">' + need.length + ' 項</span>' + L.demoLink('order-arrival') + '</div>';
     if (!latest.completed_at) {
       html += '<div class="note-box">本月點貨還沒完成，只有已點的品項會算出建議數量。</div>';
     }

@@ -11,10 +11,14 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>教學影片 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=102">
+<link rel="stylesheet" href="/static/_layout.css?v=103">
 <style>
 .vd-head{margin-bottom:20px}
-.vd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;flex-shrink:0}
+#vd-groups{display:flex;flex-direction:column;gap:28px;flex-shrink:0}
+.vd-gh{display:flex;align-items:baseline;gap:8px;font-size:15px;font-weight:700;color:var(--text);margin:0 0 12px}
+.vd-gn{font-size:12.5px;font-weight:500;color:var(--muted)}
+.vd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px}
+.vd-new{display:inline-block;font-size:11px;font-weight:700;color:var(--link);background:var(--g0);border-radius:5px;padding:1px 6px;margin-right:6px;vertical-align:2px}
 .vd-card{display:flex;flex-direction:column;text-align:left;background:var(--card);border:1px solid var(--border);border-radius:12px;
   padding:0;overflow:hidden;cursor:pointer;font:inherit;color:inherit;transition:border-color .12s}
 @media(hover:hover){.vd-card:hover{border-color:var(--sub)}}
@@ -43,12 +47,12 @@
     <div class="ct">
       <div class="ph vd-head"><div><h1>教學影片</h1>
         <p>每支影片不到一分鐘，示範一件事怎麼做。影片裡的病患都是假資料。</p></div></div>
-      <div class="vd-grid" id="vd-grid"></div>
+      <div id="vd-groups"></div>
     </div>
   </div>
 </div>
 
-<script src="/static/_layout.js?v=96"></script>
+<script src="/static/_layout.js?v=97"></script>
 <script src="/static/auth-client.js"></script>
 <script>
 (function () {
@@ -57,17 +61,24 @@
   L.init({ activePage: 'videos' });
 
   var play = '<svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
-  // Newest first, so a video for a feature that just launched is at the top
-  var list = L.demos.slice().sort(function (a, b) { return (a.added < b.added) - (a.added > b.added); });
-  document.getElementById('vd-grid').innerHTML = list.map(function (d) {
+  // Grouped like the sidebar; a video added in the last two weeks gets a 「新」 tag
+  var today = new Date(); today.setHours(0, 0, 0, 0);
+  function isNew(d) { return (today - new Date(d.added + 'T00:00:00')) / 86400000 <= 14; }
+  function card(d) {
     var date = d.added.split('-');
     return '<button type="button" class="vd-card" onclick="Layout.playDemo(\'' + d.id + '\')">' +
       '<div class="vd-thumb' + (d.phone ? ' phone' : '') + '"><img src="/static/demos/' + d.id + '.jpg?v=' + d.v + '" alt="" loading="lazy">' +
         (d.phone ? '<span class="vd-phone">手機畫面</span>' : '') + '<span class="vd-play">' + play + '</span><span class="vd-len">' + Math.floor(d.secs / 60) + ':' + ('0' + d.secs % 60).slice(-2) + '</span></div>' +
-      '<div class="vd-body"><div class="vd-title">' + L.escHtml(d.title) + '</div>' +
+      '<div class="vd-body"><div class="vd-title">' + (isNew(d) ? '<span class="vd-new">新</span>' : '') + L.escHtml(d.title) + '</div>' +
         '<div class="vd-desc">' + L.escHtml(d.desc) + '</div>' +
         '<div class="vd-date">' + (+date[1]) + '/' + (+date[2]) + ' 新增</div></div>' +
     '</button>';
+  }
+  document.getElementById('vd-groups').innerHTML = L.demoGroups.map(function (g) {
+    var list = L.demos.filter(function (d) { return d.group === g; });
+    if (!list.length) return '';
+    return '<section><h2 class="vd-gh">' + L.escHtml(g) + '<span class="vd-gn">' + list.length + ' 支</span></h2>' +
+      '<div class="vd-grid">' + list.map(card).join('') + '</div></section>';
   }).join('');
 })();
 </script>

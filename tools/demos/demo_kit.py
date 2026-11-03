@@ -18,6 +18,9 @@ W, H = 1366, 768
 
 _OVERLAY = r"""
 (() => {
+  // Inside a frame (e.g. the 逐一追蹤 window): no overlay of its own; Demo.move() places the top
+  // page's cursor directly, since the top page never sees mouse events over a frame.
+  if (window.top !== window) return;
   const css = `
     #demo-cursor{position:fixed;left:-100px;top:-100px;z-index:2147483647;width:26px;height:26px;pointer-events:none;
       background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M4 2l15 11-6.5 1.2L16 21l-3 1.4-3.4-6.7L4 20z' fill='%23111' stroke='%23fff' stroke-width='1.6' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat;}
@@ -51,11 +54,15 @@ _OVERLAY = r"""
     c.style.left = e.clientX + 'px'; c.style.top = e.clientY + 'px';
     try { sessionStorage.setItem('demo_pos', JSON.stringify([e.clientX, e.clientY])); } catch (x) {}
   }, true);
-  document.addEventListener('mousedown', e => {
-    const r = document.getElementById('demo-ring'); if (!r) return;
-    r.style.left = e.clientX + 'px'; r.style.top = e.clientY + 'px';
-    r.classList.remove('go'); void r.offsetWidth; r.classList.add('go');
-  }, true);
+  window.__demoPointer = (type, x, y) => {
+    if (type === 'move') {
+      const c = document.getElementById('demo-cursor'); if (c) { c.style.left = x + 'px'; c.style.top = y + 'px'; }
+    } else {
+      const r = document.getElementById('demo-ring'); if (!r) return;
+      r.style.left = x + 'px'; r.style.top = y + 'px';
+      r.classList.remove('go'); void r.offsetWidth; r.classList.add('go');
+    }
+  };
   window.__demoCap = (html, top) => {
     const c = document.getElementById('demo-cap'); if (c) { c.innerHTML = html; c.classList.toggle('top', !!top); }
     try { sessionStorage.setItem('demo_cap', html); } catch (x) {}
@@ -109,6 +116,7 @@ class Demo:
                                         is_mobile=self.phone, has_touch=self.phone, record_video_dir=self._dir,
                                         record_video_size={"width": self.w, "height": self.h},
                                         color_scheme="light")
+        self.ctx.grant_permissions(["clipboard-read", "clipboard-write"], origin=BASE)
         self.ctx.add_init_script(_OVERLAY)
         if self.phone:
             self.ctx.add_init_script(_PHONE_CSS)
@@ -156,6 +164,9 @@ class Demo:
     def move(self, selector: str, steps: int = 28):
         loc = self.page.locator(selector).first
         loc.wait_for(state="visible")
+        # Reveal it inside any scrolling box (a picker column, a list): visible to Playwright can
+        # still mean clipped, and the click would land on whatever is underneath
+        loc.evaluate("e => e.scrollIntoView({block: 'nearest'})")
         b = loc.bounding_box()
         # Bring it to the middle when near an edge: on phones the bottom nav covers the last ~80px
         if b["y"] < self.h * 0.15 or b["y"] + b["height"] > self.h * 0.8:
@@ -163,12 +174,21 @@ class Demo:
             self.wait(550)
             b = loc.bounding_box()
         tx, ty = b["x"] + b["width"] / 2, b["y"] + b["height"] / 2
-        self.page.mouse.move(tx, ty, steps=steps)
+        # Step the pointer ourselves and place the drawn cursor each step: inside a frame the top
+        # page never sees the mouse, so its own listener can't follow.
+        sx, sy = self.x, self.y
+        for i in range(1, steps + 1):
+            t = i / steps
+            t = t * t * (3 - 2 * t)  # ease in and out
+            x, y = sx + (tx - sx) * t, sy + (ty - sy) * t
+            self.page.mouse.move(x, y)
+            self.page.evaluate("([x, y]) => window.__demoPointer && window.__demoPointer('move', x, y)", [x, y])
         self.x, self.y = tx, ty
 
     def click(self, selector: str, pause: int = 350):
         self.move(selector)
         self.wait(pause)
+        self.page.evaluate("([x, y]) => window.__demoPointer && window.__demoPointer('down', x, y)", [self.x, self.y])
         self.page.mouse.down()
         self.page.mouse.up()
 
