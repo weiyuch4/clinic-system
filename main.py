@@ -911,12 +911,17 @@ def get_my_ot_logs(month: str = "", nurse: str = "", user: auth.CurrentUser = De
     return contacts.get_nurse_ot_logs(effective_nurse, user.clinic_id, month or None, legacy_nurse=user.display_name)
 
 
+_OT_GRACE_DAYS = 3
+
+
 def _ot_month_closed(date_str: str) -> bool:
-    """Overtime for a month that has ended is read-only — no adding, editing or deleting.
-    Applies to every account (the clinic login is shared), judged by Taiwan's calendar."""
+    """Overtime for a month that has ended is read-only — no adding, editing or deleting —
+    except during the first _OT_GRACE_DAYS days of the next month, so a late entry can still go in.
+    Applies to every account (the clinic login is shared), judged by Taiwan's calendar.
+    Keep in step with monthClosed() in static/nurse-ot.html."""
     from datetime import datetime, timezone
-    this_month = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m")
-    return str(date_str or "")[:7] < this_month
+    open_from = (datetime.now(timezone(timedelta(hours=8))) - timedelta(days=_OT_GRACE_DAYS)).strftime("%Y-%m")
+    return str(date_str or "")[:7] < open_from
 
 
 _OT_CLOSED = "上個月以前的加班紀錄不能新增或修改"

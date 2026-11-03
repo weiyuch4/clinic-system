@@ -468,8 +468,12 @@
   function pad2(n) { return String(n).padStart(2, '0'); }
   function monthStr(y, m) { return y + '-' + pad2(m); }
   function todayParts() { var d = new Date(); return [d.getFullYear(), d.getMonth()+1, d.getDate()]; }
-  // A month that has ended is read-only (the server enforces it too)
-  function monthClosed(y, m) { var t = todayParts(); return y * 12 + m < t[0] * 12 + t[1]; }
+  // A month that has ended is read-only, except during the first 3 days of the next month
+  // (same rule as _ot_month_closed in main.py, which enforces it)
+  function monthClosed(y, m) {
+    var d = new Date(); d.setDate(d.getDate() - 3);
+    return y * 12 + m < d.getFullYear() * 12 + d.getMonth() + 1;
+  }
   function calcMins(sh, sm, eh, em) { return (eh*60+em) - (sh*60+sm); }
   function fmtHours(totalMins) {
     if (totalMins <= 0) return '0h';
