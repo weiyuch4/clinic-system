@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>慢簽追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=99">
+<link rel="stylesheet" href="/static/_layout.css?v=100">
 </head>
 <body>
 <div class="app">
@@ -45,6 +45,7 @@
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
               <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
+        <button class="filter-tab" data-tab="dnc">不聯絡 <span class="tc-count" id="cnt-dnc">…</span></button>
         <button class="act-btn" id="btn-workflow">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
@@ -56,6 +57,7 @@
         <div id="list-contacted" style="display:none"></div>
         <div id="list-hold" style="display:none"></div>
         <div id="list-excluded" style="display:none"></div>
+        <div id="list-dnc" style="display:none"></div>
       </div>
 
     </div>
@@ -168,13 +170,13 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=93"></script>
+<script src="/static/_layout.js?v=94"></script>
 <script>
 (function () {
   'use strict';
   var L = Layout;
   var _tab = 'pending', _query = '';
-  var _pending = [], _contacted = [], _hold = [], _excluded = [];
+  var _pending = [], _contacted = [], _hold = [], _excluded = [], _dnc = [];
   var _pendingMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   var _actionChart = null, _excludeEntry = null;
   var _lineBoundSet = null;
@@ -199,6 +201,8 @@
     _excludedMap = {}; _excluded.forEach(function (e) { _excludedMap[e.patient.chart_number] = e; });
     document.getElementById('cnt-hold').textContent      = _hold.length;
     document.getElementById('cnt-excluded').textContent  = _excluded.length;
+    _dnc = (r.do_not_contact || []).filter(function (e) { return e.category === '慢簽'; });
+    document.getElementById('cnt-dnc').textContent       = _dnc.length;
     renderAll();
     L.updateBadges(r, null);
     L.updateLastUpdated();
@@ -305,6 +309,8 @@
     renderList(_contacted, contactedRow, 'list-contacted');
     renderList(_hold,      holdRow,      'list-hold');
     renderExcluded();
+    document.getElementById('list-dnc').innerHTML = L.dncListHtml(_dnc, _dnc.filter(match), { hideCat: true });
+    if (_tab === 'dnc') document.getElementById('result-count').textContent = '共 ' + _dnc.filter(match).length + ' 筆';
     L.decorateLineBadges(document.body, _lineBoundSet);
   }
 
@@ -314,10 +320,10 @@
     try { sessionStorage.setItem('chronic_active_tab', _tab); } catch(ex) {}
     document.querySelectorAll('.filter-tab').forEach(function (b) { b.classList.remove('on'); });
     btn.classList.add('on');
-    ['pending','contacted','hold','excluded'].forEach(function (t) {
+    ['pending','contacted','hold','excluded','dnc'].forEach(function (t) {
       document.getElementById('list-' + t).style.display = t === _tab ? '' : 'none';
     });
-    var arr = _tab === 'pending' ? _pending : _tab === 'contacted' ? _contacted : _tab === 'hold' ? _hold : _excluded;
+    var arr = _tab === 'pending' ? _pending : _tab === 'contacted' ? _contacted : _tab === 'hold' ? _hold : _tab === 'dnc' ? _dnc : _excluded;
     document.getElementById('result-count').textContent = '共 ' + arr.filter(match).length + ' 筆';
   });
 
@@ -447,7 +453,7 @@
 
   try {
     var _st = sessionStorage.getItem('chronic_active_tab');
-    var _chrTabs = ['pending','contacted','hold','excluded'];
+    var _chrTabs = ['pending','contacted','hold','excluded','dnc'];
     if (_st && _chrTabs.indexOf(_st) !== -1) {
       _tab = _st;
       var _stBtn = document.querySelector('.filter-tab[data-tab="' + _st + '"]');

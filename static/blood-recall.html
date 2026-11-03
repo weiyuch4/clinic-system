@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>抽血追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=99">
+<link rel="stylesheet" href="/static/_layout.css?v=100">
 <style>
 .br-tag{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;vertical-align:middle}
 .br-tag-up{background:#fef2f2;color:#B91C1C;border:1px solid #fecaca}
@@ -72,10 +72,12 @@
       <div class="filter-bar" id="filter-bar">
         <button class="filter-tab on" data-tab="pending">待追蹤 <span class="tc-count" id="cnt-pending">…</span></button>
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
+        <button class="filter-tab" data-tab="dnc">不聯絡 <span class="tc-count" id="cnt-dnc">…</span></button>
       </div>
 
       <div id="list-pending"></div>
       <div id="list-contacted" style="display:none"></div>
+      <div id="list-dnc" style="display:none"></div>
 
       <div class="br-note">
         <strong>追蹤邏輯：</strong>同步代理掃描檢驗報告，若 <span id="note-items">（後台設定中的）</span> 指標出現異常值，病患會加入此追蹤清單。距上次抽血滿 <strong>90 天</strong>時提醒回診複查。最新報告已正常者會顯示「抽血正常」標記。
@@ -115,7 +117,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=93"></script>
+<script src="/static/_layout.js?v=94"></script>
 <script>
 var _allPatients = [];
 var _currentTab = 'pending';
@@ -164,7 +166,9 @@ function escHtml(s) {
 function renderList(tab) {
   var patients;
   if (tab === 'pending') {
-    patients = _allPatients.filter(function(p) { return p.status === 'active' || p.status === 'normal'; });
+    patients = _allPatients.filter(function(p) { return (p.status === 'active' || p.status === 'normal') && !p.do_not_contact; });
+  } else if (tab === 'dnc') {
+    patients = _allPatients.filter(function(p) { return (p.status === 'active' || p.status === 'normal') && p.do_not_contact; });
   } else {
     patients = _allPatients.filter(function(p) { return p.status === 'contacted'; });
   }
@@ -176,8 +180,9 @@ function renderList(tab) {
 
   var el = document.getElementById('list-' + tab);
   if (!el) return;
+  var hint = tab === 'dnc' ? Layout.dncHint() : '';
   if (!patients.length) {
-    el.innerHTML = '<div class="br-empty">' + (q ? '找不到符合的病患' : '目前沒有追蹤中的病患') + '</div>';
+    el.innerHTML = hint + '<div class="br-empty">' + (q ? '找不到符合的病患' : tab === 'dnc' ? '目前沒有要求不聯絡的病患' : '目前沒有追蹤中的病患') + '</div>';
     return;
   }
 
@@ -194,13 +199,16 @@ function renderList(tab) {
     var daysCls = p.overdue ? 'br-days overdue' : (p.days_since_draw >= 75 ? 'br-days near' : 'br-days ok');
     var daysHtml = '<span class="' + daysCls + '">' + (p.overdue ? '已超 ' + p.days_since_draw + ' 天' : p.days_since_draw + ' 天') + '</span>';
 
-    var btns = tab === 'contacted'
+    if (tab === 'dnc') statusHtml = '<span class="br-tag" title="' + escHtml(p.dnc_note || '') + '">不聯絡</span>';
+    var btns = tab === 'dnc'
+      ? '<a class="act-btn" style="font-size:12px;padding:4px 10px" href="/patient?chart=' + encodeURIComponent(p.nat_id) + '">修改</a>'
+      : tab === 'contacted'
       ? '<button class="act-btn" style="font-size:12px;padding:4px 10px" onclick="doUncontact(' + p.id + ')">撤銷</button>' +
         '<button class="act-btn act-danger" style="font-size:12px;padding:4px 10px;margin-left:5px" onclick="openRemove(' + p.id + ',\'' + escHtml(p.name) + '\')">移除</button>'
       : '<button class="act-btn act-primary" style="font-size:12px;padding:4px 10px" onclick="doContact(' + p.id + ')">已聯繫</button>' +
         '<button class="act-btn act-danger" style="font-size:12px;padding:4px 10px;margin-left:5px" onclick="openRemove(' + p.id + ',\'' + escHtml(p.name) + '\')">移除</button>';
 
-    return '<tr class="pr" data-id="' + p.id + '">' +
+    return '<tr class="pr' + (tab === 'dnc' ? ' pr-dnc' : '') + '" data-id="' + p.id + '">' +
       '<td><span class="copy-val" data-copy="' + escHtml(p.name) + '" style="font-weight:700;cursor:pointer" title="點擊複製姓名">' + escHtml(p.name) + '</span>' +
         '<div style="margin-top:1px"><span class="copy-val" data-copy="' + escHtml(p.nat_id) + '" style="display:inline-block;font-size:11px;color:var(--muted);cursor:pointer" title="點擊複製身份證">' + escHtml(p.nat_id) + '</span></div></td>' +
       '<td style="white-space:nowrap;font-size:12.5px;font-variant-numeric:tabular-nums">' + escHtml(p.last_draw_date) + '</td>' +
@@ -211,7 +219,7 @@ function renderList(tab) {
     '</tr>';
   }).join('');
 
-  el.innerHTML =
+  el.innerHTML = hint +
     '<div class="ptbl-wrap">' +
     '<table class="p-table" style="table-layout:fixed">' +
       '<colgroup>' +
@@ -252,10 +260,12 @@ function renderList(tab) {
 }
 
 function updateCounts() {
-  var pending = _allPatients.filter(function(p){ return p.status === 'active' || p.status === 'normal'; }).length;
+  var pending = _allPatients.filter(function(p){ return (p.status === 'active' || p.status === 'normal') && !p.do_not_contact; }).length;
+  var dnc = _allPatients.filter(function(p){ return (p.status === 'active' || p.status === 'normal') && p.do_not_contact; }).length;
   var contacted = _allPatients.filter(function(p){ return p.status === 'contacted'; }).length;
-  var activeOnly = _allPatients.filter(function(p){ return p.status === 'active'; }).length;
+  var activeOnly = _allPatients.filter(function(p){ return p.status === 'active' && !p.do_not_contact; }).length;
   document.getElementById('cnt-pending').textContent = pending || '';
+  document.getElementById('cnt-dnc').textContent = dnc || '';
   document.getElementById('cnt-contacted').textContent = contacted || '';
   try { localStorage.setItem('badge_blood-recall', activeOnly); } catch(e) {}
   var badge = document.getElementById('badge-blood-recall');
@@ -270,7 +280,7 @@ function setTab(tab) {
   document.querySelectorAll('.filter-tab').forEach(function(btn) {
     btn.classList.toggle('on', btn.dataset.tab === tab);
   });
-  ['pending', 'contacted'].forEach(function(t) {
+  ['pending', 'contacted', 'dnc'].forEach(function(t) {
     var el = document.getElementById('list-' + t);
     if (el) el.style.display = (t === tab ? '' : 'none');
   });

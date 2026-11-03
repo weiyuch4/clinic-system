@@ -3087,34 +3087,73 @@ def get_contact_history(q: str, clinic_id: int = 1) -> list[dict]:
 
 
 def search_patients_cloud(q: str, clinic_id: int = 1, limit: int = 8) -> list[dict]:
-    """Search synced_candidates by name or chart_number; returns deduplicated patients."""
+    """Search every list the clinic syncs (follow-ups, 處方追蹤, 抽血回診) plus LINE bindings and
+    不聯絡 records by name or chart_number; one row per patient."""
     escaped = q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
     like = f"%{escaped}%"
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT chart_number, MAX(name) AS name, MAX(phone) AS phone,
-                          MAX(mobile) AS mobile, MAX(birth_date) AS birth_date,
-                          array_agg(DISTINCT category) AS categories
-                   FROM synced_candidates
-                   WHERE clinic_id = %s AND (name ILIKE %s OR chart_number ILIKE %s)
-                   GROUP BY chart_number
-                   ORDER BY MAX(name)
-                   LIMIT %s""",
-                (clinic_id, like, like, limit),
+                """WITH found AS (
+                       SELECT chart_number, name, phone, mobile, birth_date::text AS birth_date, category
+                         FROM synced_candidates
+                        WHERE clinic_id = %(c)s AND (name ILIKE %(q)s OR chart_number ILIKE %(q)s)
+                       UNION ALL
+                       SELECT nat_id, name, '', '', birth_date, '處方'
+                         FROM synced_prescriptions
+                        WHERE clinic_id = %(c)s AND (name ILIKE %(q)s OR nat_id ILIKE %(q)s)
+                       UNION ALL
+                       SELECT nat_id, name, '', '', '', '抽血'
+                         FROM blood_recall_patients
+                        WHERE clinic_id = %(c)s AND (name ILIKE %(q)s OR nat_id ILIKE %(q)s)
+                       UNION ALL
+                       SELECT chart_number, name, '', '', '', NULL
+                         FROM contact_prefs
+                        WHERE clinic_id = %(c)s AND (name ILIKE %(q)s OR chart_number ILIKE %(q)s)
+                       UNION ALL
+                       SELECT chart_number, '', '', '', '', NULL
+                         FROM line_bindings
+                        WHERE clinic_id = %(c)s AND chart_number ILIKE %(q)s
+                   )
+                   SELECT chart_number, MAX(NULLIF(name, '')) AS name, MAX(phone) AS phone,
+                          MAX(mobile) AS mobile, MAX(NULLIF(birth_date, '')) AS birth_date,
+                          array_remove(array_agg(DISTINCT category), NULL) AS categories
+                     FROM found
+                    GROUP BY chart_number
+                    ORDER BY MAX(NULLIF(name, '')) NULLS LAST
+                    LIMIT %(n)s""",
+                {"c": clinic_id, "q": like, "n": limit},
             )
             rows = []
             for r in cur.fetchall():
-                bd = r["birth_date"]
                 rows.append({
                     "chart_number": r["chart_number"],
-                    "name": r["name"],
+                    "name": r["name"] or "",
                     "phone": r["phone"] or "",
                     "mobile": r["mobile"] or "",
-                    "birth_date": bd.isoformat() if hasattr(bd, "isoformat") else (bd or ""),
+                    "birth_date": (r["birth_date"] or "")[:10],
                     "categories": sorted(r["categories"]),
                 })
             return rows
+
+
+def _basic_patient(chart_number: str, clinic_id: int) -> dict | None:
+    """Name and birth date for a patient who is not on any follow-up list right now."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT name, birth_date FROM (
+                       SELECT name, birth_date, 1 AS o FROM synced_prescriptions WHERE clinic_id = %(c)s AND nat_id = %(n)s
+                       UNION ALL SELECT name, '', 2 FROM blood_recall_patients WHERE clinic_id = %(c)s AND nat_id = %(n)s
+                       UNION ALL SELECT name, '', 3 FROM contact_prefs WHERE clinic_id = %(c)s AND chart_number = %(n)s
+                       UNION ALL SELECT '', '', 4 FROM line_bindings WHERE clinic_id = %(c)s AND chart_number = %(n)s
+                   ) x ORDER BY o LIMIT 1""",
+                {"c": clinic_id, "n": chart_number},
+            )
+            r = cur.fetchone()
+    if not r:
+        return None
+    return {"name": r["name"] or "", "birth_date": (r["birth_date"] or "")[:10]}
 
 
 def get_patient_profile(chart_number: str, clinic_id: int = 1) -> dict | None:
@@ -3133,7 +3172,14 @@ def get_patient_profile(chart_number: str, clinic_id: int = 1) -> dict | None:
             rows = cur.fetchall()
 
     if not rows:
-        return None
+        basic = _basic_patient(chart_number, clinic_id)
+        if not basic:
+            return None
+        return {
+            "chart_number": chart_number, "name": basic["name"], "birth_date": basic["birth_date"],
+            "phone": "", "mobile": "", "synced_at": "", "followups": [],
+            "history": get_contact_history(chart_number, clinic_id),
+        }
 
     first = rows[0]
     bd = first["birth_date"]

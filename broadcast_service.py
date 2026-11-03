@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 import requests
 
 from db import _conn
+import contact_prefs
 import line_service
 
 _TW = timezone(timedelta(hours=8))
@@ -151,16 +152,20 @@ def cancel_broadcast(broadcast_id: int, clinic_id: int) -> bool:
 # ── Send logic ────────────────────────────────────────────────────────────────
 
 def _populate_recipients(broadcast_id: int, clinic_id: int) -> int:
-    """Snapshot current line_bindings into broadcast_recipients. Returns count."""
-    bindings = line_service.get_all_bindings(clinic_id)
-    if not bindings:
-        return 0
+    """Snapshot current line_bindings into broadcast_recipients, minus patients who asked for no
+    broadcasts (不聯絡). Returns count."""
+    prefs = contact_prefs.get_map(clinic_id)
+    bindings = [b for b in line_service.get_all_bindings(clinic_id)
+                if not contact_prefs.blocks(prefs.get(b["chart_number"]), "群發")]
     with _conn() as conn:
         with conn.cursor() as cur:
+            # Cleared even when nobody is left, so an older snapshot can never be sent
             cur.execute(
                 "DELETE FROM broadcast_recipients WHERE broadcast_id = %s AND clinic_id = %s",
                 (broadcast_id, clinic_id),
             )
+            if not bindings:
+                return 0
             for b in bindings:
                 cur.execute(
                     """INSERT INTO broadcast_recipients

@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>今日總覽 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=99">
+<link rel="stylesheet" href="/static/_layout.css?v=100">
 <style>
 /* ── dashboard-specific ─────────────────────────────── */
 .tc{display:grid;grid-template-columns:1fr minmax(260px,28%);gap:12px;flex:1;min-height:0}
@@ -205,7 +205,7 @@
   </div><!-- end main -->
 </div><!-- end app -->
 
-<script src="/static/_layout.js?v=93"></script>
+<script src="/static/_layout.js?v=94"></script>
 <script>
 (function () {
   'use strict';
@@ -425,11 +425,11 @@
       (report.called||[]).forEach(function(e){ if(e.category==='處方') rxContactedKeys[e.patient.chart_number]=true; });
       var rxHoldKeys = {};
       (report.on_hold||[]).forEach(function(e){ if(e.category==='處方'&&e.patient) rxHoldKeys[e.patient.chart_number]=true; });
-      var rxPendingCount = (rxData||[]).filter(function(e){ return !rxContactedKeys[e.nat_id] && !rxHoldKeys[e.nat_id] && !e.is_care; }).length;
+      var rxPendingCount = (rxData||[]).filter(function(e){ return !rxContactedKeys[e.nat_id] && !rxHoldKeys[e.nat_id] && !e.is_care && !e.do_not_contact; }).length;
       var s = renderStats(report, bloodCount, rxPendingCount);
       // normalize 處方 entries (priority 0)
       var rxPendingEntries = (rxData||[]).filter(function(e){
-        return !rxContactedKeys[e.nat_id] && !rxHoldKeys[e.nat_id] && !e.is_care;
+        return !rxContactedKeys[e.nat_id] && !rxHoldKeys[e.nat_id] && !e.is_care && !e.do_not_contact;
       }).map(function(e) {
         var days = e.due_date ? Math.round((new Date(today+'T00:00:00') - new Date(String(e.due_date).slice(0,10)+'T00:00:00')) / 86400000) : 0;
         return { patient:{chart_number:e.nat_id, name:e.name}, category:'處方', days_overdue:days, _priority:0 };
@@ -444,7 +444,7 @@
           }
         });
       });
-      var brCount = Array.isArray(brData) ? brData.filter(function(p){ return p.status === 'active'; }).length : 0;
+      var brCount = Array.isArray(brData) ? brData.filter(function(p){ return p.status === 'active' && !p.do_not_contact; }).length : 0;
       renderUrgent(report, bloodCount, rxPendingCount, brCount);
       renderContactLog(todayHistory);
       renderWeek(week);

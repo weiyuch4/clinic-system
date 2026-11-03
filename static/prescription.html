@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>處方追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=99">
+<link rel="stylesheet" href="/static/_layout.css?v=100">
 </head>
 <body>
 <div class="app">
@@ -54,6 +54,7 @@
         <button class="filter-tab" data-tab="care">一般關懷 <span class="tc-count" id="cnt-care">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
         <button class="filter-tab" data-tab="excluded">已排除 <span class="tc-count" id="cnt-excluded"></span></button>
+        <button class="filter-tab" data-tab="dnc">不聯絡 <span class="tc-count" id="cnt-dnc">…</span></button>
         <button class="act-btn" id="btn-workflow">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
@@ -88,6 +89,7 @@
         <div id="list-care"      style="display:none"></div>
         <div id="list-hold"      style="display:none"></div>
         <div id="list-excluded"  style="display:none"></div>
+        <div id="list-dnc"       style="display:none"></div>
       </div>
 
     </div>
@@ -169,14 +171,14 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=93"></script>
+<script src="/static/_layout.js?v=94"></script>
 <script>
 (function () {
   'use strict';
   var L = Layout;
   var _rxData = [];
   var _cutoverDate = null;
-  var _pending = [], _contacted = [], _hold = [], _noLine = [], _care = [];
+  var _pending = [], _contacted = [], _hold = [], _noLine = [], _care = [], _dnc = [];
   var _pendingMap = {}, _contactedMap = {}, _holdMap = {}, _noLineMap = {};
   var _tab = 'pending', _query = '', _typeFilter = '', _urgencyFilter = '';
   var _sort = { col: 'days', dir: 'asc' };
@@ -279,6 +281,14 @@
         '<button class="act-btn" data-action="hold">暫緩</button>' +
       '</div></td>' +
       '</tr>';
+  }
+
+  // ── 不聯絡 row: same columns as pending, greyed, the note shows the request, one link to change it ──
+  function dncRow(e) {
+    return pendingRow(Object.assign({}, e, { icd_name: e.dnc_note || '不聯絡' }))
+      .replace('<tr class="pr"', '<tr class="pr pr-dnc"')
+      .replace(/<div class="pr-btns">[\s\S]*?<\/div><\/td>/,
+        '<div class="pr-btns"><a class="act-btn" href="/patient?chart=' + encodeURIComponent(e.nat_id) + '">修改</a></div></td>');
   }
 
   // ── Contacted row (from report.contacted / .called) ──
@@ -415,6 +425,8 @@
     var unresolved = _rxData.filter(function(e){
       return !cKeys[e.nat_id] && !hKeys[e.nat_id] && !nlKeys[e.nat_id];
     });
+    _dnc       = unresolved.filter(function(e){ return e.do_not_contact; });
+    unresolved = unresolved.filter(function(e){ return !e.do_not_contact; });
     _care    = unresolved.filter(function(e){ return e.is_care; });
     _pending = unresolved.filter(function(e){ return !e.is_care; });
 
@@ -429,6 +441,7 @@
     document.getElementById('cnt-hold').textContent      = _hold.length;
     document.getElementById('cnt-noline').textContent    = _noLine.length;
     document.getElementById('cnt-care').textContent      = _care.length;
+    document.getElementById('cnt-dnc').textContent       = _dnc.length;
     L.setNavBadge('prescription', _pending.length);
 
     _updatePageDate();
@@ -568,6 +581,18 @@
         if (col === 'note') return e.note || '';
         return '';
       });
+    renderList(_dnc, dncRow, 'list-dnc',
+      function(e){ return e.name || ''; },
+      function(e){ return e.nat_id || ''; },
+      null,
+      function(col, e) {
+        if (col === 'nat')  return e.nat_id || '';
+        if (col === 'name') return e.name || '';
+        if (col === 'days') return e.days_until_due !== undefined ? e.days_until_due : 9999;
+        if (col === 'due')  return e.due_date || '';
+        return '';
+      });
+    document.getElementById('list-dnc').insertAdjacentHTML('afterbegin', L.dncHint());
     renderList([], excludedRow, 'list-excluded',
       function(e){ return e.patient ? e.patient.name : ''; },
       function(e){ return e.patient ? e.patient.chart_number : ''; },
@@ -585,6 +610,8 @@
   // ── Optimistic update helpers ─────────────────────────
   function _rebuildPending() {
     var unresolved2 = _rxData.filter(function(e){ return !_contactedMap[e.nat_id] && !_holdMap[e.nat_id] && !_noLineMap[e.nat_id]; });
+    _dnc        = unresolved2.filter(function(e){ return e.do_not_contact; });
+    unresolved2 = unresolved2.filter(function(e){ return !e.do_not_contact; });
     _care    = unresolved2.filter(function(e){ return e.is_care; });
     _pending = unresolved2.filter(function(e){ return !e.is_care; });
     _pendingMap = {};
@@ -597,6 +624,7 @@
     document.getElementById('cnt-hold').textContent      = _hold.length;
     document.getElementById('cnt-noline').textContent    = _noLine.length;
     document.getElementById('cnt-care').textContent      = _care.length;
+    document.getElementById('cnt-dnc').textContent       = _dnc.length;
     L.setNavBadge('prescription', _pending.length);
     _updatePageDate();
   }
@@ -659,7 +687,7 @@
     try { sessionStorage.setItem('rx_active_tab', _tab); } catch(ex) {}
     document.querySelectorAll('.filter-tab').forEach(function(b){ b.classList.remove('on'); });
     btn.classList.add('on');
-    ['pending','contacted','noline','care','hold','excluded'].forEach(function(t){
+    ['pending','contacted','noline','care','hold','excluded','dnc'].forEach(function(t){
       document.getElementById('list-'+t).style.display = t===_tab ? '' : 'none';
     });
     renderAll();
@@ -919,7 +947,7 @@
 
   try {
     var _st = sessionStorage.getItem('rx_active_tab');
-    var _rxTabs = ['pending','contacted','noline','care','hold','excluded'];
+    var _rxTabs = ['pending','contacted','noline','care','hold','excluded','dnc'];
     if (_st && _rxTabs.indexOf(_st) !== -1) {
       _tab = _st;
       var _stBtn = document.querySelector('.filter-tab[data-tab="' + _st + '"]');

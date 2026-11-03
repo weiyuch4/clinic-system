@@ -24,6 +24,7 @@ import auth
 import backup
 import config
 import contacts
+import contact_prefs
 import database
 import db
 import directory
@@ -39,7 +40,7 @@ import scheduler
 import settings as _settings
 from models import (
     BloodDismissRequest, BloodNotifiedRequest, BloodPhysicalRequest, BulletinNoteRequest, ChartNumberRequest, ChangePasswordRequest, ClinicContactRequest, ContactRequest, CopyWeekRequest,
-    StickyNoteRequest, DoctorNoteRequest,
+    StickyNoteRequest, DoctorNoteRequest, ContactPrefsRequest,
     CreateUserRequest, DailyReport,
     CkdManualInactiveRequest, ExcludeRequest, FollowupEntry, HepManualReturnedRequest, HepReintakeRequest, HepReturnedCompleteRequest, LineUnlinkedRequest, LoginRequest, LoginResponse,
     ManualOnHoldRequest, ManualPickupRequest,
@@ -118,6 +119,7 @@ except RuntimeError as e:
 
 auth.init()
 contacts.init()
+contact_prefs.init()
 directory.init()
 inventory.init()
 lab_report.init()
@@ -632,12 +634,46 @@ def get_patient_profile_api(chart_number: str, user: auth.CurrentUser = Depends(
         profile = contacts.get_patient_profile(chart_number, user.clinic_id)
         if not profile:
             raise HTTPException(status_code=404, detail="找不到病患資料")
+        profile["contact_pref"] = contact_prefs.get(chart_number, user.clinic_id)
+        profile["contact_pref_log"] = contact_prefs.get_log(chart_number, user.clinic_id)
         return profile
     except HTTPException:
         raise
     except Exception:
         logger.exception("get_patient_profile_api failed")
         raise HTTPException(status_code=500, detail="載入失敗")
+
+
+def _dnc_note(pref: dict | None) -> str:
+    """One line for a 不聯絡 row: what the patient asked for, plus the nurse's note."""
+    if not pref:
+        return ""
+    text = contact_prefs.summarize(pref["block_all"], pref["scopes"])
+    return text + ("（" + pref["note"] + "）" if pref["note"] else "")
+
+
+@app.get("/api/contact-prefs")
+def list_contact_prefs(user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    return {"patients": contact_prefs.get_all(user.clinic_id)}
+
+
+@app.put("/api/contact-prefs/{chart_number}")
+def save_contact_prefs(chart_number: str, req: ContactPrefsRequest,
+                       user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
+    chart_number = chart_number.strip().upper()
+    if not chart_number:
+        raise HTTPException(status_code=400, detail="缺少身份證字號")
+    unknown = [s for s in req.scopes if s not in contact_prefs.SCOPES]
+    if unknown:
+        raise HTTPException(status_code=400, detail="不認得的名單：" + "、".join(unknown))
+    try:
+        pref = contact_prefs.save(chart_number, req.name, req.block_all, req.scopes, req.note,
+                                  req.nurse or user.display_name, user.clinic_id)
+        _invalidate_report_cache(user.clinic_id)
+        return {"pref": pref, "log": contact_prefs.get_log(chart_number, user.clinic_id)}
+    except Exception:
+        logger.exception("save_contact_prefs failed for %s", chart_number)
+        raise HTTPException(status_code=500, detail="儲存失敗，請稍後再試")
 
 
 @app.get("/api/nurses")
@@ -1348,7 +1384,13 @@ async def sync_push_blood_recall(request: Request) -> dict:
 
 @app.get("/api/blood-recall")
 def get_blood_recall(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list:
-    return contacts.get_blood_recall_patients(user.clinic_id)
+    rows = contacts.get_blood_recall_patients(user.clinic_id)
+    pref_map = contact_prefs.get_map(user.clinic_id)
+    for r in rows:
+        pref = pref_map.get(r['nat_id'])
+        r['do_not_contact'] = contact_prefs.blocks(pref, '抽血')
+        r['dnc_note'] = _dnc_note(pref)
+    return rows
 
 
 @app.patch("/api/blood-recall/{patient_id}")
@@ -1400,6 +1442,7 @@ def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = 
             cutover = date.fromisoformat(cutover_str) if cutover_str else None
             rows = contacts.get_synced_prescriptions(user.clinic_id)
             phone_map = contacts.get_candidate_phone_map(user.clinic_id)
+            pref_map = contact_prefs.get_map(user.clinic_id)
             results = []
             for r in rows:
                 due = date.fromisoformat(r['due_date'])
@@ -1415,11 +1458,14 @@ def get_prescriptions(report_date: date | None = None, user: auth.CurrentUser = 
                     if visit >= cutover:
                         continue  # handled by old method; excluded from catch-up list
                 ph, mob = phone_map.get(r['nat_id'], ('', ''))
+                pref = pref_map.get(r['nat_id'])
                 results.append({
                     **r,
                     'days_until_due': days_until_due,
                     'phone': ph,
                     'mobile': mob,
+                    'do_not_contact': contact_prefs.blocks(pref, '處方'),
+                    'dnc_note': _dnc_note(pref),
                 })
             return {
                 "rows": sorted(results, key=lambda e: e['days_until_due']),
@@ -1474,6 +1520,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             f_auto_excluded        = exe.submit(contacts.get_auto_excluded_entries, cid)
             f_called_entries       = exe.submit(contacts.get_called_entries, cid)
             f_all_blood_used       = exe.submit(contacts.get_all_mspt_blood_used, cid)
+            f_contact_prefs        = exe.submit(contact_prefs.get_map, cid)
             f_all_lab_cache        = exe.submit(contacts.get_all_lab_cache, cid) if CLOUD_MODE else None
 
         _raw_candidates             = f_report.result()
@@ -1530,6 +1577,10 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
         auto_excluded_raw           = f_auto_excluded.result()
         called_entries              = f_called_entries.result()
         all_blood_used              = f_all_blood_used.result()
+        contact_pref_map            = f_contact_prefs.result()
+        # Due patients who asked not to be contacted: kept out of every pending list (and so out of
+        # every LINE batch), shown on each page's 不聯絡 tab instead. Keyed to drop repeats.
+        do_not_contact: dict[tuple[str, str, str], FollowupEntry] = {}
         all_lab_cache               = f_all_lab_cache.result() if f_all_lab_cache else {}
 
         def apply_blood_status(entries: list[FollowupEntry]) -> list[FollowupEntry]:
@@ -1620,6 +1671,10 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                 if (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_phone_completed_keys:
                     continue
                 if key in on_hold_keys:
+                    continue
+                pref = contact_pref_map.get(e.patient.chart_number)
+                if contact_prefs.blocks(pref, e.category):
+                    do_not_contact.setdefault(key, e.model_copy(update={"dnc_note": _dnc_note(pref)}))
                     continue
                 # call_required must be set before picking the template (慢簽's
                 # template depends on it) — compute the copy first, then derive
@@ -1795,6 +1850,7 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             mspt_upcoming=report.mspt_upcoming,
             hep_upcoming=report.hep_upcoming,
             ckd_upcoming=report.ckd_upcoming,
+            do_not_contact=sorted(do_not_contact.values(), key=lambda e: -e.days_overdue),
         )
         if report_date is None:
             _report_cache[cid] = (date.today(), _result)
@@ -2253,6 +2309,8 @@ async def _run_line_batch_task(targets: list[dict], dry_run: bool, nurse: str, c
                 if push_r.get("status") == 200:
                     result = {"chart_number": t["chart_number"], "status": "sent", "detail": "直接推播"}
                     _line_batch_state["direct"] += 1
+                elif push_r.get("body") == "opted_out":
+                    result = {"chart_number": t["chart_number"], "status": "skipped", "detail": "病患要求不聯絡"}
                 elif push_r.get("status") in (400, 403):
                     # 400/403 from LINE usually means user blocked the bot or invalid binding
                     result = {
@@ -2311,8 +2369,13 @@ async def send_line_notifications(req: SendLineNotificationsRequest, user: auth.
         wanted = set(req.chart_numbers)
         source = [e for e in source if e.patient.chart_number in wanted]
 
+    # The report already holds 不聯絡 patients back; checked again here because AlleyPin sends
+    # (line_notify) don't pass through line_service's own check.
+    pref_map = contact_prefs.get_map(user.clinic_id)
     targets = []
     for e in source:
+        if contact_prefs.blocks(pref_map.get(e.patient.chart_number), e.category):
+            continue
         template = _pick_line_template(e)
         if not template:
             continue
@@ -2406,6 +2469,17 @@ async def undo_line_notification(log_id: int, req: UndoLineNotificationRequest, 
     return result
 
 
+def _flag_blood_dnc(days: list[dict], clinic_id: int) -> list[dict]:
+    """Mark lab-result patients who asked not to be contacted (checked on every call: the day list is cached)."""
+    pref_map = contact_prefs.get_map(clinic_id)
+    for day in days:
+        for p in day['patients']:
+            pref = pref_map.get(p.get('nat_id', ''))
+            p['do_not_contact'] = contact_prefs.blocks(pref, '抽血')
+            p['dnc_note'] = _dnc_note(pref)
+    return days
+
+
 @app.get("/api/blood-pending")
 def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -> list[dict]:
     """Patients with external lab orders (last 5 days + overdue), with result and notified status.
@@ -2414,7 +2488,7 @@ def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -
     cid = user.clinic_id
     _cached = _blood_pending_cache.get(cid)
     if _cached is not None:
-        return _cached
+        return _flag_blood_dnc(_cached, cid)
     try:
         notified_keys  = contacts.get_blood_notified_keys(user.clinic_id)
         physical_keys  = contacts.get_blood_physical_keys(user.clinic_id)
@@ -2453,7 +2527,7 @@ def get_blood_pending(user: auth.CurrentUser = Depends(auth.get_current_user)) -
                 p['phone'] = ph
                 p['mobile'] = mob
         _blood_pending_cache[cid] = days
-        return days
+        return _flag_blood_dnc(days, cid)
     except Exception:
         logger.exception("get_blood_pending failed")
         raise HTTPException(status_code=500, detail="檢驗追蹤載入失敗")
@@ -3365,6 +3439,8 @@ def line_push_one(
     result = line_service.push_category_message(chart_number, category, user.clinic_id, actor=user.display_name)
     if result.get("status") == 200:
         return {"status": "sent"}
+    if result.get("body") == "opted_out":
+        raise HTTPException(status_code=409, detail="此病患已要求不要收到這類訊息（可在病患資料修改）")
     raw_body = (result.get("body") or "")[:300]
     logger.warning("LINE push-one failed for %s: status=%s body=%s", chart_number, result.get("status"), raw_body)
     raise HTTPException(status_code=502, detail="LINE 傳送失敗，請確認綁定是否有效")
@@ -3390,6 +3466,7 @@ def line_test_send(
         "no_token": "尚未完成 LINE 設定",
         "not_bound": "此病患尚未綁定 LINE",
         "no_template": "此類型沒有訊息內容",
+        "opted_out": "此病患已要求不要收到這類訊息",
     }.get(result.get("body"))
     if reason:
         raise HTTPException(status_code=400, detail=reason)

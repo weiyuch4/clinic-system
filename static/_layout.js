@@ -43,6 +43,7 @@
     history:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>',
     'nurse-ot': '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><circle cx="11" cy="15" r="3"/><polyline points="11 13.5 11 15 12.2 16"/></svg>',
     notes:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="8" y1="10" x2="16" y2="10"/><line x1="8" y1="14" x2="13" y2="14"/></svg>',
+    patient:   '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="17" y1="8" x2="22" y2="13"/><line x1="22" y1="8" x2="17" y2="13"/></svg>',
     me:        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>',
     admin:     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/></svg>',
     risk:      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
@@ -54,6 +55,12 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 5, date: '2026-11-03', items: [
+      '病患要求不要收到訊息時，可以在「病患資料」設定：全部不聯絡，或只停止某幾種（慢簽、MSPT、B肝、CKD、處方追蹤、抽血、群發訊息）',
+      '用上方「找病患」搜尋，打開病患資料，在「聯絡偏好」勾選後按儲存；誰在什麼時候設定的都會留下紀錄',
+      '設定後，病患不會再出現在待聯絡，也不會收到 LINE；各名單新增「不聯絡」分頁，仍看得到哪些人已到期',
+      '左側選單新增「病患資料」，可以看到所有要求不聯絡的病患',
+    ]},
     { version: 4, date: '2026-10-27', items: [
       '點貨的每個品項新增「帳冊紀錄」：跟筆記本一樣記日期、摘要、收入、發出、結存，可以把筆記本上以前的紀錄一行一行輸入進來',
       '日期可以直接寫 3/30 或 115/3/30；約略的數量按「≒」標示',
@@ -107,6 +114,7 @@
   ];
   var OTHER_NAV = [
     { id: 'history',   label: '聯繫記錄',  href: '/history',     badge: false },
+    { id: 'patient',   label: '病患資料',  href: '/patient',     badge: false },
     { id: 'notes',     label: '備忘錄',    href: '/notes',       badge: false },
     { id: 'directory', label: '聯絡資訊',  href: '/directory',   badge: false },
     { id: 'schedule',  label: '排班表',    href: '/schedule',    badge: false },
@@ -1271,6 +1279,28 @@
     '</tr>';
   }
 
+  // 不聯絡 tab: patients who are due but asked not to be contacted. Greyed, no list actions —
+  // the request itself is changed on the patient page, so the only button links there.
+  function dncRow(e) {
+    var chart = e.patient.chart_number;
+    return patientRow({ entry: e, tags: ['<span class="pbadge b-dnc">' + escHtml(e.dnc_note || '不聯絡') + '</span>'] })
+      .replace('<tr class="pr"', '<tr class="pr pr-dnc"')
+      .replace('<div class="pr-btns">', '<div class="pr-btns"><a class="act-btn" href="/patient?chart=' +
+        encodeURIComponent(chart) + '">修改</a>');
+  }
+  // all: every 不聯絡 entry for this page; shown: the ones matching the list filter.
+  function dncHint() {
+    return '<div class="tab-hint tab-hint-info">' +
+      '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="4.9" y1="4.9" x2="19.1" y2="19.1"/></svg>' +
+      '<span>這些病患已到期，但要求不要聯絡：不會出現在待聯絡，也不會收到 LINE。要恢復聯絡，按「修改」到病患資料更改。</span></div>';
+  }
+  function dncListHtml(all, shown, tableOpts) {
+    var hint = dncHint();
+    if (!shown.length)
+      return hint + '<div class="sec-empty">' + (all.length ? '沒有符合搜尋條件的病患' : '目前沒有要求不聯絡的病患') + '</div>';
+    return hint + patientTable(shown.map(dncRow).join(''), [], tableOpts);
+  }
+
   // Wrap row-html strings in a full table with standard headers.
   // extraHeaders: optional extra <th> text to insert before the actions column.
   // opts.hideCat: the page holds one category only (慢簽, CKD), so the 類別 column would repeat on every row.
@@ -1793,6 +1823,9 @@
     patientCard:       patientCard,
     patientRow:        patientRow,
     patientTable:      patientTable,
+    dncRow:            dncRow,
+    dncListHtml:       dncListHtml,
+    dncHint:           dncHint,
     decorateLineBadges: decorateLineBadges,
     catChip:           catChip,
     dayBadge:          dayBadge,

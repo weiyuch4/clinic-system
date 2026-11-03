@@ -15,6 +15,7 @@ from datetime import datetime, timedelta, timezone
 
 import requests
 
+import contact_prefs
 from db import _conn
 
 _DEFAULT_TEMPLATES: dict[str, str] = {
@@ -591,6 +592,9 @@ def push_text(chart_number: str, text: str, clinic_id: int = 1) -> dict:
     token = settings.get("channel_access_token", "")
     if not token:
         return {"status": "error", "detail": "LINE尚未設定憑證"}
+    pref = contact_prefs.get(chart_number, clinic_id)
+    if pref and pref["block_all"]:
+        return {"status": "opted_out", "detail": "此病患已要求不聯絡"}
     uid = get_line_user_id(chart_number, clinic_id)
     if not uid:
         return {"status": "not_bound", "detail": "此病患尚未綁定LINE"}
@@ -610,6 +614,10 @@ def push_category_message(
     token = (s.get("channel_access_token") or "").strip()
     if not token:
         return {"status": 0, "body": "no_token"}
+    # Last check before anything leaves: the patient may have asked for no messages of this kind
+    if contact_prefs.is_blocked(chart_number, category, clinic_id):
+        log_audit(clinic_id, "push_blocked", chart_number, actor, f"category={category} 不聯絡")
+        return {"status": 0, "body": "opted_out"}
     uid = get_line_user_id(chart_number, clinic_id)
     if not uid:
         return {"status": 0, "body": "not_bound"}

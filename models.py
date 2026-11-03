@@ -34,6 +34,7 @@ class FollowupEntry(BaseModel):
     phone: str = ""                          # from PATDB's TEL field (landline)
     mobile: str = ""                         # from VFP6_P TYPE=P1 (手機)
     manual: bool = False                     # True for manually-moved hep entries (hep_manual_returned)
+    dnc_note: str = ""                       # set on do_not_contact entries — what the patient asked for
 
 
 class MsptSubmittableEntry(BaseModel):
@@ -131,6 +132,7 @@ class DailyReport(BaseModel):
     ckd_followups: list[FollowupEntry] = []
     ckd_inactive: list[FollowupEntry] = []
     ckd_upcoming: list[FollowupEntry] = []   # CKD patients whose next stage is not yet due
+    do_not_contact: list[FollowupEntry] = []  # due patients held back because they asked not to be contacted
 
 
 class NurseEntryRequest(BaseModel):
@@ -295,6 +297,14 @@ class PublishWeekRequest(BaseModel):
 class BulletinNoteRequest(BaseModel):
     nurse: str = ""
     content: str
+
+
+class ContactPrefsRequest(BaseModel):
+    name: str = ""
+    block_all: bool = False
+    scopes: list[str] = []
+    note: str = ""
+    nurse: str = ""
 
 
 class SalaryRecordRequest(BaseModel):

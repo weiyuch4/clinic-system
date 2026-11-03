@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>檢驗追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=99">
+<link rel="stylesheet" href="/static/_layout.css?v=100">
 <style>
 /* ── tabs ────────────────────────────────────────────────────────── */
 .lab-tabs{display:flex;gap:2px;background:var(--border);border-radius:9px;padding:3px;margin-bottom:14px;width:fit-content}
@@ -174,7 +174,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=93"></script>
+<script src="/static/_layout.js?v=94"></script>
 <script>
 (function () {
   'use strict';
@@ -234,6 +234,7 @@
       return '<span class="lab-code-chip" title="' + L.escHtml(c) + '">' + L.escHtml(names[i] || c) + '</span>';
     }).join('');
     var allergyHtml = p.is_allergy ? '<span class="allergy-chip">過敏</span>' : '';
+    var dncHtml = p.do_not_contact ? '<span class="pbadge b-dnc" title="' + L.escHtml(p.dnc_note || '') + '">不聯絡</span>' : '';
     var endoHtml = (p.is_endoscopy && !p.has_biopsy) ? '<span class="endo-chip">胃/大腸鏡</span>' : '';
     var statusHtml;
     if (p.notified) {
@@ -256,7 +257,7 @@
     }
     var rowClass = 'lab-row' + (p.results_back && !p.notified ? ' needs-notify' : '');
     return '<div class="' + rowClass + '">' +
-      '<div class="lab-pt"><div style="display:flex;align-items:center;gap:5px"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + endoHtml + '</div>' + makeMeta(p.nat_id, p.birth_date, p.phone, p.mobile) + '</div>' +
+      '<div class="lab-pt"><div style="display:flex;align-items:center;gap:5px"><span class="lab-name">' + L.escHtml(p.name) + '</span>' + endoHtml + dncHtml + '</div>' + makeMeta(p.nat_id, p.birth_date, p.phone, p.mobile) + '</div>' +
       allergyHtml +
       '<div class="lab-codes">' + codeHtml + '</div>' +
       '<div class="lab-right">' + statusHtml + actionHtml + '</div>' +

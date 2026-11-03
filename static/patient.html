@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>病患資料 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=99">
+<link rel="stylesheet" href="/static/_layout.css?v=100">
 <style>
 .pt-hero{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;display:flex;align-items:flex-start;gap:18px;margin-bottom:20px}
 .pt-av{width:52px;height:52px;border-radius:50%;background:var(--g0);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:var(--sub);flex-shrink:0;border:2px solid var(--border)}
@@ -101,6 +101,24 @@
 
 .phone-copy{cursor:pointer;border-radius:3px;padding:1px 3px;transition:background .1s}
 @media(hover:hover){.phone-copy:hover{background:var(--border)}}
+
+/* 聯絡偏好 — what this patient asked not to receive */
+.cp-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:12px}
+.cp-now{font-size:13.5px;color:var(--text);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.cp-now b{font-weight:600}
+.cp-now .cp-off{color:var(--danger,#c00)}
+.cp-label{font-size:12px;font-weight:600;color:var(--sub);margin-bottom:-4px}
+.cp-card .reason-chips{margin-bottom:0}
+.cp-card .reason-chip:disabled{cursor:default;opacity:.7}
+.cp-foot{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.cp-meta{font-size:12px;color:var(--muted)}
+.chip-pref{background:var(--g0);color:var(--sub)}
+
+/* 不聯絡名單 (page opened without a patient) */
+.dnc-tbl td a{color:var(--text);font-weight:600;text-decoration:none}
+@media(hover:hover){.dnc-tbl td a:hover{text-decoration:underline}}
+.dnc-head{margin-bottom:20px}
+.dnc-tbl .dnc-sub{font-size:12px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -114,13 +132,13 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=93"></script>
+<script src="/static/_layout.js?v=94"></script>
 <script src="/static/auth-client.js"></script>
 <script>
 (function () {
   'use strict';
   var L = Layout;
-  L.init({ activePage: '' });
+  L.init({ activePage: 'patient' });
 
   var root = document.getElementById('pt-root');
 
@@ -134,8 +152,97 @@
   var CHIP_LABELS = {
     contacted: '一次通知', called: '二次通知', line: 'LINE訊息',
     hold: '暫緩', excluded: '排除', mspt_completed: 'MSPT完成',
-    checkedin: 'MSPT回診', hep_completed: '肝炎回診',
+    checkedin: 'MSPT回診', hep_completed: '肝炎回診', pref: '聯絡偏好',
   };
+
+  // Lists a patient can ask to stop; keys match the server's contact_prefs.SCOPES
+  var SCOPES = [
+    ['慢簽', '慢簽'], ['代謝症候群', 'MSPT'], ['B肝', 'B/C肝'], ['慢性腎臟病', 'CKD'],
+    ['處方', '處方追蹤'], ['抽血', '抽血追蹤・檢驗通知'], ['群發', '群發訊息'],
+  ];
+  var _patient = null;          // profile being shown
+  var _saved = null;            // preference as stored: {block_all, scopes, note}
+  var _draft = null;            // preference being edited
+
+  function prefState(pref) {
+    return { block_all: !!(pref && pref.block_all), scopes: ((pref && pref.scopes) || []).slice(), note: (pref && pref.note) || '' };
+  }
+  function prefSummary(st) {
+    if (st.block_all) return '全部不聯絡';
+    if (!st.scopes.length) return '';
+    return '不聯絡：' + SCOPES.filter(function (s) { return st.scopes.indexOf(s[0]) !== -1; })
+      .map(function (s) { return s[1]; }).join('、');
+  }
+  function prefDirty() {
+    return _draft.block_all !== _saved.block_all || _draft.note.trim() !== _saved.note.trim() ||
+      _draft.scopes.slice().sort().join() !== _saved.scopes.slice().sort().join();
+  }
+
+  function prefHtml(p) {
+    var pref = p.contact_pref;
+    var summary = prefSummary(_saved);
+    var meta = pref ? '上次修改 ' + pref.updated_at + (pref.nurse ? '・' + pref.nurse : '') : '';
+    var scopeChips = SCOPES.map(function (s) {
+      return '<button type="button" class="reason-chip" data-scope="' + L.escHtml(s[0]) + '">' + L.escHtml(s[1]) + '</button>';
+    }).join('');
+    return '<div class="pt-section"><div class="pt-section-title">聯絡偏好</div>' +
+      '<div class="cp-card" id="cp-card">' +
+        '<div class="cp-now">目前：' + (summary ? '<b class="cp-off">' + L.escHtml(summary) + '</b>' : '<b>可以聯絡</b>') + '</div>' +
+        '<div class="cp-label">病患要求不要收到</div>' +
+        '<div class="reason-chips"><button type="button" class="reason-chip" data-all="1">全部訊息（含群發）</button></div>' +
+        '<div class="cp-label">或只停止這幾種</div>' +
+        '<div class="reason-chips" id="cp-scopes">' + scopeChips + '</div>' +
+        '<div><label class="modal-label" for="cp-note">原因／備註</label>' +
+          '<textarea class="modal-input" id="cp-note" rows="2" placeholder="例：病患來電表示不需要處方提醒"></textarea></div>' +
+        '<div class="cp-foot"><button class="bp" id="cp-save" disabled>儲存</button>' +
+          '<span class="cp-meta" id="cp-meta">' + L.escHtml(meta) + '</span></div>' +
+      '</div></div>';
+  }
+
+  function syncPrefUi() {
+    var card = document.getElementById('cp-card'); if (!card) return;
+    card.querySelector('[data-all]').classList.toggle('selected', _draft.block_all);
+    card.querySelectorAll('[data-scope]').forEach(function (b) {
+      b.classList.toggle('selected', _draft.block_all || _draft.scopes.indexOf(b.dataset.scope) !== -1);
+      b.disabled = _draft.block_all;
+    });
+    document.getElementById('cp-save').disabled = !prefDirty();
+  }
+
+  function wirePref() {
+    var card = document.getElementById('cp-card');
+    document.getElementById('cp-note').value = _draft.note;
+    card.addEventListener('click', function (ev) {
+      var chip = ev.target.closest('.reason-chip'); if (!chip || chip.disabled) return;
+      if (chip.dataset.all) {
+        _draft.block_all = !_draft.block_all;
+      } else {
+        var k = chip.dataset.scope, i = _draft.scopes.indexOf(k);
+        if (i === -1) _draft.scopes.push(k); else _draft.scopes.splice(i, 1);
+      }
+      syncPrefUi();
+    });
+    document.getElementById('cp-note').addEventListener('input', function (ev) {
+      _draft.note = ev.target.value; syncPrefUi();
+    });
+    document.getElementById('cp-save').addEventListener('click', function () {
+      var btn = this; btn.disabled = true;
+      L.apiAction('PUT', '/api/contact-prefs/' + encodeURIComponent(_patient.chart_number), {
+        name: _patient.name || '', block_all: _draft.block_all,
+        scopes: _draft.block_all ? [] : _draft.scopes, note: _draft.note, nurse: L.getNurse() || '',
+      }).then(function (res) {
+        _patient.contact_pref = res.pref;
+        _patient.contact_pref_log = res.log || [];
+        var sum = prefSummary(prefState(res.pref));
+        L.showToast('已儲存：' + (sum || '恢復聯絡'));
+        render(_patient);
+      }).catch(function (e) {
+        L.showToast('儲存失敗：' + (e.message || '請稍後再試'), 'error');
+        btn.disabled = false;
+      });
+    });
+    syncPrefUi();
+  }
 
   function rocDate(iso) {
     if (!iso) return '';
@@ -159,6 +266,9 @@
   }
 
   function render(p) {
+    _patient = p;
+    _saved = prefState(p.contact_pref);
+    _draft = prefState(p.contact_pref);
     var initials = (p.name || '?').slice(0, 1);
     var dobDisplay = rocDate(p.birth_date);
     var phone = p.phone || '';
@@ -195,7 +305,15 @@
       '</div>';
     }).join('');
 
-    var histRows = (p.history || []).map(function (ev) {
+    var prefEvents = (p.contact_pref_log || []).map(function (lg) {
+      return { type: 'pref', date: String(lg.created_at).slice(0, 10), time: String(lg.created_at).slice(11),
+               detail: lg.summary + (lg.note ? '（' + lg.note + '）' : ''), nurse: lg.nurse };
+    });
+    var events = (p.history || []).concat(prefEvents).sort(function (a, b) {
+      var ka = (a.date || '') + ' ' + (a.time || ''), kb = (b.date || '') + ' ' + (b.time || '');
+      return kb < ka ? -1 : kb > ka ? 1 : 0;
+    });
+    var histRows = events.map(function (ev) {
       var chipCls = 'hist-chip chip-' + L.escHtml(ev.type || '');
       var chipLabel = L.escHtml(CHIP_LABELS[ev.type] || ev.type);
       var catHtml = ev.category ? '<span class="hist-cat">' + L.escHtml(ev.category) + '</span>' : '';
@@ -221,12 +339,15 @@
           '<div class="pt-chart">' + L.escHtml(p.chart_number) + '</div>' +
         '</div>' +
       '</div>' +
+      prefHtml(p) +
       (fuCards ? '<div class="pt-section"><div class="pt-section-title">追蹤項目</div><div class="fu-cards">' + fuCards + '</div></div>' : '') +
       '<div class="pt-section"><div class="pt-section-title">聯絡記錄</div>' +
         '<div class="hist-list">' +
           (histRows || '<div class="hist-empty">尚無聯絡記錄</div>') +
         '</div>' +
       '</div>';
+
+    wirePref();
 
     // wire up copy clicks
     root.querySelectorAll('.pr-copy').forEach(function (el) {
@@ -240,8 +361,30 @@
   }
 
   var chartNumber = new URLSearchParams(location.search).get('chart');
+  function renderDncList(list) {
+    var rows = list.map(function (x) {
+      return '<tr class="pr">' +
+        '<td><a href="/patient?chart=' + encodeURIComponent(x.chart_number) + '">' + L.escHtml(x.name || x.chart_number) + '</a>' +
+          '<div class="dnc-sub">' + L.escHtml(x.chart_number) + '</div></td>' +
+        '<td>' + L.escHtml(prefSummary(prefState(x))) + (x.note ? '<div class="dnc-sub">' + L.escHtml(x.note) + '</div>' : '') + '</td>' +
+        '<td class="dnc-sub">' + L.escHtml(x.updated_at) + (x.nurse ? '<br>' + L.escHtml(x.nurse) : '') + '</td>' +
+      '</tr>';
+    }).join('');
+    root.innerHTML =
+      '<div class="ph dnc-head"><div><h1>病患資料</h1>' +
+        '<p>用上方「找病患」輸入姓名或身份證，打開病患資料，即可設定聯絡偏好。</p></div></div>' +
+      '<div class="pt-section"><div class="pt-section-title">要求不聯絡的病患（' + list.length + '）</div>' +
+      (list.length
+        ? '<div class="ptbl-wrap"><table class="p-table dnc-tbl"><colgroup><col style="width:180px"><col><col style="width:150px"></colgroup>' +
+          '<thead><tr><th>病患</th><th>要求</th><th>設定時間</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+        : '<div class="hist-list"><div class="hist-empty">目前沒有病患要求不聯絡</div></div>') +
+      '</div>';
+  }
+
   if (!chartNumber) {
-    root.innerHTML = '<div class="pt-error">未指定病患</div>';
+    L.apiFetch('/api/contact-prefs')
+      .then(function (data) { renderDncList((data && data.patients) || []); })
+      .catch(function () { root.innerHTML = '<div class="pt-error">載入失敗，請重新整理</div>'; });
   } else {
     L.apiFetch('/api/patient-profile/' + encodeURIComponent(chartNumber))
       .then(function (data) { render(data); })

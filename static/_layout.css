@@ -320,6 +320,11 @@ body{font-family:system-ui,-apple-system,'Segoe UI','Microsoft JhengHei',sans-se
 .pr-name{font-size:13.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pr-info{font-size:12px;color:var(--muted);margin-top:2px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pr-noph{opacity:.35}
+.b-dnc{background:var(--g0);color:var(--sub)}
+/* 不聯絡 rows: still visible (and overdue days still readable) but stepped back */
+.p-table tr.pr-dnc td:not(.pr-act){opacity:.55}
+.p-table tr.pr-dnc .pr-days{color:var(--sub)}
+a.act-btn{text-decoration:none}
 .pr-cat{white-space:nowrap}
 .p-table.no-cat .pr-cat{display:none}
 .pr-days{font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}

@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>慢性腎臟病 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=99">
+<link rel="stylesheet" href="/static/_layout.css?v=100">
 <style>
 .ckd-inactive-banner{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0}
 .ckd-bi{width:32px;height:32px;border-radius:8px;background:#0369A1;display:flex;align-items:center;justify-content:center;flex-shrink:0}
@@ -73,6 +73,7 @@
         <button class="filter-tab" data-tab="contacted">已聯繫 <span class="tc-count" id="cnt-contacted">…</span></button>
         <button class="filter-tab" data-tab="hold">暫緩中 <span class="tc-count" id="cnt-hold">…</span></button>
               <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
+        <button class="filter-tab" data-tab="dnc">不聯絡 <span class="tc-count" id="cnt-dnc">…</span></button>
         <button class="filter-tab" data-tab="upcoming">未到期 <span class="tc-count" id="cnt-upcoming">…</span></button>
         <button class="act-btn" id="btn-workflow">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
@@ -108,6 +109,7 @@
         <div id="list-contacted" style="display:none"></div>
         <div id="list-hold" style="display:none"></div>
         <div id="list-excluded" style="display:none"></div>
+        <div id="list-dnc" style="display:none"></div>
         <div id="list-upcoming" style="display:none">
           <div class="tab-hint tab-hint-info">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
@@ -247,14 +249,14 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=93"></script>
+<script src="/static/_layout.js?v=94"></script>
 <script>
 (function () {
   'use strict';
   var L = Layout;
   var _tab = 'pending', _query = (new URLSearchParams(location.search).get('chart') || '').trim(), _noteFilter = '', _reasonFilter = '';
   var _filterOpen = false;
-  var _pending = [], _inactive = [], _contacted = [], _hold = [], _excluded = [], _upcoming = [];
+  var _pending = [], _inactive = [], _contacted = [], _hold = [], _excluded = [], _upcoming = [], _dnc = [];
   var _pendingMap = {}, _inactiveMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   var _actionChart = null, _excludeEntry = null, _reintakeEntry = null;
 
@@ -283,6 +285,8 @@
     _upcoming = (r.ckd_upcoming || []).slice().sort(function(a,b){ return String(a.due_date||'').localeCompare(String(b.due_date||'')); });
     document.getElementById('cnt-hold').textContent      = _hold.length;
     document.getElementById('cnt-excluded').textContent  = _excluded.length;
+    _dnc = (r.do_not_contact || []).filter(function (e) { return e.category === '慢性腎臟病'; });
+    document.getElementById('cnt-dnc').textContent       = _dnc.length;
     document.getElementById('cnt-upcoming').textContent  = _upcoming.length || '';
     var inactiveBanner = document.getElementById('ckd-inactive-banner');
     if (_inactive.length) { inactiveBanner.style.display = 'flex'; document.getElementById('ckd-inactive-cnt').textContent = _inactive.length; }
@@ -418,6 +422,8 @@
     renderList(_contacted, contactedRow, 'list-contacted');
     renderList(_hold,      holdRow,      'list-hold');
     renderExcluded();
+    document.getElementById('list-dnc').innerHTML = L.dncListHtml(_dnc, _dnc.filter(match), { hideCat: true });
+    if (_tab === 'dnc') document.getElementById('result-count').textContent = '共 ' + _dnc.filter(match).length + ' 筆';
     renderList(_upcoming, upcomingRow, 'list-upcoming-rows');
   }
 
@@ -427,7 +433,7 @@
     try { sessionStorage.setItem('ckd_active_tab', _tab); } catch(ex) {}
     document.querySelectorAll('.filter-tab').forEach(function (b) { b.classList.remove('on'); });
     btn.classList.add('on');
-    ['pending','inactive','contacted','hold','excluded','upcoming'].forEach(function (t) {
+    ['pending','inactive','contacted','hold','excluded','upcoming','dnc'].forEach(function (t) {
       document.getElementById('list-' + t).style.display = t === _tab ? '' : 'none';
     });
     _resetCtxFilters();
@@ -667,7 +673,7 @@
 
   try {
     var _st = sessionStorage.getItem('ckd_active_tab');
-    var _ckdTabs = ['pending','inactive','contacted','hold','excluded','upcoming'];
+    var _ckdTabs = ['pending','inactive','contacted','hold','excluded','upcoming','dnc'];
     if (_st && _ckdTabs.indexOf(_st) !== -1) {
       _tab = _st;
       var _stBtn = document.querySelector('.filter-tab[data-tab="' + _st + '"]');
