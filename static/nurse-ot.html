@@ -79,7 +79,8 @@
   color:var(--sub); cursor:pointer; font-size:14px;
   display:flex; align-items:center; justify-content:center; transition:background .1s, color .1s;
 }
-@media(hover:hover){.cal-nav-btn:hover{ background:var(--g0); color:var(--text); }}
+@media(hover:hover){.cal-nav-btn:hover:not(:disabled){ background:var(--g0); color:var(--text); }}
+.cal-nav-btn:disabled { opacity:.3; cursor:default; }
 .cal-month-lbl { font-size:13.5px; font-weight:700; color:var(--text); }
 .cal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
 .cal-dow {
@@ -467,6 +468,8 @@
   function pad2(n) { return String(n).padStart(2, '0'); }
   function monthStr(y, m) { return y + '-' + pad2(m); }
   function todayParts() { var d = new Date(); return [d.getFullYear(), d.getMonth()+1, d.getDate()]; }
+  // A month that has ended is read-only (the server enforces it too)
+  function monthClosed(y, m) { var t = todayParts(); return y * 12 + m < t[0] * 12 + t[1]; }
   function calcMins(sh, sm, eh, em) { return (eh*60+em) - (sh*60+sm); }
   function fmtHours(totalMins) {
     if (totalMins <= 0) return '0h';
@@ -497,7 +500,7 @@
 
     drop.innerHTML =
       '<div class="cal-head">' +
-        '<button class="cal-nav-btn" onclick="dpNav(-1)">‹</button>' +
+        '<button class="cal-nav-btn" onclick="dpNav(-1)"' + (monthClosed(_dpNavYear, _dpNavMon - 1) ? ' disabled' : '') + '>‹</button>' +
         '<span class="cal-month-lbl">'+label+'</span>' +
         '<button class="cal-nav-btn" onclick="dpNav(1)">›</button>' +
       '</div>' +
@@ -508,6 +511,7 @@
   }
 
   window.dpNav = function(dir) {
+    if (dir < 0 && monthClosed(_dpNavYear, _dpNavMon - 1)) return;
     _dpNavMon += dir;
     if (_dpNavMon > 12) { _dpNavMon = 1;  _dpNavYear++; }
     if (_dpNavMon < 1)  { _dpNavMon = 12; _dpNavYear--; }
@@ -676,9 +680,9 @@
         '<td data-label="時間">'+r.start_time+' — '+r.end_time+'</td>' +
         '<td class="ot-hours" data-label="工時">'+(mins>0?fmtHours(mins):'—')+'</td>' +
         '<td class="ot-note" data-label="備註">'+L.escHtml(r.note||'')+'</td>' +
-        '<td>' +
+        '<td>' + (monthClosed(p[0], p[1]) ? '' :
           '<button class="ot-edit" onclick="editEntry('+r.id+')" title="編輯">✎</button>' +
-          '<button class="ot-del" onclick="deleteEntry('+r.id+')" title="刪除">×</button>' +
+          '<button class="ot-del" onclick="deleteEntry('+r.id+')" title="刪除">×</button>') +
         '</td>' +
       '</tr>';
     }).join('');
@@ -725,6 +729,7 @@
     var dateVal = _dpYear ? (_dpYear+'-'+pad2(_dpMon)+'-'+pad2(_dpDay)) : '';
     var st = _tp['tp-start'], et = _tp['tp-end'];
     if (!dateVal)   { showErr('請選擇日期'); return; }
+    if (monthClosed(_dpYear, _dpMon)) { showErr('只能記錄這個月的加班'); return; }
     if (calcMins(st.h,st.m,et.h,et.m) <= 0) { showErr('結束時間必須晚於開始時間'); return; }
 
     var btn = document.getElementById('add-btn');
@@ -780,7 +785,7 @@
     }
     drop.innerHTML =
       '<div class="cal-head">' +
-        '<button class="cal-nav-btn" onclick="editDpNav(-1)">‹</button>' +
+        '<button class="cal-nav-btn" onclick="editDpNav(-1)"' + (monthClosed(_editDpNavYear, _editDpNavMon - 1) ? ' disabled' : '') + '>‹</button>' +
         '<span class="cal-month-lbl">'+label+'</span>' +
         '<button class="cal-nav-btn" onclick="editDpNav(1)">›</button>' +
       '</div>' +
@@ -791,6 +796,7 @@
   }
 
   window.editDpNav = function(dir) {
+    if (dir < 0 && monthClosed(_editDpNavYear, _editDpNavMon - 1)) return;
     _editDpNavMon += dir;
     if (_editDpNavMon > 12) { _editDpNavMon = 1;  _editDpNavYear++; }
     if (_editDpNavMon < 1)  { _editDpNavMon = 12; _editDpNavYear--; }

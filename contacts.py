@@ -2918,6 +2918,14 @@ def update_nurse_ot_log(log_id: int, clinic_id: int, date: str, start_time: str,
             return cur.rowcount > 0
 
 
+def get_nurse_ot_log_date(log_id: int, clinic_id: int) -> str | None:
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute("SELECT date FROM nurse_ot_logs WHERE id=%s AND clinic_id=%s", (log_id, clinic_id))
+            row = cur.fetchone()
+            return row["date"] if row else None
+
+
 def delete_nurse_ot_log(log_id: int, clinic_id: int = 1, nurse: str = "", is_admin: bool = False) -> bool:
     with _conn() as conn:
         with conn.cursor() as cur:

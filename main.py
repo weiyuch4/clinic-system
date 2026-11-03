@@ -911,6 +911,17 @@ def get_my_ot_logs(month: str = "", nurse: str = "", user: auth.CurrentUser = De
     return contacts.get_nurse_ot_logs(effective_nurse, user.clinic_id, month or None, legacy_nurse=user.display_name)
 
 
+def _ot_month_closed(date_str: str) -> bool:
+    """Overtime for a month that has ended is read-only — no adding, editing or deleting.
+    Applies to every account (the clinic login is shared), judged by Taiwan's calendar."""
+    from datetime import datetime, timezone
+    this_month = datetime.now(timezone(timedelta(hours=8))).strftime("%Y-%m")
+    return str(date_str or "")[:7] < this_month
+
+
+_OT_CLOSED = "上個月以前的加班紀錄不能新增或修改"
+
+
 @app.post("/api/nurse/ot-logs")
 def add_my_ot_log(body: dict, user: auth.CurrentUser = Depends(auth.get_current_user)) -> dict:
     date       = str(body.get("date", "")).strip()
@@ -921,6 +932,8 @@ def add_my_ot_log(body: dict, user: auth.CurrentUser = Depends(auth.get_current_
     nurse      = str(body.get("nurse", "")).strip() or user.display_name
     if not date or not start_time or not end_time:
         raise HTTPException(status_code=422, detail="日期與時間不可空白")
+    if _ot_month_closed(date):
+        raise HTTPException(status_code=403, detail=_OT_CLOSED)
     new_id = contacts.add_nurse_ot_log(nurse, user.clinic_id, date, start_time, end_time, note)
     return {"id": new_id}
 
@@ -928,6 +941,11 @@ def add_my_ot_log(body: dict, user: auth.CurrentUser = Depends(auth.get_current_
 @app.delete("/api/nurse/ot-logs/{log_id}")
 def delete_my_ot_log(log_id: int, nurse: str = "", user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     # nurse param comes from PIN-selected identity on the frontend; admins bypass the check
+    old = contacts.get_nurse_ot_log_date(log_id, user.clinic_id)
+    if old is None:
+        raise HTTPException(status_code=404, detail="記錄不存在")
+    if _ot_month_closed(old):
+        raise HTTPException(status_code=403, detail=_OT_CLOSED)
     if not contacts.delete_nurse_ot_log(log_id, user.clinic_id, nurse.strip(), is_admin=user.role == "admin"):
         raise HTTPException(status_code=404, detail="記錄不存在")
 
@@ -941,6 +959,12 @@ def update_my_ot_log(log_id: int, body: dict, user: auth.CurrentUser = Depends(a
     nurse      = str(body.get("nurse", "")).strip() or user.display_name
     if not date or not start_time or not end_time:
         raise HTTPException(status_code=422, detail="日期與時間不可空白")
+    old = contacts.get_nurse_ot_log_date(log_id, user.clinic_id)
+    if old is None:
+        raise HTTPException(status_code=404, detail="記錄不存在")
+    # Neither the month it was in nor the month it would move to may be closed
+    if _ot_month_closed(old) or _ot_month_closed(date):
+        raise HTTPException(status_code=403, detail=_OT_CLOSED)
     if not contacts.update_nurse_ot_log(log_id, user.clinic_id, date, start_time, end_time, note, nurse=nurse, is_admin=user.role == "admin"):
         raise HTTPException(status_code=404, detail="記錄不存在")
     return {"ok": True}
