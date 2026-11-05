@@ -146,6 +146,8 @@ a.adm-entry{text-decoration:none}
 .nurse-pin-icon{width:16px;height:16px;display:flex;align-items:center;color:var(--muted);flex-shrink:0}
 .nurse-dd-sep{height:1px;background:var(--border);margin:5px 0}
 .nurse-clear,.nurse-change-pin,.nurse-logout{display:flex;align-items:center;justify-content:center;width:100%;padding:9px 14px;font-size:12.5px;color:var(--muted);cursor:pointer;border:none;background:transparent;transition:color .1s;font-family:inherit}
+#adm-acct-theme,#nurse-dd-theme{gap:7px}
+#adm-acct-theme svg,#nurse-dd-theme svg{width:14px;height:14px;flex-shrink:0}
 @media(hover:hover){.nurse-clear:hover,.nurse-change-pin:hover{color:var(--text)}}
 .nurse-logout{color:#c0392b}@media(hover:hover){.nurse-logout:hover{color:#e74c3c}}
 .adm-acct-admin{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:var(--ctl-h);padding:0 14px;font-size:14px;font-weight:600;color:var(--text);text-decoration:none}
@@ -679,7 +681,7 @@ input.modal-input,.modal-select{height:var(--ctl-h);padding-top:0;padding-bottom
   #btn-theme,#btn-logout{display:none!important}
   #btn-refresh{display:none!important}
   /* Theme button in bottom sheet: left-aligned, icon constrained */
-  #adm-acct-theme,#nurse-dd-theme{justify-content:flex-start!important}
+  #adm-acct-theme,#nurse-dd-theme{justify-content:flex-start!important;gap:10px}
   #adm-acct-theme svg,#nurse-dd-theme svg{width:20px!important;height:20px!important;flex-shrink:0}
   /* Collapse nurse-wrap to 0×0 instead of display:none so the fixed-position
      nurse-dd child can still render (display:none hides fixed children too) */

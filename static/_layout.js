@@ -56,6 +56,9 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 8, date: '2026-11-05', items: [
+      '深色／淺色模式的切換移到右上角的護理師選單裡',
+    ]},
     { version: 7, date: '2026-11-03', items: [
       '手機上的加班紀錄可以查看以前的月份：按紀錄上方的 ‹ ›',
       '上方的總加班時間和筆數會標出是哪個月份',
@@ -399,7 +402,7 @@
     if (btn) { btn.innerHTML = icon; btn.title = label; }
     ['adm-acct-theme', 'nurse-dd-theme'].forEach(function (id) {
       var b = document.getElementById(id);
-      if (b) b.innerHTML = icon + '<span style="margin-left:10px;vertical-align:middle">' + label + '</span>';
+      if (b) b.innerHTML = icon + '<span>' + label + '</span>';
     });
   }
 
@@ -980,7 +983,8 @@
           '</button>' +
           '<div class="ann-dd" id="ann-dd" hidden></div>' +
         '</div>' +
-        '<button class="ib" id="btn-theme" title="切換深色模式">' + ICONS.moon + '</button>' +
+        // Nurses switch the theme from their dropdown; the admin view has no dropdown on desktop
+        (_role === 'admin' ? '<button class="ib" id="btn-theme" title="切換深色模式">' + ICONS.moon + '</button>' : '') +
         '<button class="ib" id="btn-refresh" title="重新整理">' + ICONS.refresh + '</button>' +
         (_role === 'admin' ?
           '<button class="ib" id="btn-logout" title="登出" onclick="(function(){fetch(\'/auth/logout\',{method:\'POST\',credentials:\'include\'});localStorage.removeItem(\'clinic_token\');location.href=\'/login\';})()"><svg viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'currentColor\' stroke-width=\'2\' stroke-linecap=\'round\'><path d=\'M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\'/><polyline points=\'16 17 21 12 16 7\'/><line x1=\'21\' y1=\'12\' x2=\'9\' y2=\'12\'/></svg></button>'
