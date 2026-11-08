@@ -5556,6 +5556,15 @@ let _salPay = _clinicPay;  // amounts the nurse slip on screen is calculated wit
 const payFullMonthly = p => p.base + p.attendance + p.license + p.float_base;  // sick/proration base (42,000)
 const payOtRate      = p => Math.round(payFullMonthly(p) / 240);             // overtime base rate (42,000 ÷ 240 = 175)
 const payPartOtRate  = p => p.part_rate * 1.34;
+// 全勤獎金 after sick days: always divide by 30 regardless of month
+const payAttendance  = (p, sickDays) => sickDays > 0
+  ? Math.max(0, Math.round(p.attendance * (30 - sickDays) / 30))
+  : p.attendance;
+// A saved slip's 全勤獎金. Slips saved before 2026-11-08 stored the full amount
+// even with sick days (the total was right); reduce those when printing.
+const recAttendance  = (rec, p) => (rec.attendance > 0 && rec.attendance === p.attendance)
+  ? payAttendance(p, rec.sick_days || 0)
+  : (rec.attendance || 0);
 
 async function loadClinicPay() {
   try {
@@ -5927,7 +5936,8 @@ function _currentSalaryPayload() {
   return {
     nurse:       $('sal-nurse').value,
     month:       salMonthStr(),
-    attendance:  isPart ? 0 : ($('sal-attendance-chk').checked ? _salPay.attendance : 0),
+    attendance:  isPart ? 0 : ($('sal-attendance-chk').checked
+                   ? payAttendance(_salPay, parseInt(($('sal-sick-days') || {}).value) || 0) : 0),
     performance: _bonusCalculated || 0,
     sat_pay:     isPart ? 0 : (parseInt($('sal-sat-amt').textContent.replace(/,/g, '')) || 0),
     float_bonus: isPart ? 0 : (parseInt($('sal-float-amt').textContent.replace(/,/g, '')) || 0),
@@ -6021,6 +6031,7 @@ function loadSalaryRecord(record) {
   // restore proration
   if ($('sal-unworked-days')) $('sal-unworked-days').value = parsed.unworked_days || 0;
 
+  recalcSalary();
   setEditingRecord(record.id);
   loadYearlySickDays();
 }
@@ -6046,7 +6057,7 @@ function renderSalaryHistory(records, nurse, month) {
     try { const p = JSON.parse(r.ot_entries || '[]'); if (!Array.isArray(p)) { recMode = p.mode || 'full'; recPay = p.pay || PAY_LEGACY; } } catch (_) {}
     const breakdown = recMode === 'part'
       ? `兼職工時薪資 ${r.ot_pay}`
-      : `底薪 ${fmtNT(recPay.base)} ＋ 全勤 ${r.attendance} ＋ 執照 ${fmtNT(recPay.license)} ＋ 周六 ${r.sat_pay} ＋ 浮動 ${r.float_bonus} ＋ 不定期獎金 ${r.performance} ＋ 加班 ${r.ot_pay}`;
+      : `底薪 ${fmtNT(recPay.base)} ＋ 全勤 ${recAttendance(r, recPay)} ＋ 執照 ${fmtNT(recPay.license)} ＋ 周六 ${r.sat_pay} ＋ 浮動 ${r.float_bonus} ＋ 不定期獎金 ${r.performance} ＋ 加班 ${r.ot_pay}`;
     return `
     <div class="sal-hist-row${_salEditingId === r.id ? ' selected' : ''}"
          onclick="selectSalHistRow(this, ${JSON.stringify(r).replace(/"/g, '&quot;')})">
@@ -6754,7 +6765,7 @@ function _buildNurseSlipItems(parsed, rec) {
     if (rec.performance > 0) items.push({ label: '不定期獎金', amount: rec.performance });
   } else {
     items.push({ label: '底薪', amount: pay.base });
-    if (rec.attendance > 0) items.push({ label: '全勤獎金', amount: rec.attendance });
+    if (rec.attendance > 0) items.push({ label: '全勤獎金', amount: recAttendance(rec, pay) });
     if (pay.license > 0) items.push({ label: '執照津貼', amount: pay.license });
     if (rec.sat_pay > 0) items.push({ label: '周六加班費', amount: rec.sat_pay });
     if (rec.float_bonus > 0) items.push({ label: '浮動獎金', amount: rec.float_bonus });
@@ -6877,7 +6888,7 @@ async function printAllPhPaySlips() {
         } else {
           cols = [
             {g:'薪資',h:'底薪',       val:pay.base.toLocaleString('zh-TW')},
-            {g:'',    h:'全勤獎金',   val:v(rec.attendance||0)},
+            {g:'',    h:'全勤獎金',   val:v(recAttendance(rec, pay))},
             {g:'',    h:'執照津貼',   val:v(pay.license)},
             {g:'',    h:'周六加班費', val:v(rec.sat_pay||0)},
             {g:'',    h:'加班費',     val:v(rec.ot_pay||0)},
@@ -7361,12 +7372,7 @@ function recalcSalary() {
   const perf = _bonusCalculated || 0;
   const _daysInMonth = new Date(_salYear, _salMon, 0).getDate();
   const _sickDays    = parseInt(($('sal-sick-days') || {}).value) || 0;
-  // prorate 全勤獎金: always divide by 30 regardless of month
-  const attendance = hasAttendance
-    ? (_sickDays > 0
-        ? Math.round(_salPay.attendance * (30 - _sickDays) / 30)
-        : _salPay.attendance)
-    : 0;
+  const attendance = hasAttendance ? payAttendance(_salPay, _sickDays) : 0;
 
   // Group entries by date, sort each group by start time, accumulate hours
   // so that two entries on the same day share the correct tier position.
@@ -7473,7 +7479,7 @@ function recalcSalary() {
   const grand = _salPay.base + attendance + _salPay.license + satPay + floatPay + perf + otPay + extrasTotal - sickDeduct - insDeduct - prorateDeduct;
 
   $('sal-attendance-amt').textContent = hasAttendance
-    ? (attendance < _salPay.attendance ? `${fmtNT(attendance)} （指勤比例）` : fmtNT(_salPay.attendance))
+    ? (attendance < _salPay.attendance ? `${fmtNT(attendance)} （扣病假 ${_sickDays} 天）` : fmtNT(_salPay.attendance))
     : '—';
   $('sal-attendance-amt').className   = 'sal-amount' + (hasAttendance ? '' : ' muted');
   $('sal-sat-amt').textContent        = fmtNT(satPay);
@@ -7538,7 +7544,7 @@ function printPaySlip() {
     const sickDeductAmt = sickDays > 0 ? (parseInt(($('sal-sick-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
     rows = `
       <tr><td>底薪</td><td>NT$ ${_salPay.base.toLocaleString('zh-TW')}</td></tr>
-      <tr><td>全勤獎金</td><td>${att ? 'NT$ ' + parseInt($('sal-attendance-amt').textContent.replace(/[^0-9]/g,'') || '0').toLocaleString('zh-TW') : '—'}</td></tr>
+      <tr><td>全勤獎金</td><td>${att ? 'NT$ ' + payAttendance(_salPay, sickDays).toLocaleString('zh-TW') : '—'}</td></tr>
       ${_salPay.license > 0 ? `<tr><td>執照津貼</td><td>NT$ ${_salPay.license.toLocaleString('zh-TW')}</td></tr>` : ''}
       <tr><td>周六加班費</td><td>${fmt(sat)}</td></tr>
       <tr><td>浮動獎金</td><td>${fmt(flt)}</td></tr>
