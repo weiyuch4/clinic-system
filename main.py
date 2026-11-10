@@ -1751,10 +1751,14 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                 result.append(updated)
             return result
 
-        # Filter 已聯絡 entries: exclude patients who have already returned since being contacted
-        chronic_charts = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == '慢簽'}
-        mspt_charts    = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == '代謝症候群'}
-        hep_charts     = {e.patient.chart_number for e, _ in contacted_with_dates if e.category == 'B肝'}
+        # Filter 已聯絡 / 已二次通知 / 長期未回應 entries: drop patients who have
+        # already returned since being contacted.
+        _contacted_people = ([(e.patient.chart_number, e.category) for e, _ in contacted_with_dates]
+                             + [(e.patient.chart_number, e.category) for e in called_entries]
+                             + [(e.patient.chart_number, e.category) for e in auto_excluded_raw])
+        chronic_charts = {c for c, cat in _contacted_people if cat == '慢簽'}
+        mspt_charts    = {c for c, cat in _contacted_people if cat == '代謝症候群'}
+        hep_charts     = {c for c, cat in _contacted_people if cat == 'B肝'}
         if CLOUD_MODE:
             def _cloud_latest_visits(charts: set, category: str) -> dict:
                 if not charts:
@@ -1785,13 +1789,10 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             mspt_visits    = f_mv.result()
             hep_visits     = f_hv.result()
 
-        def has_returned(entry: FollowupEntry, contacted_at: date) -> bool:
-            if entry.category == '慢簽':
-                visits = chronic_visits
-            elif entry.category == '代謝症候群':
-                visits = mspt_visits
-            else:
-                visits = hep_visits
+        def has_returned(entry, contacted_at: date | None) -> bool:
+            visits = {'慢簽': chronic_visits, '代謝症候群': mspt_visits, 'B肝': hep_visits}.get(entry.category)
+            if visits is None or contacted_at is None:
+                return False
             latest = visits.get(entry.patient.chart_number)
             return latest is not None and latest > contacted_at
 
@@ -1841,14 +1842,18 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                 return False
             return True
 
+        # 長期未回應 (auto-excluded) only lists patients who never came back after the second notice;
+        # excluded_at is the date of that notice.
         all_excluded = manual_excluded + [
             e for e in auto_excluded_raw
             if (e.patient.chart_number, e.category) not in {(x.patient.chart_number, x.category) for x in manual_excluded}
+            and not has_returned(e, e.excluded_at)
         ]
 
         called_filtered = [
             e for e in called_entries
-            if (e.patient.chart_number, e.category) not in excluded_keys
+            if not has_returned(e, e.contacted_at)
+            and (e.patient.chart_number, e.category) not in excluded_keys
             and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_completed_keys
             and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_checkedin_keys
             and not (e.category == '處方' and _PRESCRIPTION_START_DATE and e.due_date < _PRESCRIPTION_START_DATE)
