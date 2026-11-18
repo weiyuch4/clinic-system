@@ -1869,15 +1869,15 @@
     }
     function visitCard(visit) {
       var items = (visit.items || []).map(function (it) {
-        var flag = it.flag === '+' ? ' <span style="color:#dc2626;font-weight:700">↑</span>'
-                 : it.flag === '-' ? ' <span style="color:#2563eb;font-weight:700">↓</span>' : '';
+        var flag = it.flag === '+' ? ' <span style="color:#dc2626;font-weight:600">↑</span>'
+                 : it.flag === '-' ? ' <span style="color:#2563eb;font-weight:600">↓</span>' : '';
         return '<div style="display:flex;justify-content:space-between;padding:3px 0;font-size:12.5px;border-bottom:1px solid var(--border)">' +
           '<span style="color:var(--sub)">' + escHtml(it.label || '') + '</span>' +
           '<span style="font-variant-numeric:tabular-nums">' + escHtml(String(it.value || '—')) + flag + '</span>' +
         '</div>';
       }).join('');
       return '<div style="margin-bottom:14px">' +
-        '<div style="font-size:12px;font-weight:700;color:var(--sub);margin-bottom:6px">' +
+        '<div style="font-size:12px;font-weight:600;color:var(--sub);margin-bottom:6px">' +
           escHtml(String(visit.date || '')) + ' <span style="font-weight:400;margin-left:4px;opacity:.6">' + daysAgo(visit.date) + '</span>' +
         '</div>' +
         (items || '<div style="font-size:12px;color:var(--muted)">無記錄</div>') +

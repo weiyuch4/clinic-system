@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>管理員後台</title>
-<link rel="stylesheet" href="/static/_layout.css?v=104">
+<link rel="stylesheet" href="/static/_layout.css?v=105">
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
@@ -95,8 +95,7 @@
   overflow-y: auto;
 }
 .admsb-label {
-  font-size: 10px; font-weight: 700;
-  letter-spacing: .09em; text-transform: uppercase;
+  font-size: 10px; font-weight:500;
   color: var(--text-3);
   padding: 0 8px; margin: 14px 0 4px;
 }
@@ -180,15 +179,13 @@ main {
 }
 .kpi-label {
   font-size: 11px;
-  font-weight: 700;
+  font-weight:500;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: .06em;
   margin-bottom: 10px;
 }
 .kpi-value {
   font-size: 30px;
-  font-weight: 800;
+  font-weight: 600;
   color: var(--text-1);
   line-height: 1;
   font-variant-numeric: tabular-nums;
@@ -214,7 +211,7 @@ main {
 }
 .card-title {
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-1);
 }
 .card-badge {
@@ -246,9 +243,7 @@ thead th {
   border-bottom: 1px solid var(--border);
   color: var(--text-2);
   font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .06em;
+  font-weight:500;
   text-align: right;
   white-space: nowrap;
   user-select: none;
@@ -268,7 +263,7 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--bg);
   border-top: 1px solid var(--border-mid);
   border-bottom: none;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-1);
 }
 @media(hover:hover){.total-row:hover td{ background: var(--bg); }}
@@ -286,7 +281,7 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--blue-bg);
   color: var(--blue);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 600;
   display: grid;
   place-items: center;
   flex-shrink: 0;
@@ -318,7 +313,7 @@ tbody tr:last-child td { border-bottom: none; }
 .bar-fill.lo { background: var(--red); }
 .rate-pct {
   font-size: 13.5px;
-  font-weight: 700;
+  font-weight: 600;
   min-width: 46px;
   text-align: right;
   font-variant-numeric: tabular-nums;
@@ -333,7 +328,7 @@ tbody tr:last-child td { border-bottom: none; }
   text-align: center;
   color: var(--text-3);
 }
-.empty-icon { font-size: 32px; margin-bottom: 12px; }
+.empty-icon { display: flex; justify-content: center; color: var(--text-3); margin-bottom: 12px; }
 .empty-title { font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
 .empty-sub { font-size: 12.5px; }
 .err { color: var(--red); }
@@ -379,7 +374,7 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .upload-zone.drag{ border-color: var(--blue); background: var(--blue-bg); }@media(hover:hover){.upload-zone:hover{ border-color: var(--blue); background: var(--blue-bg); }}
 .upload-zone input[type=file] { display: none; }
-.upload-icon { font-size: 28px; margin-bottom: 10px; }
+.upload-icon { display: flex; justify-content: center; color: var(--text-3); margin-bottom: 10px; }
 .upload-label { font-size: 14px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
 .upload-sub { font-size: 12px; color: var(--text-3); }
 .upload-btn {
@@ -416,10 +411,8 @@ tbody tr:last-child td { border-bottom: none; }
   padding: 13px 16px;
   border-bottom: 1px solid var(--border);
   font-size: 11px;
-  font-weight: 700;
+  font-weight:500;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: .06em;
 }
 .rp-item {
   padding: 11px 14px;
@@ -435,7 +428,7 @@ tbody tr:last-child td { border-bottom: none; }
 @media(hover:hover){.rp-item:hover{ background: var(--bg); }}
 .rp-item.active { background: var(--blue-bg); border-left-color: var(--blue); }
 .rp-info { flex: 1; min-width: 0; }
-.rp-period { font-weight: 700; font-size: 13px; color: var(--text-1); }
+.rp-period { font-weight: 600; font-size: 13px; color: var(--text-1); }
 .rp-item.active .rp-period { color: var(--blue); }
 .rp-date { font-size: 11px; color: var(--text-3); margin-top: 2px; }
 .rp-del {
@@ -472,8 +465,8 @@ tbody tr:last-child td { border-bottom: none; }
 .verify-card.ok   { border-top: 3px solid var(--emerald); }
 .verify-card.warn { border-top: 3px solid var(--amber); }
 .verify-card.fail { border-top: 3px solid var(--red); }
-.verify-label { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 8px; }
-.verify-value { font-size: 22px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 5px; }
+.verify-label { font-size: 11px; font-weight:500; color: var(--text-3); margin-bottom: 8px; }
+.verify-value { font-size: 22px; font-weight: 600; font-variant-numeric: tabular-nums; line-height: 1; margin-bottom: 5px; }
 .verify-card.ok   .verify-value { color: var(--emerald); }
 .verify-card.warn .verify-value { color: var(--amber); }
 .verify-card.fail .verify-value { color: var(--red); }
@@ -603,7 +596,7 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .bc-auto-amt {
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
   padding: 5px 0 2px;
@@ -640,12 +633,12 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--blue);
   color: #fff;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   display: grid;
   place-items: center;
   flex-shrink: 0;
 }
-.bc-name { font-weight: 700; font-size: 14px; flex: 1; }
+.bc-name { font-weight: 600; font-size: 14px; flex: 1; }
 .bc-del {
   background: none; border: none; cursor: pointer;
   color: var(--text-3); font-size: 17px; line-height: 1;
@@ -662,10 +655,8 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .bc-field-label {
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight:500;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: .06em;
   margin-bottom: 7px;
 }
 .bc-dates {
@@ -759,19 +750,17 @@ tbody tr:last-child td { border-bottom: none; }
 .bc-result-item:last-child { text-align: right; }
 .bc-result-label {
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight:500;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: .06em;
 }
 .bc-avg-val {
-  font-size: 22px; font-weight: 800;
+  font-size: 22px; font-weight: 600;
   color: var(--text-1);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
 }
 .bc-final-val {
-  font-size: 22px; font-weight: 800;
+  font-size: 22px; font-weight: 600;
   color: var(--blue);
   font-variant-numeric: tabular-nums;
   line-height: 1.1;
@@ -785,9 +774,9 @@ tbody tr:last-child td { border-bottom: none; }
   align-items: start;
 }
 .sched-nurse-card .card-head { padding: 13px 18px; }
-.sched-total-badge { font-size: 13.5px; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; }
-.sched-section-lbl { grid-column: 1 / -1; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); padding: 16px 2px 6px; border-bottom: 1px solid var(--border); margin-bottom: -4px; }
-.cov-section-lbl { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--text-3); padding: 8px 2px 4px; border-bottom: 1px solid var(--border-faint, var(--border)); margin: 4px 0; }
+.sched-total-badge { font-size: 13.5px; font-weight: 600; color: var(--blue); font-variant-numeric: tabular-nums; }
+.sched-section-lbl { grid-column: 1 / -1; font-size: 11px; font-weight:500; color: var(--text-3); padding: 16px 2px 6px; border-bottom: 1px solid var(--border); margin-bottom: -4px; }
+.cov-section-lbl { font-size: 11px; font-weight:500; color: var(--text-3); padding: 8px 2px 4px; border-bottom: 1px solid var(--border-faint, var(--border)); margin: 4px 0; }
 
 /* staff management modal */
 .sched-staff-overlay {
@@ -809,7 +798,7 @@ tbody tr:last-child td { border-bottom: none; }
   overflow-y: auto;
   padding: 22px;
 }
-.sched-staff-modal h3 { font-size: 15px; font-weight: 800; color: var(--text-1); margin-bottom: 4px; }
+.sched-staff-modal h3 { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 4px; }
 .sched-staff-sub { font-size: 12px; color: var(--text-3); margin-bottom: 14px; }
 .sched-staff-row {
   display: flex;
@@ -819,7 +808,7 @@ tbody tr:last-child td { border-bottom: none; }
   border-bottom: 1px solid var(--border);
 }
 .sched-staff-row:last-child { border-bottom: none; }
-.sched-staff-name { flex: 1; font-size: 13.5px; font-weight: 700; color: var(--text-1); }
+.sched-staff-name { flex: 1; font-size: 13.5px; font-weight: 600; color: var(--text-1); }
 .sched-staff-row .btn-sm { padding: 0 11px; font-size: 12px; }
 .sched-staff-foot {
   margin-top: 16px;
@@ -836,7 +825,7 @@ tbody tr:last-child td { border-bottom: none; }
 .sched-mini th, .sched-mini td { padding: 7px 3px; text-align: center; }
 .sched-mini thead th {
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-2);
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
@@ -846,7 +835,7 @@ tbody tr:last-child td { border-bottom: none; }
   text-align: left;
   padding-left: 14px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 600;
   color: var(--text-2);
   white-space: nowrap;
 }
@@ -860,7 +849,7 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--surface);
   height: 28px;
   padding: 0 1px;
-  font: 700 10px/1.3 var(--font);
+  font: 600 10px/1.3 var(--font);
   color: var(--text-1);
   cursor: pointer;
   font-variant-numeric: tabular-nums;
@@ -892,15 +881,15 @@ tbody tr:last-child td { border-bottom: none; }
 .mob-day-tabs::-webkit-scrollbar { display: none; }
 .mob-day-tab { flex: 0 0 auto; display: flex; flex-direction: column; align-items: center; padding: 7px 11px; border-radius: 10px; border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; min-width: 42px; gap: 1px; transition: background .1s, border-color .1s; -webkit-tap-highlight-color: transparent; }
 .mob-day-tab.on { background: var(--blue); border-color: var(--blue); color: #fff; }
-.mob-day-tab .mdt-dow { font-size: 13px; font-weight: 700; line-height: 1.2; }
+.mob-day-tab .mdt-dow { font-size: 13px; font-weight: 600; line-height: 1.2; }
 .mob-day-tab .mdt-dt { font-size: 10px; opacity: .8; }
 .mob-day-page { display: none; }
 .mob-day-page.on { display: block; }
 .mob-day-nurse { background: var(--surface); border: 1.5px solid var(--border); border-radius: 12px; margin-bottom: 10px; overflow: hidden; }
-.mob-day-nurse-hd { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 700; color: var(--text-1); }
+.mob-day-nurse-hd { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 14px; font-weight: 600; color: var(--text-1); }
 .mob-day-slots { display: grid; grid-template-columns: repeat(3, 1fr); padding: 8px; gap: 7px; }
 .mob-sched-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 10px 4px; border-radius: 9px; border: 1.5px solid var(--border); background: var(--bg); min-height: 62px; cursor: pointer; width: 100%; -webkit-tap-highlight-color: transparent; transition: background .1s, border-color .1s; }
-.mob-sched-btn .ms-lbl { font-size: 10px; font-weight: 700; color: var(--text-3); letter-spacing: .03em; }
+.mob-sched-btn .ms-lbl { font-size: 10px; font-weight: 600; color: var(--text-3); letter-spacing: .03em; }
 .mob-sched-btn .ms-time { font-size: 11.5px; color: var(--text-1); font-weight: 600; }
 .mob-sched-btn.is-empty { border-style: dashed; }
 .mob-sched-btn.is-empty .ms-time { color: var(--text-3); font-weight: 400; }
@@ -924,10 +913,8 @@ tbody tr:last-child td { border-bottom: none; }
 .sched-time-backdrop.show { display: block; animation: modal-bd-in .25s ease-out both; }
 .stp-label {
   font-size: 10.5px;
-  font-weight: 700;
+  font-weight:500;
   color: var(--text-3);
-  text-transform: uppercase;
-  letter-spacing: .04em;
   margin-bottom: 7px;
 }
 .stp-chips {
@@ -959,7 +946,7 @@ tbody tr:last-child td { border-bottom: none; }
   padding-top: 4px;
   border-top: 1px solid var(--border);
 }
-.stp-duration { font-size: 12.5px; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; }
+.stp-duration { font-size: 12.5px; font-weight: 600; color: var(--blue); font-variant-numeric: tabular-nums; }
 .stp-duration:empty::before { content: '尚未選擇完整時段'; font-size: 11.5px; font-weight: 600; color: var(--text-3); }
 .stp-clear {
   background: none;
@@ -1014,7 +1001,7 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .stp-confirm:disabled { opacity: .4; cursor: default; }
 @media(hover:hover){.stp-confirm:not(:disabled):hover{ background: #1D4ED8; }}
-.stp-cur-time { font-size: 12px; font-weight: 700; color: var(--blue); font-variant-numeric: tabular-nums; }
+.stp-cur-time { font-size: 12px; font-weight: 600; color: var(--blue); font-variant-numeric: tabular-nums; }
 
 /* Segmented control — the container is the control, so it takes the shared height */
 .seg-toggle {
@@ -1059,7 +1046,7 @@ tbody tr:last-child td { border-bottom: none; }
 }
 .cov-day-group { padding: 6px 0; border-top: 1px solid var(--border); }
 .cov-day-group:first-child { border-top: none; padding-top: 0; }
-.cov-day-label { font-size: 11.5px; font-weight: 800; color: var(--text-1); margin: 0 0 4px 58px; }
+.cov-day-label { font-size: 11.5px; font-weight: 600; color: var(--text-1); margin: 0 0 4px 58px; }
 .cov-row { display: flex; align-items: center; gap: 6px; margin-bottom: 2px; }
 .cov-row-label {
   width: 52px;
@@ -1084,7 +1071,7 @@ tbody tr:last-child td { border-bottom: none; }
   bottom: 1px;
   border-radius: 3px;
   font-size: 9px;
-  font-weight: 700;
+  font-weight: 600;
   color: #fff;
   display: flex;
   align-items: center;
@@ -1102,7 +1089,7 @@ tbody tr:last-child td { border-bottom: none; }
   align-items: center;
   justify-content: center;
   font-size: 9.5px;
-  font-weight: 800;
+  font-weight: 600;
   color: #fff;
   border-right: 1px solid rgba(255, 255, 255, .5);
   border-radius: 3px;
@@ -1128,7 +1115,7 @@ tbody tr:last-child td { border-bottom: none; }
 .sal-row:last-child { border-bottom: none; }
 .sal-label { font-size: 13.5px; color: var(--text-2); display: flex; align-items: center; gap: 8px; }
 .sal-label strong { color: var(--text-1); }
-.sal-amount { font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--text-1); min-width: 80px; text-align: right; }
+.sal-amount { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--text-1); min-width: 80px; text-align: right; }
 .sal-amount.muted { color: var(--text-3); font-weight: 400; font-size: 13px; }
 .sal-input-sm {
   width: 72px; border: 1px solid var(--border-mid); border-radius: var(--radius-s);
@@ -1167,7 +1154,7 @@ tbody tr:last-child td { border-bottom: none; }
 .sal-date-input:focus { outline: none; border-color: var(--blue); }
 .sal-time-inp {
   border: 1px solid var(--border-mid); border-radius: var(--radius-s);
-  padding: 6px 8px; font: 700 13px/1 var(--font); font-variant-numeric: tabular-nums;
+  padding: 6px 8px; font: 600 13px/1 var(--font); font-variant-numeric: tabular-nums;
   background: var(--surface); color: var(--text-1); width: 100px;
 }
 .sal-time-inp:focus { outline: none; border-color: var(--blue); }
@@ -1175,11 +1162,11 @@ tbody tr:last-child td { border-bottom: none; }
 .sal-batch-panel { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-s); padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 8px; }
 .sal-batch-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .sal-batch-field { display: flex; flex-direction: column; gap: 5px; }
-.sal-batch-lbl { font-size: 11px; font-weight: 700; color: var(--text-3); text-transform: uppercase; letter-spacing: .05em; }
+.sal-batch-lbl { font-size: 11px; font-weight:500; color: var(--text-3); }
 .sal-day-btn { padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border-mid); background: var(--surface); color: var(--text-2); font: 600 12px/1 var(--font); cursor: pointer; transition: background .1s, color .1s, border-color .1s; }
 .sal-day-btn.active { background: var(--blue); border-color: var(--blue); color: #fff; }
 .sal-ot-tag {
-  font-size: 11.5px; font-weight: 700; padding: 3px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; padding: 3px 10px; border-radius: 999px;
   white-space: nowrap;
 }
 .sal-ot-tag.saturday  { background: #EFF6FF; color: var(--blue); }
@@ -1211,16 +1198,16 @@ tbody tr:last-child td { border-bottom: none; }
   color:var(--sub); cursor:pointer; font-size:14px;
   display:flex; align-items:center; justify-content:center; transition:background .1s, color .1s; }
 @media(hover:hover){.scal-nav:hover{ background:var(--g0); color:var(--text); }}
-.scal-mlbl { font-size:13.5px; font-weight:700; color:var(--text); }
+.scal-mlbl { font-size:13.5px; font-weight:600; color:var(--text); }
 .scal-grid { display:grid; grid-template-columns:repeat(7,1fr); gap:1px; }
-.scal-dow  { font-size:10px; font-weight:700; text-align:center; color:var(--muted); padding:0 0 8px; letter-spacing:.04em; }
+.scal-dow  { font-size:10px; font-weight:600; text-align:center; color:var(--muted); padding:0 0 8px; letter-spacing:.04em; }
 .scal-day  { height:30px; border:none; border-radius:6px; background:transparent;
   font-size:12.5px; color:var(--text); cursor:pointer;
   display:flex; align-items:center; justify-content:center;
   transition:background .1s; font-variant-numeric:tabular-nums; }
 @media(hover:hover){.scal-day:hover:not(:disabled){ background:var(--g0); }}
-.scal-day.sc-today { font-weight:700; color:#2563EB; }
-.scal-day.sc-sel   { background:#2563EB; color:#fff; font-weight:700; }
+.scal-day.sc-today { font-weight:600; color:#2563EB; }
+.scal-day.sc-sel   { background:#2563EB; color:#fff; font-weight:600; }
 @media(hover:hover){.scal-day.sc-sel:hover{ background:#1D4ED8; }}
 .scal-day.sc-other { color:var(--muted); }
 .scal-day:disabled { opacity:.25; cursor:default; }
@@ -1228,17 +1215,17 @@ tbody tr:last-child td { border-bottom: none; }
   scrollbar-width:thin; scrollbar-color:var(--border) transparent; padding:4px; }
 .stp-col::-webkit-scrollbar { width:4px; }
 .stp-col::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
-.stp-sep  { display:flex; align-items:center; padding:0 4px; font-weight:800; color:var(--muted); font-size:16px; }
+.stp-sep  { display:flex; align-items:center; padding:0 4px; font-weight:600; color:var(--muted); font-size:16px; }
 .stp-opt  { display:flex; align-items:center; justify-content:center;
   height:34px; border-radius:7px; font-size:13px;
   font-variant-numeric:tabular-nums; color:var(--text); cursor:pointer;
   transition:background .1s; letter-spacing:.04em; }
 @media(hover:hover){.stp-opt:hover{ background:var(--g0); }}
-.stp-opt.st-sel { background:#2563EB; color:#fff; font-weight:700; }
+.stp-opt.st-sel { background:#2563EB; color:#fff; font-weight:600; }
 .sal-divider { border: none; border-top: 2px solid var(--text-1); margin: 18px 0 12px; }
 .sal-total-row { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0; }
-.sal-total-label { font-size: 14px; font-weight: 700; color: var(--text-1); }
-.sal-total-amount { font-size: 22px; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; }
+.sal-total-label { font-size: 14px; font-weight: 600; color: var(--text-1); }
+.sal-total-amount { font-size: 22px; font-weight: 600; color: var(--blue); font-variant-numeric: tabular-nums; }
 .sal-note { font-size: 11.5px; color: var(--text-3); margin-top: 8px; }
 .sal-hist-row {
   display: flex; align-items: center; gap: 14px; padding: 14px 20px;
@@ -1248,12 +1235,12 @@ tbody tr:last-child td { border-bottom: none; }
 .sal-hist-row:last-child { border-bottom: none; }
 @media(hover:hover){.sal-hist-row:hover{ background: var(--bg); }}
 .sal-hist-row.selected { background: var(--blue-bg); border-left: 3px solid var(--blue); padding-left: 17px; }
-.sal-hist-total { font-size: 16px; font-weight: 800; color: var(--blue); font-variant-numeric: tabular-nums; min-width: 110px; }
+.sal-hist-total { font-size: 16px; font-weight: 600; color: var(--blue); font-variant-numeric: tabular-nums; min-width: 110px; }
 .sal-hist-detail { flex: 1; display: flex; flex-direction: column; gap: 3px; }
 .sal-hist-breakdown { font-size: 11.5px; color: var(--text-2); font-variant-numeric: tabular-nums; }
 .sal-hist-time { font-size: 11px; color: var(--text-3); }
 .sal-hist-actions { display: flex; gap: 6px; align-items: center; }
-.sal-section-head { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-3); margin: 16px 0 6px; }
+.sal-section-head { font-size: 11px; font-weight:500; color: var(--text-3); margin: 16px 0 6px; }
 .sal-body.mode-part .sal-full-only { display: none !important; }
 .sal-part-ot-chk { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
 .sal-part-ot-chk input { cursor: pointer; width: 14px; height: 14px; }
@@ -1263,7 +1250,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ── Bonus inline calculator ──────────────────────────────────────────────── */
 .bi-wrap{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:12px;display:flex;flex-direction:column;gap:10px}
 .bi-row{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap}
-.bi-label{font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;min-width:60px;padding-top:8px;flex-shrink:0}
+.bi-label{font-size:11px;font-weight:500;color:var(--text-3);min-width:60px;padding-top:8px;flex-shrink:0}
 .bi-score-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:6px 16px}
 .bi-score-row{display:flex;align-items:center;gap:6px}
 .bi-score-name{font-size:12.5px;color:var(--text-2);flex:1;white-space:nowrap}
@@ -1327,7 +1314,7 @@ tbody tr:last-child td { border-bottom: none; }
     background: var(--bg);
     border: 1.5px solid var(--border);
     border-radius: 10px;
-    font: 700 14px/1 var(--font);
+    font: 600 14px/1 var(--font);
     color: var(--text-1);
     cursor: pointer;
     -webkit-tap-highlight-color: transparent;
@@ -1383,7 +1370,7 @@ tbody tr:last-child td { border-bottom: none; }
     transition: background .1s, color .1s;
   }
   .adm-sec-opt:last-child { border-bottom: none; }
-  .adm-sec-opt.active { color: var(--blue); font-weight: 700; background: var(--blue-bg); }
+  .adm-sec-opt.active { color: var(--blue); font-weight: 600; background: var(--blue-bg); }
   .adm-sec-opt:not(.active):active { background: var(--bg); }
 
   /* ── KPI cards: 2-column ─────────────────────────────────────────────── */
@@ -1427,7 +1414,7 @@ tbody tr:last-child td { border-bottom: none; }
     border-bottom: 1px solid var(--border);
     display: flex; align-items: center; justify-content: space-between;
   }
-  .stp-sheet-title { font: 700 17px/1.3 var(--font); color: var(--text-1); }
+  .stp-sheet-title { font: 600 17px/1.3 var(--font); color: var(--text-1); }
   .stp-sheet-close {
     width: 32px; height: 32px; border-radius: 50%; border: none;
     background: var(--bg); color: var(--text-2); font-size: 16px;
@@ -1447,7 +1434,7 @@ tbody tr:last-child td { border-bottom: none; }
   }
   .stp-sheet-confirm {
     flex: 1; height: 52px; background: var(--blue); color: #fff;
-    border: none; border-radius: 14px; font: 700 16px/1 var(--font);
+    border: none; border-radius: 14px; font: 600 16px/1 var(--font);
     cursor: pointer; transition: opacity .15s;
   }
   .stp-sheet-confirm:disabled { opacity: .35; cursor: default; }
@@ -1518,7 +1505,7 @@ tbody tr:last-child td { border-bottom: none; }
   }
   .sched-toolbar .mp-btn, .sched-toolbar .seg-toggle, .sched-toolbar .btn-sm { display: none !important; }
   .week-picker { background: none; border: none; box-shadow: none; padding: 0; justify-content: flex-start; }
-  .week-display { font-size: 18px; font-weight: 800; color: #0F172A; }
+  .week-display { font-size: 18px; font-weight: 600; color: #0F172A; }
   .week-display::before { content: "排班表　"; }
 
   .sched-cards { grid-template-columns: 1fr !important; }
@@ -1543,7 +1530,7 @@ tbody tr:last-child td { border-bottom: none; }
 @media(hover:hover){.lc-custom-chip button:hover{color:var(--blue)}}
 .lc-drop-item{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;transition:background .1s;font-size:13px}
 @media(hover:hover){.lc-drop-item:hover{background:var(--bg)}}
-.lc-drop-code{font-weight:700;color:var(--text-1);font-variant-numeric:tabular-nums;min-width:62px;flex-shrink:0}
+.lc-drop-code{font-weight:600;color:var(--text-1);font-variant-numeric:tabular-nums;min-width:62px;flex-shrink:0}
 .lc-drop-name{flex:1;color:var(--text-2)}
 .lc-drop-tag{font-size:11px;padding:2px 8px;border-radius:999px;white-space:nowrap;flex-shrink:0}
 .lc-drop-tag.in-ch{background:#F0FDF4;color:#059669}
@@ -1556,7 +1543,7 @@ tbody tr:last-child td { border-bottom: none; }
 /* ── LINE notification ──────────────────────────────────────────────────────── */
 .ln-form { padding: 18px 24px; display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
 .ln-field { display: flex; flex-direction: column; gap: 4px; }
-.ln-field label { font-size: 11px; font-weight: 700; color: var(--text-2); }
+.ln-field label { font-size: 11px; font-weight: 600; color: var(--text-2); }
 .ln-input {
   border: 1px solid var(--border-mid);
   border-radius: var(--radius-s);
@@ -1575,7 +1562,7 @@ tbody tr:last-child td { border-bottom: none; }
 .ln-progress-bar { background: var(--blue); height: 100%; width: 0%; transition: width .3s; }
 .ln-detail { font-size: 11px; color: var(--text-3); }
 #nurse-wrap, .srch { display: none !important; }
-.usr-lbl { display:block; font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--text-3); margin-bottom:4px }
+.usr-lbl { display:block; font-size:11px; font-weight:500; color:var(--text-3); margin-bottom:4px }
 .usr-inp { width:100%; padding:7px 10px; border:1px solid var(--border-mid); border-radius:var(--radius-s); background:var(--surface); color:var(--text-1); font-size:13px; font-family:var(--font) }
 .usr-inp:focus { outline:none; border-color:var(--blue) }
 .tb-brand { font-size:14px; font-weight:500; display:flex; align-items:center; gap:0 }
@@ -1613,7 +1600,7 @@ tbody tr:last-child td { border-bottom: none; }
 .tmpl-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px);animation:modal-bd-in .12s ease-out}
 .tmpl-modal{background:var(--surface);border-radius:14px;width:100%;max-width:720px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 64px rgba(0,0,0,.3);animation:modal-in .15s cubic-bezier(.16,1,.3,1)}
 .tmpl-modal-head{padding:20px 24px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;position:sticky;top:0;background:var(--surface);z-index:1}
-.tmpl-modal-title{font-size:16px;font-weight:700;color:var(--text-1);flex:1}
+.tmpl-modal-title{font-size:16px;font-weight:600;color:var(--text-1);flex:1}
 .tmpl-modal-body{padding:20px 24px}
 .tmpl-modal-foot{padding:14px 24px 20px;border-top:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;position:sticky;bottom:0;background:var(--surface);z-index:1}
 .ic{background:none;padding:0;border:none;cursor:pointer;font-family:inherit}
@@ -1660,8 +1647,8 @@ select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px
 .wz-progress{display:flex;gap:4px;margin-bottom:18px}
 .wz-progress span{flex:1;height:4px;border-radius:2px;background:var(--border)}
 .wz-progress span.done{background:var(--blue,#2563EB)}
-.wz-step-label{font-size:11px;font-weight:700;letter-spacing:.06em;color:var(--muted);margin-bottom:4px}
-.wz-q{font-size:16px;font-weight:700;color:var(--text-1);margin-bottom:6px;text-wrap:balance}
+.wz-step-label{font-size:11px;font-weight:500;color:var(--muted);margin-bottom:4px}
+.wz-q{font-size:16px;font-weight:600;color:var(--text-1);margin-bottom:6px;text-wrap:balance}
 .wz-help{font-size:13px;color:var(--sub);line-height:1.65;margin-bottom:16px;max-width:64ch}
 .wz-opts{display:flex;flex-direction:column;gap:8px}
 .wz-opt{display:block;text-align:left;width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;background:var(--card);cursor:pointer;font-family:inherit;transition:border-color .12s,background .12s}
@@ -1679,7 +1666,7 @@ select.ln-field-input{-webkit-appearance:none;appearance:none;padding-right:30px
 .wz-actions .wz-back{margin-right:auto}
 .wz-bot{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;margin-bottom:14px}
 .wz-bot img{width:44px;height:44px;border-radius:50%;object-fit:cover;background:var(--border)}
-.wz-bot-name{font-size:14px;font-weight:700;color:var(--text-1)}
+.wz-bot-name{font-size:14px;font-weight:600;color:var(--text-1)}
 .wz-bot-id{font-size:12px;color:var(--muted)}
 .wz-check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--text-1);margin-bottom:14px;cursor:pointer}
 .ln-adv summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--sub);padding:12px 0;list-style:none}
@@ -1757,7 +1744,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
 /* ── AI Agent: schedule grid ── */
 .schedule-grid{display:grid;gap:8px}
 .sched-row{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:12px}
-.sched-day{font:700 12px/1 var(--font);color:var(--text-2)}
+.sched-day{font:600 12px/1 var(--font);color:var(--text-2)}
 .sched-times{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sched-times .lfi{width:110px;height:var(--ctl-h);padding:0 8px;font-size:12.5px}
 .sched-sep{font-size:12px;color:var(--text-3)}
@@ -1777,7 +1764,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
 .modal{background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);padding:24px;width:min(560px,94vw);max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)}
-.modal-title{font-size:15px;font-weight:700;margin-bottom:18px;color:var(--text-1)}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:18px;color:var(--text-1)}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
 /* ── Reviews: inner tabs ── */
 .rvtabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin:0 0 20px}
@@ -1788,14 +1775,14 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
 /* ── Reviews: stats tiles ── */
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px;margin-bottom:16px}
 .stat-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;text-align:center}
-.stat-tile-num{font-size:28px;font-weight:800;color:var(--blue);font-variant-numeric:tabular-nums;line-height:1}
+.stat-tile-num{font-size:28px;font-weight:600;color:var(--blue);font-variant-numeric:tabular-nums;line-height:1}
 .stat-tile-label{font-size:11.5px;color:var(--text-3);margin-top:4px}
 .stars-display{color:#F59E0B;font-size:16px;letter-spacing:1px}
 /* ── Reviews: send panel ── */
 .send-panel{border:1px solid var(--border);border-radius:var(--radius-s);padding:16px;background:var(--bg);margin-bottom:16px}
-.send-panel-title{font-size:12px;font-weight:700;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.send-panel-title{font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:10px}
 </style>
-<script src="/static/_layout.js?v=99"></script>
+<script src="/static/_layout.js?v=100"></script>
 <script src="/static/admin-auth.js?v=5"></script>
 </head>
 <body>
@@ -1803,7 +1790,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
 <!-- Admin login overlay — shown when sessionStorage has no valid admin token -->
 <div id="adm-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0D1117;align-items:center;justify-content:center">
   <div style="background:#161B27;border:1px solid #262F3E;border-radius:14px;padding:40px;width:360px;max-width:90vw">
-    <div style="font-size:22px;font-weight:700;color:#f3f4f6;margin-bottom:6px">管理員後台</div>
+    <div style="font-size:22px;font-weight:600;color:#f3f4f6;margin-bottom:6px">管理員後台</div>
     <div style="font-size:13px;color:#6b7280;margin-bottom:28px;line-height:1.5">關閉視窗後登入狀態自動清除，不留任何痕跡。</div>
     <form id="adm-login-form">
       <label style="display:block;font-size:12px;color:#9ca3af;margin-bottom:5px">帳號</label>
@@ -1951,7 +1938,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
     <!-- Upload zone -->
     <div class="upload-zone" id="upload-zone" onclick="$('file-input').click()">
       <input type="file" id="file-input" accept=".xlsx">
-      <div class="upload-icon">📊</div>
+      <div class="upload-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
       <div class="upload-label">拖曳 xlsx 檔案至此，或點擊上傳</div>
       <div class="upload-sub">院所明申報暨代檢費對帳單</div>
       <div id="upload-status" style="margin-top:10px;font-size:12.5px;color:var(--text-3)"></div>
@@ -1975,7 +1962,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
       </div>
     </div>
     <div id="doctor-recency-warn" style="display:none;margin-bottom:14px;padding:10px 14px;background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.35);border-radius:8px;font-size:13px;color:var(--text-2);line-height:1.5">
-      ⚠️ 此月份尚未滿90天，後續IC檔案還未到齊，回診率會顯示 <strong>0%</strong> 屬正常現象。<br>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="vertical-align:-2px;color:var(--amber)"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg> 此月份尚未滿90天，後續IC檔案還未到齊，回診率會顯示 <strong>0%</strong> 屬正常現象。<br>
       建議點「←」切換到 <strong>3個月前或更早</strong> 的月份，才能看到完整的回診率數據。
     </div>
     <div class="kpi-row" id="doctor-kpis"></div>
@@ -2124,9 +2111,9 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
         </div>
         <div id="sal-import-panel" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-s);padding:12px 14px;margin-top:8px;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">護理師</span>
+            <span style="font-size:11px;font-weight:500;color:var(--muted)">護理師</span>
             <span id="sal-import-nurse" style="font-size:13px;font-weight:600;color:var(--text-1)">—</span>
-            <span style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em">月份</span>
+            <span style="font-size:11px;font-weight:500;color:var(--muted)">月份</span>
             <div class="month-picker" style="box-shadow:none;border-color:var(--border)">
               <button class="mp-btn" onclick="stepImportMonth(-1)">&#8592;</button>
               <span id="sal-import-month" style="font-size:13px;font-weight:600;color:var(--text-1);min-width:90px;text-align:center">—</span>
@@ -2233,7 +2220,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
           <!-- Result summary -->
           <div class="bi-result-bar">
             <span style="font-size:12px;color:var(--text-2)">平均分數 <strong id="bi-avg">100.0%</strong></span>
-            <span style="font-size:13px;font-weight:700;color:var(--text-2)">計算結果 <span id="bi-result" style="color:var(--blue)">—</span> <span style="font-size:11px;font-weight:400;color:var(--text-3)">（自動套用）</span></span>
+            <span style="font-size:13px;font-weight:600;color:var(--text-2)">計算結果 <span id="bi-result" style="color:var(--blue)">—</span> <span style="font-size:11px;font-weight:400;color:var(--text-3)">（自動套用）</span></span>
           </div>
         </div>
         <div class="sal-row">
@@ -2595,7 +2582,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
       <!-- Search / add bar -->
       <div class="card" style="margin-bottom:14px">
         <div style="padding:16px 20px 14px">
-          <div style="font-size:13px;font-weight:700;color:var(--text-1);margin-bottom:3px">搜尋並新增代碼</div>
+          <div style="font-size:13px;font-weight:600;color:var(--text-1);margin-bottom:3px">搜尋並新增代碼</div>
           <div style="font-size:12px;color:var(--text-3);margin-bottom:10px">輸入 NHI 醫令代碼（如 09001C）或中文名稱，找到後點擊加入自訂清單</div>
           <div style="position:relative">
             <input id="lc-search" type="text" autocomplete="off" placeholder="搜尋代碼或名稱…"
@@ -2817,7 +2804,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
   <!-- ── LINE 管理 ── -->
   <section id="line-manage" class="section">
     <div style="margin-bottom:20px">
-      <div style="font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:2px">LINE 官方帳號管理</div>
+      <div style="font-size:18px;font-weight:600;color:var(--text-1);margin-bottom:2px">LINE 官方帳號管理</div>
       <div style="font-size:13px;color:var(--muted)">設定 LINE OA 憑證、管理病患綁定、及匯入綁定資料</div>
     </div>
 
@@ -2896,7 +2883,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
     <div class="ln-panel" id="lnp-bindings">
       <div style="display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap">
         <div class="card" style="flex:1;min-width:120px;padding:14px 18px">
-          <div style="font-size:26px;font-weight:700;color:var(--text-1)" id="ln-stat-bound">—</div>
+          <div style="font-size:26px;font-weight:600;color:var(--text-1)" id="ln-stat-bound">—</div>
           <div style="font-size:12px;color:var(--muted);margin-top:2px">已綁定病患</div>
         </div>
       </div>
@@ -2984,7 +2971,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
   <section id="line-templates" class="section">
     <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:16px">
       <div>
-        <div style="font-size:18px;font-weight:700;color:var(--text-1);margin-bottom:4px">訊息範本管理</div>
+        <div style="font-size:18px;font-weight:600;color:var(--text-1);margin-bottom:4px">訊息範本管理</div>
         <div style="font-size:13px;color:var(--muted);line-height:1.5">管理 LINE 推播訊息範本。病患完成綁定後，系統依類型自動傳送對應範本。<br>可使用 <code style="background:var(--code-bg);padding:1px 5px;border-radius:3px;font-size:11.5px">{患者姓名}</code> 插入患者姓名；留空則套用系統預設訊息。</div>
       </div>
       <button class="btn-sm primary" onclick="lnNewPreset()" style="flex-shrink:0;white-space:nowrap">+ 新增範本</button>
@@ -3392,7 +3379,7 @@ Layout.init({ activePage: 'admin' });
   el.innerHTML =
     '<div class="tb-brand"><strong>診所追蹤</strong><span style="color:var(--text-3);margin:0 7px;font-weight:300">|</span><span style="color:var(--text-2)">管理員後台</span></div>' +
     '<div class="tbr"><button class="ib" id="btn-theme"></button>' +
-    '<div class="av" style="background:var(--blue);color:#fff;font-size:13px;font-weight:700;cursor:default;flex-shrink:0;pointer-events:none">管</div></div>';
+    '<div class="av" style="background:var(--blue);color:#fff;font-size:13px;font-weight:600;cursor:default;flex-shrink:0;pointer-events:none">管</div></div>';
   _updateIcon();
   document.getElementById('btn-theme').addEventListener('click', function() {
     var t = _dark() ? 'light' : 'dark';
@@ -3553,9 +3540,9 @@ function renderNurses(stats) {
 
   // KPIs
   const kpiDefs = [
-    { label: '已通知',   value: tot.contacted, cls: 'blue'  },
+    { label: '已通知',   value: tot.contacted, cls: ''      },
     { label: '再次通知', value: tot.called,    cls: ''      },
-    { label: '完成MSPT', value: tot.mspt,      cls: 'green' },
+    { label: '完成MSPT', value: tot.mspt,      cls: ''      },
     { label: '手動取藥', value: tot.pickup,    cls: ''      },
     { label: '暫緩',     value: tot.held,      cls: ''      },
   ];
@@ -3574,7 +3561,7 @@ function renderNurses(stats) {
   );
 
   if (!nurses.length) {
-    $('nurses-body').innerHTML = emptyState('📭', '本月尚無紀錄', '');
+    $('nurses-body').innerHTML = emptyState('', '本月尚無紀錄', '');
     return;
   }
 
@@ -3644,7 +3631,7 @@ function renderDoctors(doctors) {
   if (!doctors.length) {
     $('doctor-kpis').innerHTML = '';
     $('doctors-body').innerHTML = emptyState(
-      '📊', '尚無資料',
+      '', '尚無資料',
       '請確認 sync_agent 已在診所電腦執行，資料同步後即會顯示'
     );
     return;
@@ -3656,7 +3643,7 @@ function renderDoctors(doctors) {
   const avgLevel = totalPts ? rateLevel(+avg) : '';
 
   $('doctor-kpis').innerHTML = [
-    { label: '整體回診率', value: totalPts ? `${avg}%` : '—', cls: avgLevel === 'hi' ? 'green' : avgLevel === 'md' ? 'amber' : 'blue' },
+    { label: '整體回診率', value: totalPts ? `${avg}%` : '—', cls: avgLevel === 'hi' ? 'green' : avgLevel === 'md' ? 'amber' : '' },
     { label: '總看診人次', value: totalPts, cls: '' },
     { label: '已回診人次', value: totalRet, cls: '' },
   ].map(k =>
@@ -3709,7 +3696,7 @@ async function loadUsers() {
 
 function renderUsers(users) {
   if (!users.length) {
-    $('users-body').innerHTML = emptyState('👤', '尚無使用者', '');
+    $('users-body').innerHTML = emptyState('', '尚無使用者', '');
     return;
   }
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -3905,7 +3892,7 @@ async function loadProfiles() {
 
 function renderProfiles(nurses) {
   if (!nurses.length) {
-    $('profiles-body').innerHTML = emptyState('👥', '尚無護理師', '');
+    $('profiles-body').innerHTML = emptyState('', '尚無護理師', '');
     return;
   }
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
@@ -3983,7 +3970,7 @@ async function loadPharmacists() {
 
 function renderPharmacists(pharmacists) {
   if (!pharmacists.length) {
-    $('pharmacists-body').innerHTML = emptyState('💊', '尚無藥師', '');
+    $('pharmacists-body').innerHTML = emptyState('', '尚無藥師', '');
     return;
   }
   const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/'/g,'&#39;');
@@ -4050,15 +4037,15 @@ async function removePharmacistPrompt(name) {
 
 // ── UI helpers ────────────────────────────────────────────────────────────────
 function emptyState(icon, title, sub) {
+  // icon is ignored: empty states are text only (no emoji)
   return `<div class="empty">
-    <div class="empty-icon">${icon}</div>
     <div class="empty-title">${title}</div>
     ${sub ? `<div class="empty-sub">${sub}</div>` : ''}
   </div>`;
 }
 function errState(msg) {
   return `<div class="empty err">
-    <div class="empty-icon">⚠</div>
+    <div class="empty-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
     <div class="empty-title">載入失敗</div>
     <div class="empty-sub">${msg}</div>
   </div>`;
@@ -4154,7 +4141,7 @@ async function doUpload(file) {
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${res.status}`);
     }
-    uploadStatus.textContent = '上傳成功！';
+    uploadStatus.textContent = '已上傳';
     await loadLabReport();
   } catch(e) {
     uploadStatus.textContent = `上傳失敗：${e.message}`;
@@ -4285,10 +4272,10 @@ async function loadBonus() {
     if (nurses.length) {
       nurses.forEach(addBonusCard);
     } else {
-      grid.innerHTML = emptyState('📋', '尚無護理師名單', '請點擊「新增護理師」手動加入');
+      grid.innerHTML = emptyState('', '尚無護理師名單', '請點擊「新增護理師」手動加入');
     }
   } catch(e) {
-    grid.innerHTML = emptyState('📋', '無法載入護理師名單', '請點擊「新增護理師」手動加入');
+    grid.innerHTML = emptyState('', '無法載入護理師名單', '請點擊「新增護理師」手動加入');
   }
 }
 
@@ -4683,7 +4670,7 @@ async function loadLineLog() {
 
 function renderLineLog(rows) {
   if (!rows.length) {
-    $('linenotify-body').innerHTML = emptyState('📨', '尚無發送記錄', '');
+    $('linenotify-body').innerHTML = emptyState('', '尚無發送記錄', '');
     return;
   }
   const trs = rows.map(r => {
@@ -4841,7 +4828,7 @@ async function togglePublish() {
 
 function renderGrid(nurses, pharmacists = []) {
   if (!nurses.length && !pharmacists.length) {
-    $('sched-grid').innerHTML = emptyState('🗓️', '尚無排班人員名單', '');
+    $('sched-grid').innerHTML = emptyState('', '尚無排班人員名單', '');
     return;
   }
 
@@ -4950,7 +4937,7 @@ function nurseColor(name) {
 
 function renderCoverage(nurses, pharmacists = []) {
   if (!nurses.length && !pharmacists.length) {
-    $('sched-grid').innerHTML = emptyState('🗓️', '尚無排班人員名單', '');
+    $('sched-grid').innerHTML = emptyState('', '尚無排班人員名單', '');
     return;
   }
 
@@ -6689,16 +6676,16 @@ function printPhPaySlip() {
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif; padding:40px 48px; color:#111; font-size:14px; }
-  h1 { font-size:20px; font-weight:700; text-align:center; letter-spacing:.08em; margin-bottom:6px; }
+  h1 { font-size:20px; font-weight:600; text-align:center; letter-spacing:.08em; margin-bottom:6px; }
   .sub { text-align:center; font-size:12px; color:#666; margin-bottom:28px; letter-spacing:.04em; }
   .meta { display:flex; gap:32px; margin-bottom:20px; padding-bottom:12px; border-bottom:2px solid #111; }
   .meta-item { display:flex; flex-direction:column; gap:2px; }
-  .meta-lbl { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#666; }
-  .meta-val { font-size:15px; font-weight:700; }
+  .meta-lbl { font-size:10px; color:#666; }
+  .meta-val { font-size:15px; font-weight:600; }
   table { width:100%; border-collapse:collapse; }
   td { padding:9px 0; border-bottom:1px solid #e5e7eb; }
   td:last-child { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
-  .total-row td { padding-top:14px; border-bottom:none; font-size:16px; font-weight:700; border-top:2px solid #111; }
+  .total-row td { padding-top:14px; border-bottom:none; font-size:16px; font-weight:600; border-top:2px solid #111; }
   .sigs { display:flex; gap:48px; margin-top:52px; }
   .sig { flex:1; }
   .sig-line { border-bottom:1px solid #555; height:36px; margin-bottom:8px; }
@@ -6971,15 +6958,15 @@ body{font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif;color:#
 .cut{border-top:1px dashed #bbb;margin:0 4mm}
 .slip{padding:5mm 2mm 3mm;break-inside:avoid}
 .sh{display:flex;gap:10px;align-items:baseline;margin-bottom:3px}
-.st{font-size:12px;font-weight:700;letter-spacing:.08em}
-.sn{font-size:12px;font-weight:700}
+.st{font-size:12px;font-weight:600;letter-spacing:.08em}
+.sn{font-size:12px;font-weight:600}
 .sm{font-size:10px;color:#555}
 table{width:100%;border-collapse:collapse;margin-bottom:3px}
 th,td{border:1px solid #aaa;padding:2px 4px;text-align:center;white-space:nowrap;font-size:9px}
 th{background:#f0f0f0;font-weight:600}
 th.g{background:#e0e0e0}
 td{font-variant-numeric:tabular-nums}
-td.tot{font-weight:700}
+td.tot{font-weight:600}
 td.sig,th.sigh{min-width:32px}
 .sigs{display:flex;gap:24px;font-size:9px;color:#555;margin-top:2px}
 .sl{display:inline-block;width:60px;border-bottom:1px solid #999;margin-left:4px;vertical-align:bottom}
@@ -7571,16 +7558,16 @@ function printPaySlip() {
 <style>
   * { margin:0; padding:0; box-sizing:border-box; }
   body { font-family:system-ui,-apple-system,'Microsoft JhengHei',sans-serif; padding:40px 48px; color:#111; font-size:14px; }
-  h1 { font-size:20px; font-weight:700; text-align:center; letter-spacing:.08em; margin-bottom:6px; }
+  h1 { font-size:20px; font-weight:600; text-align:center; letter-spacing:.08em; margin-bottom:6px; }
   .sub { text-align:center; font-size:12px; color:#666; margin-bottom:28px; letter-spacing:.04em; }
   .meta { display:flex; gap:32px; margin-bottom:20px; padding-bottom:12px; border-bottom:2px solid #111; }
   .meta-item { display:flex; flex-direction:column; gap:2px; }
-  .meta-lbl { font-size:10px; text-transform:uppercase; letter-spacing:.08em; color:#666; }
-  .meta-val { font-size:15px; font-weight:700; }
+  .meta-lbl { font-size:10px; color:#666; }
+  .meta-val { font-size:15px; font-weight:600; }
   table { width:100%; border-collapse:collapse; }
   td { padding:9px 0; border-bottom:1px solid #e5e7eb; }
   td:last-child { text-align:right; font-variant-numeric:tabular-nums; font-weight:600; }
-  .total-row td { padding-top:14px; border-bottom:none; font-size:16px; font-weight:700; border-top:2px solid #111; }
+  .total-row td { padding-top:14px; border-bottom:none; font-size:16px; font-weight:600; border-top:2px solid #111; }
   .sigs { display:flex; gap:48px; margin-top:52px; }
   .sig { flex:1; }
   .sig-line { border-bottom:1px solid #555; height:36px; margin-bottom:8px; }
@@ -7858,11 +7845,11 @@ function lnOpenEditModal(id) {
       '<div class="tmpl-modal-body">' +
         '<div style="display:flex;gap:12px;margin-bottom:18px">' +
           '<div style="flex:1">' +
-            '<label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase">範本名稱</label>' +
+            '<label style="font-size:11px;font-weight:500;color:var(--muted);display:block;margin-bottom:5px">範本名稱</label>' +
             '<input id="ln-ed-name" class="ln-field-input" type="text" value="'+_lnEsc(p.name)+'" placeholder="例：慢性病追蹤提醒">' +
           '</div>' +
           '<div>' +
-            '<label style="font-size:11px;font-weight:600;color:var(--muted);display:block;margin-bottom:5px;letter-spacing:.05em;text-transform:uppercase">類型</label>' +
+            '<label style="font-size:11px;font-weight:500;color:var(--muted);display:block;margin-bottom:5px">類型</label>' +
             '<select id="ln-ed-type" class="ln-field-input" style="height:36px" onchange="lnTypeChanged()">'+typeOptions+'</select>' +
             '<div id="ln-ed-custom-row" style="margin-top:8px;'+(isCustomType?'':'display:none')+'">' +
               '<input id="ln-ed-custom-type" class="ln-field-input" type="text" placeholder="輸入自訂類型名稱" value="'+_lnEsc(customTypeVal)+'">' +
@@ -7871,7 +7858,7 @@ function lnOpenEditModal(id) {
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">' +
           '<div>' +
-            '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">訊息內容</div>' +
+            '<div style="font-size:11px;font-weight:500;color:var(--muted);margin-bottom:8px">訊息內容</div>' +
             '<textarea id="ln-ed-content" class="ln-field-input" placeholder="（留空使用預設訊息）" oninput="lnEditorUpdate()">'+_lnEsc(p.content)+'</textarea>' +
             '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">' +
               '<button onclick="lnInsertVarEditor()" style="background:var(--badge-blue-bg);border:1px solid var(--badge-blue-bd);border-radius:4px;padding:3px 9px;font-size:12px;cursor:pointer;color:var(--badge-blue-c);font-family:inherit">{患者姓名}</button>' +
@@ -7879,11 +7866,11 @@ function lnOpenEditModal(id) {
             '</div>' +
           '</div>' +
           '<div>' +
-            '<div style="font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:8px">LINE 預覽</div>' +
+            '<div style="font-size:11px;font-weight:500;color:var(--muted);margin-bottom:8px">LINE 預覽</div>' +
             '<div style="background:#7EB2D7;border-radius:12px;padding:16px 14px 14px">' +
               '<div style="font-size:11px;color:rgba(255,255,255,.75);text-align:center;margin-bottom:12px">今天</div>' +
               '<div style="display:flex;align-items:flex-start;gap:9px">' +
-                '<div style="width:36px;height:36px;border-radius:50%;background:#06C755;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px">🏥</div>' +
+                '<div style="width:36px;height:36px;border-radius:50%;background:#06C755;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:17px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg></div>' +
                 '<div style="max-width:calc(100% - 52px)">' +
                   '<div style="font-size:11px;color:rgba(255,255,255,.85);margin-bottom:5px">診所健康提醒</div>' +
                   '<div id="ln-ed-preview" style="background:#fff;border-radius:2px 12px 12px 12px;padding:10px 13px;font-size:13px;color:#111;line-height:1.65;word-break:break-all;white-space:pre-wrap;box-shadow:0 1px 4px rgba(0,0,0,.18)">'+previewText+'</div>' +
@@ -8306,7 +8293,7 @@ function wzRender(override) {
   else if (step === 'done' || step === 'summary') {
     var liffUrl = s.liff_id ? 'https://liff.line.me/' + s.liff_id : '';
     var friends = (s.friend_count === null || s.friend_count === undefined) ? null : s.friend_count;
-    h = (step === 'done' ? '<div class="wz-ok">設定完成！LINE 提醒已啟用。</div>' : '') +
+    h = (step === 'done' ? '<div class="wz-ok">設定完成，LINE 提醒已啟用</div>' : '') +
       (s.bot ? '<div class="wz-bot">' + (s.bot.picture_url ? '<img src="' + esc(s.bot.picture_url) + '" alt="">' : '') +
         '<div><div class="wz-bot-name">' + esc(s.bot.display_name) + '</div><div class="wz-bot-id">' + esc(s.bot.basic_id) +
         ' · 已綁定 ' + (s.bound_count || 0) + ' 位' + (friends !== null ? ' / 好友 ' + friends + ' 位' : '') + '</div></div></div>' : '') +
@@ -8694,7 +8681,7 @@ async function annLoad() {
     el.innerHTML = data.map(a => `
       <div style="border-top:1px solid var(--border-mid);padding:12px 0;display:flex;flex-direction:column;gap:6px" data-ann-id="${a.id}">
         <div style="display:flex;align-items:flex-start;gap:10px">
-          <span style="font-size:13px;font-weight:700;color:var(--text-1);flex:1">${escH(a.title)}</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text-1);flex:1">${escH(a.title)}</span>
           <button class="btn-sm" style="background:var(--red,#dc2626);color:#fff;border-color:var(--red,#dc2626)" onclick="annClose(${a.id})">關閉公告</button>
         </div>
         ${a.body ? `<div style="font-size:12.5px;color:var(--text-2);white-space:pre-wrap">${escH(a.body)}</div>` : ''}
@@ -8777,7 +8764,7 @@ async function dnLoad() {
     el.innerHTML = data.map(n => `
       <div style="border-top:1px solid var(--border-mid);padding:12px 0;display:flex;flex-direction:column;gap:6px">
         <div style="display:flex;align-items:flex-start;gap:10px">
-          <span style="font-size:13px;font-weight:700;color:var(--text-1);flex:1">${escH(n.title)}</span>
+          <span style="font-size:13px;font-weight:600;color:var(--text-1);flex:1">${escH(n.title)}</span>
           <button class="btn-sm" style="background:var(--red,#dc2626);color:#fff;border-color:var(--red,#dc2626)" onclick="dnDelete(${n.id})">刪除</button>
         </div>
         <div style="font-size:12.5px;color:var(--text-2);white-space:pre-wrap">${escH(n.content)}</div>
@@ -9175,7 +9162,7 @@ async function loadConversations() {
     const msgs = info.msgs.map(m => `
       <div class="conv-meta">${m.role==='user'?'病患':'AI'} · ${esc((m.created_at||'').slice(11,16))}</div>
       <div class="conv-msg ${m.role}">${esc(m.content)}</div>`).join('');
-    return `<div style="margin-bottom:20px"><div style="font-size:12px;font-weight:700;color:var(--text-2);margin-bottom:8px">${label}</div>${msgs}</div>`;
+    return `<div style="margin-bottom:20px"><div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:8px">${label}</div>${msgs}</div>`;
   }).join('<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">');
 }
 

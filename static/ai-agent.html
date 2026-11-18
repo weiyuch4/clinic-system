@@ -43,7 +43,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);font-size:14px
 .topbar{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:10}
 .topbar-back{display:inline-flex;align-items:center;gap:6px;font-size:13px;color:var(--t2);text-decoration:none;padding:6px 10px;border-radius:var(--r-s);border:1px solid var(--border);background:var(--bg);cursor:pointer;transition:border-color .12s,color .12s}
 @media(hover:hover){.topbar-back:hover{border-color:var(--blue);color:var(--blue)}}
-.topbar-title{font-size:15px;font-weight:700;color:var(--t1)}
+.topbar-title{font-size:15px;font-weight:600;color:var(--t1)}
 
 /* ── Tabs ─────────────────────────────────────────────────────────────────── */
 .tabs{display:flex;gap:0;border-bottom:1px solid var(--border);background:var(--card);padding:0 24px;position:sticky;top:52px;z-index:9}
@@ -58,7 +58,7 @@ body{font-family:var(--font);background:var(--bg);color:var(--t1);font-size:14px
 /* ── Card ─────────────────────────────────────────────────────────────────── */
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow-s);overflow:hidden;margin-bottom:16px}
 .card-head{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
-.card-title{font-size:13.5px;font-weight:700;color:var(--t1);flex:1}
+.card-title{font-size:13.5px;font-weight:600;color:var(--t1);flex:1}
 .card-body{padding:16px 24px 20px}
 
 /* ── Form ─────────────────────────────────────────────────────────────────── */
@@ -94,7 +94,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
 /* ── Schedule grid ────────────────────────────────────────────────────────── */
 .schedule-grid{display:grid;gap:8px}
 .sched-row{display:grid;grid-template-columns:60px 1fr;align-items:center;gap:12px}
-.sched-day{font:700 12px/1 var(--font);color:var(--t2);text-transform:uppercase;letter-spacing:.04em}
+.sched-day{font:500 12px/1 var(--font);color:var(--t2);}
 .sched-times{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sched-times .lfi{width:110px;height:34px;padding:6px 8px;font-size:12.5px}
 .sched-sep{font-size:12px;color:var(--t3)}
@@ -117,7 +117,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:36p
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:100;align-items:center;justify-content:center}
 .modal-bg.open{display:flex}
 .modal{background:var(--card);border-radius:var(--r);border:1px solid var(--border);padding:24px;width:min(560px,94vw);max-height:90vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.18)}
-.modal-title{font-size:15px;font-weight:700;margin-bottom:18px}
+.modal-title{font-size:15px;font-weight:600;margin-bottom:18px}
 .modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:20px}
 
 /* ── Toast ────────────────────────────────────────────────────────────────── */
@@ -584,7 +584,7 @@ async function loadConversations() {
       <div class="conv-msg ${m.role}">${_esc(m.content)}</div>
     `).join('');
     return `<div style="margin-bottom:20px">
-      <div style="font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px">${label}</div>
+      <div style="font-size:12px;font-weight:600;color:var(--t2);margin-bottom:8px">${label}</div>
       ${msgs}
     </div>`;
   }).join('<hr style="border:none;border-top:1px solid var(--border);margin:16px 0">');

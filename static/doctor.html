@@ -11,30 +11,58 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>醫師工作台</title>
+<script>try{var _t=localStorage.getItem('theme');if(_t)document.documentElement.setAttribute('data-theme',_t);}catch(e){}</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
 
 :root {
-  --bg:        #F1F5F9;
+  /* Same palette as the nurse pages (_layout.css) so the doctor's screen reads as the same product */
+  --bg:        #F0EFED;
   --surface:   #FFFFFF;
-  --border:    #E2E8F0;
-  --border-mid:#CBD5E1;
-  --text-1:    #0F172A;
-  --text-2:    #475569;
-  --text-3:    #94A3B8;
+  --border:    #E5E7EB;
+  --border-mid:#D1D5DB;
+  --text-1:    #111827;
+  --text-2:    #4B5563;
+  --text-3:    #596172;
   --blue:      #2563EB;
   --blue-bg:   #EFF6FF;
   --emerald:   #059669;
   --emerald-bg:#F0FDF4;
-  --amber:     #D97706;
+  --emerald-bd:#BBF7D0;
+  --amber:     #B45309;
   --amber-bg:  #FFFBEB;
+  --amber-bd:  #FCD34D;
+  --amber-tag: #FEF3C7;
+  --amber-ink: #92400E;
   --red:       #DC2626;
-  --header:    #0F172A;
+  --g0:        #F3F4F6;
+  --shim-a:    #EEF0F2;
+  --shim-b:    #E2E5E9;
   --radius-s:  6px;
   --radius:    10px;
   --radius-l:  14px;
-  --shadow-s:  0 1px 2px rgba(0,0,0,.06), 0 1px 3px rgba(0,0,0,.04);
-  --font:      -apple-system, 'Microsoft JhengHei', 'Segoe UI', system-ui, sans-serif;
+  --shadow-s:  0 1px 3px rgba(0,0,0,.07), 0 0 1px rgba(0,0,0,.04);
+  --font:      system-ui, -apple-system, 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme=light]) {
+  --bg:#0D1117; --surface:#161B27; --border:#262F3E; --border-mid:#374558;
+  --text-1:#ECE9E3; --text-2:#9CA3AF; --text-3:#8896A5;
+  --blue:#60A5FA; --blue-bg:rgba(37,99,235,.14);
+  --emerald:#34D399; --emerald-bg:rgba(52,211,153,.10); --emerald-bd:rgba(52,211,153,.30);
+  --amber:#FBBF24; --amber-bg:rgba(245,158,11,.10); --amber-bd:rgba(245,158,11,.35);
+  --amber-tag:rgba(245,158,11,.16); --amber-ink:#FCD34D;
+  --red:#F87171; --g0:#1F2937; --shim-a:#1A2130; --shim-b:#232C3D;
+  --shadow-s:0 1px 4px rgba(0,0,0,.4);
+}}
+:root[data-theme=dark] {
+  --bg:#0D1117; --surface:#161B27; --border:#262F3E; --border-mid:#374558;
+  --text-1:#ECE9E3; --text-2:#9CA3AF; --text-3:#8896A5;
+  --blue:#60A5FA; --blue-bg:rgba(37,99,235,.14);
+  --emerald:#34D399; --emerald-bg:rgba(52,211,153,.10); --emerald-bd:rgba(52,211,153,.30);
+  --amber:#FBBF24; --amber-bg:rgba(245,158,11,.10); --amber-bd:rgba(245,158,11,.35);
+  --amber-tag:rgba(245,158,11,.16); --amber-ink:#FCD34D;
+  --red:#F87171; --g0:#1F2937; --shim-a:#1A2130; --shim-b:#232C3D;
+  --shadow-s:0 1px 4px rgba(0,0,0,.4);
 }
 
 body {
@@ -50,26 +78,26 @@ body {
 /* ── Topbar ── */
 .topbar {
   position: sticky; top: 0; z-index: 100;
-  background: var(--header);
+  background: var(--surface); border-bottom: 1px solid var(--border);
   height: 56px; padding: 0 32px;
   display: flex; align-items: center; gap: 16px;
 }
 .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; }
 .brand-icon {
-  width: 30px; height: 30px; background: var(--emerald);
+  width: 28px; height: 28px; background: var(--g0);
   border-radius: 7px; display: grid; place-items: center;
-  font-size: 13px; font-weight: 800; color: #fff; flex-shrink: 0;
+  font-size: 13px; font-weight: 600; color: var(--text-1); flex-shrink: 0;
 }
-.brand-name { font-size: 14px; font-weight: 600; color: rgba(255,255,255,.9); white-space: nowrap; }
-.topbar-divider { width: 1px; height: 18px; background: rgba(255,255,255,.12); }
-.topbar-sub { font-size: 12px; color: rgba(255,255,255,.35); }
+.brand-name { font-size: 14.5px; font-weight: 600; color: var(--text-1); white-space: nowrap; }
+.topbar-divider { width: 1px; height: 18px; background: var(--border); }
+.topbar-sub { font-size: 12px; color: var(--text-3); }
 .topbar-spacer { flex: 1; }
 .topbar-link {
-  font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,.5);
+  font-size: 12.5px; font-weight: 500; color: var(--text-2);
   text-decoration: none; padding: 5px 10px; border-radius: var(--radius-s);
   transition: background .12s, color .12s;
 }
-@media(hover:hover){.topbar-link:hover{ background: rgba(255,255,255,.08); color: rgba(255,255,255,.85); }}
+@media(hover:hover){.topbar-link:hover{ background: var(--g0); color: var(--text-1); }}
 
 /* ── Tab bar ── */
 .tabbar {
@@ -113,7 +141,7 @@ body {
   transition: background .12s, border-color .12s, color .12s;
 }
 @media(hover:hover){.notif-btn:hover{ background: var(--blue-bg); border-color: var(--blue); color: var(--blue); }}
-.notif-btn.granted { color: var(--emerald); border-color: #BBF7D0; background: var(--emerald-bg); cursor: default; }
+.notif-btn.granted { color: var(--emerald); border-color: var(--emerald-bd); background: var(--emerald-bg); cursor: default; }
 .notif-btn.denied  { color: var(--text-3);  border-color: var(--border); background: var(--bg); cursor: not-allowed; }
 
 /* ── Layout ── */
@@ -142,15 +170,15 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
   display: flex; align-items: center; gap: 10px;
   background: var(--bg);
 }
-.queue-col-title { font-size: 13px; font-weight: 700; }
+.queue-col-title { font-size: 13px; font-weight: 600; }
 .queue-count {
-  font-size: 11px; font-weight: 700;
+  font-size: 11px; font-weight: 600;
   background: var(--border); color: var(--text-2);
   border-radius: 999px; padding: 2px 8px;
   min-width: 24px; text-align: center;
   font-variant-numeric: tabular-nums;
 }
-.queue-count.has { background: var(--blue); color: #fff; }
+.queue-count.has { background: var(--blue-bg); color: var(--blue); }
 .col-spacer { flex: 1; }
 .btn-clear {
   font-size: 11.5px; font-weight: 600;
@@ -173,21 +201,21 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
   min-width: 32px; height: 32px;
   border-radius: 50%;
   background: var(--blue-bg); color: var(--blue);
-  font-size: 13px; font-weight: 800;
+  font-size: 13px; font-weight: 600;
   display: grid; place-items: center;
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;
 }
 .queue-num.no-num { background: var(--bg); color: var(--text-3); font-size: 11px; }
 .queue-info { flex: 1; min-width: 0; }
-.queue-name { font-size: 14px; font-weight: 700; margin-bottom: 4px; }
+.queue-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
 .allergy-inline {
   display: flex; flex-wrap: wrap; gap: 4px; margin-top: 5px;
 }
 .atag {
   font-size: 11.5px; font-weight: 600;
-  background: #FEF3C7; border: 1px solid #FCD34D;
-  color: #92400E; border-radius: 999px; padding: 2px 8px;
+  background: var(--amber-tag); border: 1px solid var(--amber-bd);
+  color: var(--amber-ink); border-radius: 999px; padding: 2px 8px;
 }
 .no-allergy-inline {
   font-size: 12px; color: var(--emerald); font-weight: 600;
@@ -196,7 +224,7 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
 .unknown-allergy {
   font-size: 12px; color: var(--text-3); margin-top: 4px;
 }
-.warn-icon { font-size: 13px; }
+.warn-icon { display: inline-flex; color: var(--amber); }
 
 /* done card */
 .done-card {
@@ -220,7 +248,6 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
   text-align: center;
   color: var(--text-3);
 }
-.col-empty-icon { font-size: 26px; margin-bottom: 8px; }
 .col-empty-text { font-size: 13px; }
 
 /* ── Search tab ── */
@@ -257,10 +284,10 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
 .pat-avatar {
   width: 40px; height: 40px; border-radius: 50%;
   background: var(--blue-bg); color: var(--blue);
-  font-size: 16px; font-weight: 700;
+  font-size: 16px; font-weight: 600;
   display: grid; place-items: center; flex-shrink: 0;
 }
-.pat-name { font-size: 16px; font-weight: 700; }
+.pat-name { font-size: 16px; font-weight: 600; }
 .pat-meta { font-size: 12px; color: var(--text-3); margin-top: 2px; font-variant-numeric: tabular-nums; }
 .pat-spacer { flex: 1; }
 .pat-id {
@@ -271,21 +298,21 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
 }
 .allergy-banner {
   margin: 0 20px 16px;
-  background: var(--amber-bg); border: 1.5px solid #FCD34D;
+  background: var(--amber-bg); border: 1px solid var(--amber-bd);
   border-radius: var(--radius); padding: 14px 16px;
   display: flex; gap: 12px; align-items: flex-start;
 }
-.allergy-icon { font-size: 20px; flex-shrink: 0; line-height: 1.2; }
-.allergy-title { font-size: 12px; font-weight: 700; color: var(--amber); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.allergy-icon { display: inline-flex; flex-shrink: 0; color: var(--amber); padding-top: 1px; }
+.allergy-title { font-size: 13px; font-weight: 600; color: var(--amber); margin-bottom: 6px; }
 .allergy-tags { display: flex; flex-wrap: wrap; gap: 6px; }
 .allergy-tag {
-  background: #FEF3C7; border: 1px solid #FCD34D;
-  color: #92400E; font-size: 13px; font-weight: 600;
+  background: var(--amber-tag); border: 1px solid var(--amber-bd);
+  color: var(--amber-ink); font-size: 13px; font-weight: 600;
   padding: 3px 10px; border-radius: 999px;
 }
 .no-allergy-card {
   margin: 0 20px 16px;
-  background: var(--emerald-bg); border: 1.5px solid #BBF7D0;
+  background: var(--emerald-bg); border: 1px solid var(--emerald-bd);
   border-radius: var(--radius); padding: 11px 16px;
   font-size: 13px; font-weight: 600; color: var(--emerald);
   display: flex; align-items: center; gap: 8px;
@@ -293,7 +320,6 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
 .empty {
   padding: 60px 24px; text-align: center; color: var(--text-3);
 }
-.empty-icon { font-size: 36px; margin-bottom: 14px; }
 .empty-title { font-size: 15px; font-weight: 600; color: var(--text-2); margin-bottom: 5px; }
 .empty-sub { font-size: 13px; }
 
@@ -302,7 +328,7 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
   to   { background-position:  500px 0; }
 }
 .shim {
-  background: linear-gradient(90deg, #EEF2F7 25%, #E2E8F0 50%, #EEF2F7 75%);
+  background: linear-gradient(90deg, var(--shim-a) 25%, var(--shim-b) 50%, var(--shim-a) 75%);
   background-size: 500px 100%; animation: shimmer 1.3s infinite linear;
   border-radius: 4px; display: inline-block;
 }
@@ -351,7 +377,6 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
         </div>
         <div id="waiting-list">
           <div class="col-empty">
-            <div class="col-empty-icon">🕐</div>
             <div class="col-empty-text">正在載入候診名單…</div>
           </div>
         </div>
@@ -366,7 +391,6 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
         </div>
         <div id="done-list">
           <div class="col-empty">
-            <div class="col-empty-icon">✓</div>
             <div class="col-empty-text">尚無已看診患者</div>
           </div>
         </div>
@@ -393,7 +417,6 @@ main { padding: 28px 32px 48px; max-width: 1100px; margin: 0 auto; }
     </div>
     <div id="search-results">
       <div class="empty">
-        <div class="empty-icon">🔍</div>
         <div class="empty-title">輸入姓名或身分證號以查詢病患</div>
         <div class="empty-sub">系統將顯示過敏資訊及病歷摘要</div>
       </div>
@@ -452,7 +475,7 @@ function notifyNextPatient(patients) {
   const key = _key(top);
   if (key === _lastNotifiedKey) return;
   _lastNotifiedKey = key;
-  new Notification(`⚠️ 過敏警示：${top.name}`, {
+  new Notification(`過敏警示：${top.name}`, {
     body: `藥物過敏：${top.allergies.join('、')}`,
     requireInteraction: true,
   });
@@ -511,7 +534,6 @@ function renderWaiting(patients) {
 
   if (!patients.length) {
     el.innerHTML = `<div class="col-empty">
-      <div class="col-empty-icon">🪑</div>
       <div class="col-empty-text">目前無候診患者</div>
     </div>`;
     return;
@@ -528,7 +550,7 @@ function renderWaiting(patients) {
       const tags = p.allergies.map(a => `<span class="atag">${a}</span>`).join('');
       allergyHtml = `
         <div style="display:flex;align-items:center;gap:5px;margin-top:4px">
-          <span class="warn-icon">⚠️</span>
+          <span class="warn-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
           <div class="allergy-inline">${tags}</div>
         </div>`;
     } else {
@@ -553,7 +575,6 @@ function renderDone() {
 
   if (!_doneList.length) {
     el.innerHTML = `<div class="col-empty">
-      <div class="col-empty-icon">✓</div>
       <div class="col-empty-text">尚無已看診患者</div>
     </div>`;
     return;
@@ -586,7 +607,6 @@ function onSearch(val) {
 function showSearchDefault() {
   document.getElementById('search-results').innerHTML = `
     <div class="empty">
-      <div class="empty-icon">🔍</div>
       <div class="empty-title">輸入姓名或身分證號以查詢病患</div>
       <div class="empty-sub">系統將顯示過敏資訊及病歷摘要</div>
     </div>`;
@@ -600,7 +620,7 @@ async function doSearch(q) {
     renderSearchResults(patients, q);
   } catch(e) {
     document.getElementById('search-results').innerHTML = `
-      <div class="empty"><div class="empty-icon">⚠</div>
+      <div class="empty">
       <div class="empty-title">載入失敗</div><div class="empty-sub">${e.message}</div></div>`;
   }
 }
@@ -618,7 +638,6 @@ function renderSearchResults(patients, q) {
   const el = document.getElementById('search-results');
   if (!patients.length) {
     el.innerHTML = `<div class="empty">
-      <div class="empty-icon">📭</div>
       <div class="empty-title">找不到符合「${q}」的病患</div>
       <div class="empty-sub">請確認姓名或身分證號是否正確</div>
     </div>`;
@@ -630,7 +649,7 @@ function renderSearchResults(patients, q) {
     if (p.allergies && p.allergies.length > 0) {
       const tags = p.allergies.map(a => `<span class="allergy-tag">${a}</span>`).join('');
       allergyHtml = `<div class="allergy-banner">
-        <span class="allergy-icon">⚠️</span>
+        <span class="allergy-icon"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
         <div><div class="allergy-title">藥物過敏警示</div>
         <div class="allergy-tags">${tags}</div></div>
       </div>`;

@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>檢驗追蹤 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=104">
+<link rel="stylesheet" href="/static/_layout.css?v=105">
 <style>
 /* ── tabs ────────────────────────────────────────────────────────── */
 .lab-tabs{display:flex;gap:2px;background:var(--border);border-radius:9px;padding:3px;margin-bottom:14px;width:fit-content}
@@ -23,10 +23,10 @@
 /* ── group card ──────────────────────────────────────────────────── */
 .lab-group{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;flex-shrink:0}
 .lab-ghead{display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid var(--border)}
-.lab-gdate{font-size:14px;font-weight:700;color:var(--text)}
+.lab-gdate{font-size:14px;font-weight:600;color:var(--text)}
 .lab-gcount{font-size:11px;background:var(--border);color:var(--muted);border-radius:10px;padding:2px 8px;font-weight:600}
-.lab-goverdue{font-size:11px;background:#FEF3C7;color:#92400E;border-radius:10px;padding:2px 8px;font-weight:700}
-.lab-gnotify{font-size:11px;background:#D1FAE5;color:#065F46;border-radius:10px;padding:2px 8px;font-weight:700}
+.lab-goverdue{font-size:11px;background:#FEF3C7;color:#92400E;border-radius:10px;padding:2px 8px;font-weight:600}
+.lab-gnotify{font-size:11px;background:#D1FAE5;color:#065F46;border-radius:10px;padding:2px 8px;font-weight:600}
 @media(prefers-color-scheme:dark){
   :root:not([data-theme="light"]) .lab-goverdue{background:#2A1600;color:#FBD38D}
   :root:not([data-theme="light"]) .lab-gnotify{background:#042B18;color:#6EE7B7}
@@ -50,10 +50,10 @@
 .lab-meta-sep{font-size:11px;color:var(--border)}
 .lab-codes{font-size:12px;color:var(--sub);flex:1;flex-wrap:wrap;display:flex;gap:5px;min-width:0}
 .lab-code-chip{background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:1px 7px;font-size:11.5px;color:var(--sub)}
-.allergy-chip{background:#FFE4E6;color:#9F1239;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px}
+.allergy-chip{background:#FFE4E6;color:#9F1239;font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .allergy-chip{background:#2A0A0F;color:#FCA5A5}}
 :root[data-theme="dark"] .allergy-chip{background:#2A0A0F;color:#FCA5A5}
-.endo-chip{background:#E0F2FE;color:#0369A1;font-size:10.5px;font-weight:700;padding:1px 7px;border-radius:5px}
+.endo-chip{background:#E0F2FE;color:#0369A1;font-size:10.5px;font-weight:600;padding:1px 7px;border-radius:5px}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .endo-chip{background:#082F49;color:#7DD3FC}}
 :root[data-theme="dark"] .endo-chip{background:#082F49;color:#7DD3FC}
 
@@ -62,7 +62,7 @@
 .lab-back{font-size:12px;color:#047857;font-weight:600;display:flex;align-items:center;gap:4px}
 .lab-back svg{flex-shrink:0}
 .lab-pending{font-size:12px;color:#B45309;font-weight:600;display:flex;align-items:center;gap:4px}
-.lab-overdue{font-size:12px;color:#B45309;font-weight:700;display:flex;align-items:center;gap:4px}
+.lab-overdue{font-size:12px;color:#B45309;font-weight:600;display:flex;align-items:center;gap:4px}
 .lab-notified{font-size:12px;color:#6B7280;font-weight:600;display:flex;align-items:center;gap:4px}
 .lab-physical-tag{font-size:12px;color:#7C3AED;font-weight:600;display:flex;align-items:center;gap:4px}
 @media(prefers-color-scheme:dark){
@@ -107,8 +107,8 @@
 /* ── physical tab cards ──────────────────────────────────────────── */
 .phys-group{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;flex-shrink:0}
 .phys-ghead{display:flex;align-items:center;gap:10px;padding:14px 17px;border-bottom:1px solid var(--border)}
-.phys-gdate{font-size:14px;font-weight:700;color:var(--text)}
-.phys-waiting-badge{font-size:11px;background:#EDE9FE;color:#6D28D9;border-radius:10px;padding:2px 8px;font-weight:700}
+.phys-gdate{font-size:14px;font-weight:600;color:var(--text)}
+.phys-waiting-badge{font-size:11px;background:#EDE9FE;color:#6D28D9;border-radius:10px;padding:2px 8px;font-weight:600}
 @media(prefers-color-scheme:dark){
   :root:not([data-theme="light"]) .phys-waiting-badge{background:#2E1065;color:#C4B5FD}
 }
@@ -125,7 +125,7 @@
 
 /* ── layout ──────────────────────────────────────────────────────── */
 .scroll-area{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
-.lab-section-label{font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.05em;padding:0 2px;margin-bottom:-4px}
+.lab-section-label{font-size:11px;font-weight:500;color:var(--muted);padding:0 2px;margin-bottom:-4px}
 </style>
 </head>
 <body>
@@ -174,7 +174,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=99"></script>
+<script src="/static/_layout.js?v=100"></script>
 <script>
 (function () {
   'use strict';

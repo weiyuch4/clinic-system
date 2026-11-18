@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>今日總覽 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=104">
+<link rel="stylesheet" href="/static/_layout.css?v=105">
 <style>
 /* ── dashboard-specific ─────────────────────────────── */
 .tc{display:grid;grid-template-columns:1fr minmax(260px,28%);gap:12px;flex:1;min-height:0}
@@ -27,10 +27,13 @@
 .urg-item.is-zero .urg-icon{opacity:.45}
 .sc.is-zero .sn{color:var(--muted)!important;font-weight:500}
 .sc.is-zero .sico{opacity:.45}
+/* With nothing to do, the icon tile goes grey too: color only marks tiles and rows that have work */
+.sc.is-zero .sico,.urg-item.is-zero .urg-icon{background:var(--g0);opacity:1}
+.sc.is-zero .sico svg,.urg-item.is-zero .urg-icon svg{stroke:var(--muted)}
 .urg-icon{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
 .urg-name{font-size:13px;font-weight:600;color:var(--text)}
 .urg-sub{font-size:11px;color:var(--sub)}
-.urg-count{margin-left:auto;font-size:15px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.urg-count{margin-left:auto;font-size:15px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
 /* ── tablet: stack dashboard columns ─────────────────── */
 @media(min-width:768px) and (max-width:960px){
   .tc{grid-template-columns:1fr}
@@ -205,7 +208,7 @@
   </div><!-- end main -->
 </div><!-- end app -->
 
-<script src="/static/_layout.js?v=99"></script>
+<script src="/static/_layout.js?v=100"></script>
 <script>
 (function () {
   'use strict';

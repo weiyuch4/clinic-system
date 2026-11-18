@@ -11,13 +11,13 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>B/C型肝炎 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=104">
+<link rel="stylesheet" href="/static/_layout.css?v=105">
 <style>
 .vpn-banner{background:#EDE9FE;border:1px solid #DDD6FE;border-radius:10px;padding:13px 16px;display:flex;align-items:center;gap:11px;flex-shrink:0}
 .vpn-banner-icon{width:32px;height:32px;border-radius:8px;background:#6D28D9;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-.vpn-banner-title{font-size:13.5px;font-weight:700;color:#4C1D95}
+.vpn-banner-title{font-size:13.5px;font-weight:600;color:#4C1D95}
 .vpn-banner-sub{font-size:12px;color:#6D28D9;margin-top:2px}
-.vpn-count{margin-left:auto;font-size:22px;font-weight:700;color:#6D28D9;font-variant-numeric:tabular-nums;flex-shrink:0}
+.vpn-count{margin-left:auto;font-size:22px;font-weight:600;color:#6D28D9;font-variant-numeric:tabular-nums;flex-shrink:0}
 @media(prefers-color-scheme:dark){:root:not([data-theme="light"]) .vpn-banner{background:#1A0B35;border-color:#4C1D95;color:#C4B5FD}:root:not([data-theme="light"]) .vpn-banner-title,:root:not([data-theme="light"]) .vpn-banner-sub,:root:not([data-theme="light"]) .vpn-count{color:#C4B5FD}}
 :root[data-theme="dark"] .vpn-banner{background:#1A0B35;border-color:#4C1D95;color:#C4B5FD}
 :root[data-theme="dark"] .vpn-banner-title,:root[data-theme="dark"] .vpn-banner-sub,:root[data-theme="dark"] .vpn-count{color:#C4B5FD}
@@ -219,7 +219,7 @@
     <div class="modal-title">B/C型肝炎追蹤 說明</div>
     <div style="font-size:13.5px;line-height:1.75;color:var(--text);overflow-y:auto;max-height:65vh;padding-right:4px">
       <p style="margin:0 0 12px;color:var(--muted);font-size:12.5px">B/C型肝炎納入健保追蹤計畫，需在 185 天內完成申報，逾期即結案。</p>
-      <div style="font-weight:600;margin:0 0 6px">📋 申報流程</div>
+      <div style="font-weight:600;margin:0 0 6px">申報流程</div>
       <div style="display:grid;gap:6px;margin-bottom:14px">
         <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
           <span style="font-weight:600">B型肝炎</span><br>
@@ -230,7 +230,7 @@
           <span style="color:var(--muted);font-size:12.5px">同 B肝申報流程。若病患已完成治療，可確認後移至排除名單。</span>
         </div>
       </div>
-      <div style="font-weight:600;margin:0 0 8px">📂 頁籤說明</div>
+      <div style="font-weight:600;margin:0 0 8px">頁籤說明</div>
       <div style="display:grid;gap:5px">
         <div style="display:flex;gap:8px;align-items:flex-start">
           <span style="min-width:60px;font-weight:600">待聯絡</span>
@@ -260,7 +260,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=99"></script>
+<script src="/static/_layout.js?v=100"></script>
 <script>
 (function () {
   'use strict';
@@ -415,7 +415,7 @@
     }
     if (filteredClosed.length) {
       html += '<div style="margin:14px 0 6px;display:flex;align-items:center;gap:8px">' +
-        '<span style="font-size:13px;font-weight:700;color:var(--text-2)">已結案</span>' +
+        '<span style="font-size:13px;font-weight:600;color:var(--text-2)">已結案</span>' +
         '<span style="font-size:11px;color:var(--sub);background:var(--tag-bg,var(--panel));padding:2px 8px;border-radius:20px;font-weight:600">' + filteredClosed.length + ' 人</span>' +
         '<span style="font-size:11px;color:var(--sub)">— 仍需通知回診抽血</span>' +
         '</div>';

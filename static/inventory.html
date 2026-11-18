@@ -11,7 +11,7 @@
   <meta name="apple-mobile-web-app-title" content="診所追蹤">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <title>點貨 — 診所追蹤系統</title>
-<link rel="stylesheet" href="/static/_layout.css?v=104">
+<link rel="stylesheet" href="/static/_layout.css?v=105">
 <style>
 /* ── page tokens (accent matches the app's #b5d7f5 pill buttons) ─────────── */
 :root{
@@ -42,27 +42,27 @@
 .inv-tabs{display:flex;height:var(--ctl-h);border:1.5px solid var(--border);border-radius:100px;overflow:hidden;background:var(--card)}
 .inv-tabs button{flex:1;padding:0;font-size:14px;font-weight:600;border:none;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;transition:background .12s,color .12s;position:relative}
 .inv-tabs button.on{background:var(--inv-acc);color:var(--inv-acc-ink)}
-.inv-tabs .tab-dot{display:inline-block;min-width:18px;height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--inv-err);color:#fff;font-size:11px;line-height:18px;font-weight:700;vertical-align:1px}
+.inv-tabs .tab-dot{display:inline-block;min-width:18px;height:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:var(--inv-err);color:#fff;font-size:11px;line-height:18px;font-weight:600;vertical-align:1px}
 
 /* ── shared ─────────────────────────────────────────────────────────────── */
 .big-btn{width:100%;justify-content:center;padding:13px 0;font-size:15px}
 .muted{color:var(--muted)}
 .inv-empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:13.5px;line-height:1.7}
 .sec-h{display:flex;align-items:baseline;gap:8px;padding:4px 2px 0}
-.sec-h h2{font-size:15px;font-weight:700;color:var(--text)}
+.sec-h h2{font-size:15px;font-weight:600;color:var(--text)}
 .sec-h .sec-n{font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums}
 .sec-h .sec-act{margin-left:auto}
 .note-box{background:var(--inv-warn-bg);border:1px solid var(--inv-warn-bd);color:var(--inv-warn);border-radius:10px;padding:10px 13px;font-size:12.5px;line-height:1.6}
 
 /* ── start / done hero ──────────────────────────────────────────────────── */
 .hero{display:flex;flex-direction:column;gap:14px;padding:22px 20px}
-.hero-month{font-size:26px;font-weight:800;color:var(--text);letter-spacing:.01em}
+.hero-month{font-size:26px;font-weight:600;color:var(--text);letter-spacing:.01em}
 .hero-meta{font-size:13px;color:var(--sub);line-height:1.7}
 .hero-stats{display:flex;gap:10px}
 .hero-stat{flex:1;background:var(--bg);border-radius:10px;padding:10px 12px}
 .hero-stat b{display:block;font-size:20px;color:var(--text);font-variant-numeric:tabular-nums}
 .hero-stat span{font-size:11.5px;color:var(--muted)}
-.done-mark{display:inline-flex;align-items:center;gap:6px;color:var(--inv-ok);font-weight:700;font-size:14px}
+.done-mark{display:inline-flex;align-items:center;gap:6px;color:var(--inv-ok);font-weight:600;font-size:14px}
 .done-mark svg{width:18px;height:18px}
 
 /* ── counting: sticky progress bar ──────────────────────────────────────── */
@@ -71,7 +71,7 @@
    gap above, so it never covers the tab bar. */
 .cbar{position:sticky;top:-18px;z-index:5;padding:14px 0 8px;background:var(--bg);box-shadow:0 0 0 8px var(--bg);display:flex;flex-direction:column;gap:9px}
 .cbar-top{display:flex;align-items:center;gap:10px}
-.cbar-txt{font-size:14px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.cbar-txt{font-size:14px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
 .cbar-save{font-size:11.5px;color:var(--muted);margin-left:auto;min-width:48px;text-align:right}
 .cbar-save.err{color:var(--inv-err);font-weight:600}
 .ptrack{height:6px;border-radius:3px;background:var(--border);overflow:hidden}
@@ -85,7 +85,7 @@
 
 /* ── item rows (count + order share the stepper) ────────────────────────── */
 .grp{background:var(--card);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden;scroll-margin-top:120px}
-.grp-h{display:flex;align-items:center;gap:8px;padding:12px 16px 8px;font-size:12px;font-weight:700;letter-spacing:.06em;color:var(--muted)}
+.grp-h{display:flex;align-items:center;gap:8px;padding:12px 16px 8px;font-size:12px;font-weight:500;color:var(--muted)}
 .grp-h .grp-n{margin-left:auto;font-weight:600;letter-spacing:0;font-variant-numeric:tabular-nums}
 .row{display:flex;align-items:center;gap:10px;padding:11px 16px;border-top:1px solid var(--border);min-height:64px}
 .grp-h + .row{border-top:none}
@@ -102,12 +102,12 @@
 /* Counting is a touch task even on desktop, so the stepper always uses the 44px touch height */
 .stp-b{width:var(--ctl-h-touch);height:var(--ctl-h-touch);border-radius:50%;border:1.5px solid var(--border);background:var(--card);color:var(--sub);font-size:20px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;font-family:inherit;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .stp-b:active{background:var(--g0);transform:scale(.94)}
-.stp-in{width:64px;height:var(--ctl-h-touch);border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:19px;font-weight:700;text-align:center;font-family:inherit;font-variant-numeric:tabular-nums;outline:none;-webkit-appearance:none;appearance:none}
+.stp-in{width:64px;height:var(--ctl-h-touch);border:1.5px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text);font-size:19px;font-weight:600;text-align:center;font-family:inherit;font-variant-numeric:tabular-nums;outline:none;-webkit-appearance:none;appearance:none}
 .stp-in:focus{border-color:#4aa7f7;background:var(--card)}
 .stp-in::placeholder{color:var(--border);font-weight:400}
 .row.counted .stp-in{background:var(--inv-ok-bg);border-color:transparent;color:var(--inv-ok)}
 .row-unit{width:26px;font-size:12.5px;color:var(--muted);flex-shrink:0;text-align:left}
-.row-ro{font-size:17px;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums}
+.row-ro{font-size:17px;font-weight:600;color:var(--text);font-variant-numeric:tabular-nums}
 
 /* order rows */
 .ochk{width:22px;height:22px;flex-shrink:0;accent-color:#2563EB;cursor:pointer}
@@ -175,7 +175,7 @@
 .lg-row.just{background:var(--inv-ok-bg)}
 .lg-empty{padding:22px 16px;text-align:center;font-size:13px;color:var(--muted);line-height:1.7}
 .lg-form{background:var(--bg);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:10px}
-.lg-form-h{font-size:13px;font-weight:700;color:var(--text)}
+.lg-form-h{font-size:13px;font-weight:600;color:var(--text)}
 .lg-f2{display:grid;grid-template-columns:8.5em minmax(0,1fr);gap:8px}
 .lg-f4{display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:8px;align-items:end}
 .lg-fld{display:flex;flex-direction:column;gap:4px;min-width:0}
@@ -379,7 +379,7 @@
 <datalist id="dl-locs"></datalist>
 <datalist id="dl-sups"></datalist>
 
-<script src="/static/_layout.js?v=99"></script>
+<script src="/static/_layout.js?v=100"></script>
 <script>
 (function () {
   'use strict';

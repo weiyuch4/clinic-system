@@ -32,13 +32,13 @@ body{
 .logo{margin-bottom:20px;text-align:center}
 .logo-icon{width:64px;height:64px;background:var(--green);border-radius:16px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;box-shadow:0 4px 12px rgba(6,199,85,.35)}
 .logo-icon svg{width:36px;height:36px;fill:#fff}
-.logo-title{font-size:18px;font-weight:700;color:var(--text)}
+.logo-title{font-size:18px;font-weight:600;color:var(--text)}
 .logo-sub{font-size:13px;color:var(--muted);margin-top:3px}
 
 .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:28px 24px;width:100%;max-width:380px}
 
-.step-label{font-size:11px;font-weight:600;color:var(--green-dark);letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
-.card h2{font-size:17px;font-weight:700;margin-bottom:6px}
+.step-label{font-size:11px;font-weight:500;color:var(--green-dark);margin-bottom:6px}
+.card h2{font-size:17px;font-weight:600;margin-bottom:6px}
 .card p{font-size:13.5px;color:var(--sub);line-height:1.65;margin-bottom:20px}
 
 .profile-row{display:flex;align-items:center;gap:12px;background:#f8fffe;border:1.5px solid #d1fae5;border-radius:10px;padding:12px 14px;margin-bottom:20px}
@@ -57,7 +57,7 @@ input[type=text]:focus,input[type=date]:focus{border-color:var(--green)}
 
 .btn{
   width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:10px;
-  font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;
+  font-size:16px;font-weight:600;cursor:pointer;font-family:inherit;transition:background .15s;
 }
 @media(hover:hover){.btn:hover:not(:disabled){background:var(--green-dark)}}
 .btn:disabled{opacity:.5;cursor:not-allowed}
@@ -75,7 +75,7 @@ input[type=text]:focus,input[type=date]:focus{border-color:var(--green)}
 .success-icon svg{width:36px;height:36px;stroke:#059669;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 
 /* Error */
-.error-icon{width:60px;height:60px;background:#FEF2F2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;font-size:28px}
+.error-icon{width:60px;height:60px;background:#FEF2F2;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:#DC2626}
 .error-msg{font-size:14px;color:#DC2626;margin-bottom:16px;line-height:1.6}
 .retry-btn{background:none;border:1.5px solid var(--border);border-radius:8px;padding:12px 24px;font-size:14px;cursor:pointer;font-family:inherit;color:var(--sub)}
 
@@ -155,10 +155,10 @@ input[type=text]:focus,input[type=date]:focus{border-color:var(--green)}
     <div class="success-icon">
       <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
     </div>
-    <h2 style="margin-bottom:8px">綁定成功！</h2>
+    <h2 style="margin-bottom:8px">綁定完成</h2>
     <p style="color:var(--sub)">您的 LINE 帳號已與病歷號碼 <strong id="success-cn"></strong> 成功連結。<br>日後診所將透過 LINE 傳送健康提醒給您。</p>
     <div class="friend-box" id="friend-box" hidden>
-      <p><strong>還差一步！</strong>請加入診所的官方帳號好友，<br>才能收到回診與領藥提醒。</p>
+      <p><strong>還差一步：</strong>請加入診所的官方帳號好友，<br>才能收到回診與領藥提醒。</p>
       <a class="btn" id="friend-link" href="#">加入好友</a>
     </div>
     <div class="friend-ok" id="friend-ok" hidden>✓ 已加入官方帳號好友</div>
@@ -170,7 +170,7 @@ input[type=text]:focus,input[type=date]:focus{border-color:var(--green)}
 
   <!-- Error state -->
   <div id="state-error" class="state" style="text-align:center;padding:10px 0">
-    <div class="error-icon">⚠️</div>
+    <div class="error-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
     <p class="error-msg" id="error-msg">發生錯誤，請稍後再試。</p>
     <button class="retry-btn" onclick="goToForm()">重試</button>
   </div>

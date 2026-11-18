@@ -7,7 +7,7 @@ description: The clinic system's own UI rules — components, CSS classes, contr
 
 The living reference is the UI Component Guide artifact (https://claude.ai/artifact/Ah1X9XhJG4B6F3d6X6S9Bz). This skill is its working summary. **Before component work, read the guide; after it, update the guide** (Artifact tool: read the URL, edit, republish to the same URL) whenever a rule, component, or class changes.
 
-Precedence: the user's words → this skill / the guide → existing code in this repo → `emil-design-eng` general taste. Use `emil-design-eng` for motion and polish details the guide doesn't cover. `prototype` only runs when the user asks for it.
+Precedence: the user's words → this skill / the guide → existing code in this repo → `emil-design-eng` general taste. Use `emil-design-eng` for motion and polish details the guide doesn't cover. `prototype` only runs when the user asks for it. `unslop` (plugin) ranks with `emil-design-eng`: use its audit and copy rules as general taste, but never its redesign passes (new palette, type family, direction, layout) here unless the user asks — this app already has its design system.
 
 ## Two surfaces, two vocabularies
 
@@ -37,6 +37,11 @@ Never mix the two vocabularies on one surface. Don't invent a new button class w
 
 - Colors, radii, shadows come from CSS variables (`--bg --card --border --text --sub --muted --g0 --g5 --g7 --r --shadow`; admin adds `--surface --text-1/2/3 --border-mid --blue --emerald --amber --red --radius-s --radius`). No new hard-coded hex in new code; page-specific colors become page tokens defined for light, `@media (prefers-color-scheme: dark) :root:not([data-theme=light])`, and `:root[data-theme=dark]`.
 - Badge colors are semantic and fixed: blue 慢簽, green 代謝症候群, orange B肝, red 抽血, gray 自訂.
+- **No emoji in the interface** (headings, empty states, warnings, notifications). Icons are inline line SVGs (24 viewBox, stroke `currentColor`, the `ICONS` style in `_layout.js`); warnings use the triangle/circle line icon in the amber/red tone. Empty states are text only (admin `emptyState()` ignores its icon argument). Typographic glyphs (✓ ✕ ★ ↕ ✎) are fine.
+- **Weights**: 400–600 only; never 700/800/bold in CSS. Hierarchy comes from size and color. Small section labels and table headers: 11–12px, weight 500, muted color, **no letter-spacing and no uppercase** (it does nothing to Chinese and reads as decoration).
+- No exclamation marks in interface copy (「已上傳」, not 「上傳成功！」).
+- Numbers in stat cards are plain `--text`; color a number only when it carries a level (e.g. 回診率 good/medium). Dashboard icon tiles are grey (`--g0` + muted stroke) when their count is 0.
+- `doctor.html` is standalone (no `_layout.css`) but mirrors the app palette in its own `:root` with light, `prefers-color-scheme` and `[data-theme]` blocks, and reads the saved `theme` from localStorage.
 - Cards: `.card` (app) / `.card` + `.card-head` + body `padding:16px 24px 20px` (admin). At most **one primary button per card or modal**.
 
 ## Mobile shell (≤767px)
