@@ -961,9 +961,9 @@ document.addEventListener('click', function(ev) {
       var su = _submitted.find(function (e) { return e.patient.chart_number === chart; });
       if (!su) return;
       btn.disabled = true;
-      L.apiAction('DELETE', '/api/submitted', { chart_number: su.patient.chart_number, mspt_stage: su.mspt_stage })
+      L.apiAction('DELETE', '/api/submitted', { chart_number: su.patient.chart_number, mspt_stage: su.mspt_stage, keep_completion: true })
         .then(function () {
-          L.showToast('已撤銷申報記錄');
+          L.showToast('已撤銷申報，移回待登VPN');
           _submitted = _submitted.filter(function(e) { return e.patient.chart_number !== chart; });
           document.getElementById('cnt-submitted').textContent = _submitted.length || '';
           _refreshBg();

@@ -1321,12 +1321,23 @@ def get_mspt_phone_completed_keys(clinic_id: int = 1) -> set[tuple[str, str, str
 
 
 def unmark_mspt_phone_completed(chart_number: str, mspt_stage: str, clinic_id: int = 1) -> None:
+    """Undo a 完成: drop the completion and the 已聯繫 record that 完成 wrote with it
+    (same due date, first contact, same day), so the patient goes straight back to the list."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "DELETE FROM mspt_phone_completed WHERE chart_number = %s AND mspt_stage = %s AND clinic_id = %s",
+                """DELETE FROM mspt_phone_completed
+                   WHERE chart_number = %s AND mspt_stage = %s AND clinic_id = %s
+                   RETURNING due_date, completed_at""",
                 (chart_number, mspt_stage, clinic_id),
             )
+            for r in cur.fetchall():
+                cur.execute(
+                    """DELETE FROM contacts
+                       WHERE chart_number = %s AND category = '代謝症候群' AND due_date = %s
+                         AND attempt = 1 AND contacted_at = %s AND clinic_id = %s""",
+                    (chart_number, r["due_date"], r["completed_at"], clinic_id),
+                )
 
 
 # ── Called entries split: recent vs auto-excluded ────────────────────────────

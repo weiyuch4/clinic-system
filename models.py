@@ -238,6 +238,8 @@ class ClinicContactRequest(BaseModel):
 class SubmitRequest(BaseModel):
     chart_number: str
     mspt_stage: MsptStage
+    # True: undo only the 已登VPN step (back to 待登VPN). False: undo the whole completion.
+    keep_completion: bool = False
 
 
 class OnHoldRequest(BaseModel):

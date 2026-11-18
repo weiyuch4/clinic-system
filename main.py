@@ -1976,8 +1976,9 @@ def mark_submitted(entry: MsptSubmittableEntry, user: auth.CurrentUser = Depends
 def unmark_submitted(req: SubmitRequest, user: auth.CurrentUser = Depends(auth.get_current_user)) -> None:
     try:
         contacts.unmark_submitted(req.chart_number, req.mspt_stage, user.clinic_id)
-        contacts.clear_mspt_blood_used(req.chart_number, req.mspt_stage, user.clinic_id)
-        contacts.unmark_mspt_phone_completed(req.chart_number, req.mspt_stage, user.clinic_id)
+        if not req.keep_completion:
+            contacts.clear_mspt_blood_used(req.chart_number, req.mspt_stage, user.clinic_id)
+            contacts.unmark_mspt_phone_completed(req.chart_number, req.mspt_stage, user.clinic_id)
         _invalidate_report_cache(user.clinic_id)
     except Exception:
         logger.exception("unmark_submitted failed for %s", req.chart_number)
