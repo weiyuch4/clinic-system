@@ -62,6 +62,31 @@ MSPT_STAGE_NEXT: dict[str, str] = {
 # All MSPT stages use the same inter-stage gap.
 _MSPT_STAGE_GAP = METABOLIC_FOLLOWUP_DAYS
 
+# 健保 yearly caps, per calendar year (年度): P7502C 追蹤管理 at most 3, P7503C 年度評估 at most 1.
+_MSPT_TRACK_STAGES = ('追1', '追2', '追3')
+_MSPT_YEARLY_CAP: dict[str, tuple[tuple[str, ...], int, str]] = {
+    '追1': (_MSPT_TRACK_STAGES, 3, '追蹤管理'), '追2': (_MSPT_TRACK_STAGES, 3, '追蹤管理'),
+    '追3': (_MSPT_TRACK_STAGES, 3, '追蹤管理'), '年度追蹤': (('年度追蹤',), 1, '年度評估'),
+}
+# contact_reason prefix for patients held back by the cap; mspt.html lists them in their own tab.
+MSPT_CAP_REASON_PREFIX = '健保年度上限'
+
+
+def mspt_next_due(next_stage: str, last_date: date, history: list[dict]) -> tuple[date, str | None]:
+    """Earliest date VPN accepts next_stage: ≥70 days after the last claim, and Jan 1 of the
+    following year when this year's cap for that fee is already used. Returns (due, reason);
+    reason is set only when the cap pushed the date back."""
+    due = last_date + timedelta(days=_MSPT_STAGE_GAP)
+    cap = _MSPT_YEARLY_CAP.get(next_stage)
+    if cap:
+        stages, limit, fee = cap
+        if sum(1 for h in history if h['stage'] in stages and h['date'].year == due.year) >= limit:
+            roc = due.year - 1911
+            reason = (f'{MSPT_CAP_REASON_PREFIX}：{roc}年已申報{fee}{limit}次'
+                      f'（健保每年最多{limit}次），{roc + 1}/1/1 起才能申報')
+            return date(due.year + 1, 1, 1), reason
+    return due, None
+
 # Blood test window: 90 days (3 months) — independent of the inter-stage gap.
 MSPT_BLOOD_TEST_WINDOW_DAYS = 90
 
@@ -965,10 +990,11 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
         if next_stage is None:
             continue
 
-        due_date     = last_date + timedelta(days=_MSPT_STAGE_GAP)
+        due_date, cap_reason = mspt_next_due(next_stage, last_date, history)
         days_overdue = (as_of - due_date).days
         if days_overdue < 0:
             upcoming.append(FollowupEntry(
+                contact_reason=cap_reason,
                 patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
                 disease_name='代謝症候群',
                 due_date=due_date,

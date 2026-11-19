@@ -87,6 +87,7 @@
         <button class="filter-tab" data-tab="excluded">排除名單 <span class="tc-count" id="cnt-excluded">…</span></button>
         <button class="filter-tab" data-tab="dnc">不聯絡 <span class="tc-count" id="cnt-dnc">…</span></button>
         <button class="filter-tab" data-tab="upcoming">未到期 <span class="tc-count" id="cnt-upcoming">…</span></button>
+        <button class="filter-tab" data-tab="capped">本年度已滿 <span class="tc-count" id="cnt-capped">…</span></button>
         <button class="act-btn" id="btn-workflow">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="11" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
           逐一追蹤
@@ -157,6 +158,13 @@
             <span>這些病患目前已在追蹤中，尚未到下次回診時間，屆時系統會自動出現在待聯絡清單。</span>
           </div>
           <div id="list-upcoming-rows"><div class="sec-empty">載入中…</div></div>
+        </div>
+        <div id="list-capped" style="display:none">
+          <div class="tab-hint tab-hint-warn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>健保規定追蹤管理每年最多申報3次、年度評估每年最多1次。這些病患今年的次數已用完，現在登VPN會被拒絕，明年1月1日起會自動回到待聯絡清單。</span>
+          </div>
+          <div id="list-capped-rows"><div class="sec-empty">載入中…</div></div>
         </div>
       </div>
 
@@ -473,7 +481,7 @@ document.addEventListener('click', function(ev) {
   var L = Layout;
   var _tab = 'return', _query = (new URLSearchParams(location.search).get('chart') || '').trim(), _stageFilter = '', _noteFilter = '', _reasonFilter = '';
   var _NOTE_TABS = ['hold', 'excluded'];
-  var _return = [], _phone = [], _submittable = [], _submitted = [], _inactive = [], _contacted = [], _hold = [], _excluded = [], _upcoming = [], _dnc = [];
+  var _return = [], _phone = [], _submittable = [], _submitted = [], _inactive = [], _contacted = [], _hold = [], _excluded = [], _upcoming = [], _capped = [], _dnc = [];
   var _lineBoundSet = null;
   var _activeMap = {}, _contactedMap = {}, _holdMap = {}, _excludedMap = {};
   // entry stashed for modal confirm
@@ -518,7 +526,7 @@ document.addEventListener('click', function(ev) {
     return false;
   }
 
-  var ALL_TABS = ['return','phone','submittable','submitted','inactive','contacted','hold','excluded','dnc','upcoming'];
+  var ALL_TABS = ['return','phone','submittable','submitted','inactive','contacted','hold','excluded','dnc','upcoming','capped'];
 
   function applyReport(r) {
     _completedSet = _buildCompletedSet(r.mspt_completed);
@@ -553,7 +561,11 @@ document.addEventListener('click', function(ev) {
     document.getElementById('cnt-contacted').textContent   = _contacted.length;
     _excluded = (r.excluded || []).filter(function (e) { return e.category === '代謝症候群'; });
     _excludedMap = {}; _excluded.forEach(function (e) { _excludedMap[e.patient.chart_number] = e; });
-    _upcoming = (r.mspt_upcoming || []).slice().sort(function(a,b){ return String(a.due_date||'').localeCompare(String(b.due_date||'')); });
+    // Held back by the 健保 yearly cap (reason set by the sync agent) get their own tab.
+    var _allUpcoming = (r.mspt_upcoming || []).slice().sort(function(a,b){ return String(a.due_date||'').localeCompare(String(b.due_date||'')); });
+    _capped   = _allUpcoming.filter(isCapped);
+    _upcoming = _allUpcoming.filter(function (e) { return !isCapped(e); });
+    document.getElementById('cnt-capped').textContent      = _capped.length || '';
     document.getElementById('cnt-hold').textContent        = _hold.length;
     document.getElementById('cnt-excluded').textContent    = _excluded.length;
     _dnc = (r.do_not_contact || []).filter(function (e) { return e.category === '代謝症候群'; });
@@ -700,6 +712,21 @@ document.addEventListener('click', function(ev) {
     });
   }
 
+  function isCapped(e) { return /^健保年度上限/.test(e.contact_reason || ''); }
+
+  function cappedRow(e) {
+    var used = e.mspt_stage === '年度追蹤' ? '今年已滿1次' : '今年已滿3次';
+    var p = String(e.due_date || '').slice(0, 10).split('-');
+    var from = p.length === 3 ? (parseInt(p[0], 10) - 1911) + '/' + parseInt(p[1], 10) + '/' + parseInt(p[2], 10) : '';
+    return L.patientRow({ entry: e,
+      tags: [
+        '<span class="pbadge b-hold">' + used + '</span>',
+        from ? '<span class="pbadge b-hold">' + L.escHtml(from) + ' 起</span>' : '',
+      ],
+      actions: [],
+    });
+  }
+
   function contactedRow(e) {
     return L.patientRow({ entry: e,
       tags: ['<span class="pbadge b-done">已聯繫</span>'],
@@ -820,6 +847,7 @@ document.addEventListener('click', function(ev) {
     document.getElementById('list-dnc').innerHTML = L.dncListHtml(_dnc, _dnc.filter(match));
     if (_tab === 'dnc') document.getElementById('result-count').textContent = '共 ' + _dnc.filter(match).length + ' 筆';
     renderList(_upcoming, upcomingRow, 'list-upcoming-rows');
+    renderList(_capped,   cappedRow,   'list-capped-rows');
     L.decorateLineBadges(document.body, _lineBoundSet);
   }
 
