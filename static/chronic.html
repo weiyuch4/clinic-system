@@ -31,7 +31,7 @@
             <h1>慢簽追蹤</h1>
             <button onclick="Layout.showModal('modal-help')" title="說明" aria-label="說明" class="ph-help">?</button>
           </div>
-          <p id="page-date">慢性病連續處方箋 — 逾期待聯繫</p>
+          <p id="page-date">慢性病連續處方箋 — 藥快吃完或逾期未領</p>
         </div>
       </div>
 
@@ -136,19 +136,19 @@
   <div class="modal-box" style="max-width:480px">
     <div class="modal-title">慢簽追蹤 說明</div>
     <div style="font-size:13.5px;line-height:1.75;color:var(--text);overflow-y:auto;max-height:65vh;padding-right:4px">
-      <p style="margin:0 0 12px;color:var(--muted);font-size:12.5px">慢性病連續處方箋（慢簽）病患若逾期未領藥，需主動聯繫提醒回診補領。</p>
+      <p style="margin:0 0 12px;color:var(--muted);font-size:12.5px">慢性病連續處方箋（慢簽）病患在藥吃完前 2 天會列出，提早提醒回診領藥。</p>
       <div style="font-weight:600;margin:0 0 6px">追蹤說明</div>
       <div style="display:grid;gap:6px;margin-bottom:14px">
         <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
           <span style="font-weight:600">慢性病連續處方箋</span><br>
-          <span style="color:var(--muted);font-size:12.5px">醫師開立後可分批領藥（每次最多三個月）。到期未領視為逾期，系統自動列出需聯繫的病患。</span>
+          <span style="color:var(--muted);font-size:12.5px">醫師開立後可分批領藥（每次最多三個月）。系統依上次領藥天數（含提早回診時剩下的藥，最多算 10 天）算出藥吃完的日期，前 2 天自動列出。</span>
         </div>
       </div>
       <div style="font-weight:600;margin:0 0 8px">頁籤說明</div>
       <div style="display:grid;gap:5px">
         <div style="display:flex;gap:8px;align-items:flex-start">
           <span style="min-width:60px;font-weight:600">待聯絡</span>
-          <span style="color:var(--muted);font-size:12.5px">逾期未領藥、尚未聯繫的病患，提醒回診補領。</span>
+          <span style="color:var(--muted);font-size:12.5px">藥快吃完或已逾期、尚未聯繫的病患。</span>
         </div>
         <div style="display:flex;gap:8px;align-items:flex-start">
           <span style="min-width:60px;font-weight:600;color:var(--success,#2e9e5b)">已聯繫</span>
@@ -170,7 +170,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=100"></script>
+<script src="/static/_layout.js?v=101"></script>
 <script>
 (function () {
   'use strict';
@@ -336,7 +336,7 @@
     if (action === 'contact') {
       var entry = _pendingMap[_actionChart]; if (!entry) return;
       document.getElementById('modal-contact-title').textContent = '聯絡 ' + entry.patient.name;
-      document.getElementById('modal-contact-sub').textContent = '身份證 ' + entry.patient.chart_number + ' · 逾期 ' + (entry.days_overdue||0) + ' 天';
+      document.getElementById('modal-contact-sub').textContent = '身份證 ' + entry.patient.chart_number + ' · ' + ((entry.days_overdue||0) < 0 ? -entry.days_overdue + ' 天後到期' : '逾期 ' + (entry.days_overdue||0) + ' 天');
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
       L.showModal('modal-contact');

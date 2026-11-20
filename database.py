@@ -19,8 +19,9 @@ from models import (
 
 # ── Constants ─────────────────────────────────────────────────────────────────
 
-CHRONIC_GRACE_DAYS       = 5    # days after due before a 慢簽 patient surfaces
+CHRONIC_GRACE_DAYS       = -2   # 慢簽 patient surfaces 2 days before the meds run out (negative = before due)
 MAX_CHRONIC_OVERDUE_DAYS = 60   # days after which a 慢簽 patient drops off the list
+MED_CARRYOVER_CAP_DAYS   = 10   # most leftover days carried into the next supply (健保 refill window)
 MSPT_REOPEN_DAYS         = 365  # overdue beyond this → restart from 收案
 MSPT_MAX_INACTIVE_DAYS   = 2 * 365  # ignore patients whose last MSPT activity is older than this
 MSPT_LONG_INACTIVE_DAYS  = 180  # no clinic visit for this long → 長期未回診
@@ -591,6 +592,41 @@ def _icd_to_name(icd: str) -> str | None:
 
 PRESCRIPTION_LOOKBACK_DAYS = 60  # how far back to scan IC files
 PRESCRIPTION_GRACE_DAYS    = 60  # days after due before row drops off the list
+RX_NOTIFY_BEFORE_DAYS      = 2   # row appears this many days before the meds run out
+
+
+def meds_run_out(prev_run_out: date | None, visit_date: date, days_supply: int) -> date:
+    """Date the meds from this visit run out, counting pills left from the previous supply.
+
+    A patient who comes back early still has prev_run_out - visit_date days of pills;
+    those are added (capped at MED_CARRYOVER_CAP_DAYS). Coming back late carries nothing.
+    """
+    left = 0
+    if prev_run_out:
+        left = min(max((prev_run_out - visit_date).days, 0), MED_CARRYOVER_CAP_DAYS)
+    return visit_date + timedelta(days=left + days_supply)
+
+
+def _daily_dose(pr: dict) -> tuple[str, float] | None:
+    """(DRUG_NO, amount per day) for a P-file drug row, e.g. 28 days QTY 56 → 2.0/day."""
+    drug = pr.get('DRUG_NO', '').strip()
+    ps   = pr.get('PS', '').strip()
+    try:
+        qty = float(pr.get('QTY', '').strip() or 0)
+    except ValueError:
+        return None
+    if not drug or not ps.isdigit() or int(ps) <= 0:
+        return None
+    return drug, round(qty / int(ps), 2)
+
+
+def _same_rx(a: dict, b: dict) -> bool:
+    """True when visit b continues visit a's prescription: shared diagnosis codes,
+    or (when neither has codes) same H_TYPE and days of supply."""
+    if a['icd_set'] and b['icd_set']:
+        return bool(a['icd_set'] & b['icd_set'])
+    return (not a['icd_set'] and not b['icd_set']
+            and a['h_type'] == b['h_type'] and a['max_ps'] == b['max_ps'])
 
 
 def _query_all_prescriptions(as_of: date, min_ps: int = 3) -> list[dict]:
@@ -600,9 +636,10 @@ def _query_all_prescriptions(as_of: date, min_ps: int = 3) -> list[dict]:
     PS = max days-of-supply across all drugs in that entry's P-file records.
     Return detection: if a newer IC entry for the same patient shares the same
     H_TYPE and max_ps, the original prescription is considered fulfilled.
+    Due date = meds_run_out(), so pills left from an early return are counted.
 
     Notification window:
-      PS > 3  — show from (due_date - 2) until (due_date + GRACE_DAYS)
+      PS > 3  — show from (due_date - RX_NOTIFY_BEFORE_DAYS) until (due_date + GRACE_DAYS)
       PS ≤ 3  — 關懷 type: show from due_date until (due_date + GRACE_DAYS)
     """
     since = as_of - timedelta(days=PRESCRIPTION_LOOKBACK_DAYS)
@@ -621,6 +658,7 @@ def _query_all_prescriptions(as_of: date, min_ps: int = 3) -> list[dict]:
         # Build {code_f: max_ps} and MSPT visit set from P file (one pass)
         cf_max_ps: dict[str, int] = {}
         cf_mspt: set[str] = set()
+        cf_doses: dict[str, list[tuple[int, tuple[str, float]]]] = {}  # (PS, (drug, per day))
         if os.path.exists(p_path):
             try:
                 for pr in _parse_dbf_cached(p_path):
@@ -635,6 +673,9 @@ def _query_all_prescriptions(as_of: date, min_ps: int = 3) -> list[dict]:
                         ps_val = int(ps_str)
                         if ps_val > 0 and ps_val > cf_max_ps.get(cf, 0):
                             cf_max_ps[cf] = ps_val
+                        dose = _daily_dose(pr)
+                        if dose:
+                            cf_doses.setdefault(cf, []).append((ps_val, dose))
             except Exception:
                 pass
 
@@ -677,6 +718,8 @@ def _query_all_prescriptions(as_of: date, min_ps: int = 3) -> list[dict]:
                 'icd':        icd_display,
                 'icd_set':    icd_set,
                 'max_ps':     max_ps,
+                # The drugs that set the run-out date (those given for max_ps days), with daily amounts
+                'regimen':    frozenset(d for p, d in cf_doses.get(cf, []) if p == max_ps),
             })
 
     # Group by patient for return detection
@@ -686,12 +729,27 @@ def _query_all_prescriptions(as_of: date, min_ps: int = 3) -> list[dict]:
 
     results: list[dict] = []
     for nat_id, entries in by_patient.items():
+        # Run-out date per entry, oldest first, so pills left over from an early
+        # return carry into the next supply — only when the drugs and daily amounts are
+        # unchanged (old pills don't stretch a new regimen). 關懷 (≤3 days) visits neither carry nor receive.
+        entries.sort(key=lambda e: e['visit_date'])
+        for i, entry in enumerate(entries):
+            prev = None
+            if entry['max_ps'] > 3:
+                prev = next((p for p in reversed(entries[:i])
+                             if p['visit_date'] < entry['visit_date'] and p['max_ps'] > 3
+                             and _same_rx(p, entry)), None)
+            if prev and prev['regimen'] != entry['regimen']:
+                prev = None
+            entry['run_out'] = meds_run_out(prev['run_out'] if prev else None,
+                                            entry['visit_date'], entry['max_ps'])
+
         for entry in entries:
             ps         = entry['max_ps']
             visit_date = entry['visit_date']
-            due_date   = visit_date + timedelta(days=ps)
+            due_date   = entry['run_out']
             is_care    = ps <= 3
-            notify_date = due_date if is_care else due_date - timedelta(days=2)
+            notify_date = due_date if is_care else due_date - timedelta(days=RX_NOTIFY_BEFORE_DAYS)
 
             if as_of < notify_date:
                 continue
@@ -702,15 +760,8 @@ def _query_all_prescriptions(as_of: date, min_ps: int = 3) -> list[dict]:
             # ICD overlap is used regardless of H_TYPE so an IC01 return after
             # an IC03 prescription (or vice versa) is correctly recognised.
             # Falls back to H_TYPE + PS matching when both visits have no ICD codes.
-            my_icds = entry['icd_set']
             returned = any(
-                other['visit_date'] > visit_date
-                and (
-                    (my_icds and other['icd_set'] and my_icds & other['icd_set'])
-                    or (not my_icds and not other['icd_set']
-                        and other['h_type'] == entry['h_type']
-                        and other['max_ps'] == ps)
-                )
+                other['visit_date'] > visit_date and _same_rx(entry, other)
                 for other in entries
                 if other is not entry
             )
@@ -761,6 +812,8 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
 
     ae_best: dict[str, dict]   = {}  # most recent AE連續 (IC02/IC03) per nat_id
     ic01_best: dict[str, dict] = {}  # most recent 01西醫 IC01 per nat_id
+    # Every 慢簽 visit (IC01/02/03) per nat_id: {date: [(p_path, code_f, is_ic01)]}, for leftover-pill carry-over
+    series: dict[str, dict[date, list[tuple[str, str, bool]]]] = {}
 
     for ic_path in _ic_files_since(since):
         try:
@@ -794,13 +847,16 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
             cf = r.get('CODE_F', '').strip()
 
             if is_nishi:
-                if nat_id in ic01_best and v_date <= ic01_best[nat_id]['date']:
-                    continue
                 # IC01: M33='1' (first cycle) and M26='3' (3-cycle series).
                 if not (m33 == '1' and m26 == '3'):
                     continue
                 if not _p_file_has_long1(p_path, cf):
                     continue
+
+            if cf:
+                series.setdefault(nat_id, {}).setdefault(v_date, []).append((p_path, cf, is_nishi))
+            if is_nishi and nat_id in ic01_best and v_date <= ic01_best[nat_id]['date']:
+                continue
 
             target = ae_best if is_ae else ic01_best
 
@@ -831,19 +887,24 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
 
     # Build CODE_F → days-supply map from LONG=1 P-file records.
     by_p_path: dict[str, set[str]] = {}
-    for src in (ae_best, ic01_best):
-        for v in src.values():
-            p_path = v['ic_path'][:-4] + 'P.DBF'
-            if os.path.exists(p_path):
-                for cf in v['code_fs']:
+    for visits in series.values():
+        for pairs in visits.values():
+            for p_path, cf, _ in pairs:
+                if os.path.exists(p_path):
                     by_p_path.setdefault(p_path, set()).add(cf)
 
     ps_lookup: dict[str, int] = {}
+    dose_lookup: dict[str, set[tuple[str, float]]] = {}  # CODE_F → {(drug, per day)} of its 慢簽 drugs
     for p_path, code_fs in by_p_path.items():
         try:
             for r in _parse_dbf_cached(p_path):
                 cf = r.get('CODE_F', '').strip()
-                if cf in code_fs and cf not in ps_lookup and r.get('LONG', '').strip() == '1':
+                if cf not in code_fs or r.get('LONG', '').strip() != '1':
+                    continue
+                dose = _daily_dose(r)
+                if dose:
+                    dose_lookup.setdefault(cf, set()).add(dose)
+                if cf not in ps_lookup:
                     ps_val = r.get('PS', '').strip()
                     if ps_val.isdigit() and int(ps_val) > 0:
                         ps_lookup[cf] = int(ps_val)
@@ -871,7 +932,27 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
                 continue  # no LONG=1 prescription found — blood-draw-only visit or P file missing
             total_ps = max(ps_list)
 
-        due_date     = v['date'] + timedelta(days=total_ps)
+        # Carry pills left over from a visit made before the last supply ran out.
+        # IC02/IC03 pickups repeat the same prescription, so they always carry. An IC01 is a
+        # new 慢箋: carry only if the drugs and daily amounts match the previous visit.
+        prev_run_out = None
+        prev_doses: frozenset | None = None
+        due_date = None
+        for d in sorted(series.get(nat_id, {})):
+            if d > v['date']:
+                break
+            visits = series[nat_id][d]
+            d_ps = total_ps if d == v['date'] else max((ps_lookup.get(cf, 0) for _, cf, _ in visits), default=0)
+            if not d_ps:
+                continue
+            doses = frozenset(x for _, cf, _ in visits for x in dose_lookup.get(cf, ()))
+            if any(ic01 for _, _, ic01 in visits) and prev_doses is not None and doses != prev_doses:
+                prev_run_out = None  # doctor changed the meds — old pills don't count
+            prev_run_out = meds_run_out(prev_run_out, d, d_ps)
+            prev_doses = doses
+            due_date = prev_run_out
+        if due_date is None:
+            due_date = v['date'] + timedelta(days=total_ps)
         days_overdue = (as_of - due_date).days
         if not (CHRONIC_GRACE_DAYS <= days_overdue <= MAX_CHRONIC_OVERDUE_DAYS):
             continue

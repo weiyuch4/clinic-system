@@ -56,6 +56,11 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 9, date: '2026-11-19', items: [
+      '慢簽和處方追蹤：病患在藥吃完前 2 天就會出現在待聯絡，可以提早提醒（尚未到期的會顯示「幾天後」）',
+      '病患提早回診時，上次剩下的藥會算進去，不會在藥還沒吃完時又被列出來（處方追蹤的開藥天會顯示「＋剩幾天」）',
+      '代謝症候群：今年健保次數已用完的病患改列在新的「本年度已滿」分頁，並寫明明年幾號起才能申報',
+    ]},
     { version: 8, date: '2026-11-05', items: [
       '深色／淺色模式的切換移到右上角的護理師選單裡',
     ]},
@@ -1278,7 +1283,7 @@
         '<span class="p-name">' + escHtml(e.patient.name) + '</span>' +
         '<span class="p-chart">#' + escHtml(e.patient.chart_number) + '</span>' +
         '<div class="p-chips">' + catChip(e.category, e.mspt_stage) + (tags ? ' ' + tags : '') + '</div>' +
-        '<div class="p-days ' + daysCls + '">' + daysN + '<span class="p-days-u">天</span></div>' +
+        '<div class="p-days ' + daysCls + '">' + (daysN < 0 ? -daysN + '<span class="p-days-u">天後</span>' : daysN + '<span class="p-days-u">天</span>') + '</div>' +
       '</div>' +
       '<div class="p-row2">' +
         '<div class="pm">' + metaParts.join('<span class="pm-dot">·</span>') + '</div>' +
@@ -1325,7 +1330,7 @@
         '<div class="pr-info">' + infoParts.join(' · ') + '</div>' +
       '</td>' +
       '<td class="pr-cat">' + catChip(e.category, e.mspt_stage) + '</td>' +
-      '<td class="pr-days ' + daysCls + '">' + daysN + '<span class="pr-days-u">天</span></td>' +
+      '<td class="pr-days ' + daysCls + '">' + (daysN < 0 ? -daysN + '<span class="pr-days-u">天後</span>' : daysN + '<span class="pr-days-u">天</span>') + '</td>' +
       '<td class="pr-date">' + (e.due_date        ? escHtml(sd(e.due_date))        : '—') + '</td>' +
       '<td class="pr-date">' + (e.last_visit_date ? escHtml(sd(e.last_visit_date)) : '—') + '</td>' +
       '<td class="pr-note"' + (tagsText ? ' title="' + escHtml(tagsText) + '"' : '') + '>' + (tags ? '<div class="pr-tags">' + tags + '</div>' : '') + '</td>' +
