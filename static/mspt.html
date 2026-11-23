@@ -758,7 +758,7 @@ document.addEventListener('click', function(ev) {
       if (headerFix) html = html.replace(headerFix[0], headerFix[1]);
       el.innerHTML = html;
     }
-    if (_tab === id.replace('list-', ''))
+    if (_tab === id.replace('list-', '').replace(/-rows$/, ''))
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
 
@@ -887,6 +887,7 @@ document.addEventListener('click', function(ev) {
     var counts = {
       return: _return, phone: _phone, submittable: _submittable, submitted: _submitted,
       inactive: _inactive, contacted: _contacted, hold: _hold, excluded: _excluded, dnc: _dnc,
+      upcoming: _upcoming, capped: _capped,
     };
     document.getElementById('result-count').textContent = '共 ' + (counts[_tab] || []).filter(match).length + ' 筆';
   });

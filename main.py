@@ -1751,6 +1751,20 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                 result.append(updated)
             return result
 
+        def divert_dnc(entries: list[FollowupEntry]) -> list[FollowupEntry]:
+            """Move patients who asked not to be contacted out of a non-pending list
+            (未到期, 本年度已滿, 已聯繫) onto the page's 不聯絡 tab, so that tab is the
+            only place they show."""
+            kept = []
+            for e in entries:
+                pref = contact_pref_map.get(e.patient.chart_number)
+                if contact_prefs.blocks(pref, e.category):
+                    key = (e.patient.chart_number, e.category, e.due_date.isoformat())
+                    do_not_contact.setdefault(key, e.model_copy(update={"dnc_note": _dnc_note(pref)}))
+                else:
+                    kept.append(e)
+            return kept
+
         # Filter 已聯絡 / 已二次通知 / 長期未回應 entries: drop patients who have
         # already returned since being contacted.
         _contacted_people = ([(e.patient.chart_number, e.category) for e, _ in contacted_with_dates]
@@ -1892,8 +1906,8 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                 and (e.patient.chart_number, (as_of or date.today()).isoformat()) not in hep_returned_completed_keys
             ],
             hep_returned_completed=contacts.get_hep_returned_completed_entries(cid),
-            contacted=_enrich_phones(contacted),
-            called=_enrich_phones(called_filtered),
+            contacted=_enrich_phones(divert_dnc(contacted)),
+            called=_enrich_phones(divert_dnc(called_filtered)),
             submitted=contacts.get_submitted_entries(cid),
             excluded=all_excluded,
             mspt_completed=contacts.get_mspt_completed_entries(cid),
@@ -1910,9 +1924,9 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
                 [e.model_copy(update={"manual": True}) for e in report.ckd_followups
                  if e.patient.chart_number in ckd_manual_inactive_charts]
             ),
-            mspt_upcoming=report.mspt_upcoming,
-            hep_upcoming=report.hep_upcoming,
-            ckd_upcoming=report.ckd_upcoming,
+            mspt_upcoming=divert_dnc(report.mspt_upcoming),
+            hep_upcoming=divert_dnc(report.hep_upcoming),
+            ckd_upcoming=divert_dnc(report.ckd_upcoming),
             do_not_contact=sorted(do_not_contact.values(), key=lambda e: -e.days_overdue),
         )
         if report_date is None:

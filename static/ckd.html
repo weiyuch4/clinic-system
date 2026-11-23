@@ -367,7 +367,7 @@
     } else {
       el.innerHTML = L.patientTable(filtered.map(renderFn).join(''), [], { hideCat: true });
     }
-    if (_tab === id.replace('list-', ''))
+    if (_tab === id.replace('list-', '').replace(/-rows$/, ''))
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
 

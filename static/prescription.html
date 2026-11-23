@@ -220,9 +220,9 @@
     return '<th data-sort="' + col + '" style="cursor:pointer;user-select:none;white-space:nowrap">' + label + _sortArrow(col) + '</th>';
   }
 
-  function rxTable(rowsHtml) {
+  function rxTable(rowsHtml, daysLabel) {
     var hdr = _sortTh('nat','身份證') + _sortTh('name','病患') +
-      _sortTh('type','處方類型') + _sortTh('days','到期') +
+      _sortTh('type','處方類型') + _sortTh('days', daysLabel || '到期') +
       _sortTh('due','到期日') + _sortTh('ps','開藥天') +
       _sortTh('note','備註') + '<th></th>';
     return '<div class="ptbl-wrap"><table class="p-table">' +
@@ -533,7 +533,9 @@
     if (!filtered.length) {
       el.innerHTML = '<div class="sec-empty">' + (entries.length ? '沒有符合搜尋條件的病患' : '目前沒有記錄') + '</div>';
     } else {
-      el.innerHTML = rxTable(filtered.map(rowFn).join(''));
+      // 已聯繫 / 已排除 rows show the date the nurse made contact in this column
+      el.innerHTML = rxTable(filtered.map(rowFn).join(''),
+        (id === 'list-contacted' || id === 'list-excluded') ? '聯繫日' : '到期');
     }
     if (_tab === id.replace('list-',''))
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
