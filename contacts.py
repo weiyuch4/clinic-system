@@ -995,12 +995,18 @@ def init() -> None:
                 cur.execute(f"ALTER TABLE mspt_completed ADD COLUMN IF NOT EXISTS {col}")
             for tbl in ("excluded", "manual_pickups"):
                 cur.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS nurse TEXT DEFAULT ''")
-            for col in ("clean_start TEXT", "clean_end TEXT"):
+            # leave: NULL, or '病假' — the nurse is off sick for that slot; start/end keep the original shift
+            for col in ("clean_start TEXT", "clean_end TEXT", "leave TEXT"):
                 cur.execute(f"ALTER TABLE shifts ADD COLUMN IF NOT EXISTS {col}")
             cur.execute("ALTER TABLE nurses ADD COLUMN IF NOT EXISTS pin_hash TEXT")
             cur.execute("ALTER TABLE synced_candidates ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''")
             cur.execute("ALTER TABLE synced_candidates ADD COLUMN IF NOT EXISTS mobile TEXT NOT NULL DEFAULT ''")
             cur.execute("ALTER TABLE salary_records ADD COLUMN IF NOT EXISTS sick_days INTEGER NOT NULL DEFAULT 0")
+            # half days (one 診 off sick): widen sick_days to REAL, once
+            cur.execute("""SELECT data_type FROM information_schema.columns
+                           WHERE table_name = 'salary_records' AND column_name = 'sick_days'""")
+            if (cur.fetchone() or {}).get("data_type") == "integer":
+                cur.execute("ALTER TABLE salary_records ALTER COLUMN sick_days TYPE REAL")
             cur.execute("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''")
             cur.execute("ALTER TABLE contacts ADD COLUMN IF NOT EXISTS mobile TEXT NOT NULL DEFAULT ''")
             cur.execute("ALTER TABLE on_hold ADD COLUMN IF NOT EXISTS phone TEXT NOT NULL DEFAULT ''")
@@ -2419,7 +2425,7 @@ def get_shifts_for_week(week_start: str, clinic_id: int = 1) -> list[dict]:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT nurse, shift_date, slot, start_time, end_time, clean_start, clean_end FROM shifts
+                """SELECT nurse, shift_date, slot, start_time, end_time, clean_start, clean_end, leave FROM shifts
                    WHERE clinic_id=%s AND shift_date BETWEEN %s AND %s""",
                 (clinic_id, week_start, week_end),
             )
@@ -2439,7 +2445,7 @@ def get_month_schedule(month: str, clinic_id: int = 1) -> dict:
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                """SELECT nurse, shift_date, slot, start_time, end_time, clean_start, clean_end
+                """SELECT nurse, shift_date, slot, start_time, end_time, clean_start, clean_end, leave
                    FROM shifts
                    WHERE clinic_id=%s AND shift_date BETWEEN %s AND %s
                    ORDER BY shift_date, nurse,
@@ -2491,6 +2497,42 @@ def copy_week(from_week_start: str, to_week_start: str, clinic_id: int = 1) -> N
                            clean_start=EXCLUDED.clean_start, clean_end=EXCLUDED.clean_end""",
                     (r['nurse'], new_date, r['slot'], r['start_time'], r['end_time'], r['clean_start'], r['clean_end'], clinic_id),
                 )
+                # A copied shift is a fresh plan: drop any 病假 left on the target slot.
+                cur.execute(
+                    "UPDATE shifts SET leave = NULL WHERE nurse = %s AND shift_date = %s AND slot = %s AND clinic_id = %s",
+                    (r['nurse'], new_date, r['slot'], clinic_id),
+                )
+
+
+def set_shift_leave(nurse: str, shift_date: str, slots: list[str], leave: str | None, clinic_id: int = 1) -> None:
+    """Mark (or clear) 病假 on existing shifts without touching their times."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """UPDATE shifts SET leave = %s
+                   WHERE nurse = %s AND shift_date = %s AND slot = ANY(%s) AND clinic_id = %s""",
+                (leave, nurse, shift_date, slots, clinic_id),
+            )
+
+
+def count_schedule_sick_days(nurse: str, month: str, clinic_id: int = 1) -> dict:
+    """病假 days in a month from the 排班表: a day counts 1 when every scheduled slot that
+    day is 病假, 0.5 when only some are. Used as a suggestion on the salary page."""
+    import calendar as _cal
+    first = date.fromisoformat(month + '-01')
+    last = f"{month}-{_cal.monthrange(first.year, first.month)[1]:02d}"
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """SELECT shift_date, COUNT(*) AS total, COUNT(*) FILTER (WHERE leave = '病假') AS sick
+                   FROM shifts WHERE nurse = %s AND clinic_id = %s AND shift_date BETWEEN %s AND %s
+                     AND start_time IS NOT NULL
+                   GROUP BY shift_date ORDER BY shift_date""",
+                (nurse, clinic_id, month + '-01', last),
+            )
+            rows = [r for r in cur.fetchall() if r["sick"]]
+    days = [{"date": r["shift_date"], "full": r["sick"] == r["total"]} for r in rows]
+    return {"days": sum(1 if d["full"] else 0.5 for d in days), "dates": days}
 
 
 def get_nurses(clinic_id: int = 1) -> list[str]:
@@ -2808,7 +2850,7 @@ def delete_doctor_note(note_id: int, clinic_id: int = 1) -> None:
 def save_salary_record(
     nurse: str, month: str, attendance: int, performance: int,
     sat_pay: int, float_bonus: int, ot_pay: int, total: int, ot_entries: str,
-    clinic_id: int = 1, sick_days: int = 0,
+    clinic_id: int = 1, sick_days: float = 0,
 ) -> dict:
     created_at = datetime.now(_TW).strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:
@@ -2839,21 +2881,24 @@ def get_salary_records(nurse: str, month: str, clinic_id: int = 1) -> list[dict]
             return [dict(r) for r in cur.fetchall()]
 
 
-def get_yearly_sick_days(nurse: str, year: int, clinic_id: int = 1) -> int:
+def get_yearly_sick_days(nurse: str, year: int, clinic_id: int = 1, before_month: str | None = None) -> float:
+    """病假 days on saved salary records in a calendar year; with before_month ('YYYY-MM'),
+    only the months before it (the 30-day half-pay limit counts from 1/1)."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """SELECT COALESCE(SUM(COALESCE(sick_days,0)),0) AS total
-                   FROM salary_records WHERE clinic_id = %s AND nurse = %s AND month LIKE %s""",
-                (clinic_id, nurse, f"{year}-%"),
+                   FROM salary_records WHERE clinic_id = %s AND nurse = %s AND month LIKE %s
+                     AND (%s::text IS NULL OR month < %s)""",
+                (clinic_id, nurse, f"{year}-%", before_month, before_month),
             )
-            return int(cur.fetchone()["total"])
+            return float(cur.fetchone()["total"])
 
 
 def update_salary_record(
     record_id: int, attendance: int, performance: int,
     sat_pay: int, float_bonus: int, ot_pay: int, total: int, ot_entries: str,
-    clinic_id: int = 1, sick_days: int = 0,
+    clinic_id: int = 1, sick_days: float = 0,
 ) -> None:
     updated_at = datetime.now(_TW).strftime('%Y-%m-%d %H:%M')
     with _conn() as conn:

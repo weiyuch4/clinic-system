@@ -43,6 +43,8 @@
 .sg-entry+.sg-entry{border-top:1px solid var(--border);margin-top:5px;padding-top:5px}
 .sg-time{font-size:11px;color:var(--sub);font-variant-numeric:tabular-nums;letter-spacing:.01em}
 .sg-clean{font-size:10.5px;color:var(--muted)}
+.sg-leave{font-size:11px;font-weight:600}
+.mob-slot-leave{font-size:12px;font-weight:600}
 .sg-clean::before{content:'清潔 '}
 .view-toggle{display:flex;height:var(--ctl-h);border:1.5px solid var(--border);border-radius:100px;overflow:hidden;flex-shrink:0}
 .view-toggle button{display:flex;align-items:center;justify-content:center;padding:0 14px;font-size:12.5px;font-weight:500;border:none;background:transparent;cursor:pointer;color:var(--muted);font-family:inherit;transition:background .12s,color .12s}
@@ -142,7 +144,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=101"></script>
+<script src="/static/_layout.js?v=102"></script>
 <script>
 (function () {
   'use strict';
@@ -215,10 +217,12 @@
 
   function entryHtml(e) {
     var h = '<div class="sg-entry"><div class="sg-name">' + L.escHtml(e.nurse) + '</div>';
-    if (e.start_time || e.end_time) {
+    if (e.leave) {
+      h += '<div class="sg-leave days-hi">' + L.escHtml(e.leave) + '</div>';
+    } else if (e.start_time || e.end_time) {
       h += '<div class="sg-time">' + (e.start_time || '') + (e.end_time ? '–' + e.end_time : '') + '</div>';
     }
-    if (e.clean_start && e.clean_end) {
+    if (!e.leave && e.clean_start && e.clean_end) {
       h += '<div class="sg-clean">' + e.clean_start + '–' + e.clean_end + '</div>';
     }
     h += '</div>';
@@ -255,7 +259,8 @@
               var timeStr = (e.start_time || '') + (e.end_time ? '–' + e.end_time : '');
               return '<div class="mob-slot-entry' + (isMine ? ' mob-mine' : '') + '">' +
                 '<span class="mob-slot-name">' + L.escHtml(e.nurse) + '</span>' +
-                (timeStr ? '<span class="mob-slot-time">' + timeStr + '</span>' : '') +
+                (e.leave ? '<span class="mob-slot-leave days-hi">' + L.escHtml(e.leave) + '</span>'
+                  : timeStr ? '<span class="mob-slot-time">' + timeStr + '</span>' : '') +
               '</div>';
             }).join('')
           : '<span class="mob-slot-empty">—</span>';
@@ -351,6 +356,7 @@
           end_time: s.end_time || null,
           clean_start: s.clean_start || null,
           clean_end: s.clean_end || null,
+          leave: s.leave || null,
         });
       });
       renderGrid(idx);
@@ -433,6 +439,7 @@
             cells += '<td class="ec' + (we ? ' we' : '') + '"></td>';
           } else {
             var content = shifts.map(function (s) {
+              if (s.leave) return '<div class="sh lv">' + s.leave + '</div>';
               var clean = s.clean_start && s.clean_end;
               return '<div class="sh">' +
                 '<span class="st">' + fmtT(s.start_time) + '</span>' +
@@ -461,6 +468,7 @@
         '.sc{font-variant-numeric:tabular-nums;font-size:9pt;padding:4px 3px}' +
         '.sh{padding:2px 0;margin-bottom:5px;line-height:1.4}' +
         '.sh:last-child{margin-bottom:0}' +
+        '.sh.lv{color:#b91c1c;font-weight:600}' +
         '.st,.vb,.et{display:block;text-align:center}' +
         '.vb{color:#9ca3af;line-height:1;font-size:8pt;margin:1px 0}' +
         '.et{color:#4b5563}' +

@@ -28,6 +28,10 @@
   --emerald:    #059669;
   --amber:      #D97706;
   --red:        #DC2626;
+  /* 排班表 病假 cells */
+  --leave-bg:     #FEF2F2;
+  --leave-border: #FCA5A5;
+  --leave-fg:     #B91C1C;
   --radius-s:   6px;
   --radius:     10px;
   --radius-l:   var(--r);
@@ -37,9 +41,11 @@
   --ctl-h:      32px;
 }
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme=light]) { --border-mid: #374558; --blue-bg: rgba(37,99,235,.12); }
+  :root:not([data-theme=light]) { --border-mid: #374558; --blue-bg: rgba(37,99,235,.12);
+    --leave-bg: rgba(220,38,38,.14); --leave-border: rgba(248,113,113,.5); --leave-fg: #FCA5A5; }
 }
-:root[data-theme=dark] { --border-mid: #374558; --blue-bg: rgba(37,99,235,.12); }
+:root[data-theme=dark] { --border-mid: #374558; --blue-bg: rgba(37,99,235,.12);
+  --leave-bg: rgba(220,38,38,.14); --leave-border: rgba(248,113,113,.5); --leave-fg: #FCA5A5; }
 
 /* month picker (light, inside sections) */
 .section-bar {
@@ -866,6 +872,29 @@ tbody tr:last-child td { border-bottom: none; }
 }
 :root[data-theme=dark] .sched-time-btn.has-clean,
 :root[data-theme=dark] .mob-sched-btn.has-clean { background: rgba(217,119,6,.15); border-color: var(--amber); color: #FCD34D; }
+.sched-time-btn.is-leave,
+.mob-sched-btn.is-leave { background: var(--leave-bg); border-color: var(--leave-border); color: var(--leave-fg); }
+.sched-time-btn.is-leave { display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.1; }
+.lv-tag { font-weight: 700; }
+.lv-time { font-size: 9px; font-weight: 500; opacity: .75; }
+.mob-sched-btn.is-leave .ms-time { color: var(--leave-fg); display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.mob-sched-btn.is-leave .lv-time { font-size: 10.5px; }
+.sched-legend-swatch.is-leave { background: var(--leave-bg); border-color: var(--leave-border); margin-left: 10px; }
+.stp-leave-row { display: flex; gap: 6px; margin-bottom: 10px; }
+.stp-leave-btn {
+  flex: 1;
+  border: 1px solid var(--border-mid);
+  border-radius: 6px;
+  background: var(--surface);
+  padding: 6px 0;
+  font: 600 12px/1 var(--font);
+  color: var(--leave-fg);
+  cursor: pointer;
+  transition: background-color .1s, border-color .1s;
+}
+@media(hover:hover){.stp-leave-btn:hover{ border-color: var(--leave-border); background: var(--leave-bg); }}
+.stp-leave-btn.on { background: var(--leave-bg); border-color: var(--leave-border); }
+.stp-leave-note { font-size: 11.5px; color: var(--leave-fg); font-weight: 600; margin: -4px 0 10px; }
 .sched-legend {
   display: flex; align-items: center; gap: 6px;
   font-size: 11.5px; color: var(--text-2); font-weight: 600;
@@ -1242,6 +1271,21 @@ tbody tr:last-child td { border-bottom: none; }
 .sal-hist-actions { display: flex; gap: 6px; align-items: center; }
 .sal-section-head { font-size: 11px; font-weight:500; color: var(--text-3); margin: 16px 0 6px; }
 .sal-body.mode-part .sal-full-only { display: none !important; }
+/* 病假 calculation, shown step by step under 病假扣款 */
+.sal-calc {
+  margin: 2px 0 10px; padding: 10px 12px;
+  background: var(--bg); border-radius: var(--radius-s);
+  font-size: 12px; line-height: 1.75; color: var(--text-2);
+  font-variant-numeric: tabular-nums;
+}
+.sal-calc .sc-step { display: flex; gap: 6px; }
+.sal-calc .sc-n { color: var(--text-3); flex-shrink: 0; }
+.sal-calc b { color: var(--text-1); font-weight: 600; }
+.sal-calc .sc-warn { color: var(--red); font-weight: 600; }
+.sal-calc .sc-src { margin-top: 6px; font-size: 11.5px; color: var(--text-3); }
+.sal-li-sick { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 0 0 8px; font-size: 12.5px; color: var(--text-2); }
+.sal-li-sick label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+.sal-li-sick .sls-hint { font-size: 11.5px; color: var(--text-3); }
 .sal-part-ot-chk { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-2); white-space: nowrap; cursor: pointer; }
 .sal-part-ot-chk input { cursor: pointer; width: 14px; height: 14px; }
 .sal-part-rate-note { font-size: 12px; color: var(--text-3); padding: 10px 0 4px; display: none; }
@@ -1782,7 +1826,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
 .send-panel{border:1px solid var(--border);border-radius:var(--radius-s);padding:16px;background:var(--bg);margin-bottom:16px}
 .send-panel-title{font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:10px}
 </style>
-<script src="/static/_layout.js?v=101"></script>
+<script src="/static/_layout.js?v=102"></script>
 <script src="/static/admin-auth.js?v=5"></script>
 </head>
 <body>
@@ -2044,6 +2088,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
     </div>
     <div class="sched-legend" id="sched-legend" style="margin-bottom:12px">
       <span class="sched-legend-swatch"></span> 含清潔時段（點擊時段查看詳細時間）
+      <span class="sched-legend-swatch is-leave"></span> 病假（原排班時間保留，點擊時段可設定或取消）
     </div>
     <div id="sched-grid"></div>
   </section>
@@ -2243,16 +2288,30 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
         <div class="sal-section-head sal-full-only" style="margin-top:18px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <span>病假（勞基法半薪）</span>
           <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
-            <input type="number" id="sal-sick-days" min="0" max="30" value="0" step="1"
+            <input type="number" id="sal-sick-days" min="0" max="30" value="0" step="0.5"
               style="width:52px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:center"
               oninput="recalcSalary();loadYearlySickDays()"> 天
             <span id="sal-sick-yearly" style="font-size:11.5px;color:var(--muted)"></span>
+            <span id="sal-sick-sched" style="display:none;align-items:center;gap:6px;font-size:11.5px;color:var(--leave-fg)">
+              <span id="sal-sick-sched-txt"></span>
+              <button type="button" class="btn-sm" onclick="useScheduleSickDays()">帶入</button>
+            </span>
           </div>
         </div>
         <div class="sal-row sal-full-only" id="sal-sick-row" style="display:none">
           <span class="sal-label" style="color:var(--red)">病假扣款</span>
           <span class="sal-amount" id="sal-sick-deduct" style="color:var(--red)">—</span>
         </div>
+        <div class="sal-li-sick sal-full-only" id="sal-li-sick" style="display:none">
+          <label><input type="checkbox" id="sal-li-sick-chk" onchange="toggleLiSick()"> 有領勞保普通傷病給付</label>
+          <span id="sal-li-sick-amt-wrap" style="display:none;align-items:center;gap:6px">
+            <input type="number" id="sal-li-sick-amt" min="0" step="1" value="0"
+              style="width:84px;border:1.5px solid var(--border);border-radius:7px;padding:4px 8px;font-size:13px;background:var(--card);color:var(--text);text-align:right"
+              oninput="recalcSalary()"> 元
+          </span>
+          <span class="sls-hint">住院第4天起由勞保局給付；雇主只需補足到半薪</span>
+        </div>
+        <div class="sal-calc sal-full-only" id="sal-sick-calc" style="display:none"></div>
 
         <!-- 勞保/健保扣款 -->
         <div class="sal-section-head" style="margin-top:18px;display:flex;align-items:center;gap:12px;flex-wrap:wrap">
@@ -4752,7 +4811,7 @@ function timeDiffHours(start, end) {
 
 function calcWeeklyHours(nurse) {
   return shiftsCache
-    .filter(s => s.nurse === nurse && s.start_time && s.end_time)
+    .filter(s => s.nurse === nurse && s.start_time && s.end_time && !s.leave)
     .reduce((sum, s) => sum + timeDiffHours(s.start_time, s.end_time), 0);
 }
 
@@ -4826,6 +4885,46 @@ async function togglePublish() {
   }
 }
 
+// One schedule cell's look, shared by the desktop grid, the phone day view and repaints.
+function schedCellClass(entry) {
+  const hasValue = entry.start_time && entry.end_time;
+  return 'sched-time-btn' + (hasValue ? '' : ' is-empty')
+    + (entry.leave ? ' is-leave' : (entry.clean_start && entry.clean_end ? ' has-clean' : ''));
+}
+function schedCellTitleText(entry) {
+  if (entry.leave) return `${entry.leave}（原排班 ${entry.start_time}–${entry.end_time}）`;
+  return (entry.clean_start && entry.clean_end) ? `清潔時段 ${entry.clean_start}–${entry.clean_end}` : '';
+}
+function schedCellTitle(entry) {
+  const t = schedCellTitleText(entry);
+  return t ? ` title="${t}"` : '';
+}
+function schedCellLabel(entry) {
+  if (!(entry.start_time && entry.end_time)) return '－';
+  const t = `${entry.start_time}–${entry.end_time}`;
+  return entry.leave ? `<span class="lv-tag">${entry.leave}</span><s class="lv-time">${t}</s>` : t;
+}
+function schedEntry(nurse, date, slot) {
+  return shiftsCache.find(s => s.nurse === nurse && s.shift_date === date && s.slot === slot) || {};
+}
+// Redraw every button for one cell (desktop grid + phone day view) from shiftsCache.
+function paintSchedCell(nurse, date, slot) {
+  const entry = schedEntry(nurse, date, slot);
+  document.querySelectorAll(`.sched-time-btn[data-nurse="${nurse}"][data-slot="${slot}"][data-date="${date}"]`).forEach(btn => {
+    const isMob = btn.classList.contains('mob-sched-btn');
+    btn.className = schedCellClass(entry) + (isMob ? ' mob-sched-btn' : '');
+    btn.title = schedCellTitleText(entry);
+    btn.dataset.start = entry.start_time || '';
+    btn.dataset.end = entry.end_time || '';
+    btn.dataset.cleanStart = entry.clean_start || '';
+    btn.dataset.cleanEnd = entry.clean_end || '';
+    if (isMob) btn.querySelector('.ms-time').innerHTML = schedCellLabel(entry);
+    else btn.innerHTML = schedCellLabel(entry);
+  });
+  const totalCell = document.querySelector(`[data-nurse-total="${nurse}"]`);
+  if (totalCell) totalCell.textContent = `${calcWeeklyHours(nurse).toFixed(2)} 小時`;
+}
+
 function renderGrid(nurses, pharmacists = []) {
   if (!nurses.length && !pharmacists.length) {
     $('sched-grid').innerHTML = emptyState('', '尚無排班人員名單', '');
@@ -4844,15 +4943,11 @@ function renderGrid(nurses, pharmacists = []) {
     const rows = SLOTS.map(slot => {
       const cells = days.map(d => {
         const entry = cellMap[`${nurse}|${d}|${slot}`] || {};
-        const hasValue = entry.start_time && entry.end_time;
-        const hasClean = entry.clean_start && entry.clean_end;
-        const label = hasValue ? `${entry.start_time}–${entry.end_time}` : '－';
-        const title = hasClean ? ` title="清潔時段 ${entry.clean_start}–${entry.clean_end}"` : '';
         return `<td>
-          <button class="sched-time-btn${hasValue ? '' : ' is-empty'}${hasClean ? ' has-clean' : ''}"${title}
+          <button class="${schedCellClass(entry)}"${schedCellTitle(entry)}
             data-nurse="${nurse}" data-date="${d}" data-slot="${slot}"
             data-start="${entry.start_time || ''}" data-end="${entry.end_time || ''}"
-            data-clean-start="${entry.clean_start || ''}" data-clean-end="${entry.clean_end || ''}">${label}</button>
+            data-clean-start="${entry.clean_start || ''}" data-clean-end="${entry.clean_end || ''}">${schedCellLabel(entry)}</button>
         </td>`;
       }).join('');
       return `<tr><td class="l">${slot}<button class="sched-fill-btn" title="將週一的時間套用到本週其他天" onclick="applyRowToWeek('${nurse}','${slot}')">⤵</button></td>${cells}</tr>`;
@@ -4894,16 +4989,12 @@ function renderGrid(nurses, pharmacists = []) {
     const nurseRows = allPeople.map(nurse => {
       const slots = SLOTS.map(slot => {
         const entry2 = cellMap[`${nurse}|${d}|${slot}`] || {};
-        const hv = entry2.start_time && entry2.end_time;
-        const hc = entry2.clean_start && entry2.clean_end;
-        const lbl = hv ? `${entry2.start_time}–${entry2.end_time}` : '－';
-        const tt = hc ? ` title="清潔時段 ${entry2.clean_start}–${entry2.clean_end}"` : '';
-        return `<button type="button" class="sched-time-btn mob-sched-btn${hv ? '' : ' is-empty'}${hc ? ' has-clean' : ''}"${tt}
+        return `<button type="button" class="${schedCellClass(entry2)} mob-sched-btn"${schedCellTitle(entry2)}
           data-nurse="${nurse}" data-date="${d}" data-slot="${slot}"
           data-start="${entry2.start_time || ''}" data-end="${entry2.end_time || ''}"
           data-clean-start="${entry2.clean_start || ''}" data-clean-end="${entry2.clean_end || ''}">
           <span class="ms-lbl">${slot}</span>
-          <span class="ms-time">${lbl}</span>
+          <span class="ms-time">${schedCellLabel(entry2)}</span>
         </button>`;
       }).join('');
       return `<div class="mob-day-nurse">
@@ -4965,7 +5056,7 @@ function renderCoverage(nurses, pharmacists = []) {
   }
 
   const dayGroups = days.map((d, i) => {
-    const dayEntries = shiftsCache.filter(s => s.shift_date === d && s.start_time && s.end_time);
+    const dayEntries = shiftsCache.filter(s => s.shift_date === d && s.start_time && s.end_time && !s.leave);
 
     let rows = '';
     if (hasBoth) rows += `<div class="cov-section-lbl">護理師</div>`;
@@ -5212,12 +5303,48 @@ function _stpTimeCol(timeStr, field, slot) {
   return `<div class="stp-col" style="height:110px">${opts}</div>`;
 }
 
+// 病假 buttons at the top of the time menu — only for a slot that has a shift.
+function _stpLeaveHtml() {
+  const { nurse, date, slot } = _stpState;
+  const entry = schedEntry(nurse, date, slot);
+  if (!(entry.start_time && entry.end_time)) return '';
+  const daySlots = SLOTS.filter(s => { const x = schedEntry(nurse, date, s); return x.start_time && x.end_time; });
+  const allSick = daySlots.every(s => schedEntry(nurse, date, s).leave);
+  const dayBtn = daySlots.length > 1
+    ? `<button class="stp-leave-btn${allSick ? ' on' : ''}" data-role="leave-day">${allSick ? '取消整天病假' : '整天病假'}</button>` : '';
+  const note = entry.leave ? `<div class="stp-leave-note">${entry.leave}中，下方為原排班時間</div>` : '';
+  return `<div class="stp-leave-row">
+      <button class="stp-leave-btn${entry.leave ? ' on' : ''}" data-role="leave-slot">${entry.leave ? '取消病假' : slot + '病假'}</button>
+      ${dayBtn}
+    </div>${note}`;
+}
+
+async function setShiftLeave(nurse, date, slots, leave) {
+  try {
+    const res = await fetch('/api/admin/shifts/leave', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nurse, shift_date: date, slots, leave }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.detail || `HTTP ${res.status}`);
+    }
+    shiftsCache.forEach(s => {
+      if (s.nurse === nurse && s.shift_date === date && slots.includes(s.slot)) s.leave = leave;
+    });
+    slots.forEach(sl => paintSchedCell(nurse, date, sl));
+  } catch (e) {
+    alert('儲存病假失敗：' + e.message);
+  }
+}
+
 function renderSchedScrollPicker() {
   const { start, end, cleanStart, cleanEnd, slot } = _stpState;
   const duration = (start && end) ? `${timeDiffHours(start, end).toFixed(2)} 小時` : '';
   const confirmDis = (start && end) ? '' : ' disabled';
 
-  const _scrollBodyHtml = `
+  const _scrollBodyHtml = `${_stpLeaveHtml()}
     <div class="stp-mode-row">
       <button class="stp-mode-btn" data-stp-mode="chips">快選</button>
       <button class="stp-mode-btn stp-active" data-stp-mode="scroll">自訂</button>
@@ -5284,7 +5411,7 @@ function renderTimePopover() {
   }).join('');
   const duration = (start && end) ? `${timeDiffHours(start, end).toFixed(2)} 小時` : '';
 
-  const _chipsBodyHtml = `
+  const _chipsBodyHtml = `${_stpLeaveHtml()}
     <div class="stp-mode-row">
       <button class="stp-mode-btn stp-active" data-stp-mode="chips">快選</button>
       <button class="stp-mode-btn" data-stp-mode="scroll">自訂</button>
@@ -5322,6 +5449,19 @@ $('sched-time-popover').addEventListener('click', (e) => {
 
   const modeBtn = e.target.closest('.stp-mode-btn[data-stp-mode]');
   if (modeBtn) { toggleSchedTimeMode(modeBtn.dataset.stpMode); return; }
+
+  const leaveBtn = e.target.closest('.stp-leave-btn');
+  if (leaveBtn) {
+    const { nurse, date, slot } = _stpState;
+    let slots = [slot];
+    if (leaveBtn.dataset.role === 'leave-day')
+      slots = SLOTS.filter(s => { const x = schedEntry(nurse, date, s); return x.start_time && x.end_time; });
+    const turnOn = !leaveBtn.classList.contains('on');
+    $('sched-time-popover').classList.remove('show');
+    document.getElementById('sched-time-backdrop')?.classList.remove('show');
+    setShiftLeave(nurse, date, slots, turnOn ? '病假' : null);
+    return;
+  }
 
   if (e.target.closest('[data-role="close-sheet"]')) {
     $('sched-time-popover').classList.remove('show');
@@ -5436,18 +5576,7 @@ $('sched-time-popover').addEventListener('touchend', () => {
 });
 
 function commitTimeSelection(start, end, cleanStart, cleanEnd) {
-  const { btn, nurse, date, slot } = _stpState;
-  cleanStart = cleanStart || '';
-  cleanEnd = cleanEnd || '';
-  const hasClean = cleanStart && cleanEnd;
-  btn.dataset.start = start;
-  btn.dataset.end = end;
-  btn.dataset.cleanStart = cleanStart;
-  btn.dataset.cleanEnd = cleanEnd;
-  btn.textContent = (start && end) ? `${start}–${end}` : '－';
-  btn.title = hasClean ? `清潔時段 ${cleanStart}–${cleanEnd}` : '';
-  btn.classList.toggle('is-empty', !(start && end));
-  btn.classList.toggle('has-clean', !!hasClean);
+  const { nurse, date, slot } = _stpState;
   $('sched-time-popover').classList.remove('show');
   document.getElementById('sched-time-backdrop')?.classList.remove('show');
   saveShiftEntry(nurse, date, slot, start, end, cleanStart || null, cleanEnd || null);
@@ -5468,15 +5597,16 @@ async function saveShiftEntry(nurse, shiftDate, slot, start, end, cleanStart, cl
       const err = await res.json().catch(() => ({}));
       throw new Error(err.detail || `HTTP ${res.status}`);
     }
+    // Changing the time keeps a 病假 mark (the server keeps it too); clearing the time removes both.
+    const prevLeave = schedEntry(nurse, shiftDate, slot).leave || null;
     shiftsCache = shiftsCache.filter(s => !(s.nurse === nurse && s.shift_date === shiftDate && s.slot === slot));
     if (start && end) {
       shiftsCache.push({
         nurse, shift_date: shiftDate, slot, start_time: start, end_time: end,
-        clean_start: cleanStart || null, clean_end: cleanEnd || null,
+        clean_start: cleanStart || null, clean_end: cleanEnd || null, leave: prevLeave,
       });
     }
-    const totalCell = document.querySelector(`[data-nurse-total="${nurse}"]`);
-    if (totalCell) totalCell.textContent = `${calcWeeklyHours(nurse).toFixed(2)} 小時`;
+    paintSchedCell(nurse, shiftDate, slot);
   } catch (e) {
     alert('儲存排班失敗：' + e.message);
   }
@@ -5491,7 +5621,6 @@ function applyRowToWeek(nurse, slot) {
   const end = sourceBtn.dataset.end;
   const cleanStart = sourceBtn.dataset.cleanStart || null;
   const cleanEnd = sourceBtn.dataset.cleanEnd || null;
-  const hasClean = cleanStart && cleanEnd;
   if (!start || !end) {
     alert('請先在週一設定好這一格的時間，再套用到本週其他天。');
     return;
@@ -5500,17 +5629,6 @@ function applyRowToWeek(nurse, slot) {
 
   for (let i = 1; i < 6; i++) {
     const d = addDays(weekStart, i);
-    const btn = document.querySelector(
-      `.sched-time-btn[data-nurse="${nurse}"][data-slot="${slot}"][data-date="${d}"]`
-    );
-    btn.dataset.start = start;
-    btn.dataset.end = end;
-    btn.dataset.cleanStart = cleanStart || '';
-    btn.dataset.cleanEnd = cleanEnd || '';
-    btn.textContent = `${start}–${end}`;
-    btn.title = hasClean ? `清潔時段 ${cleanStart}–${cleanEnd}` : '';
-    btn.classList.remove('is-empty');
-    btn.classList.toggle('has-clean', !!hasClean);
     saveShiftEntry(nurse, d, slot, start, end, cleanStart, cleanEnd);
   }
 }
@@ -5547,6 +5665,67 @@ const payPartOtRate  = p => p.part_rate * 1.34;
 const payAttendance  = (p, sickDays) => sickDays > 0
   ? Math.max(0, Math.round(p.attendance * (30 - sickDays) / 30))
   : p.attendance;
+// 病假 pay — 勞工請假規則 第4條（一年內30日以內工資折半）、第9條（115/1/1起全勤獎金依比例扣發）,
+// worked the same way as the 勞動部 Q&A example:
+//   全勤獎金 is cut in proportion: 全勤 ÷ 30 × 病假天數
+//   日工資 = this month's regular wages, 全勤 as actually paid, ÷ 30 (any month length)
+//   days 1–30 of the calendar year: 日工資 × ½ each; days past 30: 日工資 each (unpaid)
+//   勞保普通傷病給付 (optional, off by default): the employer only tops up to half pay,
+//   so the benefit (up to the half pay owed) comes off what the clinic pays.
+function sickCalc(p, sickDays, attendanceOn, priorDays = 0, liBenefit = 0) {
+  const attFull   = attendanceOn ? p.attendance : 0;
+  const attPaid   = attendanceOn ? payAttendance(p, sickDays) : 0;
+  const attDeduct = attFull - attPaid;
+  const monthly   = p.base + attPaid + p.license + p.float_base;
+  const daily     = monthly / 30;
+  const halfDays  = Math.min(sickDays, Math.max(0, 30 - priorDays));
+  const unpaidDays = sickDays - halfDays;
+  const halfPay   = Math.round(daily * 0.5 * halfDays);
+  liBenefit       = sickDays > 0 ? Math.max(0, Math.round(liBenefit || 0)) : 0;
+  const liOffset  = Math.min(liBenefit, halfPay);
+  const deduct    = sickDays > 0 ? Math.round(daily * 0.5 * halfDays + daily * unpaidDays) + liOffset : 0;
+  return { sickDays, priorDays, attFull, attPaid, attDeduct, monthly, daily, halfDays, unpaidDays,
+           halfPay, liBenefit, liOffset, deduct };
+}
+const fmt2   = n => n.toLocaleString('zh-TW', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtInt = n => Math.round(n).toLocaleString('zh-TW');
+// One line of the 病假扣款 formula, for slips: 「日工資 1,428.33 × ½ × 1.5 天」
+function sickCalcFormula(c) {
+  const parts = [];
+  if (c.halfDays > 0)   parts.push(`${fmt2(c.daily)} × ½ × ${c.halfDays} 天`);
+  if (c.unpaidDays > 0) parts.push(`${fmt2(c.daily)} × ${c.unpaidDays} 天（超過30天不支薪）`);
+  if (c.liOffset > 0)   parts.push(`勞保已給付 ${fmtInt(c.liOffset)}（雇主補足半薪差額 ${fmtInt(c.halfPay - c.liOffset)}）`);
+  return '日工資 ' + parts.join(' ＋ ');
+}
+// The full step-by-step breakdown shown under 病假扣款.
+function sickCalcHtml(c, p) {
+  const yearTo = c.priorDays + c.sickDays;
+  const steps = [];
+  steps.push(`<div class="sc-step"><span class="sc-n">年度</span><span>今年先前已請 <b>${c.priorDays}</b> 天，本月 <b>${c.sickDays}</b> 天，合計 <b>${yearTo}</b> / 30 天`
+    + (c.unpaidDays > 0 ? `　<span class="sc-warn">超過30天的 ${c.unpaidDays} 天不支薪</span>` : '') + `</span></div>`);
+  if (c.attFull > 0) {
+    steps.push(`<div class="sc-step"><span class="sc-n">①</span><span>全勤獎金依比例扣：${fmtInt(c.attFull)} ÷ 30 × ${c.sickDays} 天 = <b>${fmtInt(c.attDeduct)}</b>，實發 <b>${fmtInt(c.attPaid)}</b></span></div>`);
+  }
+  const wageParts = [`底薪 ${fmtInt(p.base)}`];
+  if (c.attPaid > 0)   wageParts.push(`全勤 ${fmtInt(c.attPaid)}`);
+  if (p.license > 0)   wageParts.push(`執照費 ${fmtInt(p.license)}`);
+  if (p.float_base > 0) wageParts.push(`浮動獎金 ${fmtInt(p.float_base)}`);
+  steps.push(`<div class="sc-step"><span class="sc-n">${c.attFull > 0 ? '②' : '①'}</span><span>日工資：（${wageParts.join(' ＋ ')}）= ${fmtInt(c.monthly)} ÷ 30 = <b>${fmt2(c.daily)}</b></span></div>`);
+  const calc = [];
+  if (c.halfDays > 0)   calc.push(`${fmt2(c.daily)} × ½ × ${c.halfDays} 天`);
+  if (c.unpaidDays > 0) calc.push(`${fmt2(c.daily)} × ${c.unpaidDays} 天`);
+  let n = c.attFull > 0 ? 3 : 2;
+  const num = () => '①②③④⑤'[(n++) - 1];
+  if (c.liBenefit > 0) {
+    steps.push(`<div class="sc-step"><span class="sc-n">${num()}</span><span>勞保普通傷病給付 ${fmtInt(c.liBenefit)}：雇主應付半薪 ${fmtInt(c.halfPay)}，勞保已付 ${fmtInt(c.liOffset)}，雇主補足 <b>${fmtInt(c.halfPay - c.liOffset)}</b>`
+      + (c.liBenefit > c.halfPay ? '（給付已超過半薪，雇主不需補）' : '') + `</span></div>`);
+    calc.push(`勞保已付 ${fmtInt(c.liOffset)}`);
+  }
+  steps.push(`<div class="sc-step"><span class="sc-n">${num()}</span><span>病假扣款：${calc.join(' ＋ ')} = <b>${fmtInt(c.deduct)}</b>（四捨五入）</span></div>`);
+  steps.push(`<div class="sc-src">依據：勞工請假規則第4條（普通傷病假一年內30日以內工資折半）、第9條（115/1/1起全勤獎金依病假日數比例扣發）；日工資以當月工資（含實發全勤、不含加班費）÷ 30，與勞動部問答範例相同。年度以1/1–12/31計。${c.liBenefit > 0 ? '領有勞保普通傷病給付者，雇主只需補足到工資半數（同第4條）。' : ''}</div>`);
+  return steps.join('');
+}
+
 // A saved slip's 全勤獎金. Slips saved before 2026-11-08 stored the full amount
 // even with sick days (the total was right); reduce those when printing.
 const recAttendance  = (rec, p) => (rec.attendance > 0 && rec.attendance === p.attendance)
@@ -5838,15 +6017,52 @@ function renderSalExtras() {
 }
 
 // ── Yearly sick days ──
+// 勞保普通傷病給付 — off unless the admin ticks it for this slip.
+function toggleLiSick(on) {
+  const chk = $('sal-li-sick-chk');
+  if (typeof on === 'boolean') chk.checked = on;
+  $('sal-li-sick-amt-wrap').style.display = chk.checked ? 'inline-flex' : 'none';
+  if (!chk.checked) $('sal-li-sick-amt').value = 0;
+  recalcSalary();
+}
+
+// 病假 days already on saved slips earlier this year — the 30-day half-pay limit counts from 1/1.
+let _sickPriorDays = 0;
+let _salSick = null;
 async function loadYearlySickDays() {
   const nurse = $('sal-nurse') ? $('sal-nurse').value : '';
-  if (!nurse) { const el=$('sal-sick-yearly'); if(el) el.textContent=''; return; }
+  if (!nurse) { const el=$('sal-sick-yearly'); if(el) el.textContent=''; _sickPriorDays = 0; return; }
   try {
-    const res = await api(`/api/admin/salary/sick-days?nurse=${encodeURIComponent(nurse)}&year=${_salYear}`);
+    const res = await api(`/api/admin/salary/sick-days?nurse=${encodeURIComponent(nurse)}&year=${_salYear}&before=${salMonthStr()}`);
+    if (res.before !== _sickPriorDays) { _sickPriorDays = res.before; recalcSalary(); }
     const el = $('sal-sick-yearly');
-    if (!el) return;
-    el.textContent = `今年已用 ${res.total} / 30 天`;
+    const cur = parseFloat(($('sal-sick-days') || {}).value) || 0;
+    if (el) el.textContent = `今年合計 ${_sickPriorDays + cur} / 30 天`;
   } catch(_) {}
+  loadScheduleSickDays(nurse);
+}
+
+// 病假 marked in the 排班表 this month, offered as a suggestion — the admin decides the number.
+let _schedSickDays = 0;
+async function loadScheduleSickDays(nurse) {
+  const box = $('sal-sick-sched');
+  if (!box) return;
+  try {
+    const res = await api(`/api/admin/salary/schedule-sick-days?nurse=${encodeURIComponent(nurse)}&month=${salMonthStr()}`);
+    _schedSickDays = res.days;
+    const cur = parseFloat(($('sal-sick-days') || {}).value) || 0;
+    if (!res.days || res.days === cur) { box.style.display = 'none'; return; }
+    const md = res.dates.map(d => d.date.slice(5).replace('-', '/') + (d.full ? '' : '（半天）')).join('、');
+    $('sal-sick-sched-txt').textContent = `排班表本月病假 ${res.days} 天：${md}`;
+    box.style.display = 'inline-flex';
+  } catch(_) { box.style.display = 'none'; }
+}
+function useScheduleSickDays() {
+  const el = $('sal-sick-days');
+  if (!el) return;
+  el.value = _schedSickDays;
+  recalcSalary();
+  loadYearlySickDays();
 }
 
 function setSalMode(mode) {
@@ -5924,18 +6140,19 @@ function _currentSalaryPayload() {
     nurse:       $('sal-nurse').value,
     month:       salMonthStr(),
     attendance:  isPart ? 0 : ($('sal-attendance-chk').checked
-                   ? payAttendance(_salPay, parseInt(($('sal-sick-days') || {}).value) || 0) : 0),
+                   ? payAttendance(_salPay, parseFloat(($('sal-sick-days') || {}).value) || 0) : 0),
     performance: _bonusCalculated || 0,
     sat_pay:     isPart ? 0 : (parseInt($('sal-sat-amt').textContent.replace(/,/g, '')) || 0),
     float_bonus: isPart ? 0 : (parseInt($('sal-float-amt').textContent.replace(/,/g, '')) || 0),
     ot_pay:      isPart ? total : (parseInt($('sal-ot-total').textContent.replace(/,/g, '')) || 0),
     total,
-    sick_days:   parseInt(($('sal-sick-days') || {}).value) || 0,
+    sick_days:   parseFloat(($('sal-sick-days') || {}).value) || 0,
     ot_entries:  JSON.stringify({mode: _salMode, rows: _salOtRows, bonus: bonusCfg, extras: _salExtras,
                   labor_ins: parseInt(($('sal-labor-ins')||{}).value)||0,
                   health_ins: parseInt(($('sal-health-ins')||{}).value)||0,
                   pension: parseInt(($('sal-pension')||{}).value)||0,
                   unworked_days: parseInt(($('sal-unworked-days')||{}).value)||0,
+                  sick: (!isPart && _salSick && _salSick.sickDays > 0) ? _salSick : null,
                   pay: _salPay}),
   };
 }
@@ -6009,6 +6226,12 @@ function loadSalaryRecord(record) {
 
   // restore sick days
   if ($('sal-sick-days')) $('sal-sick-days').value = record.sick_days || 0;
+  const liSaved = parsed.sick && parsed.sick.liBenefit > 0 ? parsed.sick.liBenefit : 0;
+  if ($('sal-li-sick-chk')) {
+    $('sal-li-sick-chk').checked = liSaved > 0;
+    $('sal-li-sick-amt').value = liSaved;
+    $('sal-li-sick-amt-wrap').style.display = liSaved > 0 ? 'inline-flex' : 'none';
+  }
 
   // restore insurance deductions
   if ($('sal-labor-ins'))  $('sal-labor-ins').value  = parsed.labor_ins  || 0;
@@ -6762,8 +6985,10 @@ function _buildNurseSlipItems(parsed, rec) {
   extras.filter(e => e.amount > 0).forEach(e => items.push({ label: e.name || '其他獎金', amount: e.amount }));
   extras.filter(e => e.amount < 0).forEach(e => items.push({ label: e.name || '其他扣款', amount: e.amount, red: true }));
   if (!isPart && sickDays > 0) {
-    const sd = Math.round(payFullMonthly(pay) / daysInMonth * sickDays * 0.5);
+    const sc = parsed.sick;
+    const sd = sc ? sc.deduct : Math.round(payFullMonthly(pay) / daysInMonth * sickDays * 0.5);
     if (sd > 0) items.push({ label: `病假扣款 (${sickDays}天)`, amount: -sd, red: true });
+    if (sc && sd > 0) items.push({ label: '　計算', display: sickCalcFormula(sc) });
   }
   if (laborIns > 0) items.push({ label: '勞保自付額', amount: -laborIns, red: true });
   if (healthIns > 0) items.push({ label: '健保自付額', amount: -healthIns, red: true });
@@ -6854,7 +7079,8 @@ async function printAllPhPaySlips() {
       const dim = (ry && rm) ? new Date(ry, rm, 0).getDate() : 30;
       const sickDays = rec.sick_days || 0;
       const pay = p.pay || PAY_LEGACY;
-      const sickDeduct = (type==='nurse' && !isPart && sickDays>0) ? Math.round(payFullMonthly(pay)/dim*sickDays*0.5) : 0;
+      const sickDeduct = (type==='nurse' && !isPart && sickDays>0)
+        ? (p.sick ? p.sick.deduct : Math.round(payFullMonthly(pay)/dim*sickDays*0.5)) : 0;
       const prorateDeduct = (type==='nurse' && !isPart && (p.unworked_days||0)>0) ? Math.round(payFullMonthly(pay)/dim*p.unworked_days) : 0;
       const otherDeduct = sickDeduct + prorateDeduct + negExtras;
 
@@ -7358,7 +7584,7 @@ function recalcSalary() {
   const hasAttendance = $('sal-attendance-chk').checked;
   const perf = _bonusCalculated || 0;
   const _daysInMonth = new Date(_salYear, _salMon, 0).getDate();
-  const _sickDays    = parseInt(($('sal-sick-days') || {}).value) || 0;
+  const _sickDays    = parseFloat(($('sal-sick-days') || {}).value) || 0;
   const attendance = hasAttendance ? payAttendance(_salPay, _sickDays) : 0;
 
   // Group entries by date, sort each group by start time, accumulate hours
@@ -7437,12 +7663,21 @@ function recalcSalary() {
     extrasEl.className = 'sal-amount' + (extrasTotal < 0 ? '' : '');
   }
 
-  // Sick deduction: monthly total (42,000) ÷ days_in_month × sick_days × 50%  (勞基法病假半薪)
-  const sickDailyRate = payFullMonthly(_salPay) / _daysInMonth;
-  const sickDeduct    = _sickDays > 0 ? Math.round(sickDailyRate * _sickDays * 0.5) : 0;
+  // 病假扣款 — see sickCalc for the rule; the breakdown box shows every step
+  const liOn = ($('sal-li-sick-chk') || {}).checked;
+  _salSick = sickCalc(_salPay, _sickDays, hasAttendance, _sickPriorDays,
+                      liOn ? (parseInt(($('sal-li-sick-amt') || {}).value) || 0) : 0);
+  if ($('sal-li-sick')) $('sal-li-sick').style.display = _sickDays > 0 ? '' : 'none';
+  const sickDeduct = _salSick.deduct;
   const sickRow = $('sal-sick-row');
   if (sickRow) sickRow.style.display = sickDeduct > 0 ? '' : 'none';
   if ($('sal-sick-deduct')) $('sal-sick-deduct').textContent = sickDeduct > 0 ? `−${fmtNT(sickDeduct)}` : '—';
+  const sickCalcEl = $('sal-sick-calc');
+  if (sickCalcEl) {
+    sickCalcEl.style.display = _sickDays > 0 ? '' : 'none';
+    sickCalcEl.innerHTML = _sickDays > 0 ? sickCalcHtml(_salSick, _salPay) : '';
+  }
+  if ($('sal-sick-yearly')) $('sal-sick-yearly').textContent = `今年合計 ${_sickPriorDays + _sickDays} / 30 天`;
 
   const laborIns  = parseInt(($('sal-labor-ins')  || {}).value) || 0;
   const healthIns = parseInt(($('sal-health-ins') || {}).value) || 0;
@@ -7527,7 +7762,7 @@ function printPaySlip() {
     const unworkedDaysAmt = parseInt(($('sal-unworked-days') || {}).value) || 0;
     const prorateDeductAmt = unworkedDaysAmt > 0
       ? (parseInt(($('sal-prorate-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
-    const sickDays = parseInt(($('sal-sick-days') || {}).value) || 0;
+    const sickDays = parseFloat(($('sal-sick-days') || {}).value) || 0;
     const sickDeductAmt = sickDays > 0 ? (parseInt(($('sal-sick-deduct')||{}).textContent.replace(/[^0-9]/g,''))||0) : 0;
     rows = `
       <tr><td>底薪</td><td>NT$ ${_salPay.base.toLocaleString('zh-TW')}</td></tr>
@@ -7539,7 +7774,8 @@ function printPaySlip() {
       ${parseInt(ot.replace(/,/g,'')) > 0 ? `<tr><td>加班費</td><td>${fmt(ot)}</td></tr>` : ''}
       ${_salExtras.filter(e=>e.amount>0).map(e=>`<tr><td>${esc(e.name||'其他獎金')}</td><td>NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
       ${_salExtras.filter(e=>e.amount<0).map(e=>`<tr style="color:#dc2626"><td>${esc(e.name||'其他扣款')}</td><td>−NT$ ${Math.abs(e.amount).toLocaleString('zh-TW')}</td></tr>`).join('')}
-      ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${sickDays > 0 ? `<tr style="color:#dc2626"><td>病假扣款（${sickDays} 天）</td><td>−NT$ ${sickDeductAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
+      ${sickDays > 0 && _salSick ? `<tr><td colspan="2" style="font-size:11px;color:#666;padding-top:0">${sickCalcFormula(_salSick)}（勞工請假規則第4條：30日內工資折半；日工資＝當月工資 ÷ 30）</td></tr>` : ''}
       ${laborInsAmt > 0 ? `<tr style="color:#dc2626"><td>勞保自付額</td><td>−NT$ ${laborInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${healthInsAmt > 0 ? `<tr style="color:#dc2626"><td>健保自付額</td><td>−NT$ ${healthInsAmt.toLocaleString('zh-TW')}</td></tr>` : ''}
       ${pensionAmt > 0 ? `<tr style="color:#dc2626"><td>勞退自提</td><td>−NT$ ${pensionAmt.toLocaleString('zh-TW')}</td></tr>` : ''}

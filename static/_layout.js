@@ -56,6 +56,9 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 10, date: '2026-11-23', items: [
+      '排班表會標出請病假的時段，顯示「病假」',
+    ]},
     { version: 9, date: '2026-11-19', items: [
       '慢簽和處方追蹤：病患在藥吃完前 2 天就會出現在待聯絡，可以提早提醒（尚未到期的會顯示「幾天後」）',
       '病患提早回診時，上次剩下的藥會算進去，不會在藥還沒吃完時又被列出來（處方追蹤的開藥天會顯示「＋剩幾天」）',
@@ -1455,7 +1458,9 @@
     el.innerHTML = mine.map(function (s) {
       return '<div class="promo-slot">' +
         '<div class="promo-slot-label">' + escHtml(_SLOT_LABEL[s.slot] || s.slot) + '</div>' +
-        '<div class="promo-slot-time">' + escHtml(s.start_time) + ' – ' + escHtml(s.end_time) + '</div>' +
+        (s.leave
+          ? '<div class="promo-slot-time days-hi">' + escHtml(s.leave) + '</div>'
+          : '<div class="promo-slot-time">' + escHtml(s.start_time) + ' – ' + escHtml(s.end_time) + '</div>') +
       '</div>';
     }).join('');
   }

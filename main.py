@@ -46,7 +46,7 @@ from models import (
     ManualOnHoldRequest, ManualPickupRequest,
     MsptCompleteRequest, MsptManualRemoveRequest, MsptManualRequest, MsptSubmittableEntry,
     NurseEntryRequest, NurseNameRequest, OnHoldRemoveRequest, OnHoldRequest, PublishWeekRequest,
-    RenameUserRequest, ResetPasswordRequest, SalaryRecordRequest, SendLineNotificationsRequest, ShiftEntry, SubmitRequest,
+    RenameUserRequest, ResetPasswordRequest, SalaryRecordRequest, SendLineNotificationsRequest, ShiftEntry, ShiftLeaveRequest, SubmitRequest,
     UnexcludeRequest, UndoLineNotificationRequest, UpdateExclusionReasonRequest,
     BroadcastCreateRequest,
     AiAgentSettingsRequest,
@@ -879,10 +879,12 @@ def update_salary_record(record_id: int, req: SalaryRecordRequest, admin: auth.C
 
 
 @app.get("/api/admin/salary/sick-days")
-def get_yearly_sick_days(nurse: str, year: int, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+def get_yearly_sick_days(nurse: str, year: int, before: str | None = None,
+                         admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
     try:
         total = contacts.get_yearly_sick_days(nurse, year, admin.clinic_id)
-        return {"total": total}
+        prior = contacts.get_yearly_sick_days(nurse, year, admin.clinic_id, before) if before else total
+        return {"total": total, "before": prior}
     except Exception:
         logger.exception("get_yearly_sick_days failed")
         raise HTTPException(status_code=500, detail="查詢失敗")
@@ -1190,6 +1192,27 @@ def set_shift(req: ShiftEntry, admin: auth.CurrentUser = Depends(auth.require_ad
     except Exception:
         logger.exception("set_shift failed for nurse=%s date=%s slot=%s", req.nurse, req.shift_date, req.slot)
         raise HTTPException(status_code=500, detail="儲存排班失敗")
+
+
+@app.post("/api/admin/shifts/leave")
+def set_shift_leave(req: ShiftLeaveRequest, admin: auth.CurrentUser = Depends(auth.require_admin)) -> None:
+    try:
+        contacts.set_shift_leave(req.nurse, req.shift_date.isoformat(), list(req.slots), req.leave, admin.clinic_id)
+    except Exception:
+        logger.exception("set_shift_leave failed for nurse=%s date=%s", req.nurse, req.shift_date)
+        raise HTTPException(status_code=500, detail="儲存病假失敗")
+
+
+@app.get("/api/admin/salary/schedule-sick-days")
+def get_schedule_sick_days(nurse: str, month: str, admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    import re
+    if not re.match(r"^\d{4}-\d{2}$", month):
+        raise HTTPException(status_code=422, detail="month 格式應為 YYYY-MM")
+    try:
+        return contacts.count_schedule_sick_days(nurse, month, admin.clinic_id)
+    except Exception:
+        logger.exception("get_schedule_sick_days failed for nurse=%s month=%s", nurse, month)
+        raise HTTPException(status_code=500, detail="查詢失敗")
 
 
 @app.post("/api/admin/shifts/copy-week")

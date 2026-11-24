@@ -281,6 +281,14 @@ class ShiftEntry(BaseModel):
     end_time: str | None = None
     clean_start: str | None = None  # optional cleaning-duty sub-range within start_time/end_time
     clean_end: str | None = None
+    leave: str | None = None        # '病假' when the nurse is off sick; times stay as scheduled
+
+
+class ShiftLeaveRequest(BaseModel):
+    nurse: str
+    shift_date: date
+    slots: list[ShiftSlot]
+    leave: Literal['病假'] | None = None   # None clears the mark
 
 
 class CopyWeekRequest(BaseModel):
@@ -319,7 +327,7 @@ class SalaryRecordRequest(BaseModel):
     ot_pay: int
     total: int
     ot_entries: str     # JSON array of {date, start, end}
-    sick_days: int = 0
+    sick_days: float = 0   # 0.5 = half a day
 
 
 class BloodDismissRequest(BaseModel):
