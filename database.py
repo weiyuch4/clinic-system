@@ -368,7 +368,7 @@ def warmup_cache() -> None:
 # ── Public API ────────────────────────────────────────────────────────────────
 
 # Bump whenever a follow-up rule changes, so the saved report is rebuilt with the new rule.
-_REPORT_RULES_VERSION = 2   # 2: CKD 77/結案, B/C肝 第九版, MSPT phone claims (2026-11-24)
+_REPORT_RULES_VERSION = 3   # 2: CKD 77/結案, B/C肝 第九版, MSPT phone claims; 3: B/C肝 收案 161 (2026-11-24)
 
 
 def get_daily_report(as_of: date) -> DailyReport:
@@ -1294,7 +1294,7 @@ def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
 # 全民健康保險肝炎醫療給付改善方案 第九版 (115.08.19), 附件一 P4202C:
 #   申報新收案後至少須間隔10週 / 每次間隔至少23週 / P4201C+P4202C 全年合計最多3次
 #   結案條件: 失聯超過一年（≧360天）; 經結案對象 1 年內不得再收案
-HEP_INTAKE_FOLLOWUP_DAYS = 70    # 收案 (P4201C) → 第一次追蹤: 10 週
+HEP_INTAKE_FOLLOWUP_DAYS = 161   # 收案 → 第一次追蹤: clinic uses 161 like every 追蹤 (方案 allows 10 週; user 2026-11-24)
 HEP_FOLLOWUP_DAYS    = 161   # 追蹤 (P4202C) → 下次追蹤: 23 週
 HEP_YEARLY_CAP       = 3     # P4201C + P4202C per calendar year
 HEP_CLOSE_DAYS       = 360   # 超過此天數無追蹤 → 結案
