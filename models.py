@@ -44,6 +44,7 @@ class MsptSubmittableEntry(BaseModel):
     days_since_last_stage: int
     used_blood: bool = False                 # nurse checked "used blood test" in VPN confirm
     submitted_at: date | None = None         # date nurse clicked 已登VPN
+    nurse: str = ''                          # who clicked 已登VPN (sent by the page, kept for 後台)
 
 
 class MsptWaitingEntry(BaseModel):

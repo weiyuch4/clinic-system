@@ -1846,6 +1846,10 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             and (e.patient.chart_number, e.category) not in excluded_keys
             and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_completed_keys
             and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_checkedin_keys
+            # 完成 on 可電話完成 also writes a contact row; the patient already lives in
+            # 待登VPN/已申報, so listing them here too only offers a misleading 撤銷.
+            and not (e.category == '代謝症候群'
+                     and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_phone_completed_keys)
             and not (e.category == '處方' and _PRESCRIPTION_START_DATE and e.due_date < _PRESCRIPTION_START_DATE)
         ]
 
@@ -1899,6 +1903,10 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             and (e.patient.chart_number, e.category) not in excluded_keys
             and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_completed_keys
             and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) not in mspt_checkedin_keys
+            # 完成 on 可電話完成 also writes a contact row; the patient already lives in
+            # 待登VPN/已申報, so listing them here too only offers a misleading 撤銷.
+            and not (e.category == '代謝症候群'
+                     and (e.patient.chart_number, e.mspt_stage, e.due_date.isoformat()) in mspt_phone_completed_keys)
             and not (e.category == '處方' and _PRESCRIPTION_START_DATE and e.due_date < _PRESCRIPTION_START_DATE)
         ]
 

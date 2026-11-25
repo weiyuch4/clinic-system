@@ -56,6 +56,9 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 11, date: '2026-11-25', items: [
+      '代謝症候群：在「可電話完成」按完成的病患，只會出現在待登VPN／已申報，不會再同時出現在已聯繫；要撤銷請從已申報 → 待登VPN 一步步撤回',
+    ]},
     { version: 10, date: '2026-11-23', items: [
       '排班表會標出請病假的時段，顯示「病假」',
     ]},

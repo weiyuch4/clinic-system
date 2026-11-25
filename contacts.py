@@ -993,7 +993,7 @@ def init() -> None:
                 cur.execute(f"ALTER TABLE contacts ADD COLUMN IF NOT EXISTS {col}")
             for col in ("completed_time TEXT", "nurse TEXT DEFAULT ''"):
                 cur.execute(f"ALTER TABLE mspt_completed ADD COLUMN IF NOT EXISTS {col}")
-            for tbl in ("excluded", "manual_pickups"):
+            for tbl in ("excluded", "manual_pickups", "submitted"):
                 cur.execute(f"ALTER TABLE {tbl} ADD COLUMN IF NOT EXISTS nurse TEXT DEFAULT ''")
             # leave: NULL, or '病假' — the nurse is off sick for that slot; start/end keep the original shift
             for col in ("clean_start TEXT", "clean_end TEXT", "leave TEXT"):
@@ -1177,13 +1177,14 @@ def mark_submitted(entry: MsptSubmittableEntry, clinic_id: int = 1) -> None:
         with conn.cursor() as cur:
             cur.execute(
                 """INSERT INTO submitted
-                   (chart_number, mspt_stage, name, birth_date, blood_report_date, days_since_last_stage, submitted_at, clinic_id)
-                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                   (chart_number, mspt_stage, name, birth_date, blood_report_date, days_since_last_stage, submitted_at, nurse, clinic_id)
+                   VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                    ON CONFLICT (chart_number, mspt_stage) DO UPDATE SET
                        name=EXCLUDED.name, birth_date=EXCLUDED.birth_date,
                        blood_report_date=EXCLUDED.blood_report_date,
                        days_since_last_stage=EXCLUDED.days_since_last_stage,
-                       submitted_at=EXCLUDED.submitted_at""",
+                       submitted_at=EXCLUDED.submitted_at,
+                       nurse=EXCLUDED.nurse""",
                 (
                     entry.patient.chart_number,
                     entry.mspt_stage,
@@ -1192,6 +1193,7 @@ def mark_submitted(entry: MsptSubmittableEntry, clinic_id: int = 1) -> None:
                     entry.blood_report_date.isoformat(),
                     entry.days_since_last_stage,
                     date.today().isoformat(),
+                    entry.nurse or '',
                     clinic_id,
                 ),
             )
@@ -2252,12 +2254,21 @@ def get_mspt_manual_entries(clinic_id: int = 1) -> list[MsptManualEntry]:
 
 
 def get_activity_stats(month: str, clinic_id: int = 1) -> dict[str, dict[str, int]]:
-    """month: 'YYYY-MM'. Returns {nurse: {contacted, called, mspt, excluded, pickup, held}}."""
+    """month: 'YYYY-MM'. Returns {nurse: {contacted, called, mspt, submitted, excluded, pickup, held}}.
+    submitted = 已登VPN (MSPT + B/C肝); rows saved before 2026-11-25 have no MSPT nurse."""
     prefix = month + "-%"
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT nurse, attempt, COUNT(*) AS cnt FROM contacts WHERE clinic_id=%s AND contacted_at LIKE %s GROUP BY nurse, attempt",
+                # A phone 完成 also writes a contact row (same day, same due date); it is
+                # counted under 完成MSPT, so leave it out of 已通知.
+                """SELECT c.nurse, c.attempt, COUNT(*) AS cnt FROM contacts c
+                   WHERE c.clinic_id=%s AND c.contacted_at LIKE %s
+                     AND NOT (c.attempt = 1 AND c.category = '代謝症候群' AND EXISTS (
+                         SELECT 1 FROM mspt_phone_completed p
+                         WHERE p.clinic_id = c.clinic_id AND p.chart_number = c.chart_number
+                           AND p.due_date = c.due_date AND p.completed_at = c.contacted_at))
+                   GROUP BY c.nurse, c.attempt""",
                 (clinic_id, prefix))
             c_rows = cur.fetchall()
             cur.execute(
@@ -2284,13 +2295,22 @@ def get_activity_stats(month: str, clinic_id: int = 1) -> dict[str, dict[str, in
                 "SELECT nurse, COUNT(*) AS cnt FROM on_hold WHERE clinic_id=%s AND held_at LIKE %s GROUP BY nurse",
                 (clinic_id, prefix))
             h_rows = cur.fetchall()
+            cur.execute(
+                "SELECT nurse, COUNT(*) AS cnt FROM submitted WHERE clinic_id=%s AND submitted_at LIKE %s GROUP BY nurse",
+                (clinic_id, prefix))
+            s_rows = cur.fetchall()
+            cur.execute(
+                "SELECT nurse, COUNT(*) AS cnt FROM hep_returned_completed WHERE clinic_id=%s AND completed_at LIKE %s GROUP BY nurse",
+                (clinic_id, prefix))
+            hs_rows = cur.fetchall()
 
     stats: dict[str, dict[str, int]] = {}
 
     def _row(nurse: str) -> dict[str, int]:
         key = nurse or "（未選擇）"
         if key not in stats:
-            stats[key] = {"contacted": 0, "called": 0, "mspt": 0, "excluded": 0, "pickup": 0, "held": 0}
+            stats[key] = {"contacted": 0, "called": 0, "mspt": 0, "submitted": 0,
+                          "excluded": 0, "pickup": 0, "held": 0}
         return stats[key]
 
     for r in c_rows:
@@ -2311,6 +2331,8 @@ def get_activity_stats(month: str, clinic_id: int = 1) -> dict[str, dict[str, in
         _row(r["nurse"])["pickup"] += r["cnt"]
     for r in h_rows:
         _row(r["nurse"])["held"] += r["cnt"]
+    for r in s_rows + hs_rows:
+        _row(r["nurse"])["submitted"] += r["cnt"]
 
     return stats
 

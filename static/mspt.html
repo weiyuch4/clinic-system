@@ -405,7 +405,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=102"></script>
+<script src="/static/_layout.js?v=103"></script>
 <script>
 // ── Modal date picker ──────────────────────────────────────────────────────
 var _mdp = {
@@ -1134,7 +1134,7 @@ document.addEventListener('click', function(ev) {
     var confirmBtn = this;
     confirmBtn.disabled = true;
     var usedBlood = document.getElementById('modal-vpn-blood').checked;
-    var payload = Object.assign({}, entry, { used_blood: usedBlood });
+    var payload = Object.assign({}, entry, { used_blood: usedBlood, nurse: L.getNurse() });
     L.apiAction('POST', '/api/submitted', payload)
       .then(function () {
         L.hideModal('modal-vpn'); L.showToast('待登VPN記錄已儲存');

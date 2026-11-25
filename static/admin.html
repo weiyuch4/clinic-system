@@ -1826,7 +1826,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
 .send-panel{border:1px solid var(--border);border-radius:var(--radius-s);padding:16px;background:var(--bg);margin-bottom:16px}
 .send-panel-title{font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:10px}
 </style>
-<script src="/static/_layout.js?v=102"></script>
+<script src="/static/_layout.js?v=103"></script>
 <script src="/static/admin-auth.js?v=5"></script>
 </head>
 <body>
@@ -3571,6 +3571,7 @@ const COLS = [
   ['contacted', '已通知'],
   ['called',    '再次通知'],
   ['mspt',      '完成MSPT'],
+  ['submitted', '已登VPN'],
   ['excluded',  '排除'],
   ['pickup',    '手動取藥'],
   ['held',      '暫緩'],
@@ -3578,8 +3579,8 @@ const COLS = [
 
 // ── Nurses ────────────────────────────────────────────────────────────────────
 async function loadNurses() {
-  $('nurse-kpis').innerHTML = shimKPI(5);
-  $('nurses-body').innerHTML = shimTable(6, 7);
+  $('nurse-kpis').innerHTML = shimKPI(6);
+  $('nurses-body').innerHTML = shimTable(6, 8);
   $('nurse-meta').textContent = '';
 
   try {
@@ -3602,6 +3603,7 @@ function renderNurses(stats) {
     { label: '已通知',   value: tot.contacted, cls: ''      },
     { label: '再次通知', value: tot.called,    cls: ''      },
     { label: '完成MSPT', value: tot.mspt,      cls: ''      },
+    { label: '已登VPN',  value: tot.submitted, cls: ''      },
     { label: '手動取藥', value: tot.pickup,    cls: ''      },
     { label: '暫緩',     value: tot.held,      cls: ''      },
   ];
