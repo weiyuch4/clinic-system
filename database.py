@@ -42,7 +42,8 @@ CKD_STAGE_NEXT: dict[str, str] = {
     '追2':  '追2',   # repeats until further notice
 }
 
-CKD_FOLLOWUP_DAYS      = 161
+CKD_INTAKE_FOLLOWUP_DAYS = 77    # 收案 → 追1: 健保「至少三個月」，≥77 天即可申報
+CKD_FOLLOWUP_DAYS      = 161   # 追1 → 追2 and after: 「至少六個月」，≥161 天即可申報
 _CKD_REOPEN_DAYS       = 365
 _CKD_MAX_INACTIVE_DAYS = 2 * 365
 _CKD_LONG_INACTIVE     = 180
@@ -1120,7 +1121,7 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
 def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry], list[FollowupEntry]]:
     """Return (active_followups, inactive_patients, upcoming_patients) for CKD tracking.
     Stage history is detected from P-file DRUG_NO codes in _CKD_CODE_MAP.
-    Inter-stage gap: CKD_FOLLOWUP_DAYS (161 days).
+    Gap: 收案 → 追1 is CKD_INTAKE_FOLLOWUP_DAYS (77 days); every 追蹤 after is CKD_FOLLOWUP_DAYS (161 days).
     After _CKD_REOPEN_DAYS overdue → needs 收案 restart.
     """
     since = as_of - timedelta(days=_CKD_MAX_INACTIVE_DAYS)
@@ -1189,7 +1190,8 @@ def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
         if next_stage is None:
             continue
 
-        due_date     = last_date + timedelta(days=CKD_FOLLOWUP_DAYS)
+        gap          = CKD_INTAKE_FOLLOWUP_DAYS if last_stage == '收案' else CKD_FOLLOWUP_DAYS
+        due_date     = last_date + timedelta(days=gap)
         days_overdue = (as_of - due_date).days
         if days_overdue < 0:
             upcoming.append(FollowupEntry(
