@@ -281,6 +281,8 @@ tbody tr:last-child td { border-bottom: none; }
 #act-body td.wrap { white-space: normal; min-width: 160px; }
 #act-body tr.act-undo td { color: var(--text-3); }
 .act-chart { color: var(--text-3); font-size: 12px; margin-left: 6px; }
+.ns-pick { width: 16px; height: 16px; margin: 0 10px 0 0; accent-color: var(--blue); cursor: pointer; flex-shrink: 0; }
+.ns-cell { display: inline-flex; align-items: center; }
 .act-hint { font-size: 12px; color: var(--text-3); padding: 10px 24px 0; }
 
 /* nurse name chip */
@@ -1990,6 +1992,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
         <span class="card-title">護理師活動明細</span>
         <span class="card-spacer"></span>
         <span class="card-meta" id="nurse-meta"></span>
+        <button class="btn-sm" id="ns-export" type="button" disabled>匯出圖片</button>
       </div>
       <div class="tbl-wrap" id="nurses-body"></div>
     </div>
@@ -3601,14 +3604,13 @@ const COLS = [
   ['mspt',      '完成MSPT'],
   ['submitted', '已登VPN'],
   ['excluded',  '排除'],
-  ['pickup',    '手動取藥'],
   ['held',      '暫緩'],
 ];
 
 // ── Nurses ────────────────────────────────────────────────────────────────────
 async function loadNurses() {
-  $('nurse-kpis').innerHTML = shimKPI(6);
-  $('nurses-body').innerHTML = shimTable(6, 8);
+  $('nurse-kpis').innerHTML = shimKPI(5);
+  $('nurses-body').innerHTML = shimTable(6, 7);
   $('nurse-meta').textContent = '';
 
   try {
@@ -3633,7 +3635,6 @@ function renderNurses(stats) {
     { label: '再次通知', value: tot.called,    cls: ''      },
     { label: '完成MSPT', value: tot.mspt,      cls: ''      },
     { label: '已登VPN',  value: tot.submitted, cls: ''      },
-    { label: '手動取藥', value: tot.pickup,    cls: ''      },
     { label: '暫緩',     value: tot.held,      cls: ''      },
   ];
   $('nurse-kpis').innerHTML = kpiDefs.map(k =>
@@ -3660,12 +3661,13 @@ function renderNurses(stats) {
     const rowTot = COLS.reduce((a,[k]) => a + (s[k]||0), 0);
     const initial = n === '（未選擇）' ? '?' : Layout.escHtml(n[0]);
     return `<tr data-nurse="${Layout.escHtml(n)}" title="查看紀錄">
-      <td class="l">
+      <td class="l"><span class="ns-cell">
+        <input type="checkbox" class="ns-pick" aria-label="選取 ${Layout.escHtml(n)}" data-pick="${Layout.escHtml(n)}"${_nsPicked.has(n) ? ' checked' : ''}>
         <span class="chip">
           <span class="avatar">${initial}</span>
           <span class="nurse-name">${Layout.escHtml(n)}</span>
         </span>
-      </td>
+      </span></td>
       ${COLS.map(([k]) => {
         const v = s[k] || 0;
         return `<td class="${v===0?'zero':''}">${v}</td>`;
@@ -3681,7 +3683,7 @@ function renderNurses(stats) {
   </tr>`;
 
   const thead = `<tr>
-    <th class="l">護理師</th>
+    <th class="l"><span class="ns-cell"><input type="checkbox" class="ns-pick" id="ns-pick-all" aria-label="全選">護理師</span></th>
     ${COLS.map(([,l]) => `<th>${l}</th>`).join('')}
     <th>合計</th>
   </tr>`;
@@ -3689,10 +3691,109 @@ function renderNurses(stats) {
   $('nurses-body').innerHTML =
     `<table><thead>${thead}</thead><tbody>${rows}${totalRow}</tbody></table>`;
   $('nurses-body').querySelectorAll('tr[data-nurse]').forEach(tr => {
-    tr.addEventListener('click', () => loadActivity(tr.dataset.nurse || null));
+    tr.addEventListener('click', e => {
+      if (e.target.closest('.ns-pick')) return;   // ticking a box doesn't open the records
+      loadActivity(tr.dataset.nurse || null);
+    });
   });
+  _nsStats = stats;
+  [..._nsPicked].forEach(n => { if (!(n in stats)) _nsPicked.delete(n); });
+  $('nurses-body').querySelectorAll('input[data-pick]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      cb.checked ? _nsPicked.add(cb.dataset.pick) : _nsPicked.delete(cb.dataset.pick);
+      _nsSyncPick();
+    });
+  });
+  const all = $('ns-pick-all');
+  if (all) all.addEventListener('change', () => {
+    Object.keys(stats).forEach(n => all.checked ? _nsPicked.add(n) : _nsPicked.delete(n));
+    $('nurses-body').querySelectorAll('input[data-pick]').forEach(cb => { cb.checked = all.checked; });
+    _nsSyncPick();
+  });
+  _nsSyncPick();
   _markActRow();
 }
+
+// ── Export selected nurses' numbers as a PNG (evidence for a given month) ──
+var _nsPicked = new Set(), _nsStats = {};
+
+function _nsSyncPick() {
+  const n = _nsPicked.size, total = Object.keys(_nsStats).length;
+  const btn = $('ns-export');
+  btn.disabled = n === 0;
+  btn.textContent = n ? `匯出圖片（${n} 位）` : '匯出圖片';
+  const all = $('ns-pick-all');
+  if (all) { all.checked = total > 0 && n === total; all.indeterminate = n > 0 && n < total; }
+}
+
+$('ns-export').addEventListener('click', () => {
+  const names = Object.keys(_nsStats)
+    .filter(n => _nsPicked.has(n))
+    .sort((a, b) => (a === '（未選擇）') - (b === '（未選擇）') || a.localeCompare(b, 'zh-TW'));
+  if (!names.length) return;
+  const S = 2, W = 960, PAD = 40, ROW = 44, HEAD = 40;
+  const nameW = 200, colW = (W - PAD * 2 - nameW) / (COLS.length + 1);
+  const top = 118, H = top + HEAD + ROW * (names.length + 1) + 64;
+  const cv = document.createElement('canvas');
+  cv.width = W * S; cv.height = H * S;
+  const g = cv.getContext('2d');
+  g.scale(S, S);
+  const F = "system-ui, -apple-system, 'Segoe UI', 'Microsoft JhengHei', 'PingFang TC', sans-serif";
+  const C = { bg: '#ffffff', head: '#f5f5f4', line: '#e7e5e4', text: '#1c1917', sub: '#57534e', muted: '#a8a29e' };
+  g.fillStyle = C.bg; g.fillRect(0, 0, W, H);
+
+  const [y, m] = month.split('-');
+  const now = new Date();
+  const stamp = `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  g.fillStyle = C.text; g.font = `600 22px ${F}`; g.textBaseline = 'alphabetic'; g.textAlign = 'left';
+  g.fillText(`護理師活動統計　${y} 年 ${parseInt(m, 10)} 月`, PAD, 58);
+  g.fillStyle = C.sub; g.font = `400 13px ${F}`;
+  g.fillText(`${names.length} 位護理師・匯出時間 ${stamp}`, PAD, 84);
+
+  const cellR = i => PAD + nameW + colW * (i + 1) - 16;   // right edge for column i's numbers
+  g.fillStyle = C.head; g.fillRect(PAD, top, W - PAD * 2, HEAD);
+  g.font = `500 12px ${F}`; g.fillStyle = C.sub; g.textBaseline = 'middle';
+  g.textAlign = 'left'; g.fillText('護理師', PAD + 16, top + HEAD / 2);
+  g.textAlign = 'right';
+  COLS.forEach(([, l], i) => g.fillText(l, cellR(i), top + HEAD / 2));
+  g.fillText('合計', cellR(COLS.length), top + HEAD / 2);
+
+  const tot = Object.fromEntries(COLS.map(([k]) => [k, 0]));
+  names.forEach((n, r) => {
+    const s = _nsStats[n] || {}, yy = top + HEAD + ROW * r;
+    g.strokeStyle = C.line; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(PAD, yy + ROW + .5); g.lineTo(W - PAD, yy + ROW + .5); g.stroke();
+    g.textAlign = 'left'; g.font = `500 14px ${F}`; g.fillStyle = C.text;
+    g.fillText(n, PAD + 16, yy + ROW / 2);
+    g.textAlign = 'right'; g.font = `400 14px ${F}`;
+    let rowTot = 0;
+    COLS.forEach(([k], i) => {
+      const v = s[k] || 0; rowTot += v; tot[k] += v;
+      g.fillStyle = v ? C.text : C.muted; g.fillText(String(v), cellR(i), yy + ROW / 2);
+    });
+    g.font = `600 14px ${F}`; g.fillStyle = C.text;
+    g.fillText(String(rowTot), cellR(COLS.length), yy + ROW / 2);
+  });
+  const ty = top + HEAD + ROW * names.length;
+  g.fillStyle = C.head; g.fillRect(PAD, ty, W - PAD * 2, ROW);
+  g.textAlign = 'left'; g.font = `600 14px ${F}`; g.fillStyle = C.text;
+  g.fillText('合計', PAD + 16, ty + ROW / 2);
+  g.textAlign = 'right';
+  let grand = 0;
+  COLS.forEach(([k], i) => { grand += tot[k]; g.fillText(String(tot[k]), cellR(i), ty + ROW / 2); });
+  g.fillText(String(grand), cellR(COLS.length), ty + ROW / 2);
+
+  g.textAlign = 'left'; g.textBaseline = 'alphabetic'; g.font = `400 12px ${F}`; g.fillStyle = C.muted;
+  g.fillText('數字為該月份系統記錄的操作次數；撤銷的操作不計入。', PAD, H - 26);
+
+  cv.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `護理師統計_${month}_${names.length}位.png`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  }, 'image/png');
+});
 
 // ── Records behind the numbers (activity_log) ──
 var _actNurse;   // undefined = closed, null = everyone, string = one nurse
