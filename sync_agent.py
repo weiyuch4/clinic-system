@@ -110,6 +110,19 @@ def _entry_to_dict(entry, category: str) -> dict:
 
 def do_sync() -> None:
     try:
+        import database
+        resp = requests.get(
+            f"{CLOUD_URL}/api/sync/mspt-phone-claims",
+            headers={"X-Sync-Token": SYNC_TOKEN},
+            timeout=15,
+        )
+        resp.raise_for_status()
+        database.MSPT_PHONE_CLAIMS = resp.json().get("claims", [])
+    except Exception as exc:
+        # Keep the last list we had; without it phone completions wait for 耀聖's P code.
+        log.warning("MSPT phone completions fetch failed: %s", exc)
+
+    try:
         from database import get_daily_report
         report = get_daily_report(date.today())
     except Exception as exc:

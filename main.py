@@ -180,7 +180,7 @@ if not contacts.get_nurses():  # first run on this DB — seed from the hardcode
 # still comes from request body fields (Option B shared-session model).
 @app.middleware("http")
 async def require_auth_for_api(request: Request, call_next):
-    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/push-blood-pending", "/api/sync/push-prescriptions", "/api/sync/push-doctor-rates", "/api/sync/status", "/api/sync/push-blood-recall", "/api/sync/blood-recall-settings", "/api/sync/clinic-settings", "/api/sync/open-episodes", "/api/sync/push-returns"}
+    _sync_exempt = {"/api/admin/login", "/api/sync/push", "/api/sync/push-lab", "/api/sync/push-blood-pending", "/api/sync/push-prescriptions", "/api/sync/push-doctor-rates", "/api/sync/status", "/api/sync/push-blood-recall", "/api/sync/blood-recall-settings", "/api/sync/clinic-settings", "/api/sync/open-episodes", "/api/sync/push-returns", "/api/sync/mspt-phone-claims"}
     if request.url.path.startswith("/api/") and request.url.path not in _sync_exempt:
         token = request.headers.get("Authorization", "")
         if token.startswith("Bearer "):
@@ -1436,6 +1436,12 @@ def sync_blood_recall_settings(request: Request) -> dict:
     return contacts.get_blood_recall_settings(_sync_clinic(request))
 
 
+@app.get("/api/sync/mspt-phone-claims")
+def sync_mspt_phone_claims(request: Request) -> dict:
+    """MSPT stages finished by phone, so the sync agent can count them before 耀聖 bills them."""
+    return {"claims": contacts.get_mspt_phone_claims(_sync_clinic(request))}
+
+
 @app.get("/api/sync/clinic-settings")
 def sync_clinic_settings(request: Request) -> dict:
     return contacts.get_clinic_settings(_sync_clinic(request))
@@ -1903,7 +1909,9 @@ def get_report(report_date: date | None = None, user: auth.CurrentUser = Depends
             mspt_inactive=filter_followups(apply_mspt_overrides(apply_blood_status(report.mspt_inactive))),
             mspt_submittable=[
                 e for e in (report.mspt_submittable + phone_submittable)
-                if (e.patient.chart_number, e.mspt_stage) not in submitted_keys
+                # 已登VPN covers this entry only if it came on/after the blood report —
+                # next year's same stage (newer report) must show again.
+                if submitted_keys.get((e.patient.chart_number, e.mspt_stage), date.min) < e.blood_report_date
             ],
             mspt_waiting=report.mspt_waiting,
             # 長期未回診 (結案/再收案) is merged into the same list rather than a

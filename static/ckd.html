@@ -212,7 +212,7 @@
       <div style="display:grid;gap:6px;margin-bottom:14px">
         <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
           <span style="font-weight:600">追蹤間隔</span><br>
-          <span style="color:var(--muted);font-size:12.5px">收案後滿 77 天可做追1；之後每次追蹤間隔 161 天（健保規定）。超過一年未追蹤，健保即結案；結案的病患仍列在待聯絡的「已結案」，回診後重新收案。</span>
+          <span style="color:var(--muted);font-size:12.5px">收案後滿 77 天可做追1；之後每次追蹤間隔 161 天，追蹤每年最多 2 次（健保規定）。今年已滿 2 次的病患列在未到期，明年 1/1 起再列入待聯絡。超過一年未追蹤，健保即結案；結案的病患仍列在待聯絡的「已結案」，回診後重新收案。</span>
         </div>
         <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
           <span style="font-weight:600">未複診提醒</span><br>
@@ -376,13 +376,18 @@
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
 
+  // 健保年度上限: this year's claims are used up; the row waits for Jan 1.
+  function capTag(e) {
+    return /^健保年度上限/.test(e.contact_reason || '')
+      ? '<span class="pbadge b-hold" title="' + L.escHtml(e.contact_reason) + '">本年度已滿・1/1 起</span>' : null;
+  }
   function upcomingRow(e) {
     var daysUntil = e.days_overdue ? Math.abs(e.days_overdue) : 0;
     var label = daysUntil === 0 ? '今天到期' : '還有 ' + daysUntil + ' 天';
     return L.patientRow({ entry: e,
       tags: [
         '<span class="pbadge b-sub">' + L.escHtml(e.mspt_stage || '') + '</span>',
-        '<span class="pbadge b-hold">' + label + '</span>',
+        capTag(e) || '<span class="pbadge b-hold">' + label + '</span>',
       ],
       actions: [],
     });

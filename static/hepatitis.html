@@ -218,12 +218,12 @@
   <div class="modal-box" style="max-width:480px">
     <div class="modal-title">B/C型肝炎追蹤 說明</div>
     <div style="font-size:13.5px;line-height:1.75;color:var(--text);overflow-y:auto;max-height:65vh;padding-right:4px">
-      <p style="margin:0 0 12px;color:var(--muted);font-size:12.5px">B/C型肝炎納入健保追蹤計畫，需在 185 天內完成申報，逾期即結案。</p>
+      <p style="margin:0 0 12px;color:var(--muted);font-size:12.5px">依健保肝炎方案：收案後滿 10 週（70 天）可申報第一次追蹤，之後每次間隔 23 週（161 天），每年合計最多 3 次。超過 360 天未追蹤即結案；結案 1 年後可重新收案。</p>
       <div style="font-weight:600;margin:0 0 6px">申報流程</div>
       <div style="display:grid;gap:6px;margin-bottom:14px">
         <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
           <span style="font-weight:600">B型肝炎</span><br>
-          <span style="color:var(--muted);font-size:12.5px">病患回診後需在健保署VPN系統登錄追蹤記錄。超過 185 天未申報將結案，需重新加入計畫。</span>
+          <span style="color:var(--muted);font-size:12.5px">病患回診後需在健保署VPN系統登錄追蹤記錄。結案的病患仍列在待聯絡的「已結案」，持續通知回診。今年已申報 3 次的病患列在未到期，明年 1/1 起再列入待聯絡。</span>
         </div>
         <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
           <span style="font-weight:600">C型肝炎</span><br>
@@ -338,15 +338,14 @@
            (p.chart_number && String(p.chart_number).toLowerCase().includes(q));
   }
 
-  function nextPhaseDate(last_visit_date) {
-    if (!last_visit_date) return null;
-    var d = new Date(String(last_visit_date).slice(0, 10) + 'T00:00:00');
-    d.setDate(d.getDate() + 161);
-    return d;
+  // Earliest date the next claim is accepted (70 days after 收案, 161 after 追蹤) — set by the server.
+  function nextPhaseDate(e) {
+    if (!e.due_date) return null;
+    return new Date(String(e.due_date).slice(0, 10) + 'T00:00:00');
   }
 
   function pendingRow(e) {
-    var npd = nextPhaseDate(e.last_visit_date);
+    var npd = nextPhaseDate(e);
     var today = new Date(); today.setHours(0,0,0,0);
     var npdStr, npdCls;
     if (npd) {
@@ -451,13 +450,18 @@
       document.getElementById('result-count').textContent = '共 ' + filtered.length + ' 筆';
   }
 
+  // 健保年度上限: this year's claims are used up; the row waits for Jan 1.
+  function capTag(e) {
+    return /^健保年度上限/.test(e.contact_reason || '')
+      ? '<span class="pbadge b-hold" title="' + L.escHtml(e.contact_reason) + '">本年度已滿・1/1 起</span>' : null;
+  }
   function upcomingRow(e) {
     var daysUntil = e.days_overdue ? Math.abs(e.days_overdue) : 0;
     var label = daysUntil === 0 ? '今天到期' : '還有 ' + daysUntil + ' 天';
     return L.patientRow({ entry: e,
       tags: [
         '<span class="pbadge b-sub">' + L.escHtml(e.last_stage || '') + '</span>',
-        '<span class="pbadge b-hold">' + label + '</span>',
+        capTag(e) || '<span class="pbadge b-hold">' + label + '</span>',
       ],
       actions: [],
     });

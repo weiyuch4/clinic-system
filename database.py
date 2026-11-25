@@ -44,6 +44,7 @@ CKD_STAGE_NEXT: dict[str, str] = {
 
 CKD_INTAKE_FOLLOWUP_DAYS = 77    # 收案 → 追1: 健保「至少三個月」，≥77 天即可申報
 CKD_FOLLOWUP_DAYS      = 161   # 追1 → 追2 and after: 「至少六個月」，≥161 天即可申報
+CKD_TRACK_YEARLY_CAP   = 2     # P4302C 每年度最多申報二次 (合併 P7001C 三次 — P7001C not tracked)
 _CKD_REOPEN_DAYS       = 365
 _CKD_MAX_INACTIVE_DAYS = 2 * 365
 _CKD_LONG_INACTIVE     = 180
@@ -87,6 +88,16 @@ def mspt_next_due(next_stage: str, last_date: date, history: list[dict]) -> tupl
             reason = (f'{MSPT_CAP_REASON_PREFIX}：{roc}年已申報{fee}{limit}次'
                       f'（健保每年最多{limit}次），{roc + 1}/1/1 起才能申報')
             return date(due.year + 1, 1, 1), reason
+    return due, None
+
+def yearly_cap_due(due: date, claim_dates: list[date], limit: int, fee: str) -> tuple[date, str | None]:
+    """Push `due` to Jan 1 of the next year when `limit` claims of `fee` are already
+    in due's calendar year (健保 年度 caps). Returns (due, reason) like mspt_next_due."""
+    if sum(1 for d in claim_dates if d.year == due.year) >= limit:
+        roc = due.year - 1911
+        reason = (f'{MSPT_CAP_REASON_PREFIX}：{roc}年已申報{fee}{limit}次'
+                  f'（健保每年最多{limit}次），{roc + 1}/1/1 起才能申報')
+        return date(due.year + 1, 1, 1), reason
     return due, None
 
 # Blood test window: 90 days (3 months) — independent of the inter-stage gap.
@@ -356,6 +367,10 @@ def warmup_cache() -> None:
 
 # ── Public API ────────────────────────────────────────────────────────────────
 
+# Bump whenever a follow-up rule changes, so the saved report is rebuilt with the new rule.
+_REPORT_RULES_VERSION = 2   # 2: CKD 77/結案, B/C肝 第九版, MSPT phone claims (2026-11-24)
+
+
 def get_daily_report(as_of: date) -> DailyReport:
     if USE_MOCK_DATA:
         return _mock_report(as_of)
@@ -367,7 +382,12 @@ def get_daily_report(as_of: date) -> DailyReport:
 
     # Fingerprint covers MSPT's 730-day window (the widest query window used).
     since_730 = as_of - timedelta(days=2 * 365)
-    fp = _ic_fingerprint(since_730)
+    fp: dict = _ic_fingerprint(since_730)
+    # Not only IC files decide the report: a rule change in this file, or a new MSPT
+    # phone completion from the cloud, must also throw the saved report away.
+    fp['__rules__'] = _REPORT_RULES_VERSION
+    fp['__mspt_phone__'] = sorted(
+        f"{c.get('chart_number')}|{c.get('mspt_stage')}|{c.get('date')}" for c in MSPT_PHONE_CLAIMS)
 
     # Fast path: if IC files unchanged since last run, return the cached report.
     # The base report contains only IC-derived data (no contacts.db), so it is
@@ -983,6 +1003,29 @@ def _query_chronic_prescriptions(as_of: date) -> list[FollowupEntry]:
 
 # ── MSPT (代謝症候群) query ───────────────────────────────────────────────────
 
+# MSPT stages the nurses finished by phone (完成 on 可電話完成), pulled from the cloud by the
+# sync agent: [{chart_number, mspt_stage, date}]. Until 耀聖 has the P code for that visit,
+# the completion stands in for it, so the next stage shows in 未到期 right away.
+MSPT_PHONE_CLAIMS: list[dict] = []
+
+
+def _merge_mspt_phone_claims(stage_history: dict[str, list[dict]], as_of: date) -> None:
+    """Add each phone completion as a claim when it is the stage that comes next after the
+    patient's last billed claim. Once 耀聖 bills that stage, the completion no longer fits
+    (the billed claim is already there) and is ignored, so nothing is counted twice."""
+    for c in sorted(MSPT_PHONE_CLAIMS, key=lambda c: str(c.get('date') or '')):
+        try:
+            c_date = date.fromisoformat(str(c['date'])[:10])
+        except (KeyError, TypeError, ValueError):
+            continue
+        history = stage_history.get(str(c.get('chart_number') or ''))
+        if not history or c_date > as_of:
+            continue
+        last = max(history, key=lambda h: h['date'])
+        if MSPT_STAGE_NEXT.get(last['stage']) == c.get('mspt_stage') and c_date > last['date']:
+            history.append({'stage': c['mspt_stage'], 'date': c_date})
+
+
 def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[FollowupEntry], list[FollowupEntry]]:
     """Return (active_followups, inactive_patients, upcoming_patients).
 
@@ -1054,6 +1097,8 @@ def _query_mspt_followups(as_of: date) -> tuple[list[FollowupEntry], list[Follow
     results: list[FollowupEntry] = []
     inactive: list[FollowupEntry] = []
     upcoming: list[FollowupEntry] = []
+
+    _merge_mspt_phone_claims(stage_history, as_of)
 
     for nat_id, history in stage_history.items():
         info = patient_info.get(nat_id)
@@ -1192,9 +1237,15 @@ def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
 
         gap          = CKD_INTAKE_FOLLOWUP_DAYS if last_stage == '收案' else CKD_FOLLOWUP_DAYS
         due_date     = last_date + timedelta(days=gap)
+        cap_reason   = None
+        if days_inactive <= _CKD_REOPEN_DAYS:
+            due_date, cap_reason = yearly_cap_due(
+                due_date, [h['date'] for h in history if h['stage'] != '收案'],
+                CKD_TRACK_YEARLY_CAP, '追蹤管理')
         days_overdue = (as_of - due_date).days
         if days_overdue < 0:
             upcoming.append(FollowupEntry(
+                contact_reason=cap_reason,
                 patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
                 disease_name='慢性腎臟病',
                 due_date=due_date,
@@ -1240,9 +1291,14 @@ def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
 
 # ── B/C Hepatitis (B/C型肝炎) tracking ───────────────────────────────────────
 
-HEP_FOLLOWUP_DAYS    = 180   # 追蹤間隔 (NHI spec: 6 months, max 2x/year)
-HEP_CLOSE_DAYS       = 365   # 超過此天數無追蹤 → 結案
-HEP_REOPEN_DAYS      = 365   # 結案後再等此天數 → 可再收案 (total 730 days since last visit)
+# 全民健康保險肝炎醫療給付改善方案 第九版 (115.08.19), 附件一 P4202C:
+#   申報新收案後至少須間隔10週 / 每次間隔至少23週 / P4201C+P4202C 全年合計最多3次
+#   結案條件: 失聯超過一年（≧360天）; 經結案對象 1 年內不得再收案
+HEP_INTAKE_FOLLOWUP_DAYS = 70    # 收案 (P4201C) → 第一次追蹤: 10 週
+HEP_FOLLOWUP_DAYS    = 161   # 追蹤 (P4202C) → 下次追蹤: 23 週
+HEP_YEARLY_CAP       = 3     # P4201C + P4202C per calendar year
+HEP_CLOSE_DAYS       = 360   # 超過此天數無追蹤 → 結案
+HEP_REOPEN_DAYS      = 365   # 結案後再等此天數 → 可再收案 (725 days since last claim)
 HEP_RETURN_WINDOW_DAYS = 14  # 回診後此天數內視為「待輸入VPN」(抽血報告約3個工作日)
 
 # NHI order codes for BC肝追蹤 (confirmed against real visit data).
@@ -1252,7 +1308,7 @@ HEP_RETURN_WINDOW_DAYS = 14  # 回診後此天數內視為「待輸入VPN」(抽
 # visits have hep as the PRIMARY diagnosis, so we additionally require one of
 # these panel codes to be ordered that visit before counting it as a real
 # B/C型肝炎追蹤 follow-up.
-# P4202C = 收案, P4201C = 追蹤
+# P4201C = 新收案, P4202C = 追蹤
 HEP_PANEL_CODES = {'P4202C', 'P4201C'}
 
 # ICD-9/ICD-10 codes for B and C hepatitis (dot-stripped, prefix-matched).
@@ -1312,6 +1368,27 @@ def _p_file_drug_cfs(p_path: str, drug_nos: set[str]) -> set[str]:
         return set()
 
 
+def _p_file_drug_cf_codes(p_path: str, drug_nos: set[str]) -> dict[str, str]:
+    """Like _p_file_drug_cfs, but maps each CODE_F to the matching DRUG_NO
+    (the lowest code wins when a visit has several — P4201C before P4202C)."""
+    out: dict[str, str] = {}
+    if not os.path.exists(p_path):
+        return out
+    try:
+        for r in _parse_dbf_cached(p_path):
+            code = r.get('DRUG_NO', '').strip()
+            cf   = r.get('CODE_F', '').strip()
+            if code in drug_nos and cf and (cf not in out or code < out[cf]):
+                out[cf] = code
+    except Exception:
+        pass
+    return out
+
+
+# Bump when the cached fields change — an older cache is ignored and rebuilt once.
+_HEP_CACHE_VERSION = 2
+
+
 def _load_hep_cache() -> tuple[set[str], dict[str, dict]]:
     """Load (scanned_months, patients) from hep_patient_cache.json.
     Dates are returned as date objects ready for use. Returns empty structures
@@ -1319,6 +1396,8 @@ def _load_hep_cache() -> tuple[set[str], dict[str, dict]]:
     try:
         with open(_HEP_CACHE_PATH, encoding='utf-8') as f:
             raw = json.load(f)
+        if raw.get('version') != _HEP_CACHE_VERSION:
+            return set(), {}
         patients: dict[str, dict] = {}
         for nat_id, p in raw.get('patients', {}).items():
             patients[nat_id] = {
@@ -1327,6 +1406,7 @@ def _load_hep_cache() -> tuple[set[str], dict[str, dict]]:
                 'last_visit':  date.fromisoformat(p['last_visit']),
                 'first_visit': date.fromisoformat(p['first_visit']),
                 'hep_type':    p['hep_type'],
+                'claims':      {date.fromisoformat(d): c for d, c in p.get('claims', {}).items()},
             }
         return set(raw.get('scanned_months', [])), patients
     except Exception:
@@ -1343,11 +1423,13 @@ def _save_hep_cache(scanned: set[str], patients: dict[str, dict]) -> None:
                 'last_visit':  p['last_visit'].isoformat(),
                 'first_visit': p['first_visit'].isoformat(),
                 'hep_type':    p['hep_type'],
+                'claims':      {d.isoformat(): c for d, c in p.get('claims', {}).items()},
             }
             for nat_id, p in patients.items()
         }
         with open(tmp, 'w', encoding='utf-8') as f:
-            json.dump({'scanned_months': sorted(scanned), 'patients': raw_patients},
+            json.dump({'version': _HEP_CACHE_VERSION, 'scanned_months': sorted(scanned),
+                       'patients': raw_patients},
                       f, ensure_ascii=False)
         os.replace(tmp, _HEP_CACHE_PATH)
     except Exception:
@@ -1378,7 +1460,7 @@ def _scan_hep_patient_info(as_of: date) -> dict[str, dict]:
             continue  # past month already processed — skip entirely
 
         p_path = ic_path[:-4] + 'P.DBF'
-        panel_cfs = _p_file_drug_cfs(p_path, HEP_PANEL_CODES)
+        panel_cfs = _p_file_drug_cf_codes(p_path, HEP_PANEL_CODES)
         try:
             # Current month: always read fresh from disk (still being written).
             # Past unscanned months: use cache if available, else read from disk.
@@ -1400,6 +1482,7 @@ def _scan_hep_patient_info(as_of: date) -> dict[str, dict]:
                 name  = r.get('NAME', '').strip()
                 birth = _roc_to_date(r.get('BIRTH', ''))
 
+                code = panel_cfs[r.get('CODE_F', '').strip()]
                 if nat_id not in patients:
                     patients[nat_id] = {
                         'name':        name or '',
@@ -1407,11 +1490,16 @@ def _scan_hep_patient_info(as_of: date) -> dict[str, dict]:
                         'last_visit':  v_date,
                         'first_visit': v_date,
                         'hep_type':    hep,
+                        'claims':      {v_date: code},
                     }
                     changed = True
                 else:
                     p = patients[nat_id]
                     updated = False
+                    claims = p.setdefault('claims', {})
+                    if claims.get(v_date) is None or code < claims[v_date]:
+                        claims[v_date] = code
+                        updated = True
                     if v_date > p['last_visit']:
                         p['last_visit'] = v_date
                         if name:  p['name']  = name
@@ -1445,8 +1533,8 @@ def _hep_disease_name(hep_type: str) -> str:
 def _query_hep_followups(as_of: date, patient_info: dict[str, dict]) -> tuple[list[FollowupEntry], list[FollowupEntry], list[FollowupEntry]]:
     """Return (active_overdue, inactive, upcoming) hepatitis B/C patients.
 
-    active_overdue: patients 161–364 days since last hepatitis visit (overdue for 追蹤).
-    inactive: patients 365+ days since last hepatitis visit (結案 or eligible for 再收案).
+    active_overdue: due for the next claim (70 days after 收案, 161 after 追蹤) and < 360 days.
+    inactive: patients 360+ days since last hepatitis claim (結案 or eligible for 再收案).
 
     patient_info comes from _scan_hep_patient_info(as_of) — shared with
     _query_hep_returned() since computing it is the most expensive part of a report.
@@ -1461,32 +1549,36 @@ def _query_hep_followups(as_of: date, patient_info: dict[str, dict]) -> tuple[li
 
         last_visit = info['last_visit']
         days_since = (as_of - last_visit).days
+        claims     = info.get('claims') or {}
+        # Stage from the claim code itself: P4201C = 收案 (also a re-enrolment after 結案).
+        # Without codes (old data) fall back to "only one claim ever".
+        last_code  = claims.get(last_visit)
+        if last_code:
+            stage = '收案' if last_code == 'P4201C' else '追蹤'
+        else:
+            stage = '收案' if info['first_visit'] == info['last_visit'] else '追蹤'
+        gap        = HEP_INTAKE_FOLLOWUP_DAYS if stage == '收案' else HEP_FOLLOWUP_DAYS
+        due_date   = last_visit + timedelta(days=gap)
+        cap_reason = None
+        if days_since < HEP_CLOSE_DAYS:
+            due_date, cap_reason = yearly_cap_due(due_date, list(claims), HEP_YEARLY_CAP, '管理照護費')
+        days_overdue = (as_of - due_date).days
+        disease      = _hep_disease_name(info['hep_type'])
 
-        if days_since < HEP_FOLLOWUP_DAYS:
-            # Not yet overdue — track in upcoming (skip those in the 待登VPN window)
+        if days_overdue < 0:
+            # Not yet due — track in upcoming (skip those in the 待登VPN window)
             if days_since > HEP_RETURN_WINDOW_DAYS:
-                due_date  = last_visit + timedelta(days=HEP_FOLLOWUP_DAYS)
-                disease   = _hep_disease_name(info['hep_type'])
-                stage     = '收案' if info['first_visit'] == info['last_visit'] else '追蹤'
                 upcoming.append(FollowupEntry(
                     patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
                     disease_name=disease,
                     due_date=due_date,
-                    days_overdue=days_since - HEP_FOLLOWUP_DAYS,  # negative = days until due
+                    days_overdue=days_overdue,  # negative = days until due
                     category='B肝',
                     last_visit_date=last_visit,
                     last_stage=stage,
-                    contact_reason='需抽血+超音波',
+                    contact_reason=cap_reason or '需抽血+超音波',
                 ))
             continue
-
-        disease = _hep_disease_name(info['hep_type'])
-
-        due_date     = last_visit + timedelta(days=HEP_FOLLOWUP_DAYS)
-        days_overdue = (as_of - due_date).days
-
-        # Determine last_stage label: 收案 if patient has only ever had one hepatitis visit
-        stage = '收案' if info['first_visit'] == info['last_visit'] else '追蹤'
 
         entry = FollowupEntry(
             patient=Patient(chart_number=nat_id, name=info['name'], birth_date=info['birth']),
@@ -1500,13 +1592,13 @@ def _query_hep_followups(as_of: date, patient_info: dict[str, dict]) -> tuple[li
         )
 
         if days_since >= HEP_CLOSE_DAYS + HEP_REOPEN_DAYS:
-            # 730+ days: eligible for 再收案
+            # 725+ days: eligible for 再收案
             inactive.append(entry.model_copy(update={
                 'last_stage': '再收案',
                 'contact_reason': '需重新收案+抽血+超音波',
             }))
         elif days_since >= HEP_CLOSE_DAYS:
-            # 365–729 days: 結案, waiting period before re-enrollment
+            # 360–724 days: 結案, waiting period before re-enrollment
             inactive.append(entry.model_copy(update={'last_stage': '結案'}))
         else:
             results.append(entry)

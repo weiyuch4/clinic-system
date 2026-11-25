@@ -1252,15 +1252,35 @@ def clear_mspt_blood_used(nat_id: str, stage: str, clinic_id: int = 1) -> None:
             )
 
 
-def get_submitted_keys(clinic_id: int = 1) -> set[tuple[str, str]]:
+def get_submitted_keys(clinic_id: int = 1) -> dict[tuple[str, str], date]:
+    """{(chart, stage): date of the last 已登VPN}. MSPT stages repeat every year, so a
+    submission only covers entries from before it — see main.py's 待登VPN filter."""
     with _conn() as conn:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT chart_number, mspt_stage FROM submitted WHERE clinic_id = %s",
+                "SELECT chart_number, mspt_stage, submitted_at FROM submitted WHERE clinic_id = %s",
                 (clinic_id,),
             )
             rows = cur.fetchall()
-    return {(r["chart_number"], r["mspt_stage"]) for r in rows}
+    out: dict[tuple[str, str], date] = {}
+    for r in rows:
+        try:
+            out[(r["chart_number"], r["mspt_stage"])] = date.fromisoformat(str(r["submitted_at"])[:10])
+        except (TypeError, ValueError):
+            out[(r["chart_number"], r["mspt_stage"])] = date.max
+    return out
+
+
+def get_mspt_phone_claims(clinic_id: int = 1) -> list[dict]:
+    """Phone completions as claims for the sync agent: the day the nurse pressed 完成."""
+    with _conn() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT chart_number, mspt_stage, completed_at FROM mspt_phone_completed WHERE clinic_id = %s",
+                (clinic_id,),
+            )
+            return [{"chart_number": r["chart_number"], "mspt_stage": r["mspt_stage"],
+                     "date": r["completed_at"]} for r in cur.fetchall()]
 
 
 def mark_mspt_phone_completed(entry: FollowupEntry, nurse: str = "", blood_draw_date: str | None = None, clinic_id: int = 1) -> None:
