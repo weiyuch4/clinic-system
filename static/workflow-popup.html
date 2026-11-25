@@ -481,6 +481,8 @@ function doSendLine() {
   var actEl = document.getElementById('actions');
   actEl.querySelectorAll('button').forEach(function(b){ b.disabled = true; });
   var h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + TOKEN };
+  if (NURSE) h['X-Nurse'] = encodeURIComponent(NURSE);
+  try { var nt = localStorage.getItem('nurse_token'); if (nt) h['X-Nurse-Token'] = nt; } catch(e) {}
   // Step 1: send LINE message
   fetch('/api/line/push-one', {
     method: 'POST', headers: h,

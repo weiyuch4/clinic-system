@@ -245,6 +245,8 @@
     var t = localStorage.getItem('clinic_token');
     var h = Object.assign({}, extra || {});
     if (t) h['Authorization'] = 'Bearer ' + t;
+    if (_nurse) h['X-Nurse'] = encodeURIComponent(_nurse);
+    try { var nt = localStorage.getItem('nurse_token'); if (nt) h['X-Nurse-Token'] = nt; } catch(e) {}
     return h;
   }
 
@@ -567,10 +569,14 @@
     if (btn) btn.style.display = _nurse ? '' : 'none';
   }
 
-  function _setNurse(name) {
+  function _setNurse(name, nurseToken) {
     _nurse = name;
     if (name) { localStorage.setItem('nurse', name); }
     else       { localStorage.removeItem('nurse'); }
+    try {
+      if (name && nurseToken) localStorage.setItem('nurse_token', nurseToken);
+      else localStorage.removeItem('nurse_token');
+    } catch(e) {}
     _updateAvatar(name);
     _updateNurseLbl(name);
     _renderNurseShift();
@@ -651,10 +657,10 @@
     if (!pin || !name) return;
     if (btn) btn.disabled = true;
     apiAction('POST', '/api/auth/nurse-pin', { name: name, pin: pin })
-      .then(function () {
+      .then(function (res) {
         var onSuccess = _pinOnSuccess;   // capture before _closePinModal nulls it
         _closePinModal();
-        _setNurse(name);
+        _setNurse(name, res && res.nurse_token);
         showToast(name + ' 已登入');
         if (onSuccess) onSuccess();
       })

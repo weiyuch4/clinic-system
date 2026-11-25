@@ -20,6 +20,7 @@ from fastapi import BackgroundTasks, Body, Depends, FastAPI, HTTPException, Quer
 from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
+import activity_log
 import auth
 import backup
 import config
@@ -111,6 +112,7 @@ environment.install_outbound_guard()  # test copies (staging) never send LINE
 
 app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.add_middleware(activity_log.ActivityLogMiddleware)  # 後台 record of nurse actions
 
 try:
     db.init_pool(minconn=2, maxconn=18)
@@ -119,6 +121,7 @@ except RuntimeError as e:
 
 auth.init()
 contacts.init()
+activity_log.init()
 contact_prefs.init()
 directory.init()
 inventory.init()
@@ -1106,7 +1109,8 @@ def verify_nurse_pin(body: dict, user: auth.CurrentUser = Depends(auth.get_curre
         _pin_failures[key] = recent + [now_ts]
         raise HTTPException(status_code=401, detail="PIN 不正確")
     _pin_failures.pop(key, None)
-    return {"ok": True, "name": name}
+    # Signed proof of who entered the PIN; the page sends it with every request.
+    return {"ok": True, "name": name, "nurse_token": activity_log.sign_nurse(user.clinic_id, name)}
 
 
 @app.post("/api/auth/nurse-pin/change")
@@ -1155,6 +1159,21 @@ def admin_stats_json(month: str | None = None, admin: auth.CurrentUser = Depends
         return {"month": month, "stats": contacts.get_activity_stats(month, admin.clinic_id)}
     except Exception:
         logger.exception("admin_stats_json failed for month=%s", month)
+        raise HTTPException(status_code=500, detail="查詢失敗")
+
+
+@app.get("/api/admin/activity")
+def admin_activity(month: str | None = None, nurse: str | None = None,
+                   admin: auth.CurrentUser = Depends(auth.require_admin)) -> dict:
+    """Every recorded action for the month (optionally one nurse), newest first."""
+    if not month:
+        month = date.today().strftime("%Y-%m")
+    if not _re.fullmatch(r"\d{4}-\d{2}", month):
+        raise HTTPException(status_code=422, detail="月份格式錯誤")
+    try:
+        return {"month": month, "rows": activity_log.get_month(month, admin.clinic_id, nurse)}
+    except Exception:
+        logger.exception("admin_activity failed for month=%s", month)
         raise HTTPException(status_code=500, detail="查詢失敗")
 
 

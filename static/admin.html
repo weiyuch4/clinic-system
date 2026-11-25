@@ -274,6 +274,14 @@ tbody tr:last-child td { border-bottom: none; }
 }
 @media(hover:hover){.total-row:hover td{ background: var(--bg); }}
 .zero { color: var(--text-3); }
+/* nurse stats → click a row for the records behind it */
+#nurses-body tbody tr[data-nurse] { cursor: pointer; }
+#nurses-body tbody tr.act-sel td { background: var(--bg); }
+#act-body td { white-space: nowrap; }
+#act-body td.wrap { white-space: normal; min-width: 160px; }
+#act-body tr.act-undo td { color: var(--text-3); }
+.act-chart { color: var(--text-3); font-size: 12px; margin-left: 6px; }
+.act-hint { font-size: 12px; color: var(--text-3); padding: 10px 24px 0; }
 
 /* nurse name chip */
 .chip {
@@ -292,7 +300,7 @@ tbody tr:last-child td { border-bottom: none; }
   place-items: center;
   flex-shrink: 0;
 }
-.nurse-name { font-weight: 500; }
+.nurse-name { font-weight: 500; white-space: nowrap; }
 
 /* ── Rate bar ────────────────────────────────────────────────────────────── */
 .rate-cell {
@@ -1420,6 +1428,17 @@ tbody tr:last-child td { border-bottom: none; }
   /* ── KPI cards: 2-column ─────────────────────────────────────────────── */
   .kpi-row { grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
   .kpi-card { padding: 13px 14px 11px; }
+  /* 護理師統計 + 紀錄: tighter cells; the nurse column stays put while the numbers scroll */
+  #nurses-body th, #nurses-body td, #act-body th, #act-body td { padding-left: 12px; padding-right: 12px; }
+  #nurses-body th:first-child, #nurses-body td:first-child {
+    position: sticky; left: 0; z-index: 1; background: var(--surface);
+    box-shadow: 1px 0 0 var(--border);
+  }
+  #nurses-body thead th:first-child, #nurses-body .total-row td:first-child,
+  #nurses-body tr.act-sel td:first-child { background: var(--bg); }
+  #nurses-body .chip { gap: 6px; }
+  #nurses-body .avatar { display: none; }
+  .act-hint { padding: 10px 16px 0; }
   .kpi-value { font-size: 26px; }
 
   /* ── Schedule ────────────────────────────────────────────────────────── */
@@ -1826,7 +1845,7 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
 .send-panel{border:1px solid var(--border);border-radius:var(--radius-s);padding:16px;background:var(--bg);margin-bottom:16px}
 .send-panel-title{font-size:12px;font-weight:500;color:var(--text-2);margin-bottom:10px}
 </style>
-<script src="/static/_layout.js?v=103"></script>
+<script src="/static/_layout.js?v=104"></script>
 <script src="/static/admin-auth.js?v=5"></script>
 </head>
 <body>
@@ -1973,6 +1992,15 @@ select.lfi{-webkit-appearance:none;appearance:none;padding-right:30px;height:var
         <span class="card-meta" id="nurse-meta"></span>
       </div>
       <div class="tbl-wrap" id="nurses-body"></div>
+    </div>
+    <div class="card" id="act-card" style="display:none;margin-top:18px">
+      <div class="card-head">
+        <span class="card-title" id="act-title">紀錄</span>
+        <span class="card-spacer"></span>
+        <span class="card-meta" id="act-meta"></span>
+      </div>
+      <div class="act-hint">每一次按鈕都留一筆，撤銷也會另記一筆，不會刪除。「PIN」＝該護理師輸入 PIN 後操作；「未驗證」＝沒有 PIN 證明（未設定 PIN 或尚未重新選擇護理師）。紀錄自 2026/11/25 起。</div>
+      <div class="tbl-wrap" id="act-body"></div>
     </div>
   </section>
 
@@ -3586,6 +3614,7 @@ async function loadNurses() {
   try {
     const { stats } = await api(`/api/admin/stats?month=${month}`);
     renderNurses(stats);
+    if (_actNurse !== undefined) loadActivity(_actNurse);
   } catch(e) {
     $('nurse-kpis').innerHTML = '';
     $('nurses-body').innerHTML = errState(e.message);
@@ -3630,7 +3659,7 @@ function renderNurses(stats) {
     const s = stats[n] || {};
     const rowTot = COLS.reduce((a,[k]) => a + (s[k]||0), 0);
     const initial = n === '（未選擇）' ? '?' : Layout.escHtml(n[0]);
-    return `<tr>
+    return `<tr data-nurse="${Layout.escHtml(n)}" title="查看紀錄">
       <td class="l">
         <span class="chip">
           <span class="avatar">${initial}</span>
@@ -3645,7 +3674,7 @@ function renderNurses(stats) {
     </tr>`;
   }).join('');
 
-  const totalRow = `<tr class="total-row">
+  const totalRow = `<tr class="total-row" data-nurse="" title="查看全部紀錄">
     <td class="l">合計</td>
     ${COLS.map(([k]) => `<td>${tot[k]}</td>`).join('')}
     <td>${grand}</td>
@@ -3659,6 +3688,71 @@ function renderNurses(stats) {
 
   $('nurses-body').innerHTML =
     `<table><thead>${thead}</thead><tbody>${rows}${totalRow}</tbody></table>`;
+  $('nurses-body').querySelectorAll('tr[data-nurse]').forEach(tr => {
+    tr.addEventListener('click', () => loadActivity(tr.dataset.nurse || null));
+  });
+  _markActRow();
+}
+
+// ── Records behind the numbers (activity_log) ──
+var _actNurse;   // undefined = closed, null = everyone, string = one nurse
+
+function _markActRow() {
+  document.querySelectorAll('#nurses-body tr[data-nurse]').forEach(tr => {
+    const key = tr.dataset.nurse || null;
+    tr.classList.toggle('act-sel', _actNurse !== undefined && key === _actNurse);
+  });
+}
+
+async function loadActivity(nurse) {
+  _actNurse = nurse;
+  _markActRow();
+  $('act-card').style.display = '';
+  $('act-title').textContent = nurse ? `${nurse} 的紀錄` : '全部紀錄';
+  $('act-meta').textContent = '';
+  $('act-body').innerHTML = shimTable(6, 7);
+  try {
+    const q = nurse ? `&nurse=${encodeURIComponent(nurse)}` : '';
+    const { rows } = await api(`/api/admin/activity?month=${month}${q}`);
+    if (_actNurse !== nurse) return;   // another row was clicked meanwhile
+    renderActivity(rows, !nurse);
+  } catch (e) {
+    $('act-body').innerHTML = errState(e.message);
+  }
+}
+
+function renderActivity(rows, showNurse) {
+  const esc = Layout.escHtml;
+  const unverified = rows.filter(r => !r.nurse_verified).length;
+  $('act-meta').textContent = rows.length
+    ? `${rows.length} 筆` + (unverified ? `・未驗證 ${unverified}` : '') : '';
+  if (!rows.length) {
+    $('act-body').innerHTML = emptyState('', '本月沒有紀錄', '');
+    return;
+  }
+  const body = rows.map(r => {
+    const t = String(r.created_at || '');
+    const when = t.slice(5, 10).replace('-', '/') + ' ' + t.slice(11, 16);
+    const who = r.patient_name || r.chart_number
+      ? `${esc(r.patient_name || '')}${r.chart_number ? `<span class="act-chart">#${esc(r.chart_number)}</span>` : ''}`
+      : '<span class="zero">—</span>';
+    const proof = r.nurse_verified
+      ? '<span class="badge badge-green">PIN</span>'
+      : '<span class="badge badge-gray">未驗證</span>';
+    return `<tr class="${/^撤銷|^取消/.test(r.action) ? 'act-undo' : ''}">
+      <td class="l">${esc(when)}</td>
+      ${showNurse ? `<td class="l">${esc(r.nurse || '（未選擇）')}</td>` : ''}
+      <td class="l">${esc(r.action)}</td>
+      <td class="l">${who}</td>
+      <td class="l">${esc(r.category || '')}${r.stage ? ' ' + esc(r.stage) : ''}</td>
+      <td class="l wrap">${esc(r.detail || '')}</td>
+      <td>${proof}</td>
+    </tr>`;
+  }).join('');
+  $('act-body').innerHTML = `<table><thead><tr>
+      <th class="l">時間</th>${showNurse ? '<th class="l">護理師</th>' : ''}
+      <th class="l">動作</th><th class="l">病患</th><th class="l">名單</th><th class="l">備註</th><th>確認</th>
+    </tr></thead><tbody>${body}</tbody></table>`;
 }
 
 // ── Doctors ───────────────────────────────────────────────────────────────────
