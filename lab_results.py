@@ -127,8 +127,16 @@ def _bio_labels_for(raw_date: str) -> dict[str, str]:
 
 
 def _bio_display_date(row: dict) -> str:
-    """VAR1/2/3 hold the actual lab/order date on both platforms; DATE is system entry date."""
-    return _parse_var_date(row) or _decode_date(row.get('DATE', '')) or '???'
+    """VAR1/2/3 hold the actual lab/order date on both platforms; DATE is system entry date.
+
+    A hand-typed year can be wrong (e.g. 291 → 2202-10-28), so a date in the
+    future or before 1990 is skipped and the next source is tried.
+    """
+    for s in (_parse_var_date(row), _decode_date(row.get('DATE', ''))):
+        d = _parse_slash_date(s) if s else None
+        if d and date(1990, 1, 1) <= d <= date.today() + timedelta(days=1):
+            return s
+    return '???'
 
 
 # ── DBF helpers ───────────────────────────────────────────────────────────────

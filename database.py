@@ -1122,7 +1122,7 @@ def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
     """Return (active_followups, inactive_patients, upcoming_patients) for CKD tracking.
     Stage history is detected from P-file DRUG_NO codes in _CKD_CODE_MAP.
     Gap: 收案 → 追1 is CKD_INTAKE_FOLLOWUP_DAYS (77 days); every 追蹤 after is CKD_FOLLOWUP_DAYS (161 days).
-    After _CKD_REOPEN_DAYS overdue → needs 收案 restart.
+    Over _CKD_REOPEN_DAYS since the last claim → 結案, needs 收案 restart.
     """
     since = as_of - timedelta(days=_CKD_MAX_INACTIVE_DAYS)
 
@@ -1217,7 +1217,9 @@ def _query_ckd_followups(as_of: date) -> tuple[list[FollowupEntry], list[Followu
             mspt_stage=next_stage,
         )
 
-        if days_overdue > _CKD_REOPEN_DAYS:
+        # 結案: 健保 closes a case with no 管理照護 for over a year (TSN P4P 手冊 問答 2);
+        # it can be re-enrolled, so it stays on the list as 需重新收案.
+        if days_inactive > _CKD_REOPEN_DAYS:
             entry = entry.model_copy(update={
                 'mspt_stage':    '收案',
                 'contact_reason': '需重新收案',
