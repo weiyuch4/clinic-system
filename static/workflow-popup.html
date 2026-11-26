@@ -237,11 +237,12 @@ function cancelForm() {
 function showContactForm() {
   var fa = document.getElementById('form-area');
   fa.style.display = 'flex';
+  var cur = currentItems()[idx];
   var typeRow = MODE === 'mspt'
-    ? '<div class="form-row"><div class="form-label">聯絡方式</div>' +
+    ? '<div class="form-row"><div class="form-label">第幾次通知</div>' +
         '<select class="form-select" id="contact-type">' +
-          '<option value="contacted">已聯繫（直接通知）</option>' +
-          '<option value="called">已二次確認（電話通話）</option>' +
+          '<option value="contacted"' + (cur && cur.call_required ? '' : ' selected') + '>第一次通知</option>' +
+          '<option value="called"' + (cur && cur.call_required ? ' selected' : '') + '>第二次通知</option>' +
         '</select></div>'
     : '';
   fa.innerHTML = typeRow +
@@ -285,7 +286,8 @@ function doContact() {
   if (errEl) errEl.textContent = '';
   if (btn) btn.disabled = true;
   var typeEl = document.getElementById('contact-type');
-  var url = (typeEl && typeEl.value === 'called') ? '/api/called' : '/api/contacted';
+  var second = typeEl ? typeEl.value === 'called' : !!item.call_required;
+  var url = second ? '/api/called' : '/api/contacted';
   apiCall('POST', url, { entry: item._entry, nurse: NURSE },
     function() { advance(); },
     function(e) {

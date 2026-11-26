@@ -128,10 +128,10 @@
     <div class="modal-title" id="modal-contact-title">聯絡病患</div>
     <div class="modal-sub" id="modal-contact-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">聯絡方式</label>
+      <label class="modal-label">第幾次通知</label>
       <select class="modal-select" id="modal-contact-type">
-        <option value="contacted">已聯繫（直接通知）</option>
-        <option value="called">已二次確認（電話通話）</option>
+        <option value="contacted">第一次通知</option>
+        <option value="called">第二次通知</option>
       </select>
     </div>
     <div class="modal-field">
@@ -249,7 +249,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=104"></script>
+<script src="/static/_layout.js?v=105"></script>
 <script>
 (function () {
   'use strict';
@@ -320,7 +320,7 @@
   function isClosed(e) { return e.contact_reason === '需重新收案'; }
   function pendingRow(e) {
     return L.patientRow({ entry: e,
-      tags: isClosed(e) ? ['<span class="pbadge b-call">結案</span>'] : [],
+      tags: [L.secondNoticeTag(e)].concat(isClosed(e) ? ['<span class="pbadge b-call">結案</span>'] : []).filter(Boolean),
       actions: [
       { label: '已聯繫',  cls: 'act-primary', key: 'contact' },
       { label: '暫緩',    cls: '',            key: 'hold' },
@@ -333,7 +333,7 @@
     var more = [{ label: '暫緩', key: 'hold', cls: '' }, { label: '排除', key: 'exclude', cls: 'item-danger' }];
     if (e.manual) more.push({ label: '移回待聯絡', key: 'move-to-pending' });
     return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge b-prog">未複診</span>'].concat(isClosed(e) ? ['<span class="pbadge b-call">結案</span>'] : []),
+      tags: [L.secondNoticeTag(e), '<span class="pbadge b-prog">未複診</span>'].concat(isClosed(e) ? ['<span class="pbadge b-call">結案</span>'] : []).filter(Boolean),
       actions: [
         { label: '已聯繫', cls: 'act-primary', key: 'contact' },
         { label: '再收案', cls: 'act-warn',    key: 'reintake' },
@@ -430,7 +430,8 @@
     var all = _pending.filter(match);
     var open = all.filter(function (e) { return !isClosed(e); });
     var closed = all.filter(isClosed);
-    open.sort(function(a,b){ return (b._called?1:0)-(a._called?1:0); });
+    var second = function(a,b){ return (b.call_required?1:0)-(a.call_required?1:0); };
+    open.sort(second); closed.sort(second);
     var el = document.getElementById('list-pending');
     var html = '';
     if (open.length) html += L.patientTable(open.map(pendingRow).join(''), [], { hideCat: true });
@@ -540,6 +541,7 @@
       document.getElementById('modal-contact-sub').textContent = '身份證 #' + entry.patient.chart_number + ' · 逾期 ' + (entry.days_overdue||0) + ' 天';
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
+      L.presetContactType(entry);
       L.showModal('modal-contact');
     } else if (action === 'hold') {
       var entry2 = _pendingMap[_actionChart] || _inactiveMap[_actionChart]; if (!entry2) return;

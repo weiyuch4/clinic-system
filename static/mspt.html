@@ -178,10 +178,10 @@
     <div class="modal-title" id="modal-contact-title">聯絡病患</div>
     <div class="modal-sub" id="modal-contact-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">聯絡方式</label>
+      <label class="modal-label">第幾次通知</label>
       <select class="modal-select" id="modal-contact-type">
-        <option value="contacted">已聯繫（直接通知）</option>
-        <option value="called">已二次確認（電話通話）</option>
+        <option value="contacted">第一次通知</option>
+        <option value="called">第二次通知</option>
       </select>
     </div>
     <div class="modal-field">
@@ -205,10 +205,10 @@
       <div id="modal-phone-blood" class="modal-hint"></div>
     </div>
     <div class="modal-field">
-      <label class="modal-label">聯絡方式</label>
+      <label class="modal-label">第幾次通知</label>
       <select class="modal-select" id="modal-phone-type">
-        <option value="contacted">已聯繫（直接通知）</option>
-        <option value="called">已二次確認（電話通話）</option>
+        <option value="contacted">第一次通知</option>
+        <option value="called">第二次通知</option>
       </select>
     </div>
     <div class="modal-field">
@@ -405,7 +405,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=104"></script>
+<script src="/static/_layout.js?v=105"></script>
 <script>
 // ── Modal date picker ──────────────────────────────────────────────────────
 var _mdp = {
@@ -938,6 +938,7 @@ document.addEventListener('click', function(ev) {
         '身份證 #' + entry.patient.chart_number + ' · 階段 ' + (entry.mspt_stage || '') + '（需通知回診抽血）';
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
+      L.presetContactType(entry);
       L.showModal('modal-contact');
 
     } else if (action === 'phone-complete') {

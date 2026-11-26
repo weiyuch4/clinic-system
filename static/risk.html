@@ -62,7 +62,8 @@
       <div id="list-hold"      style="display:none"></div>
 
       <div class="rsk-note">
-        <strong>結案天數：</strong>代謝症候群 90 天・B/C型肝炎 185 天・慢性腎臟病 180 天。
+        <strong>結案日：</strong>代謝症候群到期後 365 天未申報・B/C型肝炎上次申報後 360 天・慢性腎臟病上次申報後 365 天。
+        結案日是健保關閉收案的日子，比「可以申報下一次」（病患出現在待聯絡）晚很多。
         <span class="rsk-hint rh-waive">免抽血</span> 代謝症候群免血液檢查者提前 5 天提醒；其餘於 15 天前提醒。
       </div>
 
@@ -76,10 +77,10 @@
     <div class="modal-title" id="modal-contact-title">聯絡病患</div>
     <div class="modal-sub" id="modal-contact-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">聯絡方式</label>
+      <label class="modal-label">第幾次通知</label>
       <select class="modal-select" id="modal-contact-type">
-        <option value="contacted">已聯繫（直接通知）</option>
-        <option value="called">已二次確認（電話通話）</option>
+        <option value="contacted">第一次通知</option>
+        <option value="called">第二次通知</option>
       </select>
     </div>
     <div class="modal-field">
@@ -149,18 +150,19 @@
     <div style="font-size:13.5px;line-height:1.75;color:var(--text);overflow-y:auto;max-height:65vh;padding-right:4px">
       <p style="margin:0 0 12px;color:var(--muted);font-size:12.5px">此頁顯示即將達到 NHI 結案天數的病患，請優先安排聯繫或回診。</p>
       <div style="font-weight:600;margin:0 0 6px">結案天數限制</div>
+      <p style="margin:0 0 8px;color:var(--muted);font-size:12.5px">病患在「可以申報下一次」時就會出現在各追蹤名單的待聯絡（代謝症候群上次申報後 70 天、B/C型肝炎 161 天、慢性腎臟病 77 或 161 天）。如果一直沒有回診申報，到下面的結案日健保就會關閉收案 — 這一頁只提醒快要結案的病患。</p>
       <div style="display:grid;gap:6px;margin-bottom:14px">
         <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
-          <span style="font-weight:600">代謝症候群</span> <span style="color:var(--muted);font-size:12px">90 天</span><br>
+          <span style="font-weight:600">代謝症候群</span> <span style="color:var(--muted);font-size:12px">到期後 365 天</span><br>
           <span style="color:var(--muted);font-size:12.5px">免血液檢查者提前 5 天提醒，其餘提前 15 天。</span>
         </div>
         <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
-          <span style="font-weight:600">B/C型肝炎</span> <span style="color:var(--muted);font-size:12px">185 天</span><br>
-          <span style="color:var(--muted);font-size:12.5px">超過 185 天未完成申報即結案，需重新加入計畫。</span>
+          <span style="font-weight:600">B/C型肝炎</span> <span style="color:var(--muted);font-size:12px">上次申報後 360 天</span><br>
+          <span style="color:var(--muted);font-size:12.5px">上次申報後滿 360 天沒有再申報即結案；結案 1 年後才能再收案。提前 15 天提醒。</span>
         </div>
         <div style="background:var(--hover);border-radius:6px;padding:8px 10px">
-          <span style="font-weight:600">慢性腎臟病</span> <span style="color:var(--muted);font-size:12px">180 天</span><br>
-          <span style="color:var(--muted);font-size:12.5px">180 天內需完成回診，提前 15 天提醒。</span>
+          <span style="font-weight:600">慢性腎臟病</span> <span style="color:var(--muted);font-size:12px">上次申報後 365 天</span><br>
+          <span style="color:var(--muted);font-size:12.5px">超過 1 年沒有申報即結案，需重新收案。提前 15 天提醒。</span>
         </div>
       </div>
       <div style="font-weight:600;margin:0 0 8px">頁籤說明</div>
@@ -193,7 +195,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=104"></script>
+<script src="/static/_layout.js?v=105"></script>
 <script>
 (function () {
   'use strict';
@@ -204,7 +206,16 @@
 
   var CAT_CLS  = { '代謝症候群': 'cat-m', 'B肝': 'cat-h', 'C肝': 'cat-h', '慢性腎臟病': 'cat-k' };
   var CAT_HREF = { '代謝症候群': '/mspt', 'B肝': '/hepatitis', 'C肝': '/hepatitis', '慢性腎臟病': '/ckd' };
-  var CLOSE_DAYS = { '代謝症候群': 90, 'B肝': 185, 'C肝': 185, '慢性腎臟病': 180 };
+  // 結案 per 健保 (same numbers the lists use, database.py):
+  //   代謝症候群 — over 365 days past the due date → restart from 收案
+  //   B/C肝     — 360 days since the last claim (失聯 ≥360 天)
+  //   慢性腎臟病 — over 365 days since the last claim
+  var CLOSE_RULE = {
+    '代謝症候群': { from: 'due',  days: 366 },
+    'B肝':        { from: 'last', days: 360 },
+    'C肝':        { from: 'last', days: 360 },
+    '慢性腎臟病': { from: 'last', days: 366 },
+  };
   var RISK_CATS = { '代謝症候群': 1, 'B肝': 1, 'C肝': 1, '慢性腎臟病': 1 };
 
   var _soon = [], _past = [], _vpn = [], _contacted = [], _hold = [];
@@ -221,9 +232,13 @@
   }
 
   // ── risk computation ────────────────────────────────
+  // Days left until the 結案 day (0 or less = already closed).
   function _dtc(e) {
-    var cd = CLOSE_DAYS[e.category];
-    return cd != null ? cd - e.days_overdue : null;
+    var r = CLOSE_RULE[e.category];
+    if (!r) return null;
+    if (r.from === 'due') return r.days - (e.days_overdue || 0);
+    var since = _sinceDays(e.last_visit_date);
+    return since == null ? null : r.days - since;
   }
   function _thr(e) {
     return (e.category === '代謝症候群' && e.needs_blood_test === false) ? 5 : 15;
@@ -235,7 +250,7 @@
     all.forEach(function(e) {
       var d = _dtc(e);
       if (d == null) return;
-      if (d < 0) {
+      if (d <= 0) {
         past.push({ e: e, d: d });
       } else if (d <= _thr(e)) {
         soon.push({ e: e, d: d });
@@ -275,7 +290,7 @@
     if (p.length !== 3) return null;
     var d = new Date(parseInt(p[0]), parseInt(p[1])-1, parseInt(p[2]));
     var t = new Date(); var tn = new Date(t.getFullYear(), t.getMonth(), t.getDate());
-    return Math.floor((tn - d) / 86400000);
+    return Math.round((tn - d) / 86400000);   // round: a daylight-saving switch leaves 23/25-hour days
   }
   function _sinceTd(dateStr) {
     var n = _sinceDays(dateStr);
@@ -285,8 +300,8 @@
 
   function _daysCell(item) {
     var d = item.d;
-    if (d < 0) {
-      return '<td class="days-hi rsk-days" data-val="' + d + '">逾 ' + Math.abs(d) + ' 天</td>';
+    if (d <= 0) {
+      return '<td class="days-hi rsk-days" data-val="' + d + '">' + (d === 0 ? '今天結案' : '已結案 ' + Math.abs(d) + ' 天') + '</td>';
     }
     var cls = d <= 5 ? 'days-hi' : 'days-md';
     return '<td class="' + cls + ' rsk-days" data-val="' + d + '">剩 ' + d + ' 天</td>';
@@ -486,7 +501,7 @@
       document.getElementById('modal-contact-title').textContent = '聯絡 ' + entry.patient.name;
       var catStr = entry.category + (entry.mspt_stage ? '・' + entry.mspt_stage : '');
       document.getElementById('modal-contact-sub').textContent = '身份證 ' + entry.patient.chart_number + '・' + catStr;
-      document.getElementById('modal-contact-type').value = 'contacted';
+      L.presetContactType(entry);
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
       L.showModal('modal-contact');

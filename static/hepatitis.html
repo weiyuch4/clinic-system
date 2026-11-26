@@ -127,10 +127,10 @@
     <div class="modal-title" id="modal-contact-title">聯絡病患</div>
     <div class="modal-sub" id="modal-contact-sub"></div>
     <div class="modal-field">
-      <label class="modal-label">聯絡方式</label>
+      <label class="modal-label">第幾次通知</label>
       <select class="modal-select" id="modal-contact-type">
-        <option value="contacted">已聯繫（直接通知）</option>
-        <option value="called">已二次確認（電話通話）</option>
+        <option value="contacted">第一次通知</option>
+        <option value="called">第二次通知</option>
       </select>
     </div>
     <div class="modal-field">
@@ -260,7 +260,7 @@
   </div>
 </div>
 
-<script src="/static/_layout.js?v=104"></script>
+<script src="/static/_layout.js?v=105"></script>
 <script>
 (function () {
   'use strict';
@@ -354,7 +354,9 @@
     } else {
       npdStr = '—'; npdCls = '';
     }
-    return L.patientRow({ entry: e, actions: [
+    return L.patientRow({ entry: e,
+      tags: e.call_required ? [L.secondNoticeTag(e)] : [],
+      actions: [
       { label: '已聯繫',    cls: 'act-primary', key: 'contact' },
       { label: '暫緩',      cls: '',            key: 'hold' },
     ], more: [
@@ -384,7 +386,7 @@
     var stageLabel = e.last_stage || '結案';
     var badgeCls = e.last_stage === '再收案' ? 'b-pend' : 'b-call';
     return L.patientRow({ entry: e,
-      tags: ['<span class="pbadge ' + badgeCls + '">' + L.escHtml(stageLabel) + '</span>'],
+      tags: [L.secondNoticeTag(e), '<span class="pbadge ' + badgeCls + '">' + L.escHtml(stageLabel) + '</span>'].filter(Boolean),
       actions: [
         { label: '已聯繫',      cls: 'act-primary', key: 'contact' },
         { label: '再收案',      cls: 'act-warn',    key: 'reintake' },
@@ -402,8 +404,9 @@
       if (e.last_stage === '結案' || e.last_stage === '再收案') { closed.push(e); }
       else { active.push(e); }
     });
-    var filteredActive = active.filter(match);
-    var filteredClosed = closed.filter(match);
+    var second = function(a,b){ return (b.call_required?1:0)-(a.call_required?1:0); };
+    var filteredActive = active.filter(match).sort(second);
+    var filteredClosed = closed.filter(match).sort(second);
     var total = filteredActive.length + filteredClosed.length;
     var el = document.getElementById('list-pending');
     var html = '';
@@ -596,6 +599,7 @@
       document.getElementById('modal-contact-sub').textContent = '身份證 #' + entry.patient.chart_number + ' · 逾期 ' + (entry.days_overdue||0) + ' 天';
       document.getElementById('modal-contact-note').value = '';
       document.getElementById('contact-error').classList.remove('show');
+      L.presetContactType(entry);
       L.showModal('modal-contact');
     } else if (action === 'hold') {
       var entry2 = _pendingMap[_actionChart]; if (!entry2) return;

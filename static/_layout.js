@@ -56,6 +56,11 @@
   // Add a new entry at the TOP when deploying. Bump `version` by 1.
   // Nurses see the modal once per version (stored in localStorage).
   var CHANGELOG = [
+    { version: 12, date: '2026-11-26', items: [
+      'B/C肝、慢性腎臟病、慢簽：通知過一次、7 天內沒回診的病患，回到待聯絡時會標「第2次」並排在最前面',
+      '按「已聯繫」時，標「第2次」的病患會自動選「第二次通知」，其他病患自動選「第一次通知」；需要時仍可手動改',
+      '結案風險：結案日改依健保規定計算 — 代謝症候群到期後 365 天、B/C型肝炎上次申報後 360 天、慢性腎臟病上次申報後 365 天',
+    ]},
     { version: 11, date: '2026-11-25', items: [
       '代謝症候群：在「可電話完成」按完成的病患，只會出現在待登VPN／已申報，不會再同時出現在已聯繫；要撤銷請從已申報 → 待登VPN 一步步撤回',
     ]},
@@ -1931,8 +1936,20 @@
 
   function _closeLabModal() { hideModal('lab-modal'); }
 
+  // 「已聯繫」 dialog: pick 第一次／第二次通知 from the server's call_required flag
+  // (set when a first notice is over 7 days old and the patient hasn't returned).
+  function presetContactType(entry, selectId) {
+    var sel = document.getElementById(selectId || 'modal-contact-type');
+    if (sel) sel.value = entry && entry.call_required ? 'called' : 'contacted';
+  }
+  function secondNoticeTag(entry) {
+    return entry && entry.call_required ? '<span class="pbadge b-call">第2次</span>' : null;
+  }
+
   // ── Export ───────────────────────────────────────────
   window.Layout = {
+    presetContactType: presetContactType,
+    secondNoticeTag:   secondNoticeTag,
     init:              init,
     openNurseSelector: function () { if (_openNurseDD) _openNurseDD(); },
     updateBadges:      updateBadges,
