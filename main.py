@@ -114,8 +114,11 @@ app = FastAPI(title=CLINIC_NAME)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.add_middleware(activity_log.ActivityLogMiddleware)  # 後台 record of nurse actions
 
+# A test copy (staging) keeps no idle database connections and runs no timed jobs (below). Idle
+# connections send keepalives every 30 s, and Railway's Serverless sleep needs 10 quiet minutes, so
+# without this staging's web and Postgres run (and bill) 24/7 even when nobody opens it.
 try:
-    db.init_pool(minconn=2, maxconn=18)
+    db.init_pool(minconn=0 if environment.IS_TEST_COPY else 2, maxconn=18)
 except RuntimeError as e:
     logger.warning(f"PostgreSQL pool not initialized: {e}. Set DATABASE_URL to enable database access.")
 
@@ -134,14 +137,15 @@ review_service.init()
 # ── Scheduler ──────────────────────────────────────────────────────────────────
 import atexit
 from apscheduler.triggers.interval import IntervalTrigger as _IntervalTrigger
-scheduler.start()
-scheduler.get().add_job(
-    broadcast_service.tick_scheduled,
-    _IntervalTrigger(minutes=1),
-    id="broadcast_tick",
-    replace_existing=True,
-)
-atexit.register(scheduler.shutdown)
+if not environment.IS_TEST_COPY:  # staging can't send LINE anyway, and a 1-minute DB query keeps it awake
+    scheduler.start()
+    scheduler.get().add_job(
+        broadcast_service.tick_scheduled,
+        _IntervalTrigger(minutes=1),
+        id="broadcast_tick",
+        replace_existing=True,
+    )
+    atexit.register(scheduler.shutdown)
 
 backup.run()
 if CLOUD_MODE:

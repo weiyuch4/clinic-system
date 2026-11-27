@@ -9,6 +9,8 @@ Railway cron service **db-backup** (production environment) runs `backup.sh` eve
 
 R2 deletes copies older than 60 days (bucket lifecycle rule `keep-60-days`). A failed run shows as failed in Railway → db-backup → Deployments.
 
+Cost: the job is a cron service, so Railway bills only the minute or two it runs each night (a few cents a month, plus a few MB of upload). Running it weekly instead would save almost nothing and lose up to 6 days of data, so keep it nightly.
+
 Variables on the service: `DATABASE_URL=${{Postgres.DATABASE_URL}}`, `R2_ENDPOINT`, `R2_BUCKET`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` (R2 account token limited to this bucket), `BACKUP_PASSPHRASE`, optional `HEARTBEAT_URL`.
 
 **`BACKUP_PASSPHRASE` is the only way to open the backups. Keep a copy outside Railway (password manager).** Losing it makes every backup useless; changing it only affects new backups.
